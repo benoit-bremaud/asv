@@ -1,9 +1,9 @@
 # Use case diagram — moderation — report, review, expel, moderator access
 
-> **Feature**: moderation (roadmap brick 7)
-> **Requirements**: ASV-F-011 to F-013, F-015, F-016, F-019
-> **Business rules**: BR-050 to BR-057
-> **Related ADRs**: ADR-0004, ADR-0005, ADR-0008, ADR-0010
+> **Feature**: moderation (roadmap brick 8)
+> **Requirements**: ASV-F-011 to F-013, F-015, F-016, F-019, F-022, F-023
+> **Business rules**: BR-050 to BR-057, BR-074 to BR-078
+> **Related ADRs**: ADR-0004, ADR-0005, ADR-0008, ADR-0010, ADR-0012
 
 ## Context
 
@@ -18,6 +18,7 @@ flowchart LR
   Moderator(("Moderator"))
   Owner(("Owner"))
   Invitee(("Invited person"))
+  Authorities(("Authorities"))
   subgraph SYSTEM ["asv"]
     subgraph Reporting ["Reporting"]
       UC9(("UC9 Report a chatter, a message or a room"))
@@ -38,6 +39,7 @@ flowchart LR
   Moderator --> UC16
   Owner --> UC14
   Invitee --> UC15
+  UC11 -.->|"alerted in severe cases"| Authorities
   Moderator -.->|"generalizes"| Chatter
 ```
 
@@ -55,12 +57,22 @@ flowchart LR
 - Main scenario: 1. Moderator opens the report list. 2. System shows open reports sorted by AI urgency,
   then date, with reason, AI summary, excerpt, context, pseudos and whether the target is still
   connected. 3. Moderator closes the report with an outcome (BR-057): no action, warned, expelled,
-  room removed. A warning sends the target a `warned` message.
+  suspended, room removed. A warning sends the target a `warned` message and, if the target has an
+  account, adds a strike (BR-074). At the third active strike, the moderator is asked to confirm a
+  7-day suspension (BR-075, sequence 02d).
 
 **UC11 — Expel a chatter** (planned)
 - Main scenario: 1. Moderator picks a target and a duration (BR-053). 2. System creates a ban on the
   keyed IP hash and the pseudo, records the moderator (BR-055), closes the target session and its
   connection log, and tells rooms and windows the target left.
+- Variant: target has an account → the account is deleted, its e-mail blocked and a statement of reasons
+  e-mailed (BR-076 to BR-078).
+- Variant: severe case (grooming, threats, child sexual abuse material, incitement to violence):
+  1. Moderator marks the expel as severe. 2. System deletes the account at once, without strikes, and
+  blocks its e-mail hash for the longer period (BR-078); a chatter without an account gets the longest
+  IP and pseudo ban. 3. System sends the statement of reasons. 4. When life or safety is threatened, the
+  moderator alerts the owner, who informs the authorities through the official channel (DSA art. 18,
+  channel to confirm in brick 1 bis). Authorities are a secondary actor of UC11.
 - Variant: remove a user room → its members get `roomClosed`.
 - Closing the related report is a separate `closeReport` command.
 
@@ -71,8 +83,8 @@ flowchart LR
 
 **UC15 — Enroll as moderator** (planned)
 - Main scenario: 1. Invited person opens the link. 2. System starts a passkey registration. 3. The
-  device creates a passkey after fingerprint, face or PIN. 4. System stores name, credential id and
-  public key, and consumes the invitation.
+  device creates a passkey after its usual unlock (PIN, pattern or biometrics, no biometric data
+  reaches asv). 4. System stores name, credential id and public key, and consumes the invitation.
 - Extensions: 1a. Invitation expired or used → refused.
 
 **UC16 — Sign in as moderator** (planned)

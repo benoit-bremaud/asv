@@ -46,7 +46,7 @@ Values are owned here. Rationale lives in the ADRs.
 
 | Rule | Description |
 |---|---|
-| BR-040 | Any connected chatter can open a private window with any connected or away chatter. |
+| BR-040 | A chatter linked to an account can open a private window with any connected or away chatter also linked to an account (ADR-0012). |
 | BR-041 | If the target ignores the sender, the sender's window opens and messages are silently dropped. |
 | BR-042 | Ignore lasts for the session and covers room messages and private messages both ways. |
 | BR-043 | A chatter can hold at most 10 private windows at once. |
@@ -62,7 +62,23 @@ Values are owned here. Rationale lives in the ADRs.
 | BR-054 | Only a session with `isModerator` can list reports, close reports or expel. |
 | BR-055 | Every moderation action records the moderator name and time. |
 | BR-056 | A moderator invitation is single use and expires after 24 hours. |
-| BR-057 | A report is closed with one outcome: no action, warned, expelled, room removed. The AI triage never closes a report (ADR-0010). |
+| BR-057 | A report is closed with one outcome: no action, warned, expelled, suspended, severe deletion, room removed. The AI triage never closes a report (ADR-0010). |
+
+## Accounts and strikes (ADR-0012, ADR-0013)
+
+| Rule | Description |
+|---|---|
+| BR-070 | A sign-in code has six digits, is single use, valid 10 minutes, stored as a keyed hash, and invalidated after 5 wrong tries. |
+| BR-071 | E-mail addresses from known disposable domains are refused (maintained list). |
+| BR-072 | At most 3 sign-in codes per e-mail and 10 per IP per hour. |
+| BR-073 | A remembered device gets a random token in an `HttpOnly`, `Secure`, `SameSite=Lax` cookie valid 30 days, set over HTTPS in exchange for a single-use device claim valid 60 seconds. The server keeps only hashes. |
+| BR-074 | A warning on a chatter with an account adds a strike. A strike expires after 90 days. |
+| BR-075 | While an account has 3 or more active strikes and no decision, the moderator panel proposes a 7-day suspension. Without confirmation, nothing happens. |
+| BR-076 | Every suspension or deletion decided by a moderator e-mails a statement of reasons (DSA art. 17). The address is kept only until the mail is accepted, retried for at most 7 days. |
+| BR-077 | A suspension deletes the account, blocks a keyed hash of its e-mail for 7 days, closes every session and away record of the account, and bans the keyed IP hash and pseudo of the session in use for 7 days. |
+| BR-078 | Severe cases (grooming, threats, child sexual abuse material, incitement to violence) delete the account at once and block the e-mail hash for 6 months (proposal, legal check). Authorities are alerted when life or safety is threatened. |
+| BR-079 | An account unused for 2 years is deleted after an e-mail notice (proposal, CNIL guidance to confirm). |
+| BR-080 | A member may delete their account at any time. If strikes are active, a keyed e-mail hash and the strike expiry dates are kept until the last one expires, and restored if the same e-mail creates a new account. |
 
 ## Retention (to confirm, see security-and-rgpd.md)
 

@@ -21,6 +21,7 @@ classDiagram
     +Map~SessionId, IgnoreList~ ignores
     +Map~SessionId, FloodCounter~ flood
     +Map~String, EntryAttempts~ entryAttempts
+    +Map~String, EntryAttempts~ codeRequests
   }
   class Session
   class Room
@@ -43,12 +44,13 @@ classDiagram
 
 | Part | Source on wake-up |
 |---|---|
-| Connected sessions, pseudo index, ignore lists, room memberships | WebSocket attachments (`getWebSockets()`) |
+| Connected sessions, pseudo index, ignore lists, room memberships, linked account ids | WebSocket attachments (`getWebSockets()`) |
+| Accounts, devices, pending codes, e-mail blocks, strike carry-overs | Account store in hub storage (never held whole in memory) |
 | Away sessions | Away records in storage |
 | Official rooms | Configuration |
 | User rooms | Derived from members' attachments and away records |
 | Private conversations | Derived from attachments (open windows) and away records |
-| Flood counters, entry attempts | Reset, accepted (ADR-0011) |
+| Flood counters, entry attempts, code requests | Reset, accepted (ADR-0011) |
 
 ## Notes
 

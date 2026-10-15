@@ -22,7 +22,7 @@ flowchart TB
     DNS["asvchat.fr DNS on Cloudflare"]
     Worker["Worker: Hono app + static assets"]
     HubDO["Hub Durable Object + SQLite"]
-    Secrets["Secrets: BAN_HMAC_KEY, GRANT_KEY, OWNER_SECRET, AI_API_KEY"]
+    Secrets["Secrets: BAN_HMAC_KEY, EMAIL_HMAC_KEY, GRANT_KEY, OWNER_SECRET, AI_API_KEY, MAIL_API_KEY"]
     DNS --> Worker
     Worker --> HubDO
     Secrets -.-> Worker
@@ -32,6 +32,8 @@ flowchart TB
   Registrar["Registrar: Namecheap, OVH or Gandi"]
   Registrar -->|"name servers"| DNS
   HubDO -->|"reported context only"| AI
+  Mail["Transactional e-mail provider"]
+  HubDO -->|"sign-in codes, statements of reasons"| Mail
 ```
 
 ## Notes
@@ -39,4 +41,4 @@ flowchart TB
 - A staging environment (separate Worker and Durable Object namespace) is added before public launch,
   following the owner's environments convention.
 - Exit door: the Node process can be containerised and run elsewhere (ADR-0002).
-- Secret names are proposals for brick 8. Values live in Wrangler secrets, never in the repo.
+- Secret names are proposals for brick 9. Values live in Wrangler secrets, never in the repo.

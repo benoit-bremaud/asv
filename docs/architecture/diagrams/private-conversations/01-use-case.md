@@ -1,9 +1,9 @@
 # Use case diagram — private-conversations — talk privately, ignore
 
-> **Feature**: private-conversations (roadmap brick 5)
-> **Requirements**: ASV-F-008, F-010, F-014 (away buffer only)
+> **Feature**: private-conversations (roadmap brick 6)
+> **Requirements**: ASV-F-008, F-010, F-014 (away buffer only), F-020
 > **Business rules**: BR-040 to BR-043, BR-013, BR-021
-> **Related ADRs**: ADR-0005, ADR-0009
+> **Related ADRs**: ADR-0005, ADR-0009, ADR-0012
 
 ## Context
 
@@ -28,6 +28,9 @@ flowchart LR
 ## Use case specs
 
 **UC6 — Open a private conversation** (planned)
+- Preconditions: both chatters' sessions are linked to an account (ADR-0012). If the sender has none, the
+  client starts UC17 first. A target without an account cannot receive private messages, and the
+  "private message" entry is greyed on their pseudo.
 - Main scenario: 1. Chatter clicks a pseudo (room list or search result) and types a first message.
   2. System checks length, flood and window limit (BR-020, BR-021, BR-043). 3. System opens a window on
   both sides with the message.

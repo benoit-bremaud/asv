@@ -32,5 +32,5 @@ flowchart LR
 
 ## Notes
 
-- Retention values are proposals until the brick 9 legal check (BR-060 to BR-062).
+- Retention values are proposals until the brick 1 bis legal check (BR-060 to BR-062).
 - Gender, age and city stay in memory and in the client, never on server disk.

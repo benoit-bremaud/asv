@@ -86,7 +86,7 @@ Captures:
 - Minimal, transparent moderation: anti-flood, report, ignore. No opaque word robots.
 - Protect against harassment by default: one-click ignore and report. Restricting DMs to people in
   the same room was considered and not kept: DMs can reach any connected chatter, as in Caramail
-  (search by city depends on it).
+  (search by city depends on it). Superseded: private messages now need an account (ADR-0012).
 - Adults only, no minors' rooms (ADR-0004).
 
 **Questions raised by the research — resolved**

@@ -27,6 +27,11 @@ non-functional requirements (NF) to quality goals. Business rules referenced as 
 | ASV-F-017 | Leave cleanly | Leave action | UC10 | Leaving frees the pseudo and notifies rooms and open windows. | V1 |
 | ASV-F-018 | Smileys like back then | Typed codes rendered from a whitelist (BR-022) | UC4, UC6 | Known codes render as images, unknown codes stay as text, never as HTML. | V1 |
 | ASV-F-019 | Handle the most urgent reports first | AI triage of reported content only (ADR-0010) | UC9, UC12 | Reports are listed by AI urgency. The AI never sanctions. Without AI, urgency is "unknown". | V1 |
+| ASV-F-020 | Talk privately only with accountable people | Private messages need a verified e-mail account (ADR-0012) | UC6, UC17 | A chatter without an account cannot open or receive a private message. | V1 |
+| ASV-F-021 | Sign in without a password | Six-digit e-mail code, device remembered 30 days (ADR-0013) | UC17 | A member signs in by typing one code and is recognised on that device for 30 days. | V1 |
+| ASV-F-022 | Stop repeat offenders | Three strikes, then 7-day suspension with e-mail block (ADR-0012) | UC12, UC11 | At the third active strike the moderator confirms; the same e-mail cannot create an account for 7 days. | V1 |
+| ASV-F-023 | Know why I was sanctioned | Statement of reasons by e-mail (DSA art. 17) | UC11, UC12 | Every suspension or deletion by a moderator e-mails the facts, the rule, AI use and redress. | V1 |
+| ASV-F-024 | Control my account | Sign out of a device or everywhere, delete the account | UC18, UC19 | Each action takes effect immediately and closes private windows. | V1 |
 
 ## Non-functional
 

@@ -22,7 +22,7 @@ sequenceDiagram
   WK->>H: rpc startAuthentication(now)
   H-->>WK: challenge, kept 5 min
   WK-->>B: authentication options
-  B->>B: Sign challenge after fingerprint or PIN
+  B->>B: Sign challenge after device unlock
   B->>WK: POST authentication response
   WK->>H: rpc credentialAndChallenge(credentialId)
   H->>MS: load moderator by credential

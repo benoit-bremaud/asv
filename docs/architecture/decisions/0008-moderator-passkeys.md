@@ -6,7 +6,8 @@
 
 ## Context
 
-Moderators can read reports and expel chatters. V1 has no accounts (ADR-0005). The owner wants an
+Moderators can read reports and expel chatters. V1 has no member passwords: member accounts exist only for private messages, signed in by an e-mail
+code (ADR-0012, ADR-0013). Moderators need stronger assurance. The owner wants an
 authentication that survives a change of hosting provider.
 
 ## Options and MCDA

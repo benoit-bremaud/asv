@@ -18,12 +18,13 @@ curious younger adults attracted by the retro vibe. See [personas](personas.md).
 ## Principles
 
 1. **Pseudo only.** No photo, no profile page, no follower count.
-2. **Instant.** From landing page to chatting in under 30 seconds, no account.
+2. **Instant.** From landing page to chatting in a room in under 30 seconds, no account. An e-mail account
+   is asked only for private messages, where it protects people (ADR-0012).
 3. **Faithful to the soul, not to the flaws.** Keep rooms, pink/blue pseudos, ASV, private windows.
    Drop pop-ups, ads, webcam prompts and opaque word robots.
 4. **Safe by default.** Adults only, ignore in two clicks, human moderators helped by AI triage of reports.
-5. **Light on data.** Nothing persisted beyond legal logs, reports, bans, moderator credentials and
-   short-lived away records (ADR-0011).
+5. **Light on data.** Nothing persisted beyond legal logs, reports, bans, member e-mails and strikes,
+   moderator credentials and short-lived away records (ADR-0011).
 
 ## Success signals (V1)
 
@@ -34,5 +35,5 @@ curious younger adults attracted by the retro vibe. See [personas](personas.md).
 
 ## Out of scope for V1
 
-Accounts, message history, file or image sharing, webcam, mobile app, monetisation, a teen space
+Passwords and profiles, message history, file or image sharing, webcam, mobile app, monetisation, a teen space
 (V2 candidate, ADR-0004).

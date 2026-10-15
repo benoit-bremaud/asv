@@ -19,16 +19,19 @@ sequenceDiagram
   participant WK as Worker
   participant H as Hub
   participant ST as Moderation store
+  participant AS as Account store
   participant D as Domain
   participant LS as Connection log store
   V->>W: Fill pseudo, gender, age, city, tick 18+
   W->>WK: WebSocket upgrade /ws
   WK->>WK: Check Origin header
-  WK->>H: Forward upgrade with client IP
+  WK->>H: Forward upgrade with client IP and device cookie hash if any
   W->>H: enter(form)
   H->>ST: activeBan(ipKeyedHash, pseudo, now)
   ST-->>H: ban or none
-  H->>D: enter(state, form, ip, activeBan, now, random)
+  H->>AS: accountForDevice(deviceTokenHash, now)
+  AS-->>H: account or none
+  H->>D: enter(state, form, ip, activeBan, account, now, random)
   alt Refused (rate, ban, pseudo, age)
     D-->>H: Refusal with reason
     H-->>W: entryRefused(reason)
@@ -36,7 +39,7 @@ sequenceDiagram
     D-->>H: New state + session + resume token
     H->>LS: open log(ip, pseudo, now)
     H->>H: Save session in socket attachment
-    H-->>W: entered(sessionId, resumeToken, roomList)
+    H-->>W: entered(sessionId, resumeToken, roomList, accountId)
     W-->>V: Show rooms
   end
 ```
@@ -46,4 +49,6 @@ sequenceDiagram
 - `now` and `random` are passed as arguments so the domain is deterministic in tests.
 - The IP comes from the platform (`CF-Connecting-IP` on Cloudflare, socket address on Node).
 - The client keeps the resume token and its own profile in `sessionStorage` (ADR-0011).
+- A device cookie pointing to a deleted account yields no account. The client then calls
+  `POST /account/sign-out` to clear the stale cookie (ADR-0013).
 - The connection log is closed on leave, away expiry and expel (see `entry/02b` and `moderation/02a`).

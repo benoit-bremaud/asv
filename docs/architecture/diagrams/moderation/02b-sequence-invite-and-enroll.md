@@ -35,7 +35,7 @@ sequenceDiagram
   H->>MS: check invitation unused and valid
   H-->>WK: challenge, kept 5 min
   WK-->>B: registration options
-  B->>B: Create passkey after fingerprint or PIN
+  B->>B: Create passkey after device unlock
   B->>WK: POST registration response
   WK->>H: rpc challengeFor(token)
   H-->>WK: challenge, consumed

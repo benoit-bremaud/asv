@@ -1,6 +1,6 @@
 # Component diagram — web-ui — front-end structure
 
-> **Feature**: web-ui (roadmap brick 6)
+> **Feature**: web-ui (roadmap brick 7)
 > **Requirements**: ASV-NF-004, NF-005, NF-006, NF-011, NF-012
 > **Design**: `docs/architecture/design-pack.md`
 
@@ -21,6 +21,7 @@ flowchart LR
       Search["SearchPanel"]
       Windows["PrivateWindows"]
       Mod["ModeratorPanel"]
+      Account["AccountPanel"]
     end
     Store["Client state store"]
     Conn["Connection manager: socket, heartbeat, backoff, resume"]

@@ -1,5 +1,23 @@
 # Local review — asv (branch docs/bootstrap-conception, complete conception dossier)
 
+## Third pass — accounts and strikes (2026-10-16)
+
+- Scope: ADR-0012, ADR-0013, `diagrams/accounts/*`, `moderation/02d` and every file they touched.
+- Checks run: design · docs · security · correctness. Tests: not applicable.
+- Verdict before fixes: Must 12 · Should 18 · Nice 9. After fixes: ship, all Must and Should resolved.
+- Owner decision during this pass: six-digit e-mail code instead of a link (435 vs 365), because links
+  opened from mail apps land in another browser and mail scanners can consume single-use links.
+- Main fixes: device cookie set by the chat tab through a single-use claim; cookie read at entry; account
+  kept on resume; report keeps `targetAccountId`; strikes survive self-deletion (BR-080); suspension
+  closes every session and adds an IP and pseudo ban; statement of reasons retried before the address is
+  deleted; domain decides account creation, store only persists; MCDA totals of ADR-0012 and ADR-0013
+  corrected (ADR-0013 winner was 435, not 400); stale "no accounts" wording removed; DSA art. 18 flagged
+  as unverified.
+- Intentional: one `AccountStore` port (one SQLite store and one in-memory twin); `Mailer` port has two
+  real implementations.
+
+## Second pass — complete dossier (2026-10-15)
+
 - Date: 2026-10-15 (second pass, after splitting `chat-core` into feature studies)
 - Commit: 383f91e + uncommitted dossier
 - Scope: whole `docs/`, `README.md`, `CLAUDE.md`, `PROJECT_LOG.md` (no application code)

@@ -36,7 +36,13 @@ classDiagram
     warn
     expel
     closeReport
+    confirmSuspension
+    declineSuspension
     removeRoom
+    requestCode
+    verifyCode
+    signOutEverywhere
+    deleteAccount
     leave
   }
   class ServerMessage {
@@ -60,7 +66,12 @@ classDiagram
     openReports
     warned
     expelled
+    reportClosed
+    suspensionProposed
     roomClosed
+    codeSent
+    accountLinked
+    accountUnlinked
     warning
     error
   }
@@ -85,16 +96,20 @@ Client to server:
 | report | targetKind, targetPseudo?, targetRoomId?, reason, excerpt, context (≤ 20 lines) |
 | listOpenReports | — |
 | warn | targetSessionId, text |
-| expel | targetSessionId, duration (1h, 24h, 7d) |
+| expel | targetSessionId, duration (1h, 24h, 7d), severe? |
 | closeReport | reportId, outcome |
+| confirmSuspension / declineSuspension | accountId, reportId |
 | removeRoom | roomId |
+| requestCode | email, remember |
+| verifyCode | code |
+| signOutEverywhere / deleteAccount | — |
 | leave | — |
 
 Server to client:
 
 | Type | Payload |
 |---|---|
-| entered | sessionId, resumeToken, roomList, isModerator |
+| entered | sessionId, resumeToken, roomList, isModerator, accountId? |
 | entryRefused | reason (rate, banned until, pseudo invalid, pseudo taken, age) |
 | resumed | resumeToken, rooms, windows, buffered |
 | resumeRefused | — |
@@ -108,13 +123,22 @@ Server to client:
 | searchResults | results (sessionId, pseudo, gender, age, city, rooms, away) |
 | reportSent | reportId |
 | openReports | reports (with triage) |
-| warned | text |
+| warned | rule, text, activeStrikes |
 | expelled | until |
+| reportClosed | reportId |
+| suspensionProposed | accountId, reportId, activeStrikes |
 | roomClosed | roomId |
+| codeSent | — |
+| accountLinked | accountId, deviceClaim? |
+| accountUnlinked | — |
 | warning / error | code, message, replyTo (seq) |
 
 ## Notes
 
 - Every incoming message is validated against its schema before reaching the domain.
 - `seq` lets the client match `warning` and `error` to the command that caused them.
-- `error` codes include `offline` (private message target gone), `forbidden`, `invalid`.
+- `error` codes include `offline` (private message target gone), `accountRequired`, `forbidden`, `invalid`.
+- `entered` also carries `accountId` when a device cookie linked the session (ADR-0013).
+- Two HTTPS routes complete the account flow: `POST /account/device` exchanges a device claim for the
+  `HttpOnly` cookie, and `POST /account/sign-out` signs this device out and clears the cookie, since a
+  WebSocket message cannot clear an `HttpOnly` cookie (ADR-0013).

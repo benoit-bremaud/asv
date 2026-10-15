@@ -14,7 +14,7 @@ Lifecycle of a report, from filing to deletion. Does not cover bans, which simpl
 stateDiagram-v2
   [*] --> Open: chatter reports
   Open --> Open: AI triage adds category, urgency and summary
-  Open --> Closed: moderator decides no action, warned, expelled or room removed
+  Open --> Closed: moderator decides no action, warned, expelled, suspended, severe deletion or room removed
   Closed --> Deleted: retention period after closing
   Deleted --> [*]
 ```
@@ -23,4 +23,4 @@ stateDiagram-v2
 
 - An open report is never deleted automatically: every report gets a human decision. This follows the
   DSA notice-and-action duty, to confirm (see `security-and-rgpd.md`).
-- The retention period is a proposal (6 months, BR-061) until the brick 9 legal check.
+- The retention period is a proposal (6 months, BR-061) until the brick 1 bis legal check.

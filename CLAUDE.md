@@ -21,8 +21,9 @@ Conception phase. No application code yet.
   Transports build and wire the Hono app, the server never imports a transport.
 - **Conception is the source of truth**: code follows `docs/architecture/`. When they diverge, fix
   the code or update the diagram in the same change.
-- **Personal data**: only connection logs, reports, bans, moderator credentials and invitations, and
-  away records (5 minutes max) are persisted. Gender, age and city are never persisted. Legal retention
+- **Personal data**: only connection logs, reports, bans, member accounts (e-mail, strikes, device
+  hashes), e-mail block hashes, moderator credentials and invitations, and away records (5 minutes max)
+  are persisted. Gender, age and city are never persisted. Legal retention
   rules are unverified, see `docs/architecture/security-and-rgpd.md`.
 - **AI never sanctions**: AI only triages reported content, a human moderator decides (ADR-0010).
 

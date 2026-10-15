@@ -45,7 +45,7 @@ teen space (V2, ADR-0004).
   is sorted by urgency, then date.
 - The AI never sanctions. A moderator always decides (UC11, UC12). If the AI is unavailable, the report
   is listed with urgency "unknown".
-- Model and provider are chosen in brick 7, with a processing agreement and EU processing preferred.
+- Model and provider are chosen in brick 8, with a processing agreement and EU processing preferred.
   A no-AI adapter is used in development and tests.
 
 ## Consequences

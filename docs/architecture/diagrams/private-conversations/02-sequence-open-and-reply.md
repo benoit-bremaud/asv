@@ -22,7 +22,10 @@ sequenceDiagram
   A->>WA: Click pseudo B, type first message
   WA->>H: sendPrivate(B, text)
   H->>D: sendPrivate(state, sessionA, pseudoB, text, now)
-  alt Limits exceeded
+  alt A or B has no account
+    D-->>H: Refused (account required)
+    H-->>WA: error(accountRequired)
+  else Limits exceeded
     D-->>H: Refused
     H-->>WA: warning
   else B gone

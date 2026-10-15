@@ -30,6 +30,8 @@ classDiagram
     +Profile profile
     +String ip
     +String moderatorName
+    +AccountId accountId
+    +String deviceTokenHash
     +ResumeTokenHash resumeTokenHash
   }
   class SessionStatus {
@@ -50,6 +52,7 @@ classDiagram
   class AwayRecord {
     +SessionId sessionId
     +String pseudo
+    +AccountId accountId
     +ResumeTokenHash resumeTokenHash
     +Date awayUntil
     +RoomId[] rooms
@@ -75,6 +78,7 @@ classDiagram
 
 - A session exists only once entry is accepted. Closed and expelled sessions are removed, they are not statuses.
 - `moderatorName` is empty for ordinary chatters. A non-empty value means moderator rights.
+- `accountId` is empty until the session is linked to an account (UC17, ADR-0012).
 - `AwayRecord` holds no gender, age or city (ADR-0011). `buffered` is capped at 50 messages (BR-013).
 - The resume token itself is only sent to the client. The server keeps its hash and rotates it at each resume.
 - `ConnectionLog` is persisted with plain values, no link to the ephemeral session.

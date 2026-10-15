@@ -1,6 +1,6 @@
 # Use case diagram — directory — find a chatter
 
-> **Feature**: directory (roadmap brick 5)
+> **Feature**: directory (roadmap brick 6)
 > **Requirements**: ASV-F-004, F-009
 
 ## Context

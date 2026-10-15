@@ -41,3 +41,18 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   hub plumbing (hibernation, RPC, grants). New ADR-0011 (away records without gender/age/city, 415/500),
   hub state aggregate diagram, protocol payload table, contrast-checked away colours. All Must and
   Should fixed. 30 diagram files render, no broken link, Gitleaks clean.
+
+## 2026-10-16 — Accounts, strikes and legal-first roadmap
+
+- Owner wants French-law compliance first and firm handling of repeat offenders (3 warnings, then
+  account removal, same e-mail blocked a week). Caramail required an e-mail account to chat.
+- DSA arts. 17, 19 and 23 read on EUR-Lex: statements of reasons are due only when the e-mail is known;
+  micro companies are exempt from the art. 23 misuse policy, followed anyway.
+- ADR-0012 (380/500 with the owner's weights): rooms stay account-free, private messages need a verified
+  e-mail account, strikes expire after 90 days, the third proposes a 7-day suspension confirmed by a
+  moderator, severe cases deleted at once.
+- ADR-0013 (435/500): members sign in with a six-digit e-mail code, device remembered 30 days. The owner
+  refused any face or photo; clarified that passkeys never send biometrics, wording fixed everywhere.
+- New `accounts` study (UC17 to UC19), `moderation/02d`, BR-070 to BR-080, F-020 to F-024.
+- Roadmap: new brick 1 bis, legal check on official texts before any code; bricks renumbered to 10.
+- Third local review: 12 Must, 18 Should, all fixed. 36 diagram files render, no broken link, Gitleaks clean.

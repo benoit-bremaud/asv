@@ -39,7 +39,8 @@ flowchart LR
   2. Visitor ticks "I am 18 or older" and accepts the terms.
   3. System checks the entry rate (BR-007), the ban list (BR-008), the pseudo (BR-001 to BR-003) and
      the age (BR-004).
-  4. System creates the member and session, opens a connection log and returns a resume token.
+  4. System creates the member and session, opens a connection log and returns a resume token. If the
+     browser presents a valid device cookie, the session is linked to that account (ADR-0013).
   5. System shows the room list.
 - Extensions:
   - 2a. Box unticked or age outside 18–99 → refused (BR-004).

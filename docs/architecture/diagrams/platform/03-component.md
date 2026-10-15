@@ -22,19 +22,20 @@ flowchart LR
   end
   subgraph Domain ["src/domain — pure TypeScript"]
     Core["Hub state and rules: sessions, rooms, private conversations, moderation"]
-    Ports["Ports: ModerationStore, ModeratorStore, ConnectionLogStore, AwayStore, ReportTriage"]
+    Ports["Ports: ModerationStore, ModeratorStore, AccountStore, ConnectionLogStore, AwayStore, ReportTriage, Mailer"]
   end
   subgraph NodeT ["src/transports/node — dev and tests"]
     NodeMain["Node entry: builds Hono app"]
     NodeHub["In-memory hub"]
-    NodeStore["In-memory stores, no-AI triage"]
+    NodeStore["In-memory stores, no-AI triage, console mailer"]
   end
   subgraph CfT ["src/transports/cloudflare — production"]
     WorkerEntry["Worker entry: builds Hono app"]
     HubDO["Hub Durable Object"]
     Sqlite["Durable Object SQLite stores"]
   end
-  AIAdapter["AI triage adapter, chosen in brick 7"]
+  AIAdapter["AI triage adapter, chosen in brick 8"]
+  MailAdapter["Mailer adapter, provider chosen in brick 5"]
   Conn -->|"one WebSocket"| Routes
   Conn --> Shared
   Routes --> Shared
@@ -47,6 +48,8 @@ flowchart LR
   NodeStore -.->|"implements"| Ports
   Sqlite -.->|"implements"| Ports
   AIAdapter -.->|"implements ReportTriage"| Ports
+  MailAdapter -.->|"implements Mailer"| Ports
+  HubDO --> MailAdapter
   NodeHub --> NodeStore
   HubDO --> Sqlite
   HubDO --> AIAdapter

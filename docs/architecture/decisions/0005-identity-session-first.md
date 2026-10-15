@@ -1,6 +1,7 @@
 # ADR-0005 — Session pseudo in V1, accounts planned for V2
 
-- Status: accepted
+- Status: accepted, partially superseded by [ADR-0012](0012-accounts-for-private-messages-and-strikes.md)
+  (accounts arrive in V1 for private messages)
 - Date: 2026-10-15
 - Deciders: Benoît Bremaud
 
@@ -31,6 +32,9 @@ bans 20, finding regulars again 15, evolvability 10.
 Sensitivity: with impersonation 35 and simplicity 15, C and B tie at 380.
 
 ## Decision
+
+> Superseded in part by ADR-0012: V1 has e-mail accounts for private messages. Persisted data also
+> includes accounts, device hashes and e-mail block hashes. The rest of this decision still holds.
 
 - V1: a session is bound to an ephemeral `Member`. The member holds the pseudo. The session holds
   the optional gender, the self-declared age and city, the ignore list and the moderator name.

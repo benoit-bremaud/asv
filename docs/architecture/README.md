@@ -43,6 +43,8 @@ flowchart LR
 - Session-first identity (ADR-0005), 5-minute away grace (ADR-0009), passkeys for moderators (ADR-0008).
 - Hub state rebuilt from socket attachments and minimal away records after hibernation (ADR-0011).
 - AI triages reported content only, humans decide (ADR-0010).
+- Rooms need no account. Private messages need a verified e-mail account, signed in by an e-mail code with the
+  device remembered 30 days. Three strikes lead to a proposed 7-day suspension (ADR-0012, ADR-0013).
 
 ## 5. Building blocks (C4 level 2 — containers)
 
@@ -54,6 +56,8 @@ flowchart LR
     Hub["Hub Durable Object — domain + SQLite"]
   end
   AI["AI provider — report triage"]
+  Mail["E-mail provider — sign-in codes, statements of reasons"]
+  Hub -->|"e-mails to send"| Mail
   Browser -->|"HTTPS: assets, passkey ceremonies"| Worker
   Browser -->|"WebSocket: chat protocol"| Worker
   Worker -->|"forwards upgrade and RPC"| Hub
@@ -68,6 +72,7 @@ Component level per feature lives in the studies below.
 |---|---|---|
 | Entry and session | UC1, UC10, UC13 | [entry](diagrams/entry/) |
 | Rooms | UC2, UC3, UC4, UC5 | [rooms](diagrams/rooms/) |
+| Accounts | UC17, UC18, UC19 | [accounts](diagrams/accounts/) |
 | Private conversations | UC6, UC8 | [private-conversations](diagrams/private-conversations/) |
 | Directory | UC7 | [directory](diagrams/directory/) |
 | Moderation | UC9, UC11, UC12, UC14, UC15, UC16 | [moderation](diagrams/moderation/) |
@@ -97,6 +102,8 @@ Coverage: [traceability matrix](traceability-matrix.md).
 | [0009](decisions/0009-reconnection-grace-away.md) | Five-minute reconnection grace with "away" |
 | [0010](decisions/0010-ai-report-triage.md) | AI assists moderators by triaging reports only |
 | [0011](decisions/0011-hub-state-and-hibernation.md) | Hub state across hibernation, heartbeat and alarms |
+| [0012](decisions/0012-accounts-for-private-messages-and-strikes.md) | E-mail accounts for private messages, three-strike moderation |
+| [0013](decisions/0013-member-sign-in-email-code.md) | Members sign in with an e-mail code, device remembered 30 days |
 
 ## 9. Risks and technical debt
 
@@ -106,7 +113,7 @@ Coverage: [traceability matrix](traceability-matrix.md).
 | Minors entering despite 18+ | "Seems minor" report reason, expel (ADR-0004). Teen space only in V2 with real age checks. |
 | AI provider processes reported content | Neutral labels instead of pseudos, processing agreement, EU processing preferred (ADR-0010). |
 | Hub eviction disconnects everyone | Clients reconnect, away records allow resume (ADR-0011). |
-| Legal points unverified | Legal check is brick 9, before public launch. |
+| Legal points unverified | Legal check is brick 1 bis, before any code. Final texts and professional review in brick 10. |
 | Single hub saturation | Measured shard trigger (ADR-0007). |
 | Empty rooms at launch kill the vibe | Few official rooms, seeded by the owner's network. |
 

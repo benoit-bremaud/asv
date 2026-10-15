@@ -19,6 +19,7 @@ sequenceDiagram
   participant H as Hub
   participant D as Domain
   participant AS as Away records
+  participant ACC as Account store
   participant LS as Connection log store
   participant O as Others
   W->>H: ping every 25 s, auto pong
@@ -36,11 +37,12 @@ sequenceDiagram
     C->>W: Unlock phone
     W->>H: WebSocket upgrade then resume(token, profile)
     H->>AS: load away record
-    H->>D: resume(state, record, token, profile, now, random)
+    H->>ACC: account still exists for record.accountId
+    H->>D: resume(state, record, account, token, profile, now, random)
     alt Token valid
       D-->>H: Session connected + new token + buffered messages
       H->>AS: delete away record
-      H-->>W: resumed(newToken, rooms, windows, buffered)
+      H-->>W: resumed(newToken, rooms, windows, buffered, accountId or none)
       H-->>O: memberBack(X)
     else Token invalid
       D-->>H: Refused
@@ -61,3 +63,5 @@ sequenceDiagram
 - Room messages posted while away are not buffered (BR-013 covers private messages only).
 - Gender, age and city never reach storage: the client resends them with `resume` (ADR-0011).
 - UC10 (leave) follows the same closing steps as expiry, triggered by the `leave` command.
+- If the account was deleted while away, the session resumes without it and its private windows close
+  (`accountUnlinked`).
