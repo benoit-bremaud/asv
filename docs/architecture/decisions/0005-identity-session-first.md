@@ -33,10 +33,11 @@ Sensitivity: with impersonation 35 and simplicity 15, C and B tie at 380.
 ## Decision
 
 - V1: a session is bound to an ephemeral `Member`. The member holds the pseudo. The session holds
-  the optional gender, the self-declared age and city, the ignore list and the moderator flag.
-  Everything is lost on disconnect.
-- A pseudo is unique among currently connected users.
-- Persisted personal data: legal connection logs (IP, pseudo, timestamps), reports and bans.
+  the optional gender, the self-declared age and city, the ignore list and the moderator name.
+  Everything is lost when the session closes, after the away grace of ADR-0009.
+- A pseudo is unique among connected and away sessions (BR-002).
+- Persisted personal data: legal connection logs (IP, pseudo, timestamps), reports and bans,
+  moderator credentials and invitations (ADR-0008), and away records for at most 5 minutes (ADR-0011).
 - No account code in V1. In V2, `Member` becomes persistent and owns only id and pseudo(s).
 
 ## Consequences

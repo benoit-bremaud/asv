@@ -35,8 +35,9 @@ Sensitivity: with headroom 40 and simplicity 5, B still leads (370 vs 340 for C)
 - Each chatter has **one WebSocket** to the hub. Rooms and private conversations are domain state
   inside the hub.
 - The hub's SQLite storage holds the persisted data: connection logs, reports, bans.
-- Both transports expose the same `ReportStore` and `ConnectionLogStore` ports, defined next to the
-  domain and implemented in memory (Node) and in SQLite (Cloudflare).
+- Both transports expose the same storage ports (`ModerationStore`, `ConnectionLogStore`,
+  `AwayStore`, and `ModeratorStore` from ADR-0008), defined next to the domain and implemented in
+  memory (Node) and in SQLite (Cloudflare). Details in ADR-0011 and `diagrams/platform/03-component.md`.
 
 ## Consequences
 

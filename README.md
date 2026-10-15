@@ -15,7 +15,7 @@ Conception phase, nothing is built yet. See [docs/architecture](docs/architectur
 - Pink, blue and grey pseudos.
 - Themed, regional and user-created rooms.
 - Private messages in their own little window.
-- Ignore button always one click away.
+- Ignore anyone in two clicks.
 - 18+ only.
 
 ## Licence

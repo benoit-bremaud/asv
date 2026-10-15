@@ -46,8 +46,8 @@ Facts checked on 2026-10-15:
 
 Option D.
 
-- `src/domain/`: rooms, presence, private conversations, moderation, pseudo colour. Pure
-  TypeScript, no runtime import.
+- `src/domain/`: rooms, presence, private conversations, moderation. Pure TypeScript, no runtime
+  import. Pseudo colour is derived from gender at render time in `src/web`.
 - Node transport: local dev and integration tests with plain Vitest.
 - Cloudflare transport: production, topology in ADR-0007.
 - Each transport builds the Hono app and plugs its own wiring in. The server never imports a transport.

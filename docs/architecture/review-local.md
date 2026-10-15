@@ -1,70 +1,66 @@
-# Local review — asv (branch docs/bootstrap-conception vs main)
+# Local review — asv (branch docs/bootstrap-conception, complete conception dossier)
 
-- Date: 2026-10-15
-- Commit: f6d67d4 (all reviewed files uncommitted)
-- Scope: branch diff main...HEAD + untracked files (docs and one CI workflow, no application code)
-- Checks run: design · docs · security · correctness. Tests: not applicable (no code, no tests).
-- Verdict: fix Must Have first · Must 6 · Should 14 · Nice 9
+- Date: 2026-10-15 (second pass, after splitting `chat-core` into feature studies)
+- Commit: 383f91e + uncommitted dossier
+- Scope: whole `docs/`, `README.md`, `CLAUDE.md`, `PROJECT_LOG.md` (no application code)
+- Checks run: design · docs · security · correctness. Tests: not applicable (no code).
+- Verdict before fixes: fix Must Have first · Must 11 · Should 22 · Nice 11
+- Verdict after fixes: ship · all Must and Should resolved, Nice resolved or intentional
 
-## 🔴 Must Have
+The first-pass report (chat-core) is in git history at commit 383f91e.
 
-- `docs/architecture/decisions/0002-stack.md:41`, `diagrams/chat-core/03-component.md:30-31`, `02a`, `02b`, `05` `[design]` · One Durable Object per room and per DM pair is over-engineered for a few hundred users and leaves socket ownership, ignore-list ownership and expel reach undefined. · Owner decision: amend ADR-0002 (single Hub DO proposed), then update diagrams.
-- `diagrams/chat-core/03-component.md:36-43`, `02c:19`, `traceability-matrix.md:15-17` `[design|docs]` · Server depends on transport concretions (dependency rule inverted). "Report store" used in 02c and matrix but absent from the component view. · Reverse arrows (transport → server), name a Report store port implemented by in-memory and SQLite stores.
-- `diagrams/chat-core/02c-sequence-report-and-expel.md:27-33` `[design|docs]` · Expel result is sent to the reporter, the target's socket is never closed, store replies skip the server, no moderator authorization. · Add Target participant, close its session, notify others, route store replies through the server, add `alt not moderator`.
-- `decisions/0005:30`, `decisions/0006:32` vs `04-class.md:14-19` `[design|docs]` · ADRs say gender and profile live in the session, class diagram puts them on Member (persistent in V2). · Move gender and profile to Session, Member keeps id + pseudo.
-- `decisions/0004-audience-adults-only.md:13-19` `[docs]` · Legal points stated as checked facts without citations. · Retitle "Legal context (unverified, not legal advice)", add a link per point, add "Legal check pending".
-- `traceability-matrix.md:3,8,16` vs `01-use-case.md` `[docs]` · UC2 and UC10 marked "Text" but have no spec. · Add short specs.
+## 🔴 Must Have — all resolved
 
-## 🟡 Should Have
+| Finding | Origin | Resolution |
+|---|---|---|
+| Passkey ceremonies had no path to the hub's stores | design | Worker calls hub RPC (ADR-0008, ADR-0011, moderation/02b, 02c) |
+| Challenge and grant storage undefined | design | Hub keeps challenges 5 min, HMAC grant with `GRANT_KEY`, consumed nonces (ADR-0008) |
+| Hibernation vs in-memory state deferred | design | ADR-0011: attachments, minimal away records, auto ping/pong, single alarm; platform/04b, 05 |
+| Domain could not see persisted bans, logs never closed | design | entry/02a loads `activeBan`, log closed in entry/02b and moderation/02a |
+| Component vs deployment: who builds Hono | design | Worker entry and Node entry build the app (platform/03) |
+| Away pseudo at 60 % opacity failed contrast | docs | Solid `-away` tokens ≥ 5.1:1, italics + "(absent)" (design-pack) |
+| ADR-0005 stale after ADR-0009 | docs | Reworded, BR-002 cited |
+| `ModeratorAuthenticator` port contradiction | design, docs | Port removed, only `ModeratorStore` (ADR-0008) |
+| Persisted data list incomplete | docs | CLAUDE.md, vision, ADR-0005 list moderator credentials and away records |
+| Away look defined twice | docs | Single rule in design-pack, ADR-0009 points to it |
+| Retention values shown as settled | docs | Flagged in entry/06, moderation/05, moderation/06, security inventory |
 
-- `04-class.md:84-87` `[design]` · Persisted Report, Ban, ConnectionLog link to ephemeral Member/Session. · Store snapshot values (pseudo, ip/ipHash) + optional memberId for V2.
-- `04-class.md:20-24`, `05-state-session.md:35` `[design|docs]` · Session lacks `isModerator` and IP. · Add both.
-- `02b-sequence-open-private-conversation.md:25-33` `[design|docs]` · `open(A, B)` carries no text but a "first message" is sent. Ignore branch gives A no window. Server elided unlike 02a. · `open(A, B, text)`, open A's window in both branches, add the server or a note.
-- `06-data-flow.md:23,27` `[design]` · Logs also hold pseudo and timestamps, reports hold author, no judicial-request outflow. · Annotate and add Authority node.
-- `traceability-matrix.md:11,12,15` `[design]` · UC5/UC6 also reachable from Connected, component names drift. · Fix states and names.
-- `decisions/0002-stack.md` Consequences `[design]` · Single-object throughput ceiling not discussed. · One sentence with a measured trigger to shard.
-- `04-class.md` Ban `[security]` · Unsalted IP hash is reversible (small IPv4 space): pseudonymisation, not anonymisation. · Keyed hash (HMAC with a secret) and say so in the privacy notice.
-- `01-use-case.md` UC1, UC4 `[security]` · No rate limit on entry, no maximum message length. · Add both as domain rules.
-- `01-use-case.md` UC4 `[security]` · Smiley codes must never inject HTML. · Note: render as text + whitelisted image map.
-- `README.md:8-12`, `docs/architecture/README.md:6` `[docs]` · Planned features stated as existing. · "Planned (V1)" heading, "to be hosted".
-- `decisions/0001-name-and-domain.md:15-37` `[docs]` · Owner overrode the top MCDA score twice without saying so explicitly. · Add an "Owner override" line with the reason.
-- All ADRs `[docs]` · Only totals shown, per-criterion scores missing. · Add the per-criterion tables.
-- `decisions/0002:26-33,45`, `0001:41`, `0005:10-11`, `CLAUDE.md:32` `[docs]` · Facts without source links, "costs nothing" stated flatly. · Add links, hedge cost.
-- `01-use-case.md:69` `[docs]` · UC3 1b implies a per-room ban the model lacks. · Drop 1b.
-- `docs/research/caramail.md:76,86-92` `[docs]` · Open questions now resolved, "DMs limited to same room" and age-band rooms contradict decisions. · Annotate as resolved.
-- `CLAUDE.md` `[docs]` · Restates ADRs and global rules (drift risk). · Keep project invariants, link to the ADR index.
+## 🟡 Should Have — all resolved
+
+- `HubState` aggregate modelled (platform/04b).
+- Sequence messages aligned with protocol names. Protocol gained `warn`, `warned`, `ignoreUpdated`,
+  payload table, `error(offline)`.
+- `SessionStatus` reduced to connected/away; Anonymous and Refused documented as connection states.
+- Ignore list keyed by session id.
+- `ReportTarget`, `ReportOutcome`, triage fields, `purgeExpired`, `ModerationStore` rename.
+- BR-031 owner leaving; BR-057 outcomes; F-009 and F-012 aligned with UC7 and the V1 ban limit.
+- Ignore click count unified (two clicks). Pseudo colour derived in web. `src/shared/protocol` marked proposed.
+- Moderator generalization clarified; traceability rows fixed; missing "does not cover" lines added.
+- Web navigation uses a composite state with return to the last screen.
+- Journey J2 no longer assumes room deep links. Legal section declared the living source.
 
 ## 🔵 Nice to Have
 
-- `05-state-session.md` `[design]` · Reconnecting state for the grace period. · Add if a grace period is adopted.
-- `05-state-session.md:15-17` `[design|docs]` · "18+ not ticked" transition missing. · Extend the label.
-- `01-use-case.md` `[design]` · Leaving a room has no spec. · Add as UC3 alternative ending.
-- `01-use-case.md:77` `[design]` · User room names are user content. · Cover in UC9/UC11.
-- `03-component.md:26-27` `[design]` · Rename Node side "in-memory hub" after the Hub decision.
-- `docs/research/caramail.md` `[docs]` · Per-claim citations, tag testimonies.
-- `04-class.md:93` `[docs]` · Age ≥ 18 rule goes beyond ADR-0004. · State whether a declared age under 18 is refused.
-- `03`, `04`, `05`, `06` Context `[docs]` · Say what each diagram does not cover.
-- `traceability-matrix.md:7` `[docs]` · Add Ban to UC1.
+- Resolved: single `moderatorName`, `Clock`/`Random` ports dropped in favour of arguments, hashed
+  invitations and `deleteModerator`, secrets reach the hub, brand dark contrast, UC1 requirement header,
+  BR-032 in journeys, glossary terms, BR values owned in business-rules.
+- Intentional: Mermaid cannot draw UML generalization or history states, documented in notes.
 
 ## ⚪ Disagree / Intentional
 
-- `.github/workflows/gitleaks.yml:20,23` `[docs]` · SHAs were fetched from the upstream release tags with `gh api` on 2026-10-15. Verified.
-- `04-class.md:8` `[design]` · Member separate from Session without account code: low-cost seam justified by ADR-0005.
-- `01-use-case.md:96` `[design|docs]` · "Receive a private message" correctly rejected as a use case.
-- `02a:45` `[design]` · Passing `now` to the domain is a justified testability seam.
+- Single hub (ADR-0007), ephemeral `Member` (ADR-0005), directory without sequence: proportionate.
+- ADRs keep their legal snapshot with sources, `security-and-rgpd.md` holds the living version.
 
-## Resolution (same day, before push)
+## Owner decisions taken during this pass
 
-- Topology: owner chose a single Hub Durable Object, recorded in ADR-0007 (445/500).
-- All 6 Must and 14 Should fixed in ADRs 0001–0007, the 8 diagrams, the traceability matrix,
-  README, CLAUDE.md and the Caramail research note.
-- 7 of 9 Nice fixed in passing. 2 tracked as GitHub issues: the `Reconnecting` state (depends on a
-  grace-period decision) and per-claim citations in `docs/research/caramail.md`.
+- ADR-0010 AI triages reported content only (395/500).
+- ADR-0004 revisit: 18+ in V1, teen space as V2 candidate (390/500).
+- ADR-0011 away records without gender, age, city (415/500), chosen by top score, open to owner review.
 
 ## Per-dimension summary
 
-- Design: over-engineered DO topology drives most findings, simplify first.
-- Docs: structure sound, links and fences clean, unsourced facts and README overpromise.
-- Tests: not applicable.
-- Security: workflow permissions minimal and safe, conception lacks rate limits, message cap and keyed IP hash.
-- Correctness: 02c expel flow wrong, 02b message flow inconsistent.
+- Design: hub plumbing now explicit, no dependency-rule breach, one port removed as over-engineering.
+- Docs: cross-file consistency restored, unverified facts flagged.
+- Tests: not applicable, strategy extended for AI adapter and hibernation.
+- Security: grants single use, invitation tokens hashed, AI receives neutral labels only.
+- Correctness: sequences now match the protocol and the use-case specs.

@@ -49,9 +49,34 @@ Sensitivity: with legal at 50, A still leads C (440 vs 430).
 18+ only. Entry requires ticking "I am 18 or older" and accepting the terms. A declared age under 18
 is refused. Users can report a member who seems to be a minor, and moderators can expel them.
 
+## Revisit — teen space (2026-10-15, same day)
+
+The owner asked whether 18+ is too restrictive, since the retro vibe also appeals to younger people.
+Further research: Yubo, the French teen network, used Yoti facial age estimation, separated minors from
+adults, and ran 24/7 human + AI moderation, yet grooming by adults posing as teens was reported, and its
+minimum age reportedly moved from 13 to 18 (unverified,
+[Internet Matters](https://www.internetmatters.org/advice/apps-and-platforms/social-media/yubo/)).
+With a self-declared age, a teen space is a hunting ground for adults who lie about their age.
+
+Scores 0–5. Criteria: minors' safety and criminal risk 35, moderation load 25, audience size 20,
+Caramail spirit 10, V1 simplicity 10.
+
+| Option | Safety | Moderation | Audience | Spirit | Simplicity | Total /500 |
+|---|---|---|---|---|---|---|
+| **D. 18+ in V1, teen space designed in V2** | 4 | 4 | 4 | 3 | 4 | **390** |
+| A. 18+ for good | 4 | 4 | 3 | 3 | 5 | 380 |
+| B. 15+ with separate spaces in V1 | 2 | 2 | 5 | 4 | 2 | 280 |
+| C. 15+ mixed | 1 | 1 | 5 | 5 | 4 | 250 |
+
+Sensitivity: with audience 35 and safety 20, D still leads (395 vs 330 for B).
+
+**Outcome**: V1 stays 18+. A teen space is a V2 candidate, to be designed only with real age
+verification, strict separation from adults (no private messages across), AI scanning of conversations
+(ADR-0010 option C, with an impact assessment) and an experienced moderation team.
+
 ## Consequences
 
-- No minors' room, no parental consent flow.
+- No minors' room, no parental consent flow in V1.
 - Terms of use and a report mechanism are mandatory before public launch (DSA).
 - **Legal check pending** on every point above before public launch.
 - Revisit if a French age-verification obligation for chat services comes into force.

@@ -1,0 +1,73 @@
+# Business rules — asv
+
+Numbered rules enforced by the domain (`src/domain`). Values are V1 defaults, tunable in one place.
+
+## Entry and identity
+
+| Rule | Description | Validation |
+|---|---|---|
+| BR-001 | A pseudo has 3 to 20 characters among letters, digits, `_`, `-`, `.`. | Refused otherwise. |
+| BR-002 | A pseudo is unique among connected and away sessions, case insensitive. | Refused if taken. |
+| BR-003 | Pseudos containing reserved words (`admin`, `modo`, `moderateur`, `asv`) are refused. | Refused. |
+| BR-004 | The visitor must tick "I am 18 or older" and declare an age between 18 and 99. | Refused otherwise. |
+| BR-005 | Gender is optional: woman, man or unspecified (default). | — |
+| BR-006 | City is optional free text, 0 to 40 characters, trimmed. | Truncated input refused. |
+| BR-007 | At most 5 entry attempts per IP per minute. | Further attempts refused for 1 minute. |
+| BR-008 | An IP or pseudo under an active ban cannot enter. | Refused with ban end time. |
+
+## Session and reconnection (ADR-0009, ADR-0011)
+
+Values are owned here. Rationale lives in the ADRs.
+
+| Rule | Description |
+|---|---|
+| BR-010 | The client sends a heartbeat every 25 s. No heartbeat for 60 s means disconnected. |
+| BR-011 | A disconnected session becomes Away for at most 5 minutes. |
+| BR-012 | An away session keeps its pseudo, rooms and private windows, and shows "away" to others. |
+| BR-013 | Up to 50 private messages are buffered for an away session, oldest dropped first. |
+| BR-014 | Resuming requires the current resume token. The token rotates at each resume. |
+| BR-015 | After 5 minutes away, the session closes as if the chatter had left. |
+
+## Rooms
+
+| Rule | Description |
+|---|---|
+| BR-020 | A message has 1 to 500 characters after trimming. |
+| BR-021 | Flood limit: at most 5 messages per 10 seconds per session, across rooms and DMs. |
+| BR-022 | Smiley codes (for example `:)`, `:caramel:`) render from a fixed whitelist. Text is never rendered as HTML. |
+| BR-023 | A room holds at most 50 members. |
+| BR-030 | A user room name has 3 to 30 characters and follows BR-003. |
+| BR-031 | A session can own at most one user room at a time. Ownership ends when the owner leaves the room, which then has no owner until it is deleted. |
+| BR-032 | A user room is deleted when its last member leaves or closes. |
+| BR-033 | Official rooms (themed, regional) are defined in configuration and never deleted. |
+| BR-034 | A newcomer sees only messages posted after joining. No history. |
+
+## Private conversations and ignore
+
+| Rule | Description |
+|---|---|
+| BR-040 | Any connected chatter can open a private window with any connected or away chatter. |
+| BR-041 | If the target ignores the sender, the sender's window opens and messages are silently dropped. |
+| BR-042 | Ignore lasts for the session and covers room messages and private messages both ways. |
+| BR-043 | A chatter can hold at most 10 private windows at once. |
+
+## Moderation
+
+| Rule | Description |
+|---|---|
+| BR-050 | Report reasons: harassment, seems minor, spam, illegal content, other. |
+| BR-051 | A report stores the reason, an excerpt of at most 500 characters, up to 20 context lines the reporter saw, author and target pseudos. |
+| BR-052 | A chatter can file at most 5 reports per 10 minutes. |
+| BR-053 | Ban durations: 1 hour, 24 hours, 7 days. A ban targets a keyed IP hash and the pseudo. |
+| BR-054 | Only a session with `isModerator` can list reports, close reports or expel. |
+| BR-055 | Every moderation action records the moderator name and time. |
+| BR-056 | A moderator invitation is single use and expires after 24 hours. |
+| BR-057 | A report is closed with one outcome: no action, warned, expelled, room removed. The AI triage never closes a report (ADR-0010). |
+
+## Retention (to confirm, see security-and-rgpd.md)
+
+| Rule | Description |
+|---|---|
+| BR-060 | Connection logs are kept 1 year, then deleted. |
+| BR-061 | Closed reports are kept 6 months, then deleted. |
+| BR-062 | Expired bans are deleted 30 days after their end. |

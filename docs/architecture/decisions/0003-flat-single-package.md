@@ -25,7 +25,8 @@ Sensitivity: B wins only with KISS 25 and scalability 30 (405 vs 395).
 ## Decision
 
 A single package with folders `src/domain`, `src/server`, `src/transports/node`,
-`src/transports/cloudflare`, `src/web`. The boundary is enforced by an ESLint import rule.
+`src/transports/cloudflare`, `src/web`, and `src/shared/protocol` (proposed, confirmed in brick 2)
+for message types shared by web and server. The boundary is enforced by an ESLint import rule.
 
 ## Consequences
 
