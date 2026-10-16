@@ -65,13 +65,14 @@ flowchart LR
 - Main scenario: 1. Moderator picks a target and a duration (BR-053). 2. System creates a ban on the
   keyed IP hash and the pseudo, records the moderator (BR-055), closes the target session and its
   connection log, and tells rooms and windows the target left.
-- Variant: target has an account → the account is deleted, its e-mail blocked and a statement of reasons
-  e-mailed (BR-076 to BR-078).
+- Variant: target has an account → a non-severe expel bans the keyed IP hash and pseudo only and keeps
+  the account (strikes come from warnings, see 02d). The account is deleted only by a confirmed
+  suspension (02d) or the severe variant below (BR-076 to BR-078).
 - Variant: severe case (grooming, threats, child sexual abuse material, incitement to violence):
   1. Moderator marks the expel as severe. 2. System deletes the account at once, without strikes, and
   blocks its e-mail hash for the longer period (BR-078); a chatter without an account gets the longest
   IP and pseudo ban. 3. System sends the statement of reasons. 4. When life or safety is threatened, the
-  moderator alerts the owner, who informs the authorities through the official channel (DSA art. 18,
+  moderator alerts the owner, who informs the authorities through the official channel (DSA art. 18, unverified;
   channel to confirm in brick 1 bis). Authorities are a secondary actor of UC11.
 - Variant: remove a user room → its members get `roomClosed`.
 - Closing the related report is a separate `closeReport` command.

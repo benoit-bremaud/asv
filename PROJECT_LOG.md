@@ -55,8 +55,13 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   refused any face or photo; clarified that passkeys never send biometrics, wording fixed everywhere.
 - New `accounts` study (UC17 to UC19), `moderation/02d`, BR-070 to BR-080, F-020 to F-024.
 - Roadmap: new brick 1 bis, legal check on official texts before any code; bricks renumbered to 10.
-- Third local review: 12 Must, 18 Should, all fixed. 36 diagram files render, no broken link, Gitleaks clean.
+- Third local review: 12 Must, 18 Should, all fixed. 36 Markdown files with diagrams render, no broken link, Gitleaks clean.
 - PR #3 opened for brick 1. Repository switched to **public** (owner rule for 02_personal projects:
   public until the first production deploy, then private). Public Release Checklist passed: Gitleaks on
   the full history clean, no secret ever created, Gitleaks in CI. Switch back to private in brick 9
   (first Cloudflare production deploy).
+- Pre-merge gate on PR #3 (new owner rule: five local steps before every merge). Codex out of quota and
+  Copilot unavailable, so only local tools. Fourth review pass: 13 Must, 16 Should fixed, including
+  recomputed MCDA totals in eight ADRs (no winner changed). Gate: tests and coverage N/A (no code),
+  secrets clean on full history, QA screenshots in `docs/architecture/qa/`, SonarQube not run (no asv
+  project or token yet).

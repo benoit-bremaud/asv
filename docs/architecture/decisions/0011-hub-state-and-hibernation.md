@@ -30,10 +30,10 @@ storage load 15.
 | Option | Privacy | Reliability | Simplicity | Load | Total /500 |
 |---|---|---|---|---|---|
 | **B. Store a minimal away record, client resends its profile on resume** | 5 | 4 | 3 | 4 | **415** |
-| A. Store the full session snapshot for up to 5 minutes | 2 | 5 | 4 | 3 | 355 |
-| C. Keep away sessions in memory only, lost if the hub hibernates | 5 | 1 | 5 | 5 | 350 |
+| C. Keep away sessions in memory only, lost if the hub hibernates | 5 | 1 | 5 | 5 | 380 |
+| A. Store the full session snapshot for up to 5 minutes | 2 | 5 | 4 | 3 | 345 |
 
-Sensitivity: with reliability 50 and privacy 15, A leads (395 vs 375 for B).
+Sensitivity (privacy 15, reliability 50, simplicity 20, load 15): A 405, B 395.
 
 ## Decision
 
@@ -48,7 +48,8 @@ Sensitivity: with reliability 50 and privacy 15, A leads (395 vs 375 for B).
    if no `pong` arrives within 10 seconds. The hub treats a socket whose last auto-response is older
    than 60 seconds as lost.
 4. **One alarm** is always set to the earliest of: next away deadline, next heartbeat sweep (every
-   60 seconds while sockets exist), next daily retention purge (BR-060 to BR-062).
+   60 seconds while sockets exist), next daily run: retention purge (BR-060 to BR-062 and account expiries) and retry of pending
+   statements of reasons (BR-076, ADR-0012).
 5. **Worker ↔ hub**: the Worker forwards WebSocket upgrades to the hub and calls hub RPC methods for
    everything else (passkey ceremonies, invitations). Only the hub touches storage.
 6. Flood counters and entry attempts stay in memory. Losing them on hibernation is accepted.

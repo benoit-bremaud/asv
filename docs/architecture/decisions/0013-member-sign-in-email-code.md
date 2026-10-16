@@ -31,6 +31,8 @@ The local review found that a link opened from a mail app often lands in the mai
 so the device cookie and the chat session end up in different places, and that mail scanners may open
 single-use links before the person does.
 
+Same weights as above.
+
 | Option | Simplicity | Reliability | Compliance | Total /500 |
 |---|---|---|---|---|
 | **Six-digit code typed in the chat** | 4 | 5 | 4 | **435** |

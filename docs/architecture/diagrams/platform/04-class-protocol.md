@@ -95,8 +95,8 @@ Client to server:
 | search | query |
 | report | targetKind, targetPseudo?, targetRoomId?, reason, excerpt, context (≤ 20 lines) |
 | listOpenReports | — |
-| warn | targetSessionId, text |
-| expel | targetSessionId, duration (1h, 24h, 7d), severe? |
+| warn | targetSessionId, text (chat warning only, no strike; strikes come from `closeReport` with outcome warned, BR-074) |
+| expel | targetSessionId, duration (1h, 24h, 7d), severe?, reportId? |
 | closeReport | reportId, outcome |
 | confirmSuspension / declineSuspension | accountId, reportId |
 | removeRoom | roomId |
@@ -109,9 +109,9 @@ Server to client:
 
 | Type | Payload |
 |---|---|
-| entered | sessionId, resumeToken, roomList, isModerator, accountId? |
+| entered | sessionId, resumeToken, roomList, isModerator, accountId?, staleDevice? |
 | entryRefused | reason (rate, banned until, pseudo invalid, pseudo taken, age) |
-| resumed | resumeToken, rooms, windows, buffered |
+| resumed | resumeToken, rooms, windows, buffered, accountId? |
 | resumeRefused | — |
 | roomList | rooms (id, name, kind, count) |
 | roomJoined | roomId, members (sessionId, pseudo, gender, age, city, away) |

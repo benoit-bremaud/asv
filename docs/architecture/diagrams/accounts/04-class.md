@@ -55,6 +55,7 @@ classDiagram
     +Date[] strikeExpiries
   }
   class PendingStatement {
+    +String id
     +String email
     +String statement
     +Date createdAt
@@ -66,14 +67,20 @@ classDiagram
     +deleteCode(sessionId)
     +findAccountByEmail(email) Account
     +saveAccount(account)
+    +findAccountById(accountId) Account
     +deleteAccount(accountId)
     +saveDevice(device)
     +accountForDevice(tokenHash, now) Account
-    +deleteDevices(accountId, tokenHash)
+    +deleteDevice(tokenHash)
+    +deleteAllDevices(accountId)
     +blockEmail(block)
     +isBlocked(emailKeyedHash, now) Boolean
     +saveCarryOver(record)
     +loadCarryOver(emailKeyedHash) StrikeCarryOver
+    +deleteCarryOver(emailKeyedHash)
+    +savePendingStatement(statement)
+    +pendingStatements() PendingStatement[]
+    +deletePendingStatement(id)
     +purgeExpired(now)
   }
   class Mailer {
@@ -89,6 +96,7 @@ classDiagram
   AccountStore ..> PendingCode
   AccountStore ..> EmailBlock
   AccountStore ..> StrikeCarryOver
+  AccountStore ..> PendingStatement
 ```
 
 ## Notes

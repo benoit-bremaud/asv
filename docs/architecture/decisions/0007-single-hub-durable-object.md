@@ -27,7 +27,7 @@ the Node transport and testability 20, scale headroom 15, cost 10.
 - C: rooms scale independently, but presence and ignore filtering cross objects.
 - A: best headroom, but session state is scattered.
 
-Sensitivity: with headroom 40 and simplicity 5, B still leads (370 vs 340 for C).
+Sensitivity (simplicity 5, ownership 25, consistency 20, headroom 40, cost 10): B 370, C 350.
 
 ## Decision
 

@@ -49,6 +49,7 @@ sequenceDiagram
 - `now` and `random` are passed as arguments so the domain is deterministic in tests.
 - The IP comes from the platform (`CF-Connecting-IP` on Cloudflare, socket address on Node).
 - The client keeps the resume token and its own profile in `sessionStorage` (ADR-0011).
-- A device cookie pointing to a deleted account yields no account. The client then calls
-  `POST /account/sign-out` to clear the stale cookie (ADR-0013).
+- A device cookie pointing to a deleted account yields no account and `entered.staleDevice = true`.
+  The client then calls `POST /account/sign-out` to clear the stale cookie (ADR-0013), since it cannot
+  read the `HttpOnly` cookie itself.
 - The connection log is closed on leave, away expiry and expel (see `entry/02b` and `moderation/02a`).

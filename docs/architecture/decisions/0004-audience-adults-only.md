@@ -21,7 +21,7 @@ public launch.
     [NosParlementaires](https://nosparlementaires.fr/actualites/reseaux-sociaux-15-ans-deux-lois-zero-application));
   - the July 2026 under-15 social-network law was reportedly struck down by the Conseil
     constitutionnel on 2026-08-14 (same NosParlementaires source, to confirm on conseil-constitutionnel.fr).
-- GDPR consent age in France is 15, Loi Informatique et Libertés art. 45
+- GDPR consent age in France is 15, Loi Informatique et Libertés art. 45 (unverified, brick 1 bis)
   ([CNIL recommendation 4](https://cnil.fr/fr/recommandation-4-rechercher-le-consentement-dun-parent-pour-les-mineurs-de-moins-de-15-ans)).
 - The DSA applies to every hosting service, with lighter duties for micro and small companies:
   point of contact, clear terms, notice-and-action
@@ -34,15 +34,15 @@ Caramail spirit 15.
 
 | Option | Legal | Moderation | Audience | Spirit | Total /500 |
 |---|---|---|---|---|---|
-| **A. 18+ self-declared** | 4 | 4 | 5 | 4 | **420** |
-| C. 18+ verified by a third party | 5 | 4 | 3 | 1 | 385 |
-| B. Open with a separate teen room | 1 | 1 | 3 | 5 | 185 |
+| **A. 18+ self-declared** | 4 | 4 | 5 | 4 | **425** |
+| C. 18+ verified by a third party | 5 | 4 | 3 | 1 | 365 |
+| B. Open with a separate teen room | 1 | 1 | 3 | 5 | 210 |
 
 - A: the rule is clear and the lie is on the user, light friction.
 - C: strongest protection, but identity checks kill the anonymous retro spirit.
 - B: requires watertight adult/minor separation and parental consent under 15.
 
-Sensitivity: with legal at 50, A still leads C (440 vs 430).
+Sensitivity (legal 50, moderation 20, audience 20, spirit 10): A 420, C 400.
 
 ## Decision
 
@@ -68,7 +68,7 @@ Caramail spirit 10, V1 simplicity 10.
 | B. 15+ with separate spaces in V1 | 2 | 2 | 5 | 4 | 2 | 280 |
 | C. 15+ mixed | 1 | 1 | 5 | 5 | 4 | 250 |
 
-Sensitivity: with audience 35 and safety 20, D still leads (395 vs 330 for B).
+Sensitivity (safety 20, moderation 25, audience 35, spirit 10, simplicity 10): D 390, B 325.
 
 **Outcome**: V1 stays 18+. A teen space is a V2 candidate, to be designed only with real age
 verification, strict separation from adults (no private messages across), AI scanning of conversations

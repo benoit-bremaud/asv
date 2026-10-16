@@ -32,8 +32,9 @@ cost 15, simplicity 15.
 | C. AI reads rooms and private messages and flags | 5 | 2 | 3 | 3 | 3 | 335 |
 | D. AI reads everything and acts alone | 4 | 2 | 1 | 2 | 2 | 245 |
 
-Sensitivity: with protection 45 and privacy 15, C and E tie at 375. C is reconsidered only with a
-teen space (V2, ADR-0004).
+Sensitivity (protection 45, privacy 15, spirit 15, cost 15, simplicity 10): C 375, E 355. E is kept
+because scanning private messages needs an impact assessment; C is reconsidered only with a teen space
+(V2, ADR-0004).
 
 ## Decision
 

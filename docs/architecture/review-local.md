@@ -1,5 +1,39 @@
 # Local review — asv (branch docs/bootstrap-conception, complete conception dossier)
 
+## Fourth pass — pre-merge gate for PR #3 (2026-10-16)
+
+- Date: 2026-10-16
+- Commit reviewed: f01d360 (fixes committed on top, see PROJECT_LOG)
+- Scope: branch diff `origin/main...HEAD`, documentation and one CI workflow, no application code
+- Checks run: design · docs · security · correctness. Tests: no suite exists (no code).
+- External reviewers: Copilot not available on this repo, Codex out of quota. Owner decision: rely on
+  local tools.
+- Verdict: Must 13 · Should 16 · Nice 7 found, all Must and Should fixed in this pass.
+
+### Pre-merge gate
+
+| Step | Result |
+|---|---|
+| 1 Tests | N/A: no application code and no test suite yet. Documentation smoke: every Mermaid block renders (36 files), no broken relative link |
+| 2 Coverage | N/A: no code. Tests floor 80 % and docs floor 90 % apply from brick 2 |
+| 3 SonarQube | ⚠️ not run: instance UP at localhost:9000, but no `asv` project nor analysis token; creating them needs the owner's admin login |
+| 4 Secrets | ✅ gitleaks on the full history (public repo): no leak · no tracked `.env*` · diff read: nothing sensitive |
+| 5 QA pass | ✅ smoke equivalent for a docs-only product: diagrams rendered locally, screenshots in `docs/architecture/qa/2026-10-16-01..05-*.png`. GitHub rendering not checked (browser pane has no access to github.com) |
+
+- Gate: **RED on step 3 (SonarQube not run)**, owner decision needed.
+
+### Main fixes in this pass
+
+- Seven ADR matrices had wrong totals or impossible sensitivity lines (0001, 0003, 0004, 0005, 0006,
+  0007, 0010, 0011). All recomputed; every winner keeps the top score. ADR-0005's sensitivity now shows
+  that impersonation weight would favour accounts, which ADR-0012 later addressed.
+- UC11 no longer deletes the account on a plain expel; only a confirmed suspension or a severe case does.
+- Pending statements of reasons get store methods and a retry in the daily alarm.
+- Protocol: `resumed.accountId`, `entered.staleDevice`, `warn` without strike, `expel.reportId`.
+- `AccountStore` gains `findAccountById`, `deleteDevice`, `deleteAllDevices`, `deleteCarryOver`.
+- Reports keep `targetIpKeyedHash` so a suspension ban works after the target left.
+- README licence line aligned with the public repository; private-message wording updated.
+
 ## Third pass — accounts and strikes (2026-10-16)
 
 - Scope: ADR-0012, ADR-0013, `diagrams/accounts/*`, `moderation/02d` and every file they touched.

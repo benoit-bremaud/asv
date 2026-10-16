@@ -15,7 +15,7 @@ non-functional requirements (NF) to quality goals. Business rules referenced as 
 | ASV-F-005 | Find a room | Room list with counts | UC2 | Rooms listed with name, kind and live member count. | V1 |
 | ASV-F-006 | Chat in a room | Broadcast in the hub | UC3, UC4 | A message reaches all room members who do not ignore the author. | V1 |
 | ASV-F-007 | Create a room for friends | Ephemeral user rooms (BR-030) | UC5 | A user room appears in the list and disappears when empty. | V1 |
-| ASV-F-008 | Talk privately to a stranger | Private windows | UC6 | A private window opens on both sides with the first message. | V1 |
+| ASV-F-008 | Talk privately to a stranger | Private windows | UC6 | A private window opens on both sides with the first message (both need an account, F-020). | V1 |
 | ASV-F-009 | Find people near me | Search by pseudo or city | UC7 | A query of 2+ characters returns at most 50 connected or away chatters whose pseudo contains it or whose city matches, case and accent insensitive. | V1 |
 | ASV-F-010 | Get rid of a pest | Ignore | UC8 | Ignored chatter's messages and DMs are hidden for the rest of the session. | V1 |
 | ASV-F-011 | Flag abuse | Report with reason and excerpt | UC9 | A report is persisted and visible to moderators. | V1 |
@@ -44,7 +44,7 @@ non-functional requirements (NF) to quality goals. Business rules referenced as 
 | ASV-NF-005 | Browsers | Last 2 versions of Chrome, Firefox, Safari, Edge, and iOS Safari / Android Chrome. | Manual matrix before release. |
 | ASV-NF-006 | Mobile first | Usable from 360 px wide, private windows as stacked panels on phones. | Manual test on phone widths. |
 | ASV-NF-007 | Security | OWASP ASVS level 1 on the exposed surface. | Security review per brick. |
-| ASV-NF-008 | Privacy | Only legal logs, reports, bans and moderator credentials persisted. | Data-flow diagrams + code review. |
+| ASV-NF-008 | Privacy | Only the data listed in `security-and-rgpd.md` §2 is persisted (logs, reports, bans, accounts, hashes, moderator credentials, 5-minute away records). | Data-flow diagrams + code review. |
 | ASV-NF-009 | Portability | Domain runs unchanged on Node and Workers (ADR-0002). | Same test suite on both transports. |
 | ASV-NF-010 | Testability | Domain logic covered by fast unit tests without network. | Coverage report on `src/domain`. |
 | ASV-NF-011 | Resilience | Client reconnects automatically with backoff after a network drop. | Manual test with airplane mode. |

@@ -20,16 +20,18 @@ bans 20, finding regulars again 15, evolvability 10.
 
 | Option | Simplicity | Minimised | Anti-impersonation | Regulars | Evolvability | Total /500 |
 |---|---|---|---|---|---|---|
-| **C. Session pseudo now, accounts in V2** | 5 | 5 | 1 | 3 | 5 | **410** |
-| A. Session pseudo only, forever | 5 | 5 | 1 | 1 | 2 | 350 |
+| **C. Session pseudo now, accounts in V2** | 5 | 5 | 1 | 3 | 5 | **390** |
+| D. Pseudo reserved by magic link | 3 | 3 | 4 | 4 | 4 | 345 |
 | B. Accounts from day one | 2 | 2 | 5 | 5 | 5 | 335 |
-| D. Pseudo reserved by magic link | 3 | 3 | 4 | 4 | 4 | 335 |
+| A. Session pseudo only, forever | 5 | 5 | 1 | 1 | 2 | 330 |
 
 - C: ships fast, the model keeps room for accounts without coding them.
 - B: protects pseudos, but passwords, reset e-mails and an account base to secure.
 - D: no password, but still an e-mail service and stored e-mails.
 
-Sensitivity: with impersonation 35 and simplicity 15, C and B tie at 380.
+Sensitivity (simplicity 15, minimised 25, impersonation 35, regulars 15, evolvability 10): B 380,
+D 360, C 330. The choice is sensitive to how much impersonation matters; ADR-0012 later added accounts
+for private messages for exactly that reason.
 
 ## Decision
 

@@ -14,13 +14,13 @@ Scores 0–5. Criteria: KISS 40, domain/infra boundary held 25, two build target
 
 | Option | KISS | Boundary | Build targets | Scalability | Total /500 |
 |---|---|---|---|---|---|
-| **A. Single package, folders + import lint rule** | 5 | 4 | 4 | 3 | **430** |
-| B. pnpm workspace with 3 packages | 2 | 5 | 4 | 5 | 390 |
+| **A. Single package, folders + import lint rule** | 5 | 4 | 4 | 3 | **425** |
+| B. pnpm workspace with 3 packages | 2 | 5 | 4 | 5 | 360 |
 
 - A: one `package.json`, the boundary is a lint rule rather than a package wall.
 - B: physical boundary, but three manifests and cross-package builds for a small project.
 
-Sensitivity: B wins only with KISS 25 and scalability 30 (405 vs 395).
+Sensitivity (KISS 25, boundary 25, build 20, scalability 30): B 405, A 395.
 
 ## Decision
 

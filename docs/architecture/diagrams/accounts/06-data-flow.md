@@ -23,7 +23,7 @@ flowchart LR
   Browser["Browser cookie: device token"]
   Chatter -->|"PII: e-mail"| Acc
   Acc -->|"PII: e-mail, six-digit code"| MailProvider
-  Dev -->|"device token"| Browser
+  Acc -->|"device token, set once at redeem"| Browser
   Mod -->|"strike, suspension"| Acc
   Acc -->|"PII: e-mail, statement of reasons"| MailProvider
   Acc -.->|"PII, pseudonymised: keyed e-mail hash on deletion"| Blocks

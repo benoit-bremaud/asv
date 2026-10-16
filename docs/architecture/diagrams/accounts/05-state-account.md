@@ -21,7 +21,7 @@ stateDiagram-v2
     Warned --> Warned: second or third strike
     Warned --> Clean: all strikes expired after 90 days
   }
-  Active --> Deleted: moderator confirms suspension, e-mail blocked 7 days
+  Active --> Deleted: confirmSuspension with 3+ active strikes, statement sent, e-mail blocked 7 days
   Active --> Deleted: severe case, e-mail blocked longer
   Active --> Deleted: account holder deletes the account
   Active --> Deleted: inactive 2 years, after e-mail notice

@@ -56,6 +56,10 @@ flowchart LR
 - Main scenario: 1. Account holder picks "sign out of this device" or "sign out everywhere". 2. System
   deletes the device record(s); signing out of this device also clears the cookie over HTTPS.
   3. Private windows close, the session continues in rooms.
+- Mechanism: `POST /account/sign-out` → the Worker hashes the cookie → `rpc signOutDevice(tokenHash)` →
+  the hub deletes the record, unlinks every session whose `deviceTokenHash` matches and sends them
+  `accountUnlinked`, then the Worker clears the cookie. "Sign out everywhere" goes over the WebSocket
+  and calls `deleteAllDevices`.
 
 **UC19 — Delete my account** (planned)
 - Main scenario: 1. Account holder picks "delete my account" and confirms. 2. System deletes the account

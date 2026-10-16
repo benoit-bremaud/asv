@@ -38,18 +38,19 @@ sequenceDiagram
   W->>H: verifyCode(code)
   H->>AS: load pending code, account and strike record for this e-mail
   H->>AS: isBlocked(emailKeyedHash, now)
-  H->>D: verifyCode(state, sessionId, pending, account, blocked, now, random)
+  H->>D: verifyCode(state, sessionId, pending, account, carryOver, blocked, now, random)
   alt Wrong, expired or blocked
     D-->>H: Refused + tries left
     H->>AS: update tries or delete code
     H-->>W: warning(reason)
   else Valid
     D-->>H: createAccount or linkExisting + device claim if remember
-    H->>AS: persist account, delete code
+    H->>AS: persist account, delete code and carry-over
     H-->>W: accountLinked(accountId, deviceClaim)
     W->>WK: POST /account/device with claim
     WK->>H: rpc redeemDeviceClaim(claim, now)
     H->>AS: save device record hash
+    H->>H: set deviceTokenHash on the session attachment
     H-->>WK: device token
     WK-->>W: Set-Cookie device token, 30 days
   end

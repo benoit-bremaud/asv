@@ -52,8 +52,8 @@ prioritised repeat offenders.
 - **Strikes**: a moderator closing a report as "warned" adds a strike to the target's account and sends a
   `warned` message in the chat. Strikes expire after 90 days.
 - **Third active strike**: the moderator is asked to confirm a 7-day suspension. On confirmation, the
-  statement of reasons is e-mailed (art. 17) and, once the provider has accepted it, the account is
-  deleted. A keyed hash of the e-mail is kept for 7 days to refuse a new account. Every live session and
+  statement of reasons is e-mailed (art. 17) and the account is deleted at once; if sending fails, only
+  the address and the statement are kept as a pending statement, retried for at most 7 days (BR-076). A keyed hash of the e-mail is kept for 7 days to refuse a new account. Every live session and
   away record of that account is closed, and a 7-day ban applies to the keyed IP hash and the pseudo of
   the session that was in use.
 - **No escape by self-deletion**: a member who deletes their own account while strikes are active keeps

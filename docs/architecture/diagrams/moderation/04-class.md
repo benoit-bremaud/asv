@@ -19,6 +19,7 @@ classDiagram
     +ReportTarget targetKind
     +String targetPseudo
     +AccountId targetAccountId
+    +String targetIpKeyedHash
     +RoomId targetRoomId
     +String excerpt
     +String[] context
@@ -129,5 +130,6 @@ classDiagram
 - `ReportTriage` wraps the third-party AI (ADR-0010). A no-AI adapter returns urgency `unknown`.
 - `purgeExpired` applies BR-061 and BR-062 and is called by the hub's daily alarm (ADR-0011).
 - `signCount` helps detect cloned authenticators.
-- Strikes and e-mail blocks live with accounts (see `accounts/04-class`). `targetAccountId` is captured
-  when the report is filed, so a strike can be added after the target has left.
+- Strikes and e-mail blocks live with accounts (see `accounts/04-class`). `targetAccountId` and
+  `targetIpKeyedHash` are captured when the report is filed, so a strike or a suspension ban can be
+  applied after the target has left.

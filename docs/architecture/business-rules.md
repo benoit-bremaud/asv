@@ -75,7 +75,7 @@ Values are owned here. Rationale lives in the ADRs.
 | BR-074 | A warning on a chatter with an account adds a strike. A strike expires after 90 days. |
 | BR-075 | While an account has 3 or more active strikes and no decision, the moderator panel proposes a 7-day suspension. Without confirmation, nothing happens. |
 | BR-076 | Every suspension or deletion decided by a moderator e-mails a statement of reasons (DSA art. 17). The address is kept only until the mail is accepted, retried for at most 7 days. |
-| BR-077 | A suspension deletes the account, blocks a keyed hash of its e-mail for 7 days, closes every session and away record of the account, and bans the keyed IP hash and pseudo of the session in use for 7 days. |
+| BR-077 | A suspension deletes the account, blocks a keyed hash of its e-mail for 7 days, closes every session and away record of the account, and bans for 7 days the keyed IP hash and pseudo captured on the report (or of the live session when newer). |
 | BR-078 | Severe cases (grooming, threats, child sexual abuse material, incitement to violence) delete the account at once and block the e-mail hash for 6 months (proposal, legal check). Authorities are alerted when life or safety is threatened. |
 | BR-079 | An account unused for 2 years is deleted after an e-mail notice (proposal, CNIL guidance to confirm). |
 | BR-080 | A member may delete their account at any time. If strikes are active, a keyed e-mail hash and the strike expiry dates are kept until the last one expires, and restored if the same e-mail creates a new account. |

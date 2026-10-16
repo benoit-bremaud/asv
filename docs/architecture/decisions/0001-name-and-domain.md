@@ -25,7 +25,8 @@ meaning for newcomers 15, fun 10.
 - rosebleu: names the visual identity, domains free, a bit descriptive.
 - pseudo: very clear, domains taken.
 
-Sensitivity: with domain availability at 0 and evocation at 50, asv scores 420 and leads.
+Sensitivity (evocation 50, memorable 25, domain 0, meaning 15, fun 10): pseudo 430, asv 420. asv never
+tops the matrix: the choice is an explicit owner override (below).
 
 **Owner override.** The owner chose asv although rosebleu tops the domain-weighted matrix.
 Reason: evocation for people who knew Caramail matters more than a perfect domain, and a free
