@@ -5,7 +5,7 @@ conception study** (see `CLAUDE.md`).
 
 | Brick | Content | Conception study | Status |
 |---|---|---|---|
-| 1 | Complete conception dossier | this dossier | in progress |
+| 1 | Complete conception dossier | this dossier | done (PR #3) |
 | 1 bis | Legal check on official texts before any code: publisher status, LCEN (post-SREN numbering, retention decree), DSA duties, CNIL on accounts, e-mail blocks, cookies and AI triage, need for an impact assessment. Decisions updated where needed. | `security-and-rgpd.md` | planned |
 | 2 | Tooling: Vite, Hono, Vitest, ESLint import rule, CodeQL, protocol types, SonarQube project and token for asv | `platform` | planned |
 | 3 | Domain: entry, session, resume, pseudo rules | `entry` | planned |
