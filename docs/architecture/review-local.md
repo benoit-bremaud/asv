@@ -20,7 +20,9 @@
 | 4 Secrets | ✅ gitleaks on the full history (public repo): no leak · no tracked `.env*` · diff read: nothing sensitive |
 | 5 QA pass | ✅ smoke equivalent for a docs-only product: diagrams rendered locally, screenshots in `docs/architecture/qa/2026-10-16-01..05-*.png`. GitHub rendering not checked (browser pane has no access to github.com) |
 
-- Gate: **RED on step 3 (SonarQube not run)**, owner decision needed.
+- Step 3 exception granted by the owner on 2026-10-16 (MCDA 390/500): documentation-only PR, nothing for
+  SonarQube to analyse. SonarQube onboarding for asv moves to brick 2.
+- Gate: **GREEN with the owner exception on step 3 — merge authorised**.
 
 ### Main fixes in this pass
 

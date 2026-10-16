@@ -65,3 +65,4 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   recomputed MCDA totals in eight ADRs (no winner changed). Gate: tests and coverage N/A (no code),
   secrets clean on full history, QA screenshots in `docs/architecture/qa/`, SonarQube not run (no asv
   project or token yet).
+- SonarQube step: owner exception for this documentation-only PR (390/500); asv onboarding on SonarQube moved to brick 2.
