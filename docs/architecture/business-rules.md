@@ -86,6 +86,6 @@ Values are owned here. Rationale lives in the ADRs.
 
 | Rule | Description |
 |---|---|
-| BR-060 | One connection line per session: random connection id, IP and source port if available, protocol, pseudo, account id if any, start and end times. One content line per contribution (creation, change or deletion of a room or private message): connection id, content id, date and time (decree 2021-1362 arts. 5 and 7). While a Prime Minister's injunction under CPCE L34-1 III is in force (checked each October), the content line also carries the operation (art. 6). Never the content. Each line kept 1 year, then deleted (LCEN art. 6 V-A). |
+| BR-060 | One connection line per socket connection (entry or resume): random connection id, IP and source port if available, protocols, pseudo, account id if any, start and end times. One contribution line per creation of a room message, private message or user room name: connection id and protocols (decree 2021-1362 arts. 5 2° and 7). While a Prime Minister's injunction under CPCE L34-1 III is in force (checked each October), the contribution line also carries the content id, the operation, its date and time (art. 6 2°; the author's identifier is the pseudo or account id on the connection line). Never the content. Each line kept 1 year from its connection or contribution, then deleted (LCEN art. 6 V-A). |
 | BR-061 | Closed reports are kept 6 months, then deleted. |
 | BR-062 | Expired bans are deleted 30 days after their end. |

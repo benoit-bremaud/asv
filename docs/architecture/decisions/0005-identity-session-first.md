@@ -42,7 +42,7 @@ for private messages for exactly that reason.
   the optional gender, the self-declared age and city, the ignore list and the moderator name.
   Everything is lost when the session closes, after the away grace of ADR-0009.
 - A pseudo is unique among connected and away sessions (BR-002).
-- Persisted personal data: legal connection logs (IP, pseudo, timestamps; one content line per message, with the operation under an injunction, ADR-0014), reports and bans,
+- Persisted personal data: legal connection logs (IP, pseudo, timestamps; one contribution line per message with connection id and protocols, plus content id, operation, date and time under an injunction, ADR-0014), reports and bans,
   moderator credentials and invitations (ADR-0008), and away records for at most 5 minutes (ADR-0011).
 - No account code in V1. In V2, `Member` becomes persistent and owns only id and pseudo(s).
 

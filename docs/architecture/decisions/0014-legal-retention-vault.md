@@ -19,7 +19,7 @@ in [security and GDPR](../security-and-rgpd.md) §1):
     the contract**;
   - art. 3: other data given at account creation, **including the identifier and the pseudonyms used**,
     kept **1 year after the account is closed**;
-  - art. 5: technical data identifying the source of the connection, for each content creation, kept
+  - art. 5: for each content creation, the connection identifier and the protocols used, kept
     1 year (art. 7: a contribution is a creation, change or deletion);
   - art. 6: traffic data (content id, operation, date and time, identifier used) kept 1 year **only under
     a Prime Minister's injunction**. One is in force: decree 2026-920, from 2026-10-21, renewed every
@@ -64,7 +64,7 @@ field and loses nothing.
   (art. 2). The daily alarm purges expired data (BR-081). Pseudonyms stay only in the connection log
   (BR-060), 1 year.
 - **Write-only for the application.** The vault is a table in the hub storage behind a
-  `LegalVaultStore` port with two operations only: `record(entry)` and `purgeExpired(now)`. No domain use
+  `LegalVaultStore` port with two operations only: `record(entry)` and `purgeExpired(now)`, which also purges access entries older than 5 years. No domain use
   case, moderation tool or AI reads it.
 - **Read path.** Only the owner reads it, through a dedicated owner-only hub call, to answer an authority
   entitled by law (judicial requisition or equivalent). Each read appends an access entry: date, request
@@ -72,7 +72,7 @@ field and loses nothing.
 - **Encryption at rest** of the e-mail is decided in brick 5 (policy only, or encryption to an owner
   key). Criterion: the application must not be able to read back what it wrote.
 - Strikes, e-mail blocks and the strike carry-over keep using keyed hashes (ADR-0012), never the vault.
-- Connection logs follow decree arts. 5 and 7: a content line per contribution. Art. 6 adds the operation under injunction (BR-060). They
+- Connection logs follow decree arts. 5 and 7: one connection line per socket connection and a contribution line (connection id, protocols) per contribution. Art. 6 adds the content id, operation, date and time under injunction (BR-060). They
   never hold the content itself.
 - The sign-up screen and the privacy notice state these retentions and their legal basis (legal
   obligation, GDPR art. 6(1)(c) and 13). An erasure request does not cover them (GDPR art. 17(3)(b)).

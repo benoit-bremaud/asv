@@ -79,7 +79,7 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   pseudonyms too (355/500), then, after the review-local gate, option D: e-mail and dates 5 years, account
   id 1 year, session pseudonyms only in the connection log (ADR-0014, 385/500). Owner-only read for an
   authority entitled by law, each read logged. New BR-081, BR-082; BR-060 now lists the connection lines
-  and one content line per message (the operation added under injunction).
+  and the content lines written under injunction.
 - review-local gate: 6 Must and 13 Should fixed across ADRs 0004/0005/0007/0010/0011/0012, diagrams,
   glossary, test strategy and requirements. SonarQube waived by the owner (docs only, project created in
   brick 2).
@@ -91,3 +91,15 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
 - No binding text sets the 2-year inactivity, the 6-month severe block or report and ban retentions: they
   stay owner decisions under GDPR storage limitation.
 - `.scannerwork/` removed from the index and ignored.
+
+## 2026-10-22 — PR #6 review cycle (brick 1 bis)
+
+- Codex (3 findings) and a local architecture review on the fixes (Codex quota reached).
+- Decree 2021-1362 arts. 5 and 6 re-read on Légifrance. Outside an injunction, hosts keep the connection
+  identifier and protocols for each content creation (art. 5 2°). Content id, operation, date and time
+  are kept only under a Prime Minister's injunction (art. 6 2°). BR-060 now writes one contribution line
+  per message on that basis.
+- One connection line per socket connection: a resume opens a new line with the new IP. The connection
+  id lives in the socket attachment, so it survives hibernation. New `ConnectionLogStore` port, write
+  before delivery, orphan lines closed on wake-up.
+- Vault access entries: kept 5 years (owner decision pending), modelled as `AccessEntry`, purged daily.

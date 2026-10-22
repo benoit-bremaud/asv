@@ -28,10 +28,17 @@ TDD is not imposed on this project.
   forced eviction of in-memory variables.
 - Legal vault planned cases (ADR-0014, BR-081, BR-082), brick 5:
   - deleting an account writes the vault record in the same transaction (a failed write rolls back the deletion);
-  - `purgeExpired` drops the account id after 1 year and the whole record after 5 years, and the daily alarm calls it;
+  - `purgeExpired` drops the account id after 1 year and the whole record after 5 years, purges access entries older than 5 years, and the daily alarm calls it;
   - no domain use case, moderation tool or AI path can read the vault (the port has no read operation);
   - an owner read through the dedicated call appends an access entry (date, request reference, legal basis, ids returned), same for the connection log;
   - the record holds only account id, e-mail, creation and closing dates.
-- A content line is written for every message, with the operation only under injunction (BR-060).
+- Connection and contribution lines (BR-060):
+  - one connection line per socket connection: socket loss closes it, an accepted resume opens a new one with a new connection id (IP, port, protocols, pseudo, account id);
+  - a contribution line is written for every message with connection id and protocols, and with content id, operation, date and time only under injunction;
+  - contribution lines carry the current connection id after a hibernation rebuild and after a resume;
+  - the contribution line is written before delivery: if the write fails, the message is refused with an error and not delivered;
+  - the connection id never appears in client messages, reports, bans or AI triage input, and lives outside the log only in the socket attachment;
+  - the away record holds no connection id;
+  - on wake-up, open connection lines whose id is in no socket attachment are closed at the last known time.
 - Access entries are purged 5 years after the read by the daily alarm (BR-082).
 - No test calls the network outside localhost. Passkey ceremonies use a virtual authenticator in Playwright.

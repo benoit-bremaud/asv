@@ -40,15 +40,22 @@ sequenceDiagram
     H-->>WA: privateWindow(B, away) + echo
   else Delivered
     D-->>H: Conversation + message
-    H-->>WA: privateWindow(B) + echo
-    H-->>WB: privateMessage(from A)
-    H->>L: content line (connection id, content id, creation, now)
+    H->>L: appendContribution(connection id, protocols #59; content id, operation, date and time under injunction)
+    alt Write fails
+      L-->>H: error
+      H-->>WA: error(logUnavailable), message not delivered
+    else Written
+      H-->>WA: privateWindow(B) + echo
+      H-->>WB: privateMessage(from A)
+    end
   end
 ```
 
 ## Notes
 
 - The conversation is keyed by both session ids sorted, so replies use the same window.
-- The content line is written for every accepted message, also when it is buffered for an away chatter or
-  dropped by an ignore, and never holds the text (BR-060). The operation is added only under a Prime Minister's injunction. Only the delivered branch is drawn.
+- The contribution line is written for every accepted message, also when it is buffered for an away chatter or
+  dropped by an ignore, and never holds the text (BR-060). The content id, operation, date and time are added only
+  under a Prime Minister's injunction. Only the delivered branch is drawn.
+- The line is written before delivery. If the write fails, the message is refused and not delivered.
 - The ignored chatter is never told (Caramail behaviour, avoids escalation).

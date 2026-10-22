@@ -89,6 +89,12 @@ classDiagram
     +Date createdAt
     +Date closedAt
   }
+  class AccessEntry {
+    +Date at
+    +String requestReference
+    +String legalBasis
+    +String[] idsReturned
+  }
   class LegalVaultStore {
     <<interface>>
     +record(entry)
@@ -109,6 +115,7 @@ classDiagram
   AccountStore ..> StrikeCarryOver
   AccountStore ..> PendingStatement
   LegalVaultStore ..> VaultRecord
+  LegalVaultStore ..> AccessEntry
 ```
 
 ## Notes
@@ -120,5 +127,6 @@ classDiagram
 - One port for all account records is enough: there is one SQLite store and one in-memory twin.
 - `LegalVaultStore` is a separate write-only port (ADR-0014, brick 5): `record` and `purgeExpired`, no read
   operation. `deleteAccount` and `record` run in the same transaction (BR-081). `createdAt` is `verifiedAt`.
-  `purgeExpired` drops `accountId` 1 year and the whole record 5 years after `closedAt`. The owner-only read
+  `purgeExpired` drops `accountId` 1 year and the whole record 5 years after `closedAt`, and also purges access
+  entries older than 5 years. Each owner read appends an `AccessEntry` (BR-082). The owner-only read
   is a dedicated hub call outside this port (BR-082).

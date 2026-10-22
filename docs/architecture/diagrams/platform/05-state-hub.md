@@ -34,6 +34,7 @@ One alarm is always set to the earliest of:
 
 ## Notes
 
+- On wake-up, open connection lines whose id is in no socket attachment are closed at the last known time (ADR-0011).
 - `ping` is auto-answered `pong` without waking the hub (ADR-0011).
 - An eviction closes every socket. Connected sessions become lost: clients reconnect and resume only if an
   away record exists, otherwise they re-enter. Accepted for V1.

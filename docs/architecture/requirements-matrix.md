@@ -44,7 +44,7 @@ non-functional requirements (NF) to quality goals. Business rules referenced as 
 | ASV-NF-005 | Browsers | Last 2 versions of Chrome, Firefox, Safari, Edge, and iOS Safari / Android Chrome. | Manual matrix before release. |
 | ASV-NF-006 | Mobile first | Usable from 360 px wide, private windows as stacked panels on phones. | Manual test on phone widths. |
 | ASV-NF-007 | Security | OWASP ASVS level 1 on the exposed surface. | Security review per brick. |
-| ASV-NF-008 | Privacy | Only the data listed in `security-and-rgpd.md` §2 is persisted (connection and content logs, reports, bans, accounts, hashes, moderator credentials, 5-minute away records, the legal vault of closed accounts and its access entries: ADR-0014). | Data-flow diagrams + code review. |
+| ASV-NF-008 | Privacy | Only the data listed in `security-and-rgpd.md` §2 is persisted (connection and contribution logs, reports, bans, accounts, hashes, moderator credentials, 5-minute away records, the legal vault of closed accounts and its access entries: ADR-0014). | Data-flow diagrams + code review. |
 | ASV-NF-009 | Portability | Domain runs unchanged on Node and Workers (ADR-0002). | Same test suite on both transports. |
 | ASV-NF-010 | Testability | Domain logic covered by fast unit tests without network. | Coverage report on `src/domain`. |
 | ASV-NF-011 | Resilience | Client reconnects automatically with backoff after a network drop. | Manual test with airplane mode. |

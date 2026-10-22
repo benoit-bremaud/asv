@@ -10,7 +10,7 @@
 | Away record | Minimal stored copy of an away session, without gender, age or city (ADR-0011). |
 | Ban | Timed refusal of entry for a keyed IP hash and a pseudo. |
 | Chatter | A visitor who entered with a pseudo and has a session. |
-| Connection log | Legal record of one line per session: connection id, IP and source port, protocol, pseudo, account id, start and end. A content line (connection id, content id, date and time) is added for every message; it also carries the operation under a Prime Minister's injunction. Kept 1 year (BR-060). |
+| Connection log | Legal record with one line per socket connection: connection id, IP and source port, protocols, pseudo, account id, start and end. A resume opens a new line. A contribution line (connection id, protocols) is added for every message; under a Prime Minister's injunction it also carries the content id, the operation, date and time. Each line kept 1 year (BR-060). |
 | Device claim | Single-use value valid 60 seconds that the chat tab exchanges for the device cookie. |
 | Device token | Random value in a 30-day cookie that keeps an account holder signed in on one device (ADR-0013). |
 | E-mail block | Keyed hash of a sanctioned e-mail that prevents a new account until it expires. |

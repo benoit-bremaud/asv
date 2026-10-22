@@ -18,11 +18,11 @@ flowchart LR
   subgraph asv ["asv hub"]
     Sess["Session in socket attachment"]
     Away[("Away records, 5 minutes max")]
-    Logs[("Connection log and content lines")]
+    Logs[("Connection lines and contribution lines")]
   end
   Client["Client sessionStorage"]
   Visitor -->|"PII: pseudo, gender, age, city, IP"| Sess
-  Sess -->|"PII: IP, source port, protocol, pseudo, account id, times"| Logs
+  Sess -->|"PII: IP, source port, protocols, pseudo, account id, times, one line per socket connection"| Logs
   Sess -->|"resume token"| Client
   Visitor -->|"PII: profile kept locally"| Client
   Sess -->|"PII: pseudo, colour, age, city"| Others
@@ -34,6 +34,8 @@ flowchart LR
 
 - Retention values: BR-060 is a legal duty (decree 2021-1362, checked 2026-10-22). BR-061 and BR-062 are owner
   decisions, no binding text sets them (GDPR art. 5(1)(e)).
-- A content line (connection id, content id, date and time) is added to the log for every message (BR-060). It
-  also carries the operation while a Prime Minister's injunction is in force. It never holds the content.
+- A contribution line (connection id, protocols) is added to the log for every message (BR-060). While a Prime
+  Minister's injunction is in force it also carries the content id, the operation, date and time. It never holds
+  the content.
+- A resume opens a new connection line with a new connection id. The id is never sent to clients.
 - Gender, age and city stay in memory and in the client, never on server disk.

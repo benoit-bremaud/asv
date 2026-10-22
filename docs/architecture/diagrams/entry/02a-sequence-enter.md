@@ -37,8 +37,9 @@ sequenceDiagram
     H-->>W: entryRefused(reason)
   else Accepted
     D-->>H: New state + session + resume token
-    H->>LS: open log(ip, pseudo, now)
-    H->>H: Save session in socket attachment
+    H->>H: Draw connection id
+    H->>LS: open(connection id, IP, port, protocols, pseudo, account id, now)
+    H->>H: Save session and connection id in socket attachment
     H-->>W: entered(sessionId, resumeToken, roomList, accountId)
     W-->>V: Show rooms
   end
@@ -52,4 +53,5 @@ sequenceDiagram
 - A device cookie pointing to a deleted account yields no account and `entered.staleDevice = true`.
   The client then calls `POST /account/sign-out` to clear the stale cookie (ADR-0013), since it cannot
   read the `HttpOnly` cookie itself.
-- The connection log is closed on leave, away expiry and expel (see `entry/02b` and `moderation/02a`).
+- The connection line is closed by connection id on socket loss, leave and expel (see `entry/02b` and `moderation/02a`).
+  Away expiry closes nothing: the line was closed when the socket was lost.

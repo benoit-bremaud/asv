@@ -34,7 +34,7 @@ Sensitivity (simplicity 5, ownership 25, consistency 20, headroom 40, cost 10): 
 - Production uses **one Hub Durable Object** with WebSocket hibernation.
 - Each chatter has **one WebSocket** to the hub. Rooms and private conversations are domain state
   inside the hub.
-- The hub's SQLite storage holds the persisted data: connection and content logs, reports, bans, and from brick 5 the legal vault
+- The hub's SQLite storage holds the persisted data: connection and contribution logs, reports, bans, and from brick 5 the legal vault
   table (ADR-0014).
 - Both transports expose the same storage ports (`ModerationStore`, `ConnectionLogStore`,
   `AwayStore`, `ModeratorStore` from ADR-0008, and `LegalVaultStore` from ADR-0014, brick 5), defined next to the domain and implemented in
