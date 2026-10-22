@@ -23,6 +23,7 @@ classDiagram
     +leave(state, sessionId) Result
     +expireAway(state, now) Result
     +bufferPrivate(state, sessionId, BufferedMessage) Result
+    +pruneEntryAttempts(state, now) EntryState
   }
   class Random {
     <<interface>>
@@ -110,7 +111,8 @@ classDiagram
   trimmed one, empty when blank.
 - **BR-007**: every `enter` from an IP, accepted or refused, is recorded with `now`. Attempts older than
   60 s are dropped. If 5 attempts are already recorded in the last 60 s, the new one is refused `rate`
-  (and recorded, so a client that keeps hammering stays refused).
+  (and recorded, so a client that keeps hammering stays refused). An IP keeps at most its last 5 attempts.
+  `pruneEntryAttempts`, called from the hub alarm, forgets IPs with no attempt in the last minute.
 - **BR-008**: the hub looks the ban up and passes it; the domain refuses `banned` with `bannedUntil` when
   `ban.until > now`.
 - **BR-011 / BR-015**: `socketLost` marks the session `away` with `awayUntil = now + 5 min` and emits
@@ -120,7 +122,8 @@ classDiagram
   bricks 4 and 6.
 - **BR-013**: `bufferPrivate` appends to an away session's buffer, keeping the newest 50.
 - **BR-014**: `resume` finds the away session whose stored hash equals `resumeTokenHash`; otherwise
-  `resumeRefused`. On success the profile is replaced by the one sent, a new token is drawn, the buffer is
+  `resumeRefused`, as is a token whose deadline has passed though the alarm has not run yet. A profile
+  breaking BR-004 or BR-006 gives `invalid`. On success the profile is replaced by the one sent, a new token is drawn, the buffer is
   returned in `resumed` and emptied, the status becomes `connected`. If `accountStillExists` is false, the
   account link is removed and `resumed.accountUnlinked` is true.
 - **UC10**: `leave` removes the session (connected or away), frees the pseudo and emits `closed`.
@@ -129,5 +132,8 @@ classDiagram
   by the hub first).
 - `connectionId` is drawn by the hub and kept in the socket attachment (`entry/04`); the domain does not
   need it.
+- Session ids from `Random.id()` are unique; the hub guarantees it. Raw string sizes are capped by the
+  protocol layer before the domain (issue #13). City text is displayed as text only (BR-022).
+- `bufferPrivate` is wired to private messages in brick 6 (`private-conversations`).
 - The domain declares its own types (`Gender`, refusals, effects); it does not import
   `src/shared/protocol` (dependency rule). The hub maps effects to protocol messages.

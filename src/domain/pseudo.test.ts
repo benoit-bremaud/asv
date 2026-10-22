@@ -17,7 +17,12 @@ describe("BR-001 pseudo format", () => {
 
 describe("BR-002 folding", () => {
   it("ignores case and accents", () => {
-    expect(foldPseudo("Hélène")).toBe(foldPseudo("HELENE"));
+    expect(foldPseudo("Hélène")).toBe("helene");
+    expect(foldPseudo("HELENE")).toBe("helene");
+  });
+
+  it("keeps distinct pseudos distinct", () => {
+    expect(foldPseudo("a_b")).not.toBe(foldPseudo("a.b"));
   });
 });
 

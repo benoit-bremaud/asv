@@ -7,10 +7,9 @@ import tseslint from "typescript-eslint";
  * The pure domain imports only its own relative modules (ADR-0002, `platform/03-component`).
  * Any bare specifier (package, `node:*` or bare built-in such as `fs`) is refused.
  */
-const domainForbidden = [
-  { regex: "^[^.]", message: "src/domain is pure: no package or Node import." },
-  { group: ["**/server", "**/server/**", "**/web", "**/web/**", "**/transports", "**/transports/**", "**/shared", "**/shared/**"], message: "src/domain imports nothing from other folders." },
-];
+const domainBareImport = { regex: "^[^.]", message: "src/domain is pure: no package or Node import." };
+const domainOtherFolders = { group: ["**/server", "**/server/**", "**/web", "**/web/**", "**/transports", "**/transports/**", "**/shared", "**/shared/**"], message: "src/domain imports nothing from other folders." };
+const domainForbidden = [domainBareImport, domainOtherFolders];
 
 const config = tseslint.config(
   // Fixtures break the rule on purpose; test/dependency-rule.test.ts lints them with ignore: false.
@@ -39,9 +38,9 @@ const config = tseslint.config(
   },
   {
     // Domain tests may import the test runner, nothing else.
-    files: ["src/domain/**/*.test.ts"],
+    files: ["src/domain/**/*.test.ts", "test/fixtures/lint/domain-test/**/*.ts"],
     rules: {
-      "no-restricted-imports": ["error", { patterns: [{ ...domainForbidden[0], regex: "^(?!vitest$)[^.]" }, domainForbidden[1]] }],
+      "no-restricted-imports": ["error", { patterns: [{ ...domainBareImport, regex: "^(?!vitest$)[^.]" }, domainOtherFolders] }],
     },
   },
   {

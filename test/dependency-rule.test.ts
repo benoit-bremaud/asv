@@ -31,6 +31,12 @@ describe("dependency rule (platform/03-component)", () => {
     ]);
   });
 
+  it("lets a domain test import vitest only", async () => {
+    expect(await restrictions("test/fixtures/lint/domain-test/imports.ts")).toEqual([
+      expect.stringContaining("no package or Node import"),
+    ]);
+  });
+
   it("refuses a transport import in src/server", async () => {
     expect(await restrictions("test/fixtures/lint/server/forbidden.ts")).toEqual([
       expect.stringContaining("src/server never imports a transport"),

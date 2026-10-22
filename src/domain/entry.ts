@@ -25,6 +25,7 @@ export interface Profile {
   readonly city: string;
 }
 
+/** Closed sessions are removed, not a status (`entry/04`). */
 export type SessionStatus = "connected" | "away";
 
 /** A private message kept for an away session (BR-013). */
@@ -35,6 +36,7 @@ export interface BufferedMessage {
   readonly sentAt: Date;
 }
 
+/** A chatter's session; `ip` and `openedAt` feed the hub's connection line (BR-060). */
 export interface Session {
   readonly id: string;
   readonly pseudo: string;
@@ -42,8 +44,10 @@ export interface Session {
   readonly profile: Profile;
   readonly ip: string;
   readonly openedAt: Date;
+  /** Set when linked to an account (ADR-0012). */
   readonly accountId?: string;
   readonly resumeTokenHash: string;
+  /** Set only while away (BR-011). */
   readonly awayUntil?: Date;
   readonly buffered: readonly BufferedMessage[];
 }
@@ -67,6 +71,7 @@ export interface Random {
   token(): IssuedToken;
 }
 
+/** UC1 form plus what the hub looked up. Raw strings are bounded by the protocol layer (#13). */
 export interface EnterCommand {
   readonly pseudo: string;
   readonly gender?: Gender;
@@ -81,6 +86,7 @@ export interface EnterCommand {
   readonly accountId?: string;
 }
 
+/** UC13: the client resends its profile, never stored (ADR-0011). */
 export interface ResumeCommand {
   /** Hash of the token the client sent, computed by the hub like `Random.token`. */
   readonly resumeTokenHash: string;
@@ -90,8 +96,10 @@ export interface ResumeCommand {
   readonly accountStillExists: boolean;
 }
 
+/** Mirrors the protocol `entryRefusal` enum. */
 export type EntryRefusal = "rate" | "banned" | "pseudoInvalid" | "pseudoTaken" | "age";
 
+/** What the hub must do next; it maps each effect to protocol messages and storage. */
 export type Effect =
   | { readonly type: "entered"; readonly sessionId: string; readonly resumeToken: string; readonly accountId?: string }
   | { readonly type: "entryRefused"; readonly reason: EntryRefusal; readonly bannedUntil?: Date }
@@ -107,18 +115,21 @@ export type Effect =
   | { readonly type: "resumeRefused" }
   | { readonly type: "closed"; readonly sessionId: string; readonly pseudo: string };
 
+/** Output of every domain function. */
 export interface Result {
   readonly state: EntryState;
   readonly effects: readonly Effect[];
 }
 
+/** State of a fresh hub. */
 export const emptyEntryState = (): EntryState => ({
   sessions: new Map(),
   pseudoIndex: new Map(),
   entryAttempts: new Map(),
 });
 
-const unchanged = (state: EntryState, ...effects: Effect[]): Result => ({ state, effects });
+/** Wraps a new (or the same) state and its effects. */
+const result = (state: EntryState, ...effects: Effect[]): Result => ({ state, effects });
 
 const withSession = (state: EntryState, session: Session): EntryState => ({
   ...state,
@@ -138,7 +149,11 @@ const recordAttempt = (state: EntryState, ip: string, now: Date): { state: Entry
   const since = now.getTime() - ENTRY_LIMITS.attemptWindowMs;
   const recent = (state.entryAttempts.get(ip) ?? []).filter((at) => at.getTime() > since);
   return {
-    state: { ...state, entryAttempts: new Map(state.entryAttempts).set(ip, [...recent, now]) },
+    // Capped: a refused client only needs to stay at the limit, not grow the list.
+    state: {
+      ...state,
+      entryAttempts: new Map(state.entryAttempts).set(ip, [...recent, now].slice(-ENTRY_LIMITS.attemptsPerWindow)),
+    },
     earlier: recent.length,
   };
 };
@@ -146,11 +161,14 @@ const recordAttempt = (state: EntryState, ip: string, now: Date): { state: Entry
 const isAdultAge = (age: number): boolean =>
   Number.isInteger(age) && age >= ENTRY_LIMITS.minAge && age <= ENTRY_LIMITS.maxAge;
 
+/** BR-006, counted in characters (code points), not UTF-16 units. */
+const isCityTooLong = (city: string | undefined): boolean =>
+  [...(city ?? "").trim()].length > ENTRY_LIMITS.maxCityLength;
+
 /** Terms and BR-006 failures only come from a modified client (`entry/07`). */
 const formRefusal = (command: EnterCommand): EntryRefusal | "invalid" | undefined => {
   if (!command.adultConfirmed || !isAdultAge(command.age)) return "age";
-  if (!command.termsAccepted) return "invalid";
-  if ((command.city ?? "").trim().length > ENTRY_LIMITS.maxCityLength) return "invalid";
+  if (!command.termsAccepted || isCityTooLong(command.city)) return "invalid";
   return undefined;
 };
 
@@ -166,22 +184,22 @@ export const enter = (state: EntryState, command: EnterCommand, now: Date, rando
   const attempt = recordAttempt(state, command.ip, now);
   const counted = attempt.state;
   if (attempt.earlier >= ENTRY_LIMITS.attemptsPerWindow) {
-    return unchanged(counted, { type: "entryRefused", reason: "rate" });
+    return result(counted, { type: "entryRefused", reason: "rate" });
   }
   if (command.activeBan && command.activeBan.until.getTime() > now.getTime()) {
-    return unchanged(counted, { type: "entryRefused", reason: "banned", bannedUntil: command.activeBan.until });
+    return result(counted, { type: "entryRefused", reason: "banned", bannedUntil: command.activeBan.until });
   }
   const pseudo = canonicalPseudo(command.pseudo);
   if (!hasValidPseudoFormat(pseudo) || containsReservedWord(pseudo)) {
-    return unchanged(counted, { type: "entryRefused", reason: "pseudoInvalid" });
+    return result(counted, { type: "entryRefused", reason: "pseudoInvalid" });
   }
   const key = foldPseudo(pseudo);
   if (counted.pseudoIndex.has(key)) {
-    return unchanged(counted, { type: "entryRefused", reason: "pseudoTaken" });
+    return result(counted, { type: "entryRefused", reason: "pseudoTaken" });
   }
   const refusal = formRefusal(command);
-  if (refusal === "invalid") return unchanged(counted, { type: "invalid" });
-  if (refusal) return unchanged(counted, { type: "entryRefused", reason: refusal });
+  if (refusal === "invalid") return result(counted, { type: "invalid" });
+  if (refusal) return result(counted, { type: "entryRefused", reason: refusal });
 
   const token = random.token();
   const session: Session = {
@@ -196,7 +214,7 @@ export const enter = (state: EntryState, command: EnterCommand, now: Date, rando
     buffered: [],
   };
   const next = withSession({ ...counted, pseudoIndex: new Map(counted.pseudoIndex).set(key, session.id) }, session);
-  return unchanged(next, {
+  return result(next, {
     type: "entered",
     sessionId: session.id,
     resumeToken: token.value,
@@ -207,9 +225,9 @@ export const enter = (state: EntryState, command: EnterCommand, now: Date, rando
 /** BR-011, BR-012: a connected session becomes away and keeps its pseudo. */
 export const socketLost = (state: EntryState, sessionId: string, now: Date): Result => {
   const session = state.sessions.get(sessionId);
-  if (session?.status !== "connected") return unchanged(state);
+  if (session?.status !== "connected") return result(state);
   const awayUntil = new Date(now.getTime() + ENTRY_LIMITS.awayMs);
-  return unchanged(withSession(state, { ...session, status: "away", awayUntil }), {
+  return result(withSession(state, { ...session, status: "away", awayUntil }), {
     type: "wentAway",
     sessionId,
     pseudo: session.pseudo,
@@ -223,8 +241,9 @@ export const resume = (state: EntryState, command: ResumeCommand, now: Date, ran
     (candidate) => candidate.status === "away" && candidate.resumeTokenHash === command.resumeTokenHash,
   );
   if (!session?.awayUntil || session.awayUntil.getTime() <= now.getTime()) {
-    return unchanged(state, { type: "resumeRefused" });
+    return result(state, { type: "resumeRefused" });
   }
+  if (!isAdultAge(command.age) || isCityTooLong(command.city)) return result(state, { type: "invalid" });
   const token = random.token();
   const accountUnlinked = session.accountId !== undefined && !command.accountStillExists;
   const resumed: Session = {
@@ -236,7 +255,7 @@ export const resume = (state: EntryState, command: ResumeCommand, now: Date, ran
     awayUntil: undefined,
     buffered: [],
   };
-  return unchanged(withSession(state, resumed), {
+  return result(withSession(state, resumed), {
     type: "resumed",
     sessionId: session.id,
     resumeToken: token.value,
@@ -248,8 +267,8 @@ export const resume = (state: EntryState, command: ResumeCommand, now: Date, ran
 /** UC10: removes a connected or away session and frees its pseudo. */
 export const leave = (state: EntryState, sessionId: string): Result => {
   const session = state.sessions.get(sessionId);
-  if (!session) return unchanged(state);
-  return unchanged(withoutSession(state, session), { type: "closed", sessionId, pseudo: session.pseudo });
+  if (!session) return result(state);
+  return result(withoutSession(state, session), { type: "closed", sessionId, pseudo: session.pseudo });
 };
 
 /** BR-015: closes every away session whose deadline has passed. Called from the hub alarm. */
@@ -258,18 +277,25 @@ export const expireAway = (state: EntryState, now: Date): Result => {
     (session) => session.status === "away" && session.awayUntil && session.awayUntil.getTime() <= now.getTime(),
   );
   return expired.reduce<Result>(
-    (result, session) => ({
-      state: withoutSession(result.state, session),
-      effects: [...result.effects, { type: "closed", sessionId: session.id, pseudo: session.pseudo }],
+    (acc, session) => ({
+      state: withoutSession(acc.state, session),
+      effects: [...acc.effects, { type: "closed", sessionId: session.id, pseudo: session.pseudo }],
     }),
-    unchanged(state),
+    result(state),
   );
 };
 
 /** BR-013: keeps the newest 50 private messages of an away session. */
 export const bufferPrivate = (state: EntryState, sessionId: string, message: BufferedMessage): Result => {
   const session = state.sessions.get(sessionId);
-  if (session?.status !== "away") return unchanged(state);
+  if (session?.status !== "away") return result(state);
   const buffered = [...session.buffered, message].slice(-ENTRY_LIMITS.maxBuffered);
-  return unchanged(withSession(state, { ...session, buffered }));
+  return result(withSession(state, { ...session, buffered }));
+};
+
+/** BR-007: forgets IPs with no attempt in the last minute. Called from the hub alarm. */
+export const pruneEntryAttempts = (state: EntryState, now: Date): EntryState => {
+  const since = now.getTime() - ENTRY_LIMITS.attemptWindowMs;
+  const kept = [...state.entryAttempts].filter(([, attempts]) => attempts.some((at) => at.getTime() > since));
+  return kept.length === state.entryAttempts.size ? state : { ...state, entryAttempts: new Map(kept) };
 };

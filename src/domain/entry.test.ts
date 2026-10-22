@@ -6,6 +6,7 @@ import {
   ENTRY_LIMITS,
   expireAway,
   leave,
+  pruneEntryAttempts,
   resume,
   socketLost,
   type BufferedMessage,
@@ -57,6 +58,9 @@ const awaySession = (overrides: Partial<EnterCommand> = {}) => {
   const base = entered(overrides);
   return { ...base, state: socketLost(base.state, base.sessionId, T0).state };
 };
+
+/** A random whose next token is distinct from the fixture's `t1`. */
+const rotatingRandom: Random = { id: () => "x", token: () => ({ value: "new", hash: "h(new)" }) };
 
 const message = (text: string): BufferedMessage => ({
   conversationId: "c1",
@@ -133,10 +137,29 @@ describe("BR-004 adults only", () => {
 });
 
 describe("BR-005 gender", () => {
-  it("keeps the declared gender", () => {
-    const { state, sessionId } = entered({ gender: "woman" });
+  it.each(["woman", "man", "unspecified"] as const)("keeps the declared gender %s", (gender) => {
+    const { state, sessionId } = entered({ gender });
 
-    expect(state.sessions.get(sessionId)?.profile.gender).toBe("woman");
+    expect(state.sessions.get(sessionId)?.profile.gender).toBe(gender);
+  });
+});
+
+describe("UC1 check order", () => {
+  it.each([
+    { overrides: { activeBan: { until: at(1000) }, pseudo: "ab", age: 12 }, reason: "banned" },
+    { overrides: { pseudo: "ab", age: 12, termsAccepted: false }, reason: "pseudoInvalid" },
+    { overrides: { age: 12, termsAccepted: false }, reason: "age" },
+  ])("reports $reason first", ({ overrides, reason }) => {
+    expect(enter(emptyEntryState(), form(overrides), T0, fakeRandom()).effects[0]).toMatchObject({ reason });
+  });
+
+  it("stores a decomposed pseudo in NFC so it collides with the composed one", () => {
+    const { state, sessionId, random } = entered({ pseudo: "Ce\u0301line" });
+
+    expect(state.sessions.get(sessionId)?.pseudo).toBe("C\u00e9line");
+    expect(enter(state, form({ pseudo: "celine", ip: "198.51.100.2" }), T0, random).effects[0]).toMatchObject({
+      reason: "pseudoTaken",
+    });
   });
 });
 
@@ -177,6 +200,27 @@ describe("BR-007 entry rate", () => {
     expect(enter(hammered, form({ ip: "198.51.100.9" }), at(10_000), fakeRandom()).effects[0]?.type).toBe(
       "entered",
     );
+  });
+
+  it("accepts a fifth attempt and counts accepted entries", () => {
+    const afterFour = attempts(4);
+    const fifth = enter(afterFour, form(), at(5_000), fakeRandom());
+
+    expect(fifth.effects[0]?.type).toBe("entered");
+    expect(enter(fifth.state, form({ pseudo: "other" }), at(6_000), fakeRandom()).effects[0]).toMatchObject({
+      reason: "rate",
+    });
+  });
+
+  it("drops an attempt exactly 60 seconds old", () => {
+    expect(enter(attempts(5), form(), at(60_000), fakeRandom()).effects[0]?.type).toBe("entered");
+  });
+
+  it("forgets idle IPs when pruned, and keeps recent ones", () => {
+    const state = attempts(1);
+
+    expect(pruneEntryAttempts(state, at(59_999))).toBe(state);
+    expect(pruneEntryAttempts(state, at(60_000)).entryAttempts.size).toBe(0);
   });
 
   it("allows a new attempt once a minute has passed", () => {
@@ -242,20 +286,20 @@ describe("BR-014 resume", () => {
   it("resumes with the current token, rotates it and returns the buffer", () => {
     const away = awaySession({ accountId: "acc1" });
     const state = bufferPrivate(away.state, away.sessionId, message("hello")).state;
-    const result = resume(state, resumeWith("h(t1)", { city: "Paris" }), at(60_000), fakeRandom());
+    const result = resume(state, resumeWith("h(t1)", { city: "Paris" }), at(60_000), rotatingRandom);
     const session = result.state.sessions.get(away.sessionId);
 
     expect(result.effects).toEqual([
-      { type: "resumed", sessionId: away.sessionId, resumeToken: "t1", buffered: [message("hello")], accountUnlinked: false },
+      { type: "resumed", sessionId: away.sessionId, resumeToken: "new", buffered: [message("hello")], accountUnlinked: false },
     ]);
-    expect(session).toMatchObject({ status: "connected", resumeTokenHash: "h(t1)", accountId: "acc1", buffered: [] });
+    expect(session).toMatchObject({ status: "connected", resumeTokenHash: "h(new)", accountId: "acc1", buffered: [] });
     expect(session?.profile).toEqual({ gender: "unspecified", age: 31, city: "Paris" });
     expect(session?.awayUntil).toBeUndefined();
   });
 
   it("refuses the previous token after a resume", () => {
     const away = awaySession();
-    const random: Random = { id: () => "x", token: () => ({ value: "new", hash: "h(new)" }) };
+    const random = rotatingRandom;
     const resumed = resume(away.state, resumeWith("h(t1)"), T0, random).state;
     const lostAgain = socketLost(resumed, away.sessionId, T0).state;
 
@@ -268,6 +312,22 @@ describe("BR-014 resume", () => {
 
     expect(resume(state, resumeWith("h(t1)"), T0, fakeRandom()).effects).toEqual([{ type: "resumeRefused" }]);
     expect(resume(state, resumeWith("h(zz)"), T0, fakeRandom()).effects).toEqual([{ type: "resumeRefused" }]);
+  });
+
+  it.each([{ age: 12 }, { age: 30, city: "x".repeat(41) }])("refuses a resumed profile %o as invalid", (profile) => {
+    const away = awaySession();
+    const result = resume(away.state, resumeWith("h(t1)", profile), T0, rotatingRandom);
+
+    expect(result.effects).toEqual([{ type: "invalid" }]);
+    expect(result.state).toBe(away.state);
+  });
+
+  it("accepts a resume one millisecond before the deadline", () => {
+    const away = awaySession();
+
+    expect(resume(away.state, resumeWith("h(t1)"), at(ENTRY_LIMITS.awayMs - 1), rotatingRandom).effects[0]?.type).toBe(
+      "resumed",
+    );
   });
 
   it("unlinks an account deleted while away", () => {
@@ -286,6 +346,20 @@ describe("BR-015 away expiry", () => {
     expect(resume(away.state, resumeWith("h(t1)"), at(ENTRY_LIMITS.awayMs), fakeRandom()).effects).toEqual([
       { type: "resumeRefused" },
     ]);
+  });
+
+  it("closes only the away sessions past their deadline", () => {
+    const random = fakeRandom();
+    let state = enter(emptyEntryState(), form({ pseudo: "early" }), T0, random).state;
+    state = enter(state, form({ pseudo: "late" }), T0, random).state;
+    state = enter(state, form({ pseudo: "here" }), T0, random).state;
+    const id = (pseudo: string) => state.pseudoIndex.get(pseudo) ?? "";
+    state = socketLost(state, id("early"), T0).state;
+    state = socketLost(state, id("late"), at(1000)).state;
+    const result = expireAway(state, at(ENTRY_LIMITS.awayMs));
+
+    expect(result.effects).toEqual([{ type: "closed", sessionId: id("early"), pseudo: "early" }]);
+    expect([...result.state.pseudoIndex.keys()].sort()).toEqual(["here", "late"]);
   });
 
   it("closes expired away sessions and frees their pseudo", () => {
@@ -307,6 +381,12 @@ describe("UC10 leave", () => {
 
     expect(result.effects).toEqual([{ type: "closed", sessionId, pseudo: "nath_lune" }]);
     expect(enter(result.state, form({ ip: "198.51.100.2" }), T0, fakeRandom()).effects[0]?.type).toBe("entered");
+  });
+
+  it("closes an away session too", () => {
+    const { state, sessionId } = awaySession();
+
+    expect(leave(state, sessionId).state.sessions.size).toBe(0);
   });
 
   it("does nothing for an unknown session", () => {
