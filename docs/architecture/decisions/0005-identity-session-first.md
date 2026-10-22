@@ -8,10 +8,10 @@
 ## Context
 
 Caramail had accounts with several saved aliases. asv wants minimal friction and minimal personal
-data. French hosting law (LCEN, decree 2021-1362) reportedly requires hosts to keep connection data
+data. French hosting law (LCEN, decree 2021-1362) requires hosts to keep connection data
 identifying content authors for one year
 ([Dalloz, decree 2021-1362](https://www.dalloz-actualite.fr/document/decr-n-2021-1362-20-oct-2021-jo-21-oct)).
-Unverified on Légifrance, see Consequences. So "store nothing" is not an option, even without accounts.
+Verified on Légifrance in brick 1 bis, see Consequences. So "store nothing" is not an option, even without accounts.
 
 ## Options and MCDA
 
@@ -36,13 +36,13 @@ for private messages for exactly that reason.
 ## Decision
 
 > Superseded in part by ADR-0012: V1 has e-mail accounts for private messages. Persisted data also
-> includes accounts, device hashes and e-mail block hashes. The rest of this decision still holds.
+> includes accounts, device hashes, e-mail block hashes and the legal vault of closed accounts (ADR-0014). The rest of this decision still holds.
 
 - V1: a session is bound to an ephemeral `Member`. The member holds the pseudo. The session holds
   the optional gender, the self-declared age and city, the ignore list and the moderator name.
   Everything is lost when the session closes, after the away grace of ADR-0009.
 - A pseudo is unique among connected and away sessions (BR-002).
-- Persisted personal data: legal connection logs (IP, pseudo, timestamps), reports and bans,
+- Persisted personal data: legal connection logs (IP, pseudo, timestamps; content lines only under an injunction, ADR-0014), reports and bans,
   moderator credentials and invitations (ADR-0008), and away records for at most 5 minutes (ADR-0011).
 - No account code in V1. In V2, `Member` becomes persistent and owns only id and pseudo(s).
 

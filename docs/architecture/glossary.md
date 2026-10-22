@@ -10,12 +10,13 @@
 | Away record | Minimal stored copy of an away session, without gender, age or city (ADR-0011). |
 | Ban | Timed refusal of entry for a keyed IP hash and a pseudo. |
 | Chatter | A visitor who entered with a pseudo and has a session. |
-| Connection log | Legal record of IP, pseudo and connection times (LCEN). |
+| Connection log | Legal record of one line per session: connection id, IP and source port, protocol, pseudo, account id, start and end. Content lines (content id, operation, date and time) are added only under a Prime Minister's injunction. Kept 1 year (BR-060). |
 | Device claim | Single-use value valid 60 seconds that the chat tab exchanges for the device cookie. |
 | Device token | Random value in a 30-day cookie that keeps an account holder signed in on one device (ADR-0013). |
 | E-mail block | Keyed hash of a sanctioned e-mail that prevents a new account until it expires. |
 | Hub | The single object holding all sessions, rooms and private conversations (ADR-0007). In-memory on Node, a Durable Object on Cloudflare. |
 | Ignore | Hiding another chatter's messages for the rest of one's session. |
+| Legal vault | Table in hub storage holding the legal retention record of each closed account: account id, e-mail, creation and closing dates. Write-only for the application, owner-only read (ADR-0014, BR-081, BR-082). |
 | Member | The domain object behind a session that holds the pseudo (ADR-0005). Not the same as an account. |
 | Moderator | A chatter signed in with a passkey, allowed to handle reports and expel. |
 | Moderator grant | Signed single-use token, valid 60 seconds, that turns an entry into a moderator entry (ADR-0008). |

@@ -2,8 +2,8 @@
 
 > **Feature**: moderation
 > **Use cases**: UC12, UC11
-> **Business rules**: BR-057, BR-074 to BR-078
-> **Related ADRs**: ADR-0012
+> **Business rules**: BR-057, BR-074 to BR-078, BR-081
+> **Related ADRs**: ADR-0012, ADR-0014
 
 ## Context
 
@@ -39,9 +39,9 @@ sequenceDiagram
       D-->>H: Statement + block until now + 7 days + all sessions and away records + IP and pseudo ban
       H->>ML: send statement of reasons
       alt Mail accepted
-        H->>AS: blockEmail, deleteAccount
+        H->>AS: blockEmail, deleteAccount + vault record, same transaction (BR-081)
       else Mail failed
-        H->>AS: blockEmail, deleteAccount, keep pending statement for retry
+        H->>AS: blockEmail, deleteAccount + vault record, same transaction, keep pending statement for retry
       end
       H->>ST: save ban, close report with outcome suspended
       H-->>T: expelled(until) then close every socket of the account
@@ -61,4 +61,6 @@ sequenceDiagram
   the active strikes, not stored (BR-075).
 - The statement of reasons lists the facts, the terms clause, whether AI triage was used, and how to
   contest by replying to the contact address (DSA art. 17). It is retried until sent, for at most 7 days.
+- Every account deletion, including this one, writes the legal retention record to the vault in the same
+  transaction (ADR-0014). The vault holds no reason, strike or report.
 - A warning itself restricts nothing, so it is notified in the chat only.

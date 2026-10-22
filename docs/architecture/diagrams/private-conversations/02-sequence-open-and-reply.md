@@ -2,8 +2,8 @@
 
 > **Feature**: private-conversations
 > **Use cases**: UC6, UC8
-> **Business rules**: BR-040 to BR-043
-> **Related ADRs**: ADR-0007, ADR-0009
+> **Business rules**: BR-040 to BR-043, BR-060
+> **Related ADRs**: ADR-0007, ADR-0009, ADR-0014
 
 ## Context
 
@@ -19,6 +19,7 @@ sequenceDiagram
   participant H as Hub
   participant D as Domain
   participant WB as Web client B
+  participant L as Connection log store
   A->>WA: Click pseudo B, type first message
   WA->>H: sendPrivate(B, text)
   H->>D: sendPrivate(state, sessionA, pseudoB, text, now)
@@ -41,10 +42,15 @@ sequenceDiagram
     D-->>H: Conversation + message
     H-->>WA: privateWindow(B) + echo
     H-->>WB: privateMessage(from A)
+    opt Prime Minister's injunction in force
+      H->>L: content line (connection id, content id, creation, now)
+    end
   end
 ```
 
 ## Notes
 
 - The conversation is keyed by both session ids sorted, so replies use the same window.
+- The content line is written for every accepted message, also when it is buffered for an away chatter or
+  dropped by an ignore, and never holds the text (BR-060). Only the delivered branch is drawn.
 - The ignored chatter is never told (Caramail behaviour, avoids escalation).

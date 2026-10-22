@@ -8,7 +8,7 @@
 
 The owner proposed an AI moderator that scans messages for suspicious words or ambiguous situations.
 Grooming and harassment happen mostly in private messages and show over a conversation, not in one
-message. Constraints gathered on 2026-10-15 (legal points unverified, see `security-and-rgpd.md`):
+message. Constraints gathered on 2026-10-15 (legal points checked in brick 1 bis, see `security-and-rgpd.md`):
 
 - Scanning private messages at scale likely requires a data protection impact assessment, is hard to
   base on legitimate interest, and touches the secrecy of correspondence.

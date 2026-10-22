@@ -10,18 +10,18 @@ asv puts strangers in contact, with private messages. Caramail had a teen room. 
 grooming are the main threats to such a product. Target audience: people who knew Caramail,
 today aged 35–50.
 
-### Legal context (unverified, not legal advice)
+### Legal context (gathered 2026-10-15 from web sources, not legal advice)
 
-Gathered from web sources on 2026-10-15. Each point must be confirmed on the official text before
-public launch.
+Note: brick 1 bis verified these points on the official texts on 2026-10-22 (see "Legal check (brick 1 bis,
+2026-10-22)" below). The wording of this section is the original snapshot.
 
 - No age verification seems mandatory in France today:
   - the 2023 "Marcangeli" law (digital majority at 15) reportedly never got its implementing decree
     ([Sénat file](https://www.senat.fr/dossier-legislatif/ppl22-389.html),
     [NosParlementaires](https://nosparlementaires.fr/actualites/reseaux-sociaux-15-ans-deux-lois-zero-application));
   - the July 2026 under-15 social-network law was reportedly struck down by the Conseil
-    constitutionnel on 2026-08-14 (same NosParlementaires source, to confirm on conseil-constitutionnel.fr).
-- GDPR consent age in France is 15, Loi Informatique et Libertés art. 45 (unverified, brick 1 bis)
+    constitutionnel on 2026-08-14 (same NosParlementaires source; confirmed on the Conseil constitutionnel decision, see the legal check below).
+- GDPR consent age in France is 15, Loi Informatique et Libertés art. 45 (verified in brick 1 bis)
   ([CNIL recommendation 4](https://cnil.fr/fr/recommandation-4-rechercher-le-consentement-dun-parent-pour-les-mineurs-de-moins-de-15-ans)).
 - The DSA applies to every hosting service, with lighter duties for micro and small companies:
   point of contact, clear terms, notice-and-action
@@ -54,7 +54,7 @@ is refused. Users can report a member who seems to be a minor, and moderators ca
 The owner asked whether 18+ is too restrictive, since the retro vibe also appeals to younger people.
 Further research: Yubo, the French teen network, used Yoti facial age estimation, separated minors from
 adults, and ran 24/7 human + AI moderation, yet grooming by adults posing as teens was reported, and its
-minimum age reportedly moved from 13 to 18 (unverified,
+minimum age reportedly moved from 13 to 18 (press source, not an official text,
 [Internet Matters](https://www.internetmatters.org/advice/apps-and-platforms/social-media/yubo/)).
 With a self-declared age, a teen space is a hunting ground for adults who lie about their age.
 
@@ -78,7 +78,7 @@ verification, strict separation from adults (no private messages across), AI sca
 
 - No minors' room, no parental consent flow in V1.
 - Terms of use and a report mechanism are mandatory before public launch (DSA).
-- **Legal check pending** on every point above before public launch.
+- Legal check done in brick 1 bis (2026-10-22), see the last section.
 - Revisit if a French age-verification obligation for chat services comes into force.
 
 ## Legal check (brick 1 bis, 2026-10-22)

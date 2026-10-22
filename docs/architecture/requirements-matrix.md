@@ -31,7 +31,7 @@ non-functional requirements (NF) to quality goals. Business rules referenced as 
 | ASV-F-021 | Sign in without a password | Six-digit e-mail code, device remembered 30 days (ADR-0013) | UC17 | A member signs in by typing one code and is recognised on that device for 30 days. | V1 |
 | ASV-F-022 | Stop repeat offenders | Three strikes, then 7-day suspension with e-mail block (ADR-0012) | UC12, UC11 | At the third active strike the moderator confirms; the same e-mail cannot create an account for 7 days. | V1 |
 | ASV-F-023 | Know why I was sanctioned | Statement of reasons by e-mail (DSA art. 17) | UC11, UC12 | Every suspension or deletion by a moderator e-mails the facts, the rule, AI use and redress. | V1 |
-| ASV-F-024 | Control my account | Sign out of a device or everywhere, delete the account | UC18, UC19 | Each action takes effect immediately and closes private windows. | V1 |
+| ASV-F-024 | Control my account | Sign out of a device or everywhere, delete the account | UC18, UC19 | Each action takes effect immediately and closes private windows. Deletion writes the legal retention record to the vault in the same transaction (BR-081). | V1 |
 
 ## Non-functional
 
@@ -44,7 +44,7 @@ non-functional requirements (NF) to quality goals. Business rules referenced as 
 | ASV-NF-005 | Browsers | Last 2 versions of Chrome, Firefox, Safari, Edge, and iOS Safari / Android Chrome. | Manual matrix before release. |
 | ASV-NF-006 | Mobile first | Usable from 360 px wide, private windows as stacked panels on phones. | Manual test on phone widths. |
 | ASV-NF-007 | Security | OWASP ASVS level 1 on the exposed surface. | Security review per brick. |
-| ASV-NF-008 | Privacy | Only the data listed in `security-and-rgpd.md` §2 is persisted (logs, reports, bans, accounts, hashes, moderator credentials, 5-minute away records). | Data-flow diagrams + code review. |
+| ASV-NF-008 | Privacy | Only the data listed in `security-and-rgpd.md` §2 is persisted (connection and content logs, reports, bans, accounts, hashes, moderator credentials, 5-minute away records, the legal vault of closed accounts: ADR-0014). | Data-flow diagrams + code review. |
 | ASV-NF-009 | Portability | Domain runs unchanged on Node and Workers (ADR-0002). | Same test suite on both transports. |
 | ASV-NF-010 | Testability | Domain logic covered by fast unit tests without network. | Coverage report on `src/domain`. |
 | ASV-NF-011 | Resilience | Client reconnects automatically with backoff after a network drop. | Manual test with airplane mode. |

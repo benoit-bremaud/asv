@@ -12,7 +12,7 @@ Légifrance publication.
 | Topic | Official text | What it says | Impact on asv | Status |
 |---|---|---|---|---|
 | asv is a hosting provider | LCEN art. 6 I.2 (version of 2026-08-26), DSA art. 3 g iii | A hosting provider stores information provided by its users. | asv stores messages, reports and accounts: every host duty below applies. | Verified (official text) |
-| Retention of identifying data | LCEN art. 6 V-A and V-B; CPCE art. L34-1 II bis and VI; decree 2021-1362 arts. 2, 3, 5, 7, 8 | Hosts keep data identifying content contributors. E-mail and civil identity 5 years after the contract ends (art. 2); identifier and pseudonyms 1 year after the account closes (art. 3); technical data identifying the source of each content creation, change or deletion 1 year (arts. 5, 7). Only data actually collected (art. 8). Never the content of correspondence (L34-1 VI). Breach: 1 year in prison, 250 000 EUR. | Legal vault for closed accounts (ADR-0014, BR-081, BR-082). Connection and content log (BR-060). | Verified (official text). Scope for a small free chat: professional review, brick 10 |
+| Retention of identifying data | LCEN art. 6 V-A and V-B; CPCE art. L34-1 II bis and VI; decree 2021-1362 arts. 2, 3, 5, 7, 8 | Hosts keep data identifying content contributors. E-mail and civil identity 5 years after the contract ends (art. 2); identifier and pseudonyms 1 year after the account closes (art. 3); technical data identifying the source of each content creation, change or deletion 1 year (arts. 5 and 7; art. 6 under injunction). Only data actually collected (art. 8). Never the content of correspondence (L34-1 VI). Breach: 1 year in prison, 250 000 EUR. | Legal vault for closed accounts (ADR-0014, BR-081, BR-082). Connection and content log (BR-060). | Verified (official text). Scope for a small free chat: professional review, brick 10 |
 | Traffic data under injunction | CPCE art. L34-1 III; decree 2021-1362 art. 6; decree 2026-920 (in force 2026-10-21) | Content id, operation, date and time and identifier used, kept 1 year while a Prime Minister's injunction is in force. Renewed every year since 2021. | Included in the content log (BR-060). Re-check the yearly renewal each October. | Verified (official text) |
 | Editor identification | LCEN art. 1-1 I and II (in force 2024-05-23) | An editor publishes name, address, phone and director of publication, and the host's identity. A non-professional editor may publish only the host's identity if it gave its own identity to the host, which keeps it under professional secrecy. Right of reply within 3 months. | Legal notice in brick 10: choose between full identity and the non-professional option. | Verified (official text) |
 | Reporting offences to authorities | LCEN art. 6 IV-A and IV-C; DSA art. 18 | Hosts promptly inform the authorities of listed offences reported to them (harassment, child abuse material, terrorism, incitement to hatred, and others). Hosts inform law enforcement promptly of any suspected offence threatening life or safety. Breach: 1 year in prison, 250 000 EUR. | Severe-case procedure (BR-078): the moderator escalates to the owner, who files through the official channels (for example PHAROS). | Verified (official text). Channel to document in brick 8 |
@@ -40,14 +40,14 @@ with their sources (ADR-0004, ADR-0005, ADR-0010, ADR-0014).
 | Pseudo, gender, age, city | Hub memory, socket attachment, client sessionStorage | Run the chat | Contract / legitimate interest | Session end |
 | Messages | Hub memory | Run the chat | Contract | Room or window end |
 | Away record: pseudo, rooms, windows, buffered private messages | Hub storage | Resume after a disconnect | Contract | 5 minutes max (ADR-0011) |
-| IP, connection id, protocol, pseudo, account id, content id, operation, date and time (never the content) | Connection and content log | Identify content contributors (LCEN art. 6 V-A, decree 2021-1362 arts. 5 and 6) | Legal obligation | 1 year (BR-060) |
+| IP, connection id, protocol, pseudo, account id, content id, operation, date and time (never the content) | Connection and content log | Identify content contributors (LCEN art. 6 V-A, decree 2021-1362 arts. 5 and 7, art. 6 under injunction) | Legal obligation | 1 year (BR-060) |
 | Report: reason, excerpt, context lines, pseudos, AI triage | Moderation store | Moderation, DSA | Legal obligation / legitimate interest | 6 months after closing (BR-061) |
 | Reported context with neutral labels | AI provider (processor) | Triage reports | Legitimate interest | Provider contract, no training on data |
 | Ban: keyed IP hash, pseudo, end | Moderation store | Enforce expulsions | Legitimate interest | 30 days after end (BR-062) |
 | Moderator name, credential id, public key; hashed invitations | Moderator store | Authenticate moderators | Legitimate interest | Until revoked; invitations 24 h |
 | Resume token | Client sessionStorage, hash in hub | Resume session | Contract | 5 minutes max |
 | Account: e-mail, verification date, strikes | Account store | Private messages, sanctions (ADR-0012) | Contract / legitimate interest | Until deletion, or 2 years inactive (BR-079, owner proposal) |
-| Legal retention record: account id, e-mail, dates, pseudonyms used while signed in | Legal vault, sealed (ADR-0014) | Answer judicial requisitions (decree 2021-1362 arts. 2 and 3) | Legal obligation | E-mail and dates 5 years, pseudonyms 1 year after closing (BR-081) |
+| Legal retention record: account id, e-mail, creation and closing dates | Legal vault, a table in hub storage (ADR-0014) | Answer an authority entitled by law (decree 2021-1362 arts. 2 and 3) | Legal obligation | Account id 1 year, e-mail and dates 5 years after closing (BR-081) |
 | Device token | Browser cookie, hash in hub | Stay signed in (ADR-0013) | Contract (authentication cookie, exempt from consent: LIL art. 82, CNIL 2020-091) | 30 days |
 | Sign-in code | E-mail provider, keyed hash in hub | Verify the e-mail | Contract | 10 minutes |
 | Pending statement of reasons: e-mail, text | Account store | Deliver the DSA art. 17 notice | Legal obligation | Until sent, 7 days max |
@@ -57,6 +57,7 @@ with their sources (ADR-0004, ADR-0005, ADR-0010, ADR-0014).
 
 Never persisted: gender, age, city, message content outside report excerpts and away buffers. The vault
 never holds message content (CPCE art. L34-1 VI).
+The retention table above is the summary: BR-081 and ADR-0014 are the source for the vault periods. Account holders are informed at sign-up and on deletion (GDPR art. 13). An erasure request does not cover the vault or the log (GDPR art. 17(3)(b)). An access request (art. 15) is answered by the owner without revealing any requisition.
 No analytics, no ads, no third-party trackers, no cookies other than strictly necessary ones.
 
 ## 3. Threat model (STRIDE, V1)
@@ -67,8 +68,10 @@ No analytics, no ads, no third-party trackers, no cookies other than strictly ne
 | Spoofing | Stealing a session | Resume token random 128 bits, rotated at each resume (BR-014), sessionStorage only. |
 | Tampering | Forged protocol messages | Server validates every message against the protocol schema, domain re-checks rules. |
 | Repudiation | Moderator denies an expel | Moderator name and time recorded (BR-055). |
+| Repudiation | The owner denies or is accused of a disclosure from the vault or the connection log | Every read appends an access entry: date, request reference, legal basis, ids returned (BR-082). |
 | Information disclosure | XSS through messages or smileys | Text only rendering, smiley whitelist (BR-022), strict Content-Security-Policy. |
 | Information disclosure | Reversing banned IPs | HMAC with a server secret, not a plain hash. |
+| Information disclosure | Leak or misuse of the legal vault or the connection and content log | No read path from the domain, moderation tools or AI: only the `LegalVaultStore` write port, owner-only read call (BR-082). Encryption at rest decided in brick 5. Purge at 1 and 5 years (BR-081). |
 | Denial of service | Flood, entry spam | Flood limit (BR-021), entry limit (BR-007), report limit (BR-052), message size (BR-020). |
 | Elevation of privilege | Calling moderator actions as a chatter | Domain authorisation check on every moderation command (BR-054). |
 
@@ -87,5 +90,5 @@ No analytics, no ads, no third-party trackers, no cookies other than strictly ne
 - Professional review of the decree 2021-1362 scope for asv (ADR-0014).
 - Legal notice (mentions légales) with publisher and host.
 - Terms of use: 18+, behaviour rules, moderation, bans.
-- Privacy notice: the inventory above with confirmed retention periods.
+- Privacy notice: the inventory above with confirmed retention periods, including the vault and the connection log (GDPR art. 13).
 - DSA contact points (arts. 11, 12) and report procedure description (art. 16), false-report warning (LCEN art. 6 VII).

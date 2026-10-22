@@ -48,7 +48,7 @@ Sensitivity (privacy 15, reliability 50, simplicity 20, load 15): A 405, B 395.
    if no `pong` arrives within 10 seconds. The hub treats a socket whose last auto-response is older
    than 60 seconds as lost.
 4. **One alarm** is always set to the earliest of: next away deadline, next heartbeat sweep (every
-   60 seconds while sockets exist), next daily run: retention purge (BR-060 to BR-062 and account expiries) and retry of pending
+   60 seconds while sockets exist), next daily run: retention purge (BR-060 to BR-062, legal vault BR-081 and account expiries) and retry of pending
    statements of reasons (BR-076, ADR-0012).
 5. **Worker ↔ hub**: the Worker forwards WebSocket upgrades to the hub and calls hub RPC methods for
    everything else (passkey ceremonies, invitations). Only the hub touches storage.

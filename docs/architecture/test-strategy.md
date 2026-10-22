@@ -26,4 +26,10 @@ TDD is not imposed on this project.
   manually with a small fixed sample.
 - Hibernation rebuild (ADR-0011) gets integration tests in Wrangler's local runtime: state survives a
   forced eviction of in-memory variables.
+- Legal vault planned cases (ADR-0014, BR-081, BR-082), brick 5:
+  - deleting an account writes the vault record in the same transaction (a failed write rolls back the deletion);
+  - `purgeExpired` drops the account id after 1 year and the whole record after 5 years, and the daily alarm calls it;
+  - no domain use case, moderation tool or AI path can read the vault (the port has no read operation);
+  - an owner read through the dedicated call appends an access entry (date, request reference, legal basis, ids returned), same for the connection log;
+  - the record holds only account id, e-mail, creation and closing dates.
 - No test calls the network outside localhost. Passkey ceremonies use a virtual authenticator in Playwright.

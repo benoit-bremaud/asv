@@ -1,8 +1,8 @@
 # Class diagram — entry — identity and session
 
 > **Feature**: entry
-> **Business rules**: BR-001 to BR-015
-> **Related ADRs**: ADR-0005, ADR-0006, ADR-0009, ADR-0011
+> **Business rules**: BR-001 to BR-015, BR-060
+> **Related ADRs**: ADR-0005, ADR-0006, ADR-0009, ADR-0011, ADR-0014
 
 ## Context
 
@@ -61,10 +61,26 @@ classDiagram
     +PrivateMessage[] buffered
   }
   class ConnectionLog {
+    +String connectionId
     +String ip
+    +Number sourcePort
+    +String protocol
     +String pseudo
-    +Date connectedAt
-    +Date disconnectedAt
+    +AccountId accountId
+    +Date startedAt
+    +Date endedAt
+  }
+  class ContentLogLine {
+    +String connectionId
+    +String contentId
+    +ContentOperation operation
+    +Date at
+  }
+  class ContentOperation {
+    <<enumeration>>
+    creation
+    change
+    deletion
   }
   Session "1" --> "1" Member
   Member *-- Pseudo
@@ -72,6 +88,8 @@ classDiagram
   Session --> Gender
   Session --> SessionStatus
   Session ..> AwayRecord : saved as when away
+  ContentLogLine --> ConnectionLog : connectionId
+  ContentLogLine --> ContentOperation
 ```
 
 ## Notes
@@ -81,5 +99,9 @@ classDiagram
 - `accountId` is empty until the session is linked to an account (UC17, ADR-0012).
 - `AwayRecord` holds no gender, age or city (ADR-0011). `buffered` is capped at 50 messages (BR-013).
 - The resume token itself is only sent to the client. The server keeps its hash and rotates it at each resume.
-- `ConnectionLog` is persisted with plain values, no link to the ephemeral session.
+- `ConnectionLog` is persisted with plain values, no link to the ephemeral session: one line per session, with a
+  random connection id (BR-060). `sourcePort` and `accountId` are optional (empty without a port or an account).
+- `ContentLogLine` is written only while a Prime Minister's injunction is in force (CPCE L34-1 III, decree
+  2021-1362 art. 6): one line per creation, change or deletion, never the content. Both logs are kept 1 year
+  and read only by the owner (BR-082).
 - Pseudo colour is derived from `Session.gender` in the web client.

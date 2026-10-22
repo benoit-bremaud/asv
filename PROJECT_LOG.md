@@ -69,15 +69,20 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
 
 ## 2026-10-22 — Brick 1 bis: legal check on official texts
 
-- Local folder renamed `asv` → `asvchat` (owner request); the GitHub repository keeps the name `asv`.
+- Local folder briefly renamed `asvchat`, then back to `asv` (owner): the folder keeps the repository name.
 - Official texts read in their versions in force on 2026-10-22: LCEN arts. 1-1 and 6 (renumbered by law
   2026-813), decree 2021-1362, CPCE art. L34-1, injunction decree 2026-920, law 2026-813 and Conseil
   constitutionnel 2026-911 DC, DSA arts. 11 to 18, GDPR arts. 8, 22 and 35, Loi Informatique et Libertés
   arts. 45 and 82, CNIL deliberations 2018-327 and 2020-091 (Légifrance copies, the CNIL site was down).
-- Main finding: as a hosting provider, asv must keep a closed account's e-mail 5 years and its pseudonyms
-  1 year (decree 2021-1362 arts. 2 and 3). ADR-0012 deleted them. Owner chose a sealed legal vault, read
-  only on judicial requisition (ADR-0014, 355/500 vs no e-mail 335 and status quo 325). New BR-081, BR-082;
-  BR-060 now lists the connection and content log fields.
+- Main finding: as a hosting provider, asv must keep a closed account's e-mail 5 years and its identifier
+  1 year (decree 2021-1362 arts. 2 and 3). ADR-0012 deleted them. Owner first chose a legal vault holding
+  pseudonyms too (355/500), then, after the review-local gate, option D: e-mail and dates 5 years, account
+  id 1 year, session pseudonyms only in the connection log (ADR-0014, 385/500). Owner-only read for an
+  authority entitled by law, each read logged. New BR-081, BR-082; BR-060 now lists the connection lines
+  and the content lines written under injunction.
+- review-local gate: 6 Must and 13 Should fixed across ADRs 0004/0005/0007/0010/0011/0012, diagrams,
+  glossary, test strategy and requirements. SonarQube waived by the owner (docs only, project created in
+  brick 2).
 - Confirmed without change: under-15 ban struck down (ADR-0004 stands), consent age 15, authentication
   cookie exempt from consent (ADR-0013), AI triage with human decision meets GDPR art. 22 (ADR-0010).
 - New duties placed on the roadmap: data protection impact assessment and authority reporting channel in
