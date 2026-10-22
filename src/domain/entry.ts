@@ -26,7 +26,7 @@ export interface Profile {
 }
 
 /** Closed sessions are removed, not a status (`entry/04`). */
-export type SessionStatus = "connected" | "away";
+export type SessionStatus = Session["status"];
 
 /** A private message kept for an away session (BR-013). */
 export interface BufferedMessage {
@@ -36,21 +36,31 @@ export interface BufferedMessage {
   readonly sentAt: Date;
 }
 
-/** A chatter's session; `ip` and `openedAt` feed the hub's connection line (BR-060). */
-export interface Session {
+/** Fields a session keeps in both states. */
+interface SessionBase {
   readonly id: string;
   readonly pseudo: string;
-  readonly status: SessionStatus;
-  readonly profile: Profile;
-  readonly ip: string;
-  readonly openedAt: Date;
   /** Set when linked to an account (ADR-0012). */
   readonly accountId?: string;
   readonly resumeTokenHash: string;
-  /** Set only while away (BR-011). */
-  readonly awayUntil?: Date;
+}
+
+/** A live session; `ip` and `openedAt` feed the hub's connection line (BR-060). */
+export interface ConnectedSession extends SessionBase {
+  readonly status: "connected";
+  readonly profile: Profile;
+  readonly ip: string;
+  readonly openedAt: Date;
+}
+
+/** Exactly the away record of ADR-0011: no profile, IP or connection data, so it rebuilds from storage. */
+export interface AwaySession extends SessionBase {
+  readonly status: "away";
+  readonly awayUntil: Date;
   readonly buffered: readonly BufferedMessage[];
 }
+
+export type Session = ConnectedSession | AwaySession;
 
 /** The entry part of the hub state (`platform/04b`). `pseudoIndex` is keyed by folded pseudo. */
 export interface EntryState {
@@ -90,6 +100,8 @@ export interface EnterCommand {
 export interface ResumeCommand {
   /** Hash of the token the client sent, computed by the hub like `Random.token`. */
   readonly resumeTokenHash: string;
+  /** IP of the new socket (BR-060). */
+  readonly ip: string;
   readonly gender?: Gender;
   readonly age: number;
   readonly city?: string;
@@ -202,7 +214,7 @@ export const enter = (state: EntryState, command: EnterCommand, now: Date, rando
   if (refusal) return result(counted, { type: "entryRefused", reason: refusal });
 
   const token = random.token();
-  const session: Session = {
+  const session: ConnectedSession = {
     id: random.id(),
     pseudo,
     status: "connected",
@@ -211,7 +223,6 @@ export const enter = (state: EntryState, command: EnterCommand, now: Date, rando
     openedAt: now,
     accountId: command.accountId,
     resumeTokenHash: token.hash,
-    buffered: [],
   };
   const next = withSession({ ...counted, pseudoIndex: new Map(counted.pseudoIndex).set(key, session.id) }, session);
   return result(next, {
@@ -227,7 +238,16 @@ export const socketLost = (state: EntryState, sessionId: string, now: Date): Res
   const session = state.sessions.get(sessionId);
   if (session?.status !== "connected") return result(state);
   const awayUntil = new Date(now.getTime() + ENTRY_LIMITS.awayMs);
-  return result(withSession(state, { ...session, status: "away", awayUntil }), {
+  const away: AwaySession = {
+    id: session.id,
+    pseudo: session.pseudo,
+    accountId: session.accountId,
+    resumeTokenHash: session.resumeTokenHash,
+    status: "away",
+    awayUntil,
+    buffered: [],
+  };
+  return result(withSession(state, away), {
     type: "wentAway",
     sessionId,
     pseudo: session.pseudo,
@@ -238,22 +258,24 @@ export const socketLost = (state: EntryState, sessionId: string, now: Date): Res
 /** BR-014: the current token resumes an away session once, then a new one is issued. */
 export const resume = (state: EntryState, command: ResumeCommand, now: Date, random: Random): Result => {
   const session = [...state.sessions.values()].find(
-    (candidate) => candidate.status === "away" && candidate.resumeTokenHash === command.resumeTokenHash,
+    (candidate): candidate is AwaySession =>
+      candidate.status === "away" && candidate.resumeTokenHash === command.resumeTokenHash,
   );
-  if (!session?.awayUntil || session.awayUntil.getTime() <= now.getTime()) {
+  if (!session || session.awayUntil.getTime() <= now.getTime()) {
     return result(state, { type: "resumeRefused" });
   }
   if (!isAdultAge(command.age) || isCityTooLong(command.city)) return result(state, { type: "invalid" });
   const token = random.token();
   const accountUnlinked = session.accountId !== undefined && !command.accountStillExists;
-  const resumed: Session = {
-    ...session,
+  const resumed: ConnectedSession = {
+    id: session.id,
+    pseudo: session.pseudo,
     status: "connected",
     profile: toProfile(command),
+    ip: command.ip,
+    openedAt: now,
     accountId: accountUnlinked ? undefined : session.accountId,
     resumeTokenHash: token.hash,
-    awayUntil: undefined,
-    buffered: [],
   };
   return result(withSession(state, resumed), {
     type: "resumed",
@@ -274,7 +296,7 @@ export const leave = (state: EntryState, sessionId: string): Result => {
 /** BR-015: closes every away session whose deadline has passed. Called from the hub alarm. */
 export const expireAway = (state: EntryState, now: Date): Result => {
   const expired = [...state.sessions.values()].filter(
-    (session) => session.status === "away" && session.awayUntil && session.awayUntil.getTime() <= now.getTime(),
+    (session): session is AwaySession => session.status === "away" && session.awayUntil.getTime() <= now.getTime(),
   );
   return expired.reduce<Result>(
     (acc, session) => ({

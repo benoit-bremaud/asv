@@ -42,6 +42,7 @@ const form = (overrides: Partial<EnterCommand> = {}): EnterCommand => ({
 
 const resumeWith = (resumeTokenHash: string, overrides: Partial<ResumeCommand> = {}): ResumeCommand => ({
   resumeTokenHash,
+  ip: "198.51.100.7",
   age: 31,
   accountStillExists: true,
   ...overrides,
@@ -140,7 +141,7 @@ describe("BR-005 gender", () => {
   it.each(["woman", "man", "unspecified"] as const)("keeps the declared gender %s", (gender) => {
     const { state, sessionId } = entered({ gender });
 
-    expect(state.sessions.get(sessionId)?.profile.gender).toBe(gender);
+    expect(state.sessions.get(sessionId)).toMatchObject({ profile: { gender } });
   });
 });
 
@@ -251,7 +252,15 @@ describe("BR-011 / BR-012 socket lost", () => {
     expect(result.effects).toEqual([
       { type: "wentAway", sessionId, pseudo: "nath_lune", awayUntil: at(ENTRY_LIMITS.awayMs) },
     ]);
-    expect(result.state.sessions.get(sessionId)?.status).toBe("away");
+    expect(result.state.sessions.get(sessionId)).toEqual({
+      id: sessionId,
+      pseudo: "nath_lune",
+      accountId: undefined,
+      resumeTokenHash: "h(t1)",
+      status: "away",
+      awayUntil: at(ENTRY_LIMITS.awayMs),
+      buffered: [],
+    });
     expect(result.state.pseudoIndex.has("nath_lune")).toBe(true);
   });
 
@@ -268,7 +277,8 @@ describe("BR-013 private buffer", () => {
     const { state, sessionId } = awaySession();
     let current = state;
     for (let i = 1; i <= 52; i += 1) current = bufferPrivate(current, sessionId, message(`m${i}`)).state;
-    const buffered = current.sessions.get(sessionId)?.buffered ?? [];
+    const session = current.sessions.get(sessionId);
+    const buffered = session?.status === "away" ? session.buffered : [];
 
     expect(buffered).toHaveLength(ENTRY_LIMITS.maxBuffered);
     expect(buffered[0]?.text).toBe("m3");
@@ -292,9 +302,10 @@ describe("BR-014 resume", () => {
     expect(result.effects).toEqual([
       { type: "resumed", sessionId: away.sessionId, resumeToken: "new", buffered: [message("hello")], accountUnlinked: false },
     ]);
-    expect(session).toMatchObject({ status: "connected", resumeTokenHash: "h(new)", accountId: "acc1", buffered: [] });
-    expect(session?.profile).toEqual({ gender: "unspecified", age: 31, city: "Paris" });
-    expect(session?.awayUntil).toBeUndefined();
+    expect(session).toMatchObject({ status: "connected", resumeTokenHash: "h(new)", accountId: "acc1" });
+    expect(session).toMatchObject({ profile: { gender: "unspecified", age: 31, city: "Paris" } });
+    expect(session).toMatchObject({ ip: "198.51.100.7", openedAt: at(60_000) });
+    expect(session).not.toHaveProperty("awayUntil");
   });
 
   it("refuses the previous token after a resume", () => {

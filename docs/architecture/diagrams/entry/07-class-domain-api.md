@@ -52,6 +52,7 @@ classDiagram
   }
   class ResumeCommand {
     +String resumeTokenHash
+    +String ip
     +Gender gender
     +Number age
     +String city
@@ -118,6 +119,10 @@ classDiagram
 - **BR-011 / BR-015**: `socketLost` marks the session `away` with `awayUntil = now + 5 min` and emits
   `wentAway`. `expireAway(state, now)` closes every away session whose deadline is `≤ now`, frees the pseudo
   and emits `closed` for each (the hub calls it from the alarm).
+- **Session variants**: a `connected` session holds the profile, `ip` and `openedAt`; an `away` session holds
+  only the ADR-0011 away record (id, pseudo, account id, token hash, `awayUntil`, buffer), so the hub can
+  rebuild it from storage after hibernation. `socketLost` drops the profile and IP; `resume` takes the new
+  socket's IP and opens at `now`.
 - **BR-012**: an away session keeps its pseudo in `pseudoIndex` and its data; rooms and windows are added by
   bricks 4 and 6.
 - **BR-013**: `bufferPrivate` appends to an away session's buffer, keeping the newest 50.
