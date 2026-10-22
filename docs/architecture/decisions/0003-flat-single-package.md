@@ -25,7 +25,7 @@ Sensitivity (KISS 25, boundary 25, build 20, scalability 30): B 405, A 395.
 ## Decision
 
 A single package with folders `src/domain`, `src/server`, `src/transports/node`,
-`src/transports/cloudflare`, `src/web`, and `src/shared/protocol` (proposed, confirmed in brick 2)
+`src/transports/cloudflare`, `src/web`, and `src/shared/protocol` (confirmed in brick 2, ADR-0015)
 for message types shared by web and server. The boundary is enforced by an ESLint import rule.
 
 ## Consequences

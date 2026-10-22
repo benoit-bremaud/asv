@@ -16,7 +16,7 @@ flowchart LR
   subgraph Web ["src/web"]
     Conn["Connection manager"]
   end
-  Shared["src/shared/protocol, proposed"]
+  Shared["src/shared/protocol"]
   subgraph Server ["src/server — Hono app"]
     Routes["HTTP routes, WebSocket upgrade, passkey ceremonies"]
   end
@@ -58,8 +58,12 @@ flowchart LR
 ## Notes
 
 - Every arrow into `src/domain` is inbound. The domain imports nothing from other folders (lint rule).
+- Lint rule (ESLint `no-restricted-imports`): files in `src/domain` import only relative modules of
+  `src/domain`: no package, no Node built-in, no path into `src/server`, `src/web`, `src/transports`
+  or `src/shared`. Files in `src/server` may not import `src/transports`. Files in
+  `src/shared/protocol` may import only `zod/mini`.
 - `src/server` never imports a transport. Each transport entry point builds the Hono app and plugs in its hub.
 - Time and randomness are passed to domain functions as arguments (`now`, `random`), not as ports.
 - The SQLite stores include the legal vault table behind `LegalVaultStore` (record, purgeExpired), added in brick 5 (ADR-0014).
 - Passkey verification (SimpleWebAuthn) lives in `src/server` and reaches stores only through the hub (ADR-0008).
-- `src/shared/protocol` holds only message types and their validation schema. Confirmed in brick 2.
+- `src/shared/protocol` holds only message types and their Zod Mini validation schemas (ADR-0015).

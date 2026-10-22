@@ -36,6 +36,7 @@ Links requirements to use cases and every use case to its realisations. All path
 | platform/04b-class-hub-state | Hub aggregate and its rebuild after hibernation (ADR-0011) |
 | platform/05-state-hub | Hibernation, alarm, eviction, link to UC13 |
 | platform/07-deployment | Environments, secrets, NF-003 |
+| platform/08-ci-pipeline | Checks before merge, local SonarQube gate (NF-009, NF-010) |
 | web-ui/03-component | Front-end modules (NF-004 to NF-006, NF-011, NF-012) |
 | web-ui/05-state-navigation | Screens for UC1, UC2, UC3, UC6, UC7, UC10, UC12, UC13, UC16 |
 
