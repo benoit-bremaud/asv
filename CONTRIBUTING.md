@@ -24,7 +24,8 @@ Every issue and pull request carries one label of each family:
 ## Pull requests
 
 - Fill in the template, link the issue with `Closes #N`, attach the PR to GitHub Project #69.
-- Copilot code review is requested automatically by the `main` ruleset.
+- The `main` ruleset requests Copilot code review automatically when the owner's account has
+  Copilot code review available (inactive since 2026-09-29).
 - Every review comment gets an inline reply before merge. Squash merge only.
 
 ## Gates
