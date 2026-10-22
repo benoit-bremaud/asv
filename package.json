@@ -15,7 +15,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "verify": "pnpm lint && pnpm typecheck && pnpm test:coverage && pnpm build",
-    "sonar": "pnpm test:coverage && sonar-scanner && scripts/sonar-status.sh"
+    "sonar": "test -z \"$(git status --porcelain)\" && pnpm test:coverage && { sonar-scanner; scripts/sonar-status.sh; }"
   },
   "dependencies": {
     "hono": "^4.13.13",

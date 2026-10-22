@@ -1,37 +1,45 @@
-# Local review — asv (branch diff main...chore/5-repo-compliance)
+# Local review — asv (branch diff main...chore/11-tooling)
 
-- Date: 2026-10-22
-- Commit: a51cd61
-- Scope: branch diff `main...HEAD` (CI config, governance docs, PROJECT_LOG)
-- Checks run: design · docs · tests · security · correctness (one combined read-only pass, config and docs only)
-- Verdict: ship as-is · Must 0 · Should 0 open · Nice 0 open
+- Date: 2026-10-23
+- Commit: reviewed d64a9ed, fixes in the following commit
+- Scope: branch diff `main...HEAD` (brick 2 tooling: study, scaffold, protocol schemas, CI)
+- Checks run: design · docs · tests · security · correctness
+- Verdict: ship after fixes · Must 3 (fixed) · Should 9 (8 fixed, 1 disagree) · Nice 6 (2 fixed, 1 issue, 3 accepted)
 
-## Pre-merge gate (head SHA a51cd61)
+## Pre-merge gate (head SHA of the fix commit)
 | Step | Result |
 |---|---|
-| 1 Tests | n/a: no application code; `actionlint` clean on all workflows |
-| 2 Coverage | n/a: no code |
-| 3 SonarQube | ⚠️ not run: no asv project yet; owner waiver for docs/config PRs until brick 2 |
-| 4 Secrets | ✅ gitleaks clean (full history and tree) · no tracked .env · diff read: nothing sensitive |
-| 5 QA pass | n/a: no runnable product; GitHub settings verified through the API |
-- Gate: **GREEN — merge authorised** (SonarQube waiver)
+| 1 Tests | ✅ 17 Vitest tests (node + jsdom projects), lint fixtures included |
+| 2 Coverage | tests 100 % stmts / 100 % branches / 100 % funcs / 100 % lines (floor 80) · docs 100 % of `src` exports after fixes (was ~13 %) |
+| 3 SonarQube | ✅ PASSED on localhost:9000 (project `asv`), re-run with `pnpm sonar` after push to post the status |
+| 4 Secrets | ✅ gitleaks clean (`--all`, 7 commits) · no tracked .env · diff read: nothing sensitive |
+| 5 QA pass | ✅ smoke: `vite preview` renders the shell "asv", console clean · screenshot `qa/2026-10-23-brick2-smoke.jpg` |
+- Gate: **GREEN** locally; GitHub checks run on push.
 
 ## 🔴 Must Have
-- `SECURITY.md:10` `[security]` · advisory link needs private vulnerability reporting · fixed: enabled on the repo
+- `eslint.config.js:9` `[security|design]` · bare Node built-ins (`fs`, `path`) and `process`/`Buffer` passed the domain rule · fixed: `builtinModules` patterns + `no-restricted-globals`, fixture `domain/bare-builtin.ts`.
+- `scripts/sonar-status.sh` `[correctness|design]` · could post a stale gate on a new SHA; `qualitygate.wait` made the failure branch dead · fixed: clean tree checked first, task status and analysis revision must equal HEAD, status script runs even when the gate fails.
+- `src/shared/protocol/messages.ts` `[docs]` · doc coverage ~13 % (floor 90) · fixed: TSDoc on every export.
 
 ## 🟡 Should Have
-- `.github/workflows/scorecard.yml` `[security]` · job permissions dropped `contents`/`actions` read · fixed
-- `.github/workflows/dependency-review.yml` `[correctness]` · needless checkout · removed
-- `.github/dependabot.yml` `[correctness]` · labels must exist · verified
-- `PROJECT_LOG.md` `[docs]` · dependency review sees only workflow actions · noted
-- `CONTRIBUTING.md` `[docs]` · ruleset and Copilot claims · true once the post-merge ruleset is created
+- `src/shared/protocol/messages.ts` `[design|security]` · `errorCode` unused · fixed: `error.code` uses it, test added.
+- `src/shared/protocol/messages.ts` `[design]` · member fields repeated three times · fixed with `z.extend` / `z.pick`.
+- `src/domain/index.ts:2` `[design]` · comment allowed imports from `src/shared/protocol`, the study does not · fixed: comment aligned, `**/shared/**` forbidden in the domain.
+- `eslint.config.js:50` `[design|tests]` · protocol rule untested and `./../` slipped through · fixed: regex `\./[^.]`, fixture `protocol/forbidden.ts`.
+- `test/dependency-rule.test.ts` `[tests]` · loose and brittle assertions, full-`src` lint duplicated CI · fixed: per-rule `toEqual` with `stringContaining`, duplicate test dropped.
+- `scripts/sonar-status.sh` `[security]` · token in curl argv · fixed: curl config on stdin.
+- `.github/workflows/*.yml` `[security]` · checkout token persisted · fixed: `persist-credentials: false`.
+- `src/shared/protocol/messages.test.ts` `[tests]` · boolean-only refusal asserts · fixed on the gender case (path asserted).
 
 ## 🔵 Nice to Have
-- `SECURITY.md`, `CONTRIBUTING.md`, PR template `[docs]` · release wording, brick jargon, `review-local` explained · fixed
-- `.github/dependabot.yml` `[design]` · group action bumps · added
+- `src/shared/protocol/messages.ts` `[security]` · strings have no transport-level cap · follow-up issue for brick 7 (WebSocket frame limit + field caps).
+- `tsconfig.json` `[design]` · `eslint.config.js` included without `allowJs` · fixed.
+- `package.json` `[design]` · `verify` runs `tsc` twice · accepted (milliseconds today).
+- `scripts/sonar-status.sh` `[security]` · host hard-coded · accepted (ADR-0016: local only, YAGNI).
+- `src/server/app.test.ts`, `src/web/App.test.tsx` `[tests]` · smoke-level tests · accepted, replaced in brick 7.
 
 ## ⚪ Disagree / Intentional
-_None._
+- `.github/workflows/codeql.yml` `[security]` · "SARIF upload fails on fork PRs" · the CodeQL action handles fork pull requests, the official starter workflow has no fork guard; revisit only if a fork PR goes red.
 
 ## Per-dimension summary
-- Design: proportionate, no new tooling beyond the baseline · Docs: accurate after fixes · Tests: n/a · Security: least privilege, SHA-pinned actions · Correctness: actionlint clean
+- Design: matches the study, no over-engineering · Docs: full after fixes · Tests: healthy pyramid, lint rule now proven per folder · Security: rule gaps and token exposure closed · Correctness: SonarQube status bound to HEAD.

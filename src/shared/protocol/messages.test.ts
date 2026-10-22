@@ -27,14 +27,14 @@ describe("clientMessage", () => {
     expect(clientMessage.safeParse(leave(1.5)).success).toBe(false);
   });
 
-  it("refuses a gender outside BR-005", () => {
+  it("refuses a gender outside BR-005, on the gender field", () => {
     const enter = {
       type: "enter",
       seq: 1,
       payload: { pseudo: "Lola", gender: "other", age: 25, adultConfirmed: true, termsAccepted: true },
     };
 
-    expect(clientMessage.safeParse(enter).success).toBe(false);
+    expect(clientMessage.safeParse(enter).error?.issues[0]?.path).toEqual(["payload", "gender"]);
   });
 
   it("refuses a report with more than 20 context lines", () => {
@@ -84,8 +84,12 @@ describe("serverMessage", () => {
   it("links an error to the command that caused it", () => {
     const error = { type: "error", seq: 8, payload: { code: "offline", message: "gone", replyTo: 3 } };
 
-    const parsed = serverMessage.parse(error);
+    expect(serverMessage.parse(error)).toMatchObject({ type: "error", payload: { replyTo: 3 } });
+  });
 
-    expect(parsed.type === "error" && parsed.payload.replyTo).toBe(3);
+  it("refuses an error code outside the protocol", () => {
+    const error = { type: "error", seq: 8, payload: { code: "teapot", message: "?" } };
+
+    expect(serverMessage.safeParse(error).success).toBe(false);
   });
 });

@@ -16,10 +16,15 @@ const message = <T extends string, P extends z.ZodMiniType>(type: T, payload: P)
 
 const empty = z.object({});
 
+/** BR-005. Used for display only, never persisted. */
 export const gender = z.enum(["woman", "man", "unspecified"]);
+/** Official rooms are themed or regional, user rooms are created by chatters (`rooms` study). */
 export const roomKind = z.enum(["themed", "regional", "user"]);
+/** BR-050. */
 export const reportReason = z.enum(["harassment", "seemsMinor", "spam", "illegalContent", "other"]);
+/** What a report points at (`moderation/04-class`). */
 export const reportTarget = z.enum(["chatter", "message", "room"]);
+/** BR-057. The AI triage never sets an outcome (ADR-0010). */
 export const reportOutcome = z.enum([
   "noAction",
   "warned",
@@ -28,11 +33,16 @@ export const reportOutcome = z.enum([
   "severeDeleted",
   "roomRemoved",
 ]);
+/** Urgency suggested by the AI triage, for sorting only (ADR-0010). */
 export const urgency = z.enum(["unknown", "low", "medium", "high"]);
+/** Expulsion lengths a moderator may pick. */
 export const expelDuration = z.enum(["1h", "24h", "7d"]);
+/** Why an entry was refused; `banned` comes with `bannedUntil`. */
 export const entryRefusal = z.enum(["rate", "banned", "pseudoInvalid", "pseudoTaken", "age"]);
+/** Codes of the `error` message; `offline` means the private message target is gone. */
 export const errorCode = z.enum(["offline", "accountRequired", "forbidden", "invalid"]);
 
+/** Self-declared profile; age bounds (BR-004) are checked by the domain. */
 const profile = z.object({
   gender: z.optional(gender),
   age: z.int(),
@@ -43,14 +53,12 @@ const roomTarget = z.object({ roomId: id });
 const sessionTarget = z.object({ targetSessionId: id });
 const suspensionTarget = z.object({ accountId: id, reportId: id });
 
+/** Every message a client may send, discriminated on `type`. */
 export const clientMessage = z.discriminatedUnion("type", [
   message(
     "enter",
-    z.object({
+    z.extend(profile, {
       pseudo: z.string(),
-      gender: z.optional(gender),
-      age: z.int(),
-      city: z.optional(z.string()),
       adultConfirmed: z.boolean(),
       termsAccepted: z.boolean(),
       moderatorGrant: z.optional(z.string()),
@@ -73,6 +81,7 @@ export const clientMessage = z.discriminatedUnion("type", [
       targetRoomId: z.optional(id),
       reason: reportReason,
       excerpt: z.string(),
+      // BR-051: at most 20 context lines the reporter saw.
       context: z.array(z.string()).check(z.maxLength(20)),
     }),
   ),
@@ -107,6 +116,7 @@ const member = z.object({
   city: z.optional(z.string()),
   away: z.boolean(),
 });
+const otherChatter = z.pick(member, { sessionId: true, pseudo: true, gender: true, away: true });
 const roomJoined = z.object({ roomId: id, members: z.array(member) });
 const presence = z.object({ roomId: z.optional(id), sessionId: id, pseudo: z.string() });
 const roomMessage = z.object({
@@ -119,7 +129,7 @@ const roomMessage = z.object({
 });
 const privateWindow = z.object({
   conversationId: id,
-  other: z.object({ sessionId: id, pseudo: z.string(), gender, away: z.boolean() }),
+  other: otherChatter,
 });
 const privateMessage = z.object({
   conversationId: id,
@@ -127,8 +137,10 @@ const privateMessage = z.object({
   text: z.string(),
   sentAt: isoDate,
 });
-const notice = z.object({ code: z.string(), message: z.string(), replyTo: z.optional(z.int()) });
+/** `replyTo` is the `seq` of the client message that caused the notice. */
+const replyTo = z.optional(z.int().check(z.nonnegative()));
 
+/** Every message the server may send, discriminated on `type`. */
 export const serverMessage = z.discriminatedUnion("type", [
   message(
     "entered",
@@ -166,17 +178,7 @@ export const serverMessage = z.discriminatedUnion("type", [
   message(
     "searchResults",
     z.object({
-      results: z.array(
-        z.object({
-          sessionId: id,
-          pseudo: z.string(),
-          gender,
-          age: z.int(),
-          city: z.optional(z.string()),
-          rooms: z.array(id),
-          away: z.boolean(),
-        }),
-      ),
+      results: z.array(z.extend(member, { rooms: z.array(id) })),
     }),
   ),
   message("reportSent", z.object({ reportId: id })),
@@ -194,6 +196,7 @@ export const serverMessage = z.discriminatedUnion("type", [
           context: z.array(z.string()),
           authorPseudo: z.string(),
           createdAt: isoDate,
+          // Set once the AI triage ran; a human decides (ADR-0010).
           triage: z.optional(z.object({ category: z.string(), urgency, summary: z.string() })),
         }),
       ),
@@ -207,9 +210,11 @@ export const serverMessage = z.discriminatedUnion("type", [
   message("codeSent", empty),
   message("accountLinked", z.object({ accountId: id, deviceClaim: z.optional(z.string()) })),
   message("accountUnlinked", empty),
-  message("warning", notice),
-  message("error", notice),
+  message("warning", z.object({ code: z.string(), message: z.string(), replyTo })),
+  message("error", z.object({ code: errorCode, message: z.string(), replyTo })),
 ]);
 
+/** Inferred from {@link clientMessage}. */
 export type ClientMessage = z.infer<typeof clientMessage>;
+/** Inferred from {@link serverMessage}. */
 export type ServerMessage = z.infer<typeof serverMessage>;

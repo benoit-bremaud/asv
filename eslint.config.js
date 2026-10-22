@@ -1,3 +1,4 @@
+import { builtinModules } from "node:module";
 import js from "@eslint/js";
 import reactHooks from "eslint-plugin-react-hooks";
 import globals from "globals";
@@ -5,10 +6,10 @@ import tseslint from "typescript-eslint";
 
 /** Packages and folders the pure domain must never import (ADR-0002, `platform/03-component`). */
 const domainForbidden = [
-  { group: ["node:*"], message: "src/domain is pure: no Node import." },
+  { group: ["node:*", ...builtinModules, ...builtinModules.map((name) => `${name}/*`)], message: "src/domain is pure: no Node import." },
   { group: ["ws", "hono", "hono/*", "@hono/*", "react", "react-dom", "react/*", "react-dom/*"], message: "src/domain is pure: no runtime library." },
   { group: ["cloudflare:*", "@cloudflare/*"], message: "src/domain is pure: no Cloudflare import." },
-  { group: ["**/server", "**/server/**", "**/web", "**/web/**", "**/transports", "**/transports/**"], message: "src/domain imports nothing from other folders." },
+  { group: ["**/server", "**/server/**", "**/web", "**/web/**", "**/transports", "**/transports/**", "**/shared", "**/shared/**"], message: "src/domain imports nothing from other folders." },
 ];
 
 const config = tseslint.config(
@@ -31,7 +32,10 @@ const config = tseslint.config(
   },
   {
     files: ["src/domain/**/*.ts", "test/fixtures/lint/domain/**/*.ts"],
-    rules: { "no-restricted-imports": ["error", { patterns: domainForbidden }] },
+    rules: {
+      "no-restricted-imports": ["error", { patterns: domainForbidden }],
+      "no-restricted-globals": ["error", "process", "Buffer"],
+    },
   },
   {
     files: ["src/server/**/*.ts", "test/fixtures/lint/server/**/*.ts"],
@@ -40,10 +44,10 @@ const config = tseslint.config(
     },
   },
   {
-    files: ["src/shared/protocol/**/*.ts"],
+    files: ["src/shared/protocol/**/*.ts", "test/fixtures/lint/protocol/**/*.ts"],
     ignores: ["**/*.test.ts"],
     rules: {
-      "no-restricted-imports": ["error", { patterns: [{ regex: "^(?!zod/mini$|\\./).*", message: "src/shared/protocol imports only zod/mini (ADR-0015)." }] }],
+      "no-restricted-imports": ["error", { patterns: [{ regex: "^(?!zod/mini$|\\./[^.]).*", message: "src/shared/protocol imports only zod/mini (ADR-0015)." }] }],
     },
   },
 );
