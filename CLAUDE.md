@@ -13,7 +13,8 @@ Retro web chat inspired by Caramail. Product and technical decisions live in the
 
 ## Status
 
-Conception phase. No application code yet.
+Brick 2 tooling in place (Vite, Hono, Vitest, ESLint dependency rule, protocol schemas, CodeQL,
+local SonarQube gate). No domain code yet. Checks: `pnpm verify`, then `pnpm sonar` after push.
 
 ## Project invariants
 

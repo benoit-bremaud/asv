@@ -10,3 +10,14 @@ updates:
         patterns: ["*"]
     commit-message:
       prefix: chore(deps)
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    labels: [type:chore, area:ci, prio:P3]
+    groups:
+      npm:
+        patterns: ["*"]
+        update-types: [minor, patch]
+    commit-message:
+      prefix: chore(deps)

@@ -33,9 +33,17 @@ Every issue and pull request carries one label of each family:
 **Pre-push** (every branch, no trivial-diff exception): run the local review gate (the maintainer's `review-local` agent skill: design, docs, tests, security and correctness review plus a secrets scan)
 and resolve every Must Have finding before pushing.
 
-**Pre-merge** (on the merged SHA): test suites, coverage ≥ 80 % and documentation coverage ≥ 90 %
-once code exists, SonarQube quality gate (once SonarQube analysis is set up), secrets scan and a manual diff read, QA pass
-on the running product with screenshots. All green, or no merge.
+**Pre-merge** (on the merged SHA): test suites, coverage ≥ 80 % and documentation coverage ≥ 90 %,
+SonarQube quality gate, secrets scan and a manual diff read, QA pass on the running product with
+screenshots. All green, or no merge.
+
+## Local checks
+
+- `pnpm verify`: lint (with the dependency rule), type check, tests with coverage, build. The same
+  runs on GitHub as the `verify` check.
+- `pnpm sonar`, after pushing the branch: scans with the local SonarQube and posts the quality gate
+  as the commit status `sonarqube`, required by the `main` ruleset (ADR-0016). Needs the global
+  analysis token in `SONAR_TOKEN` and a SonarQube user token in `~/.config/sonarqube/token`.
 
 ## Logbook
 
