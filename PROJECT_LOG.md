@@ -66,3 +66,23 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   secrets clean on full history, QA screenshots in `docs/architecture/qa/`, SonarQube not run (no asv
   project or token yet).
 - SonarQube step: owner exception for this documentation-only PR (390/500); asv onboarding on SonarQube moved to brick 2.
+
+## 2026-10-22 — Brick 1 bis: legal check on official texts
+
+- Local folder renamed `asv` → `asvchat` (owner request); the GitHub repository keeps the name `asv`.
+- Official texts read in their versions in force on 2026-10-22: LCEN arts. 1-1 and 6 (renumbered by law
+  2026-813), decree 2021-1362, CPCE art. L34-1, injunction decree 2026-920, law 2026-813 and Conseil
+  constitutionnel 2026-911 DC, DSA arts. 11 to 18, GDPR arts. 8, 22 and 35, Loi Informatique et Libertés
+  arts. 45 and 82, CNIL deliberations 2018-327 and 2020-091 (Légifrance copies, the CNIL site was down).
+- Main finding: as a hosting provider, asv must keep a closed account's e-mail 5 years and its pseudonyms
+  1 year (decree 2021-1362 arts. 2 and 3). ADR-0012 deleted them. Owner chose a sealed legal vault, read
+  only on judicial requisition (ADR-0014, 355/500 vs no e-mail 335 and status quo 325). New BR-081, BR-082;
+  BR-060 now lists the connection and content log fields.
+- Confirmed without change: under-15 ban struck down (ADR-0004 stands), consent age 15, authentication
+  cookie exempt from consent (ADR-0013), AI triage with human decision meets GDPR art. 22 (ADR-0010).
+- New duties placed on the roadmap: data protection impact assessment and authority reporting channel in
+  brick 8; legal notice choice (LCEN art. 1-1 II), false-report warning and professional review of the
+  decree scope in brick 10.
+- No binding text sets the 2-year inactivity, the 6-month severe block or report and ban retentions: they
+  stay owner decisions under GDPR storage limitation.
+- `.scannerwork/` removed from the index and ignored.

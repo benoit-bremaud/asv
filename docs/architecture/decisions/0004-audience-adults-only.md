@@ -80,3 +80,9 @@ verification, strict separation from adults (no private messages across), AI sca
 - Terms of use and a report mechanism are mandatory before public launch (DSA).
 - **Legal check pending** on every point above before public launch.
 - Revisit if a French age-verification obligation for chat services comes into force.
+
+## Legal check (brick 1 bis, 2026-10-22)
+
+The facts above were read in the official texts: the under-15 ban (law 2026-813 art. 1) was struck down by
+Conseil constitutionnel decision 2026-911 DC, and the French consent age is 15 (Loi Informatique et
+Libertés art. 45). The decision stands. See `security-and-rgpd.md` §1.

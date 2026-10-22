@@ -38,4 +38,5 @@ flowchart LR
 - Moderator credentials hold no secret: the private key never leaves the moderator's device.
 - Message content can still identify people even without pseudos: the AI provider needs a processing
   agreement and EU processing is preferred (ADR-0010).
-- Retention values are proposals until the brick 1 bis legal check (BR-060 to BR-062).
+- Retention values: BR-060 is a legal duty (decree 2021-1362, checked 2026-10-22). BR-061 and BR-062 are owner
+  decisions, no binding text sets them (GDPR art. 5(1)(e)).

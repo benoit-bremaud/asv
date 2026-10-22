@@ -32,5 +32,6 @@ flowchart LR
 
 ## Notes
 
-- Retention values are proposals until the brick 1 bis legal check (BR-060 to BR-062).
+- Retention values: BR-060 is a legal duty (decree 2021-1362, checked 2026-10-22). BR-061 and BR-062 are owner
+  decisions, no binding text sets them (GDPR art. 5(1)(e)).
 - Gender, age and city stay in memory and in the client, never on server disk.

@@ -22,5 +22,5 @@ stateDiagram-v2
 ## Notes
 
 - An open report is never deleted automatically: every report gets a human decision. This follows the
-  DSA notice-and-action duty, to confirm (see `security-and-rgpd.md`).
-- The retention period is a proposal (6 months, BR-061) until the brick 1 bis legal check.
+  DSA notice-and-action duty (art. 16(6), checked 2026-10-22, see `security-and-rgpd.md`).
+- The 6-month retention (BR-061) is an owner decision: no binding text sets it.

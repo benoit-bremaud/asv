@@ -1,6 +1,7 @@
 # ADR-0012 — E-mail accounts for private messages, three-strike moderation
 
-- Status: accepted, partially supersedes ADR-0005 (V1 now has accounts for private messages)
+- Status: accepted, partially supersedes ADR-0005 (V1 now has accounts for private messages);
+  amended by ADR-0014 (legal retention after deletion)
 - Date: 2026-10-16
 - Deciders: Benoît Bremaud
 
@@ -71,7 +72,14 @@ prioritised repeat offenders.
 
 ## Consequences
 
-- New personal data: e-mail addresses. Retention and legal basis to confirm in the brick 1 bis legal check.
+- New personal data: e-mail addresses. The brick 1 bis legal check found a 5-year retention duty after
+  closing (decree 2021-1362 art. 2): deleted accounts leave a sealed record, see ADR-0014.
 - A transactional e-mail provider is needed (verification links, statements of reasons). Choice in
   brick 5, EU provider preferred.
 - New feature study `accounts`. Moderation, private conversations and protocol studies change.
+
+## Legal check (brick 1 bis, 2026-10-22)
+
+DSA art. 18 and LCEN art. 6 IV-A were read on 2026-10-22: hosts promptly inform the authorities. The
+6-month severe-case block has no binding text and stays an owner decision. Deleted accounts leave a sealed
+legal record (ADR-0014). See `security-and-rgpd.md` §1.

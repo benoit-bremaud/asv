@@ -50,4 +50,5 @@ for private messages for exactly that reason.
 
 - A banned user can come back with another pseudo: V1 bans rely on a keyed IP hash + pseudo.
 - Retention periods of logs, reports and bans must be documented in the privacy notice.
-- **Legal check pending**: confirm the decree's data list and retention period on Légifrance.
+- Legal check done in brick 1 bis (2026-10-22): decree 2021-1362 confirmed, 1 year for technical and
+  traffic data. Accounts add longer duties, see ADR-0014.
