@@ -9,7 +9,7 @@ token_file="$HOME/.config/sonarqube/token"
 sha=$(git rev-parse HEAD)
 
 # Token passed through a curl config on stdin, never on the command line (visible in `ps`).
-IFS= read -r token < "$token_file"
+token=$(< "$token_file")
 sonar_get() { printf 'user = "%s:"\n' "$token" | curl -fsS -K - "$host$1"; }
 
 task_id=$(sed -n 's/^ceTaskId=//p' .scannerwork/report-task.txt)
