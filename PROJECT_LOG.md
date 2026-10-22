@@ -129,3 +129,20 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
 - Copilot code review never triggered, neither by the REST request nor by the ruleset rule. The last
   Copilot review on the owner's account dates from 2026-09-29: account quota or licence, not the repo.
   `CONTRIBUTING.md` now says so. SonarQube waived by the owner (docs and config only).
+
+## 2026-10-23 — Brick 2: tooling (PR #12 merged)
+
+- Squash-merged as `0b95707`; issue #11 closed. `platform` study completed and validated first:
+  ADR-0015 (Zod Mini for protocol validation, 455/500, Valibot runner-up), ADR-0016 (SonarQube scanned
+  on the owner's machine, gate posted as commit status `sonarqube`, 465/500; a self-hosted runner on a
+  public repo was rejected, owner wants checks to run locally), `platform/08-ci-pipeline.md`.
+- Scaffold: pnpm, TypeScript 6 strict (typescript-eslint does not support TS 7 yet), Vite React shell,
+  Hono `createApp()`, Zod Mini schemas for every protocol message, Vitest (node + jsdom, 80 % thresholds).
+- Dependency rule enforced by ESLint `no-restricted-imports`: `src/domain` imports only its own relative
+  modules; `src/server` never imports a transport; `src/shared/protocol` imports only `zod/mini`.
+  Proven by lint fixtures.
+- CI: `verify` and `codeql` workflows, Dependabot npm. Ruleset `Protect main` now requires `gitleaks`,
+  `verify`, `codeql` and `sonarqube`: run `pnpm sonar` after every push, or the PR stays blocked.
+  SonarQube waiver ended.
+- Local review: 3 Must, 9 Should fixed. Codex review: 4 P2 fixed (CodeQL `contents: read`, domain
+  catch-all rule, BR-013 resume buffer, Node engines). Follow-up #13 (frame and field caps, brick 7).
