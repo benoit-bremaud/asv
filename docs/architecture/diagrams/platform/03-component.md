@@ -58,9 +58,9 @@ flowchart LR
 ## Notes
 
 - Every arrow into `src/domain` is inbound. The domain imports nothing from other folders (lint rule).
-- Lint rule (ESLint `no-restricted-imports`): files in `src/domain` may not import `node:*`, `ws`,
-  `hono`, `react`, `cloudflare:*`, `@cloudflare/*`, or any path into `src/server`, `src/web`,
-  `src/transports`. Files in `src/server` may not import `src/transports`. Files in
+- Lint rule (ESLint `no-restricted-imports`): files in `src/domain` import only relative modules of
+  `src/domain`: no package, no Node built-in, no path into `src/server`, `src/web`, `src/transports`
+  or `src/shared`. Files in `src/server` may not import `src/transports`. Files in
   `src/shared/protocol` may import only `zod/mini`.
 - `src/server` never imports a transport. Each transport entry point builds the Hono app and plugs in its hub.
 - Time and randomness are passed to domain functions as arguments (`now`, `random`), not as ports.

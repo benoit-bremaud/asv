@@ -1,14 +1,14 @@
-import { builtinModules } from "node:module";
 import js from "@eslint/js";
 import reactHooks from "eslint-plugin-react-hooks";
 import globals from "globals";
 import tseslint from "typescript-eslint";
 
-/** Packages and folders the pure domain must never import (ADR-0002, `platform/03-component`). */
+/**
+ * The pure domain imports only its own relative modules (ADR-0002, `platform/03-component`).
+ * Any bare specifier (package, `node:*` or bare built-in such as `fs`) is refused.
+ */
 const domainForbidden = [
-  { group: ["node:*", ...builtinModules, ...builtinModules.map((name) => `${name}/*`)], message: "src/domain is pure: no Node import." },
-  { group: ["ws", "hono", "hono/*", "@hono/*", "react", "react-dom", "react/*", "react-dom/*"], message: "src/domain is pure: no runtime library." },
-  { group: ["cloudflare:*", "@cloudflare/*"], message: "src/domain is pure: no Cloudflare import." },
+  { regex: "^[^.]", message: "src/domain is pure: no package or Node import." },
   { group: ["**/server", "**/server/**", "**/web", "**/web/**", "**/transports", "**/transports/**", "**/shared", "**/shared/**"], message: "src/domain imports nothing from other folders." },
 ];
 

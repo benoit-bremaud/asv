@@ -81,6 +81,19 @@ describe("serverMessage", () => {
     expect(serverMessage.safeParse(msg).success).toBe(false);
   });
 
+  it("refuses room messages in the resume buffer (BR-013)", () => {
+    const resumed = (buffered: unknown[]) => ({
+      type: "resumed",
+      seq: 1,
+      payload: { resumeToken: "t", rooms: [], windows: [], buffered },
+    });
+    const privateMsg = { conversationId: "c1", authorSessionId: "s1", text: "re", sentAt: "2026-10-22T10:00:00Z" };
+    const roomMsg = { roomId: "r1", authorSessionId: "s1", pseudo: "Lola", gender: "woman", text: "hi", sentAt: "2026-10-22T10:00:00Z" };
+
+    expect(serverMessage.safeParse(resumed([privateMsg])).success).toBe(true);
+    expect(serverMessage.safeParse(resumed([roomMsg])).success).toBe(false);
+  });
+
   it("links an error to the command that caused it", () => {
     const error = { type: "error", seq: 8, payload: { code: "offline", message: "gone", replyTo: 3 } };
 

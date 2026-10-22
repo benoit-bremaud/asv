@@ -10,18 +10,24 @@ const restrictions = async (file: string): Promise<string[]> => {
 };
 
 describe("dependency rule (platform/03-component)", () => {
-  it("refuses runtime libraries, node: imports and other folders in src/domain", async () => {
+  it("refuses packages, node: imports and other folders in src/domain", async () => {
     expect(await restrictions("test/fixtures/lint/domain/forbidden.ts")).toEqual([
-      expect.stringContaining("no runtime library"),
-      expect.stringContaining("no Node import"),
+      expect.stringContaining("no package or Node import"),
+      expect.stringContaining("no package or Node import"),
       expect.stringContaining("nothing from other folders"),
     ]);
   });
 
   it("refuses bare Node built-ins and Node globals in src/domain", async () => {
     expect(await restrictions("test/fixtures/lint/domain/bare-builtin.ts")).toEqual([
-      expect.stringContaining("no Node import"),
+      expect.stringContaining("no package or Node import"),
       expect.stringContaining("'process'"),
+    ]);
+  });
+
+  it("refuses any package, e.g. zod, in src/domain", async () => {
+    expect(await restrictions("test/fixtures/lint/domain/any-package.ts")).toEqual([
+      expect.stringContaining("no package or Node import"),
     ]);
   });
 

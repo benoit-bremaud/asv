@@ -160,7 +160,8 @@ export const serverMessage = z.discriminatedUnion("type", [
       resumeToken: id,
       rooms: z.array(roomJoined),
       windows: z.array(privateWindow),
-      buffered: z.array(z.union([roomMessage, privateMessage])),
+      // BR-013: only private messages are buffered while away, never room messages.
+      buffered: z.array(privateMessage),
       accountId: z.optional(id),
     }),
   ),
