@@ -13,8 +13,8 @@ Retro web chat inspired by Caramail. Product and technical decisions live in the
 
 ## Status
 
-Brick 2 tooling in place (Vite, Hono, Vitest, ESLint dependency rule, protocol schemas, CodeQL,
-local SonarQube gate). No domain code yet. Checks: `pnpm verify`, then `pnpm sonar` after push.
+Brick 3 done: pure domain for entry, away, resume, leave and pseudo rules (`src/domain`). Brick 2 tooling
+(Vite, Hono, Vitest, ESLint dependency rule, protocol schemas, CodeQL, local SonarQube gate). Checks: `pnpm verify`, then `pnpm sonar` after push.
 
 ## Project invariants
 
