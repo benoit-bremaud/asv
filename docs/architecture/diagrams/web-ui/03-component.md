@@ -45,3 +45,4 @@ flowchart LR
 - The connection manager owns BR-010 (heartbeat), automatic reconnection with backoff, and resume (UC13).
 - The renderer is the single place that turns text into DOM, enforcing BR-022.
 - `src/shared/protocol` is the typed message contract shared with the server (see `platform/04`).
+- The entry screen keeps "enter" disabled until the 18+ box and the terms box are ticked, and caps the city field at 40 characters. The server still refuses such input with `error invalid` (`entry/07`).

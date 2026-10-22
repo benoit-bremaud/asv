@@ -6,9 +6,9 @@ Numbered rules enforced by the domain (`src/domain`). Values are V1 defaults, tu
 
 | Rule | Description | Validation |
 |---|---|---|
-| BR-001 | A pseudo has 3 to 20 characters among letters, digits, `_`, `-`, `.`. | Refused otherwise. |
-| BR-002 | A pseudo is unique among connected and away sessions, case insensitive. | Refused if taken. |
-| BR-003 | Pseudos containing reserved words (`admin`, `modo`, `moderateur`, `asv`) are refused. | Refused. |
+| BR-001 | A pseudo has 3 to 20 characters among ASCII letters, French accented letters (`àâäéèêëîïôöùûüÿç`), digits, `_`, `-`, `.`. | Refused otherwise. |
+| BR-002 | A pseudo is unique among connected and away sessions, ignoring case and accents (`Hélène` = `helene`). | Refused if taken. |
+| BR-003 | Pseudos containing reserved words (`admin`, `modo`, `moderateur`, `asv`), ignoring case and accents, are refused. | Refused. |
 | BR-004 | The visitor must tick "I am 18 or older" and declare an age between 18 and 99. | Refused otherwise. |
 | BR-005 | Gender is optional: woman, man or unspecified (default). | — |
 | BR-006 | City is optional free text, 0 to 40 characters, trimmed. | Truncated input refused. |

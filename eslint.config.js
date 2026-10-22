@@ -38,6 +38,13 @@ const config = tseslint.config(
     },
   },
   {
+    // Domain tests may import the test runner, nothing else.
+    files: ["src/domain/**/*.test.ts"],
+    rules: {
+      "no-restricted-imports": ["error", { patterns: [{ ...domainForbidden[0], regex: "^(?!vitest$)[^.]" }, domainForbidden[1]] }],
+    },
+  },
+  {
     files: ["src/server/**/*.ts", "test/fixtures/lint/server/**/*.ts"],
     rules: {
       "no-restricted-imports": ["error", { patterns: [{ group: ["**/transports", "**/transports/**"], message: "src/server never imports a transport." }] }],
