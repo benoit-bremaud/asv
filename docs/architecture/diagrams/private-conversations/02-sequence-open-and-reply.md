@@ -42,9 +42,7 @@ sequenceDiagram
     D-->>H: Conversation + message
     H-->>WA: privateWindow(B) + echo
     H-->>WB: privateMessage(from A)
-    opt Prime Minister's injunction in force
-      H->>L: content line (connection id, content id, creation, now)
-    end
+    H->>L: content line (connection id, content id, creation, now)
   end
 ```
 
@@ -52,5 +50,5 @@ sequenceDiagram
 
 - The conversation is keyed by both session ids sorted, so replies use the same window.
 - The content line is written for every accepted message, also when it is buffered for an away chatter or
-  dropped by an ignore, and never holds the text (BR-060). Only the delivered branch is drawn.
+  dropped by an ignore, and never holds the text (BR-060). The operation is added only under a Prime Minister's injunction. Only the delivered branch is drawn.
 - The ignored chatter is never told (Caramail behaviour, avoids escalation).

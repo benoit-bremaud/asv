@@ -32,4 +32,6 @@ TDD is not imposed on this project.
   - no domain use case, moderation tool or AI path can read the vault (the port has no read operation);
   - an owner read through the dedicated call appends an access entry (date, request reference, legal basis, ids returned), same for the connection log;
   - the record holds only account id, e-mail, creation and closing dates.
+- A content line is written for every message, with the operation only under injunction (BR-060).
+- Access entries are purged 5 years after the read by the daily alarm (BR-082).
 - No test calls the network outside localhost. Passkey ceremonies use a virtual authenticator in Playwright.

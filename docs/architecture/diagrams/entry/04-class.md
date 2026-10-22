@@ -25,6 +25,7 @@ classDiagram
   class Session {
     +SessionId id
     +SessionStatus status
+    +String connectionId
     +Date openedAt
     +Gender gender
     +Profile profile
@@ -51,6 +52,7 @@ classDiagram
   }
   class AwayRecord {
     +SessionId sessionId
+    +String connectionId
     +String pseudo
     +AccountId accountId
     +ResumeTokenHash resumeTokenHash
@@ -73,7 +75,7 @@ classDiagram
   class ContentLogLine {
     +String connectionId
     +String contentId
-    +ContentOperation operation
+    +ContentOperation operation "only under injunction"
     +Date at
   }
   class ContentOperation {
@@ -99,9 +101,10 @@ classDiagram
 - `accountId` is empty until the session is linked to an account (UC17, ADR-0012).
 - `AwayRecord` holds no gender, age or city (ADR-0011). `buffered` is capped at 50 messages (BR-013).
 - The resume token itself is only sent to the client. The server keeps its hash and rotates it at each resume.
-- `ConnectionLog` is persisted with plain values, no link to the ephemeral session: one line per session, with a
-  random connection id (BR-060). `sourcePort` and `accountId` are optional (empty without a port or an account).
-- `ContentLogLine` is written only while a Prime Minister's injunction is in force (CPCE L34-1 III, decree
-  2021-1362 art. 6): one line per creation, change or deletion, never the content. Both logs are kept 1 year
+- `ConnectionLog` is persisted with plain values: one line per session, with a random connection id (BR-060).
+  The session, its socket attachment and its away record carry that id, so content lines and the end time
+  attach to the right connection row after a rebuild or a resume (ADR-0011). The id is linked to nothing else. `sourcePort` and `accountId` are optional (empty without a port or an account).
+- `ContentLogLine` is written for every creation, change or deletion (decree 2021-1362 arts. 5 and 7), never the
+  content. `operation` is filled only while a Prime Minister's injunction is in force (CPCE L34-1 III, art. 6). Both logs are kept 1 year
   and read only by the owner (BR-082).
 - Pseudo colour is derived from `Session.gender` in the web client.

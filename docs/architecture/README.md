@@ -116,7 +116,7 @@ Coverage: [traceability matrix](traceability-matrix.md).
 | Hub eviction disconnects everyone | Clients reconnect, away records allow resume (ADR-0011). |
 | Legal interpretations | Official texts read in brick 1 bis (2026-10-22). Professional review in brick 10, impact assessment in brick 8. |
 | Single hub saturation | Measured shard trigger (ADR-0007). |
-| Brick 9: content-log write volume (one line per message under injunction, BR-060) may exceed the Cloudflare Workers Free plan limits | To verify against the current plan limits before brick 9; options: batch writes, short-lived buffer, paid plan. |
+| Brick 9: content-log write volume (one line per message, BR-060) may exceed the Cloudflare Workers Free plan limits | To verify against the current plan limits before brick 9; options: batch writes, short-lived buffer, paid plan. |
 | Empty rooms at launch kill the vibe | Few official rooms, seeded by the owner's network. |
 
 ## 10. Open questions

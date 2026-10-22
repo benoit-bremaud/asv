@@ -18,7 +18,7 @@ flowchart LR
   subgraph asv ["asv hub"]
     Sess["Session in socket attachment"]
     Away[("Away records, 5 minutes max")]
-    Logs[("Connection log, content lines under injunction")]
+    Logs[("Connection log and content lines")]
   end
   Client["Client sessionStorage"]
   Visitor -->|"PII: pseudo, gender, age, city, IP"| Sess
@@ -34,6 +34,6 @@ flowchart LR
 
 - Retention values: BR-060 is a legal duty (decree 2021-1362, checked 2026-10-22). BR-061 and BR-062 are owner
   decisions, no binding text sets them (GDPR art. 5(1)(e)).
-- Content lines (connection id, content id, operation, date and time) are added to the log only while a Prime
-  Minister's injunction is in force (BR-060). They never hold the content.
+- A content line (connection id, content id, date and time) is added to the log for every message (BR-060). It
+  also carries the operation while a Prime Minister's injunction is in force. It never holds the content.
 - Gender, age and city stay in memory and in the client, never on server disk.

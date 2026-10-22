@@ -79,7 +79,7 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   pseudonyms too (355/500), then, after the review-local gate, option D: e-mail and dates 5 years, account
   id 1 year, session pseudonyms only in the connection log (ADR-0014, 385/500). Owner-only read for an
   authority entitled by law, each read logged. New BR-081, BR-082; BR-060 now lists the connection lines
-  and the content lines written under injunction.
+  and one content line per message (the operation added under injunction).
 - review-local gate: 6 Must and 13 Should fixed across ADRs 0004/0005/0007/0010/0011/0012, diagrams,
   glossary, test strategy and requirements. SonarQube waived by the owner (docs only, project created in
   brick 2).

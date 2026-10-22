@@ -80,12 +80,12 @@ Values are owned here. Rationale lives in the ADRs.
 | BR-079 | An account unused for 2 years is deleted after an e-mail notice (owner proposal, GDPR art. 5(1)(e)). |
 | BR-080 | A member may delete their account at any time. If strikes are active, a keyed e-mail hash and the strike expiry dates are kept until the last one expires, and restored if the same e-mail creates a new account. |
 | BR-081 | Every account deletion writes, in the same transaction, a legal retention record to the vault: account id, e-mail, creation (= verification) and closing dates. The account id is purged 1 year and the rest 5 years after closing (decree 2021-1362 arts. 2 and 3, ADR-0014). Session pseudonyms stay only in the connection log (BR-060). Never a deletion reason, strike or report. |
-| BR-082 | Only the owner reads the vault and the connection log, to answer an authority entitled by law. Each read appends an access entry: date, request reference, legal basis, ids returned. No use case, moderation tool or AI reads them. |
+| BR-082 | Only the owner reads the vault and the connection log, to answer an authority entitled by law. Each read appends an access entry: date, request reference, legal basis, ids returned. Access entries are kept 5 years after the read, then purged by the daily alarm. No use case, moderation tool or AI reads them. |
 
 ## Retention (legal basis in security-and-rgpd.md §1–2)
 
 | Rule | Description |
 |---|---|
-| BR-060 | One connection line per session: random connection id, IP and source port if available, protocol, pseudo, account id if any, start and end times (decree 2021-1362 arts. 5 and 7). While a Prime Minister's injunction under CPCE L34-1 III is in force (checked each October), one content line per creation, change or deletion: connection id, content id, operation, date and time (art. 6). Never the content. Each line kept 1 year, then deleted (LCEN art. 6 V-A). |
+| BR-060 | One connection line per session: random connection id, IP and source port if available, protocol, pseudo, account id if any, start and end times. One content line per contribution (creation, change or deletion of a room or private message): connection id, content id, date and time (decree 2021-1362 arts. 5 and 7). While a Prime Minister's injunction under CPCE L34-1 III is in force (checked each October), the content line also carries the operation (art. 6). Never the content. Each line kept 1 year, then deleted (LCEN art. 6 V-A). |
 | BR-061 | Closed reports are kept 6 months, then deleted. |
 | BR-062 | Expired bans are deleted 30 days after their end. |

@@ -44,7 +44,7 @@ classDiagram
 
 | Part | Source on wake-up |
 |---|---|
-| Connected sessions, pseudo index, ignore lists, room memberships, linked account ids | WebSocket attachments (`getWebSockets()`) |
+| Connected sessions (with connection id), pseudo index, ignore lists, room memberships, linked account ids | WebSocket attachments (`getWebSockets()`) |
 | Accounts, devices, pending codes, e-mail blocks, strike carry-overs | Account store in hub storage (never held whole in memory) |
 | Away sessions | Away records in storage |
 | Official rooms | Configuration |

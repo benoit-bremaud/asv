@@ -39,9 +39,7 @@ sequenceDiagram
     H-->>W: warning
   else Accepted
     D-->>H: Message + recipients minus ignorers
-    opt Prime Minister's injunction in force
-      H->>L: content line (connection id, content id, creation, now)
-    end
+    H->>L: content line (connection id, content id, creation, now)
     H-->>O: roomMessage
     H-->>W: roomMessage echo
   end
@@ -51,5 +49,5 @@ sequenceDiagram
 
 - The domain decides presence, limits and ignore filtering. The hub only routes.
 - No history (BR-034).
-- The content line holds no text (BR-060). It is written only while an injunction under CPCE L34-1 III is in
-  force; the message itself is never stored.
+- The content line holds no text (BR-060). It is written for every accepted message; the operation is added
+  only while an injunction under CPCE L34-1 III is in force. The message itself is never stored.

@@ -68,11 +68,11 @@ field and loses nothing.
   case, moderation tool or AI reads it.
 - **Read path.** Only the owner reads it, through a dedicated owner-only hub call, to answer an authority
   entitled by law (judicial requisition or equivalent). Each read appends an access entry: date, request
-  reference, legal basis, ids returned (BR-082). The connection log follows the same access regime.
+  reference, legal basis, ids returned (BR-082). The connection log follows the same access regime. Access entries are kept 5 years after the read and purged by the daily alarm.
 - **Encryption at rest** of the e-mail is decided in brick 5 (policy only, or encryption to an owner
   key). Criterion: the application must not be able to read back what it wrote.
 - Strikes, e-mail blocks and the strike carry-over keep using keyed hashes (ADR-0012), never the vault.
-- Connection logs follow decree arts. 5 and 7 (source data), and art. 6 under injunction (BR-060). They
+- Connection logs follow decree arts. 5 and 7: a content line per contribution. Art. 6 adds the operation under injunction (BR-060). They
   never hold the content itself.
 - The sign-up screen and the privacy notice state these retentions and their legal basis (legal
   obligation, GDPR art. 6(1)(c) and 13). An erasure request does not cover them (GDPR art. 17(3)(b)).
