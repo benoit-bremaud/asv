@@ -105,6 +105,8 @@ Coverage: [traceability matrix](traceability-matrix.md).
 | [0012](decisions/0012-accounts-for-private-messages-and-strikes.md) | E-mail accounts for private messages, three-strike moderation |
 | [0013](decisions/0013-member-sign-in-email-code.md) | Members sign in with an e-mail code, device remembered 30 days |
 | [0014](decisions/0014-legal-retention-vault.md) | Legal retention vault for closed accounts (account id 1 year, e-mail and dates 5 years) |
+| [0015](decisions/0015-protocol-validation-zod-mini.md) | Protocol validation with Zod Mini |
+| [0016](decisions/0016-sonarqube-local-scan-commit-status.md) | SonarQube local scan, quality gate as commit status |
 
 ## 9. Risks and technical debt
 
