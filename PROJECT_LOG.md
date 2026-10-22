@@ -66,3 +66,40 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   secrets clean on full history, QA screenshots in `docs/architecture/qa/`, SonarQube not run (no asv
   project or token yet).
 - SonarQube step: owner exception for this documentation-only PR (390/500); asv onboarding on SonarQube moved to brick 2.
+
+## 2026-10-22 — Brick 1 bis: legal check on official texts
+
+- Local folder briefly renamed `asvchat`, then back to `asv` (owner): the folder keeps the repository name.
+- Official texts read in their versions in force on 2026-10-22: LCEN arts. 1-1 and 6 (renumbered by law
+  2026-813), decree 2021-1362, CPCE art. L34-1, injunction decree 2026-920, law 2026-813 and Conseil
+  constitutionnel 2026-911 DC, DSA arts. 11 to 18, GDPR arts. 8, 22 and 35, Loi Informatique et Libertés
+  arts. 45 and 82, CNIL deliberations 2018-327 and 2020-091 (Légifrance copies, the CNIL site was down).
+- Main finding: as a hosting provider, asv must keep a closed account's e-mail 5 years and its identifier
+  1 year (decree 2021-1362 arts. 2 and 3). ADR-0012 deleted them. Owner first chose a legal vault holding
+  pseudonyms too (355/500), then, after the review-local gate, option D: e-mail and dates 5 years, account
+  id 1 year, session pseudonyms only in the connection log (ADR-0014, 385/500). Owner-only read for an
+  authority entitled by law, each read logged. New BR-081, BR-082; BR-060 now lists the connection lines
+  and the content lines written under injunction.
+- review-local gate: 6 Must and 13 Should fixed across ADRs 0004/0005/0007/0010/0011/0012, diagrams,
+  glossary, test strategy and requirements. SonarQube waived by the owner (docs only, project created in
+  brick 2).
+- Confirmed without change: under-15 ban struck down (ADR-0004 stands), consent age 15, authentication
+  cookie exempt from consent (ADR-0013), AI triage with human decision meets GDPR art. 22 (ADR-0010).
+- New duties placed on the roadmap: data protection impact assessment and authority reporting channel in
+  brick 8; legal notice choice (LCEN art. 1-1 II), false-report warning and professional review of the
+  decree scope in brick 10.
+- No binding text sets the 2-year inactivity, the 6-month severe block or report and ban retentions: they
+  stay owner decisions under GDPR storage limitation.
+- `.scannerwork/` removed from the index and ignored.
+
+## 2026-10-22 — PR #6 review cycle (brick 1 bis)
+
+- Codex (3 findings) and a local architecture review on the fixes (Codex quota reached).
+- Decree 2021-1362 arts. 5 and 6 re-read on Légifrance. Outside an injunction, hosts keep the connection
+  identifier and protocols for each content creation (art. 5 2°). Content id, operation, date and time
+  are kept only under a Prime Minister's injunction (art. 6 2°). BR-060 now writes one contribution line
+  per message on that basis.
+- One connection line per socket connection: a resume opens a new line with the new IP. The connection
+  id lives in the socket attachment, so it survives hibernation. New `ConnectionLogStore` port, write
+  before delivery, orphan lines closed on wake-up.
+- Vault access entries: kept 5 years (owner decision pending), modelled as `AccessEntry`, purged daily.

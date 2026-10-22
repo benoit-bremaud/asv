@@ -2,8 +2,8 @@
 
 > **Feature**: accounts (roadmap brick 5)
 > **Requirements**: ASV-F-020 to F-024
-> **Business rules**: BR-070 to BR-080
-> **Related ADRs**: ADR-0012, ADR-0013
+> **Business rules**: BR-070 to BR-082
+> **Related ADRs**: ADR-0012, ADR-0013, ADR-0014
 
 ## Context
 
@@ -44,6 +44,8 @@ flowchart LR
   4. Chatter types the code in the chat.
   5. System checks the code, checks the block list again, creates the account if it does not exist and
      links the session to it.
+     When the account is created, the sign-up screen has told the chatter that the e-mail and dates are
+     kept for legal reasons after deletion (BR-081, GDPR art. 13).
   6. If asked, the client exchanges the returned device claim for a 30-day device cookie (BR-073).
 - Extensions:
   - 2a. Disposable domain, blocked e-mail or rate exceeded → refused with the reason.
@@ -62,8 +64,12 @@ flowchart LR
   and calls `deleteAllDevices`.
 
 **UC19 — Delete my account** (planned)
-- Main scenario: 1. Account holder picks "delete my account" and confirms. 2. System deletes the account
-  and device records. 3. Private windows close, the session continues in rooms.
+- Business rules: BR-080 to BR-082. Related ADRs: ADR-0012, ADR-0014.
+- Main scenario: 1. Account holder picks "delete my account" and confirms; the screen reminds that a legal
+  retention record is kept (GDPR art. 13, erasure refused for it under art. 17(3)(b)). 2. System writes the
+  legal retention record to the vault (account id, e-mail, creation and closing dates) and deletes the
+  account and device records, in the same transaction (BR-081). 3. Private windows close, the session
+  continues in rooms.
 - Extension: 2a. Active strikes remain → a keyed e-mail hash and the strike expiry dates are kept until
   the last one expires (BR-080).
 

@@ -1,7 +1,7 @@
 # Data-flow diagram — accounts — e-mail and sanctions
 
 > **Feature**: accounts
-> **Related**: `docs/architecture/security-and-rgpd.md` §2, ADR-0012, ADR-0013
+> **Related**: `docs/architecture/security-and-rgpd.md` §2, ADR-0012, ADR-0013, ADR-0014
 
 ## Context
 
@@ -19,6 +19,7 @@ flowchart LR
     Acc[("Accounts: e-mail, strikes")]
     Dev[("Device records: token hashes")]
     Blocks[("E-mail blocks: keyed hashes")]
+    Vault[("Legal vault: account id, e-mail, creation and closing dates")]
   end
   Browser["Browser cookie: device token"]
   Chatter -->|"PII: e-mail"| Acc
@@ -27,10 +28,14 @@ flowchart LR
   Mod -->|"strike, suspension"| Acc
   Acc -->|"PII: e-mail, statement of reasons"| MailProvider
   Acc -.->|"PII, pseudonymised: keyed e-mail hash on deletion"| Blocks
-  Acc -.->|"PII: on life or safety threat (DSA art. 18) or judicial requisition, to confirm"| Authority
+  Acc -.->|"PII: on deletion, legal retention record (BR-081)"| Vault
+  Vault -.->|"PII: owner only, for an authority entitled by law, read logged (BR-082)"| Authority
+  Acc -.->|"PII: suspected offence or life or safety threat (LCEN art. 6 IV, DSA art. 18)"| Authority
 ```
 
 ## Notes
 
 - Other chatters never see the e-mail.
-- Retention values are proposals until the brick 1 bis legal check (BR-078, BR-079). The 7-day block of BR-077 is an owner decision.
+- The vault keeps the account id 1 year and the e-mail and dates 5 years after closing (decree 2021-1362 arts. 2 and 3, ADR-0014).
+  No domain use case reads it. Session pseudonyms stay only in the connection log (BR-060).
+- BR-078 and BR-079 durations and the 7-day block of BR-077 are owner decisions: no binding text sets them.

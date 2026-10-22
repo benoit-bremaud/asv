@@ -2,7 +2,7 @@
 
 > **Feature**: platform (roadmap bricks 2, 7, 9)
 > **Requirements**: ASV-NF-003, NF-009, NF-010
-> **Related ADRs**: ADR-0002, ADR-0003, ADR-0007, ADR-0008, ADR-0010, ADR-0011
+> **Related ADRs**: ADR-0002, ADR-0003, ADR-0007, ADR-0008, ADR-0010, ADR-0011, ADR-0014
 
 ## Context
 
@@ -22,7 +22,7 @@ flowchart LR
   end
   subgraph Domain ["src/domain — pure TypeScript"]
     Core["Hub state and rules: sessions, rooms, private conversations, moderation"]
-    Ports["Ports: ModerationStore, ModeratorStore, AccountStore, ConnectionLogStore, AwayStore, ReportTriage, Mailer"]
+    Ports["Ports: ModerationStore, ModeratorStore, AccountStore, ConnectionLogStore, LegalVaultStore, AwayStore, ReportTriage, Mailer"]
   end
   subgraph NodeT ["src/transports/node — dev and tests"]
     NodeMain["Node entry: builds Hono app"]
@@ -60,5 +60,6 @@ flowchart LR
 - Every arrow into `src/domain` is inbound. The domain imports nothing from other folders (lint rule).
 - `src/server` never imports a transport. Each transport entry point builds the Hono app and plugs in its hub.
 - Time and randomness are passed to domain functions as arguments (`now`, `random`), not as ports.
+- The SQLite stores include the legal vault table behind `LegalVaultStore` (record, purgeExpired), added in brick 5 (ADR-0014).
 - Passkey verification (SimpleWebAuthn) lives in `src/server` and reaches stores only through the hub (ADR-0008).
 - `src/shared/protocol` holds only message types and their validation schema. Confirmed in brick 2.

@@ -24,7 +24,8 @@ curious younger adults attracted by the retro vibe. See [personas](personas.md).
    Drop pop-ups, ads, webcam prompts and opaque word robots.
 4. **Safe by default.** Adults only, ignore in two clicks, human moderators helped by AI triage of reports.
 5. **Light on data.** Nothing persisted beyond legal logs, reports, bans, member e-mails and strikes,
-   moderator credentials and short-lived away records (ADR-0011).
+   moderator credentials, short-lived away records (ADR-0011) and the legal retention vault of closed
+   accounts (ADR-0014).
 
 ## Success signals (V1)
 

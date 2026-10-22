@@ -1,8 +1,8 @@
 # Class diagram — accounts — accounts, devices, strikes, blocks
 
 > **Feature**: accounts
-> **Business rules**: BR-070 to BR-080
-> **Related ADRs**: ADR-0012, ADR-0013
+> **Business rules**: BR-070 to BR-082
+> **Related ADRs**: ADR-0012, ADR-0013, ADR-0014
 
 ## Context
 
@@ -83,6 +83,23 @@ classDiagram
     +deletePendingStatement(id)
     +purgeExpired(now)
   }
+  class VaultRecord {
+    +AccountId accountId
+    +String email
+    +Date createdAt
+    +Date closedAt
+  }
+  class AccessEntry {
+    +Date at
+    +String requestReference
+    +String legalBasis
+    +String[] idsReturned
+  }
+  class LegalVaultStore {
+    <<interface>>
+    +record(entry)
+    +purgeExpired(now)
+  }
   class Mailer {
     <<interface>>
     +sendCode(email, code)
@@ -97,6 +114,8 @@ classDiagram
   AccountStore ..> EmailBlock
   AccountStore ..> StrikeCarryOver
   AccountStore ..> PendingStatement
+  LegalVaultStore ..> VaultRecord
+  LegalVaultStore ..> AccessEntry
 ```
 
 ## Notes
@@ -106,3 +125,8 @@ classDiagram
   is deleted, so the art. 17 notice is not lost if sending fails (retries for at most 7 days).
 - `Session` gains optional `accountId` and `deviceTokenHash` (see `entry/04`).
 - One port for all account records is enough: there is one SQLite store and one in-memory twin.
+- `LegalVaultStore` is a separate write-only port (ADR-0014, brick 5): `record` and `purgeExpired`, no read
+  operation. `deleteAccount` and `record` run in the same transaction (BR-081). `createdAt` is `verifiedAt`.
+  `purgeExpired` drops `accountId` 1 year and the whole record 5 years after `closedAt`, and also purges access
+  entries older than 5 years. Each owner read appends an `AccessEntry` (BR-082). The owner-only read
+  is a dedicated hub call outside this port (BR-082).

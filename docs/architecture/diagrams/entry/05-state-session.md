@@ -29,6 +29,7 @@ stateDiagram-v2
 
 ## Notes
 
-- Closing frees the pseudo, closes the connection log and notifies rooms and windows.
+- Closing frees the pseudo and notifies rooms and windows. The connection line closes when the socket is lost,
+  on leave and on expel, not on away expiry (BR-060).
 - An expulsion is a close with a ban as side effect (see `moderation/02a`).
 - Moderator rights are `Session.moderatorName`, not a state (see `moderation`).

@@ -64,7 +64,7 @@ Values are owned here. Rationale lives in the ADRs.
 | BR-056 | A moderator invitation is single use and expires after 24 hours. |
 | BR-057 | A report is closed with one outcome: no action, warned, expelled, suspended, severe deletion, room removed. The AI triage never closes a report (ADR-0010). |
 
-## Accounts and strikes (ADR-0012, ADR-0013)
+## Accounts and strikes (ADR-0012, ADR-0013, ADR-0014)
 
 | Rule | Description |
 |---|---|
@@ -76,14 +76,16 @@ Values are owned here. Rationale lives in the ADRs.
 | BR-075 | While an account has 3 or more active strikes and no decision, the moderator panel proposes a 7-day suspension. Without confirmation, nothing happens. |
 | BR-076 | Every suspension or deletion decided by a moderator e-mails a statement of reasons (DSA art. 17). The address is kept only until the mail is accepted, retried for at most 7 days. |
 | BR-077 | A suspension deletes the account, blocks a keyed hash of its e-mail for 7 days, closes every session and away record of the account, and bans for 7 days the keyed IP hash and pseudo captured on the report (or of the live session when newer). |
-| BR-078 | Severe cases (grooming, threats, child sexual abuse material, incitement to violence) delete the account at once and block the e-mail hash for 6 months (proposal, legal check). Authorities are alerted when life or safety is threatened. |
-| BR-079 | An account unused for 2 years is deleted after an e-mail notice (proposal, CNIL guidance to confirm). |
+| BR-078 | Severe cases (grooming, threats, child sexual abuse material, incitement to violence) delete the account at once and block the e-mail hash for 6 months (owner proposal, no binding text). The owner promptly informs the authorities of offences listed in LCEN art. 6 IV-A and of any threat to life or safety (DSA art. 18). |
+| BR-079 | An account unused for 2 years is deleted after an e-mail notice (owner proposal, GDPR art. 5(1)(e)). |
 | BR-080 | A member may delete their account at any time. If strikes are active, a keyed e-mail hash and the strike expiry dates are kept until the last one expires, and restored if the same e-mail creates a new account. |
+| BR-081 | Every account deletion writes, in the same transaction, a legal retention record to the vault: account id, e-mail, creation (= verification) and closing dates. The account id is purged 1 year and the rest 5 years after closing (decree 2021-1362 arts. 2 and 3, ADR-0014). Session pseudonyms stay only in the connection log (BR-060). Never a deletion reason, strike or report. |
+| BR-082 | Only the owner reads the vault and the connection log, to answer an authority entitled by law. Each read appends an access entry: date, request reference, legal basis, ids returned. Access entries are kept 5 years after the read, then purged by the daily alarm. No use case, moderation tool or AI reads them. |
 
-## Retention (to confirm, see security-and-rgpd.md)
+## Retention (legal basis in security-and-rgpd.md §1–2)
 
 | Rule | Description |
 |---|---|
-| BR-060 | Connection logs are kept 1 year, then deleted. |
+| BR-060 | One connection line per socket connection (entry or resume): random connection id, IP and source port if available, protocols, pseudo, account id if any, start and end times. One contribution line per creation of a room message, private message or user room name: connection id and protocols (decree 2021-1362 arts. 5 2° and 7). While a Prime Minister's injunction under CPCE L34-1 III is in force (checked each October), the contribution line also carries the content id, the operation, its date and time (art. 6 2°; the author's identifier is the pseudo or account id on the connection line). Never the content. Each line kept 1 year from its connection or contribution, then deleted (LCEN art. 6 V-A). |
 | BR-061 | Closed reports are kept 6 months, then deleted. |
 | BR-062 | Expired bans are deleted 30 days after their end. |

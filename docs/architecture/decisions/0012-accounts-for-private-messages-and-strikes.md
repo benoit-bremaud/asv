@@ -1,6 +1,7 @@
 # ADR-0012 — E-mail accounts for private messages, three-strike moderation
 
-- Status: accepted, partially supersedes ADR-0005 (V1 now has accounts for private messages)
+- Status: accepted, partially supersedes ADR-0005 (V1 now has accounts for private messages);
+  amended by ADR-0014 (legal retention after deletion)
 - Date: 2026-10-16
 - Deciders: Benoît Bremaud
 
@@ -14,7 +15,7 @@ Without a lasting identity, warnings cannot be counted: an offender comes back w
 Caramail required a Caramail e-mail account to chat, which is what made sanctions stick.
 
 Legal facts from Regulation (EU) 2022/2065 (arts. 17, 19 and 23 read on EUR-Lex on 2026-10-16,
-art. 18 from secondary sources, to confirm):
+art. 18 read in the brick 1 bis legal check, 2026-10-22):
 
 - Art. 17: a hosting provider sends a clear statement of reasons for any suspension or deletion of an
   account, removal of content or suspension of the service. It must give the facts, the terms clause
@@ -62,16 +63,22 @@ prioritised repeat offenders.
 - Reports record the target's account id when there is one, so strikes can be added after the target
   has left.
 - **Severe cases** (grooming, threats, child sexual abuse material, incitement to violence): immediate
-  deletion without prior warning, e-mail hash blocked for a longer period (proposed 6 months, legal
-  check), and the owner alerts the authorities when life or safety is threatened (art. 18, through the
-  official reporting channels to confirm in brick 1 bis). A chatter without an account gets the longest
+  deletion without prior warning, e-mail hash blocked for a longer period (6 months, owner decision: no binding text), and the owner alerts the authorities when life or safety is threatened (art. 18, through the
+  official reporting channels, to document in brick 8). A chatter without an account gets the longest
   IP and pseudo ban (7 days).
 - Chatters without an account keep the V1 timed bans on keyed IP hash and pseudo (ADR-0005).
 - A member can delete their account at any time.
 
 ## Consequences
 
-- New personal data: e-mail addresses. Retention and legal basis to confirm in the brick 1 bis legal check.
+- New personal data: e-mail addresses. The brick 1 bis legal check found a 5-year retention duty after
+  closing (decree 2021-1362 art. 2): deleted accounts leave a legal retention record in the vault, see ADR-0014.
 - A transactional e-mail provider is needed (verification links, statements of reasons). Choice in
   brick 5, EU provider preferred.
 - New feature study `accounts`. Moderation, private conversations and protocol studies change.
+
+## Legal check (brick 1 bis, 2026-10-22)
+
+DSA art. 18 and LCEN art. 6 IV-A were read on 2026-10-22: hosts promptly inform the authorities. The
+6-month severe-case block has no binding text and stays an owner decision. Deleted accounts leave a legal
+retention record in the vault (ADR-0014). See `security-and-rgpd.md` §1.

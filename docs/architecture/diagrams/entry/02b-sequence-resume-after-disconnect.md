@@ -26,6 +26,7 @@ sequenceDiagram
   Note over W,H: Phone locks, socket dies
   H->>D: socketLost(state, sessionId, now)
   D-->>H: Session away until now + 5 min
+  H->>LS: close(connection id, now)
   H->>AS: save away record without gender, age, city
   H->>H: Set alarm to earliest deadline
   H-->>O: memberAway(X)
@@ -42,6 +43,9 @@ sequenceDiagram
     alt Token valid
       D-->>H: Session connected + new token + buffered messages
       H->>AS: delete away record
+      H->>H: Draw new connection id
+      H->>LS: open(new connection id, IP, port, protocols, pseudo, account id, now)
+      H->>H: Save new connection id in socket attachment
       H-->>W: resumed(newToken, rooms, windows, buffered, accountId or none)
       H-->>O: memberBack(X)
     else Token invalid
@@ -53,7 +57,6 @@ sequenceDiagram
     H->>D: expireAway(state, sessionId, now)
     D-->>H: Session closed + rooms and windows to notify
     H->>AS: delete away record
-    H->>LS: close log(sessionId, now)
     H-->>O: memberLeft(X)
   end
 ```
@@ -62,6 +65,9 @@ sequenceDiagram
 
 - Room messages posted while away are not buffered (BR-013 covers private messages only).
 - Gender, age and city never reach storage: the client resends them with `resume` (ADR-0011).
-- UC10 (leave) follows the same closing steps as expiry, triggered by the `leave` command.
+- UC10 (leave) follows the same closing steps as expiry, triggered by the `leave` command. It also closes the
+  connection line of the current socket, since the socket is still open.
+- One connection line per socket connection (BR-060): the line closes on socket loss, a resume opens a new one with
+  a new connection id. The away record does not carry the id.
 - If the account was deleted while away, the session resumes without it and its private windows close
   (`accountUnlinked`).

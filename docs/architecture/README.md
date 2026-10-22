@@ -33,7 +33,7 @@ flowchart LR
   Chatter -->|"chats over HTTPS and WebSocket"| ASV
   Moderator -->|"handles reports with a passkey"| ASV
   Owner -->|"invites moderators, deploys"| ASV
-  ASV -.->|"connection logs on request"| Authority
+  ASV -.->|"connection logs and vault on requisition"| Authority
 ```
 
 ## 4. Solution strategy
@@ -104,6 +104,7 @@ Coverage: [traceability matrix](traceability-matrix.md).
 | [0011](decisions/0011-hub-state-and-hibernation.md) | Hub state across hibernation, heartbeat and alarms |
 | [0012](decisions/0012-accounts-for-private-messages-and-strikes.md) | E-mail accounts for private messages, three-strike moderation |
 | [0013](decisions/0013-member-sign-in-email-code.md) | Members sign in with an e-mail code, device remembered 30 days |
+| [0014](decisions/0014-legal-retention-vault.md) | Legal retention vault for closed accounts (account id 1 year, e-mail and dates 5 years) |
 
 ## 9. Risks and technical debt
 
@@ -113,8 +114,9 @@ Coverage: [traceability matrix](traceability-matrix.md).
 | Minors entering despite 18+ | "Seems minor" report reason, expel (ADR-0004). Teen space only in V2 with real age checks. |
 | AI provider processes reported content | Neutral labels instead of pseudos, processing agreement, EU processing preferred (ADR-0010). |
 | Hub eviction disconnects everyone | Clients reconnect, away records allow resume (ADR-0011). |
-| Legal points unverified | Legal check is brick 1 bis, before any code. Final texts and professional review in brick 10. |
+| Legal interpretations | Official texts read in brick 1 bis (2026-10-22). Professional review in brick 10, impact assessment in brick 8. |
 | Single hub saturation | Measured shard trigger (ADR-0007). |
+| Brick 9: contribution-log write volume (one line per message, written before delivery, BR-060) may exceed the Cloudflare Workers Free plan limits | To verify against the current plan limits before brick 9; options: batch writes, short-lived buffer, paid plan. |
 | Empty rooms at launch kill the vibe | Few official rooms, seeded by the owner's network. |
 
 ## 10. Open questions

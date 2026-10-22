@@ -29,11 +29,12 @@ One alarm is always set to the earliest of:
 1. the next away deadline (expire the session, ADR-0009);
 2. the next heartbeat sweep, every 60 seconds while sockets exist: close sockets whose last auto-response
    is older than 60 seconds;
-3. the next daily run: retention purge (BR-060 to BR-062, expiries of BR-070 to BR-080) and retry of
+3. the next daily run: retention purge (BR-060 to BR-062, legal vault BR-081, access entries BR-082, expiries of BR-070 to BR-080) and retry of
    pending statements of reasons (BR-076).
 
 ## Notes
 
+- On wake-up, open connection lines whose id is in no socket attachment are closed at the last known time (ADR-0011).
 - `ping` is auto-answered `pong` without waking the hub (ADR-0011).
 - An eviction closes every socket. Connected sessions become lost: clients reconnect and resume only if an
   away record exists, otherwise they re-enter. Accepted for V1.

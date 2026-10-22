@@ -48,7 +48,7 @@ sequenceDiagram
     H->>D: expel(state, target, duration, moderator, now)
     D-->>H: Ban + session to close + rooms and windows to notify
     H->>ST: save ban
-    H->>LS: close log(target, now)
+    H->>LS: close(target connection id, now)
     H-->>T: expelled(until) then close socket
     H-->>O: memberLeft(T)
     M->>H: closeReport(reportId, expelled)
@@ -60,4 +60,5 @@ sequenceDiagram
 
 - Triage is asynchronous: the reporter gets `reportSent` before the AI answers.
 - The AI never sanctions (ADR-0010). Pseudos are replaced by neutral labels before triage.
+- The connection line is closed only if the target is connected. An away target has no open line (closed on socket loss, `entry/02b`).
 - The ban key is an HMAC of the IP with a server secret: pseudonymised, not anonymised.

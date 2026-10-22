@@ -72,8 +72,8 @@ flowchart LR
   1. Moderator marks the expel as severe. 2. System deletes the account at once, without strikes, and
   blocks its e-mail hash for the longer period (BR-078); a chatter without an account gets the longest
   IP and pseudo ban. 3. System sends the statement of reasons. 4. When life or safety is threatened, the
-  moderator alerts the owner, who informs the authorities through the official channel (DSA art. 18, unverified;
-  channel to confirm in brick 1 bis). Authorities are a secondary actor of UC11.
+  moderator alerts the owner, who informs the authorities through the official channel (DSA art. 18 and LCEN art. 6 IV,
+  checked 2026-10-22; channel documented in brick 8). Authorities are a secondary actor of UC11.
 - Variant: remove a user room → its members get `roomClosed`.
 - Closing the related report is a separate `closeReport` command.
 

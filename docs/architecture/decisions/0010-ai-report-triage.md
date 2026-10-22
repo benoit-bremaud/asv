@@ -8,7 +8,7 @@
 
 The owner proposed an AI moderator that scans messages for suspicious words or ambiguous situations.
 Grooming and harassment happen mostly in private messages and show over a conversation, not in one
-message. Constraints gathered on 2026-10-15 (legal points unverified, see `security-and-rgpd.md`):
+message. Constraints gathered on 2026-10-15 (legal points checked in brick 1 bis, see `security-and-rgpd.md`):
 
 - Scanning private messages at scale likely requires a data protection impact assessment, is hard to
   base on legitimate interest, and touches the secrecy of correspondence.
@@ -54,3 +54,9 @@ because scanning private messages needs an impact assessment; C is reconsidered 
 - Terms and privacy notice must mention AI triage of reports and the provider.
 - Only reported content reaches the AI, which keeps the processing narrow.
 - Report records gain triage fields (moderation class diagram).
+
+## Legal check (brick 1 bis, 2026-10-22)
+
+The constraints above were read in the official texts: DSA arts. 14 and 16(6) (describe automated tools,
+mention them in decisions) and GDPR art. 22. An impact assessment (GDPR art. 35) is planned in brick 8.
+The decision stands. See `security-and-rgpd.md` §1.

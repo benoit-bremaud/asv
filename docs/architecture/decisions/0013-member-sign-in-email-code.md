@@ -54,7 +54,7 @@ Same weights as above.
 
 ## Consequences
 
-- An authentication cookie is expected to be strictly necessary and exempt from consent, to confirm in
-  the brick 1 bis legal check.
+- The authentication cookie is exempt from consent (Loi Informatique et Libertés art. 82, CNIL
+  deliberation 2020-091 art. 5, checked in brick 1 bis). It is explained in the privacy notice.
 - Needs the same transactional e-mail provider as ADR-0012.
 - Moderators keep passkeys (ADR-0008), which need stronger assurance.
