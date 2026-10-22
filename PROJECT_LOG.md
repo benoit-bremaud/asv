@@ -103,3 +103,21 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   id lives in the socket attachment, so it survives hibernation. New `ConnectionLogStore` port, write
   before delivery, orphan lines closed on wake-up.
 - Vault access entries: kept 5 years (owner decision pending), modelled as `AccessEntry`, purged daily.
+
+## 2026-10-22 — PR #6 merged (brick 1 bis)
+
+- Squash-merged as `3385022` on `main`: legal check on official texts, ADR-0014 legal vault.
+- Logged here, in the brick #5 PR, because `main` takes no direct commits.
+
+## 2026-10-22 — Brick #5: repository compliance
+
+- Labels: `type:*` / `area:*` / `prio:*` triptych adopted, unused default labels deleted, issues #2,
+  #5, #7 and #8 relabelled.
+- GitHub settings: secret scanning, push protection, Dependabot alerts and security updates, private
+  vulnerability reporting enabled.
+- CI: `dependabot.yml` (GitHub Actions, weekly), `dependency-review` on pull requests (no package manifest yet: it only sees workflow actions), OSSF
+  `scorecard` weekly and on `main`. CodeQL and SonarQube stay in brick 2.
+- Governance: pull request template, `CONTRIBUTING.md`, `SECURITY.md`.
+- `main` ruleset (created after this PR merges): pull request required, `gitleaks` check green, no
+  force-push or deletion, Copilot code review requested automatically (fixes the HTTP 422 on manual
+  requests). Rulesets need a public repo on the Free plan: re-check when asv goes private.
