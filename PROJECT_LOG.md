@@ -121,3 +121,11 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
 - `main` ruleset (created after this PR merges): pull request required, `gitleaks` check green, no
   force-push or deletion, Copilot code review requested automatically (fixes the HTTP 422 on manual
   requests). Rulesets need a public repo on the Free plan: re-check when asv goes private.
+
+## 2026-10-22 — PR #9 merged (brick #5)
+
+- Squash-merged as `72c4c5e`; issue #5 closed. Ruleset `Protect main` created before the merge to test
+  the Copilot rule; it is active (PR squash-only, `gitleaks` required, no force-push or deletion).
+- Copilot code review never triggered, neither by the REST request nor by the ruleset rule. The last
+  Copilot review on the owner's account dates from 2026-09-29: account quota or licence, not the repo.
+  `CONTRIBUTING.md` now says so. SonarQube waived by the owner (docs and config only).
