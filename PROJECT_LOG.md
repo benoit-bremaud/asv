@@ -146,3 +146,19 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   SonarQube waiver ended.
 - Local review: 3 Must, 9 Should fixed. Codex review: 4 P2 fixed (CodeQL `contents: read`, domain
   catch-all rule, BR-013 resume buffer, Node engines). Follow-up #13 (frame and field caps, brick 7).
+
+## 2026-10-23 — Brick 3: domain entry, session, resume, pseudo rules (PR #16 merged)
+
+- Squash-merged as `69cd2ea`; issue #15 closed. Study completed and validated first:
+  `entry/07-class-domain-api.md`. Owner choices (MCDA): `Random.token()` returns the resume token and its
+  hash, the domain never hashes (475/500, Web Crypto digest is async); terms and city failures map to
+  `error invalid` with client-side validation (470/500); pseudos accept French accented letters, uniqueness
+  and reserved words compare on an accent-folded key (470/500). BR-001, BR-002, BR-007 reworded.
+- `src/domain/pseudo.ts`, `src/domain/entry.ts`: `enter`, `socketLost`, `resume`, `leave`, `expireAway`,
+  `bufferPrivate`, `pruneEntryAttempts`, pure `(state, command, now, random) → { state, effects }`.
+  Sessions are `ConnectedSession | AwaySession`; the away variant is exactly the ADR-0011 away record.
+- Tests: one Vitest group per BR, 91 tests, 100 % coverage. Domain tests may import `vitest` only (lint fixture).
+- Local review: 1 Must (resume profile unchecked) and 9 Should fixed. Codex P1 fixed (away session held
+  profile and IP). Accepted V1 limit: reserved words with separators (`a.d.m.i.n`) pass.
+- SonarQube note: the `SONAR_TOKEN` exported by the shell gave 401; the scan works with
+  `~/.config/sonarqube/analysis-token`.
