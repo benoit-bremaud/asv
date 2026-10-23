@@ -1,6 +1,6 @@
 # Component diagram — web-ui — front-end structure
 
-> **Feature**: web-ui (roadmap brick 7)
+> **Feature**: web-ui (roadmap bricks 7a, 5, 6, 8: one overlay per slice)
 > **Requirements**: ASV-NF-004, NF-005, NF-006, NF-011, NF-012
 > **Design**: `docs/architecture/design-pack.md`
 
