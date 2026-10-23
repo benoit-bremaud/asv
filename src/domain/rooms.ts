@@ -144,11 +144,14 @@ export const restoreHubState = (
   const rooms = officialRoomMap(officialRooms);
   const names = new Set([...rooms.values()].map((room) => roomNameKey(room.name)));
   const owners = new Set<string>();
+  // An owner claim counts only from a member, so a stale ref cannot take the slot of the real room.
+  const isMember = (sessionId: string, roomId: string): boolean =>
+    sessions.some((session) => session.id === sessionId && session.rooms.includes(roomId));
   for (const room of userRooms) {
     const key = roomNameKey(room.name);
     if (room.kind !== "user" || rooms.has(room.id) || names.has(key)) continue;
     names.add(key);
-    const owned = room.ownerId !== undefined && !owners.has(room.ownerId);
+    const owned = room.ownerId !== undefined && !owners.has(room.ownerId) && isMember(room.ownerId, room.id);
     if (owned) owners.add(room.ownerId);
     rooms.set(room.id, owned ? { ...withoutOwner(room), ownerId: room.ownerId } : withoutOwner(room));
   }
@@ -166,7 +169,6 @@ export const restoreHubState = (
   for (const room of [...rooms.values()].filter((candidate) => candidate.kind === "user")) {
     const members = roomMembers(state, room.id);
     if (members.length === 0) rooms.delete(room.id);
-    else if (room.ownerId && !members.some((member) => member.id === room.ownerId)) rooms.set(room.id, withoutOwner(room));
   }
   return state;
 };

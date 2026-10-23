@@ -565,6 +565,19 @@ describe("ADR-0011 rebuild after hibernation", () => {
     expect(state.entryAttempts.size).toBe(0);
   });
 
+  it("lets a stale owner claim from a non-member not block the room really owned", () => {
+    const state = restoreHubState(
+      OFFICIAL,
+      [session("s1", "lola", ["u2"]), session("s2", "zed", ["u1"])],
+      [
+        { id: "u1", name: "Apéro", kind: "user", ownerId: "s1" },
+        { id: "u2", name: "Brunch", kind: "user", ownerId: "s1" },
+      ],
+    );
+    expect(state.rooms.get("u1")).toEqual({ id: "u1", name: "Apéro", kind: "user" });
+    expect(state.rooms.get("u2")?.ownerId).toBe("s1");
+  });
+
   it("enforces the rules again on conflicting refs", () => {
     const state = restoreHubState(
       OFFICIAL,
