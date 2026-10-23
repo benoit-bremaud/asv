@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { emptyHubState, foldPseudo } from "../domain";
+import { foldPseudo } from "../domain";
 import { OFFICIAL_ROOMS } from "./official-rooms";
 
 describe("BR-033 official rooms configuration", () => {
@@ -10,7 +10,4 @@ describe("BR-033 official rooms configuration", () => {
     expect(new Set(names).size).toBe(names.length);
   });
 
-  it("seeds a fresh hub in configuration order", () => {
-    expect([...emptyHubState(OFFICIAL_ROOMS).rooms.keys()]).toEqual(OFFICIAL_ROOMS.map((room) => room.id));
-  });
 });

@@ -5,6 +5,7 @@
 import { expireAway as expireEntry, leave as leaveEntry, type Effect, type Session } from "./entry";
 import { vacateRooms, type HubState, type RoomEffect } from "./rooms";
 
+/** Hub-wide result: entry effects first, then room effects. */
 export interface HubResult {
   readonly state: HubState;
   readonly effects: readonly (Effect | RoomEffect)[];
@@ -12,6 +13,7 @@ export interface HubResult {
 
 /** Leaves every room of the closed sessions, then forgets their flood counters. */
 const closeRooms = (state: HubState, closed: readonly Session[], effects: readonly Effect[]): HubResult => {
+  // One copy for the whole close, each closed session deleted from it.
   const flood = new Map(state.flood);
   return closed.reduce<HubResult>(
     (acc, session) => {

@@ -36,7 +36,8 @@ Values are owned here. Rationale lives in the ADRs.
 | BR-021 | Flood limit: at most 5 accepted messages per 10 seconds per session, across rooms and DMs. Refused messages do not count. |
 | BR-022 | Smiley codes (for example `:)`, `:caramel:`) render from a fixed whitelist. Text is never rendered as HTML. |
 | BR-023 | A room holds at most 50 members, away members included. |
-| BR-030 | A user room name has 3 to 30 characters among the BR-001 characters, `'`, `&`, `!`, `?` and single spaces between words, follows BR-003, and is unique among rooms ignoring case and accents. |
+| BR-024 | A session is in at most 10 rooms at once, created rooms included. |
+| BR-030 | A user room name has 3 to 30 characters among the BR-001 characters, `'`, `&`, `!`, `?` and single spaces between words, contains at least one letter or digit, follows BR-003, and is unique among rooms ignoring case, accents, spaces and punctuation (`Paris.` is taken by `Paris`). |
 | BR-031 | A session can own at most one user room at a time. Ownership ends when the owner leaves the room, which then has no owner until it is deleted. |
 | BR-032 | A user room is deleted when its last member leaves or closes. |
 | BR-033 | Official rooms (themed, regional) are defined in configuration and never deleted. |

@@ -3,20 +3,22 @@
  * Every function is pure: `(state, command, now, random) → { state, effects }`.
  */
 import type { EntryState, Random, Session } from "./entry";
-import { canonicalPseudo, containsReservedWord, foldPseudo } from "./pseudo";
+import { canonicalPseudo, containsReservedWord, foldPseudo, PSEUDO_CHARS } from "./pseudo";
 
-/** V1 values of BR-020, BR-021, BR-023 and BR-030, tunable here only. */
+/** V1 values of BR-020, BR-021, BR-023 and BR-024, tunable here only (BR-030 lengths live in the name pattern). */
 export const ROOM_LIMITS = {
   maxTextLength: 500,
   floodMessages: 5,
   floodWindowMs: 10_000,
   capacity: 50,
+  maxRoomsPerSession: 10,
 } as const;
 
 /** BR-030: pseudo characters (BR-001) plus `'`, `&`, `!`, `?`, words split by single spaces, 3 to 30 code points. */
-const WORD = "[A-Za-z0-9_.\\-'&!?àâäéèêëîïôöùûüÿçÀÂÄÉÈÊËÎÏÔÖÙÛÜŸÇ]+";
+const WORD = `[${PSEUDO_CHARS}'&!?]+`;
 const ROOM_NAME_PATTERN = new RegExp(`^(?=.{3,30}$)${WORD}(?: ${WORD})*$`, "u");
 
+/** Official rooms are themed or regional (BR-033), chatters create user rooms (BR-030). */
 export type RoomKind = "themed" | "regional" | "user";
 
 /** Room metadata; members are the sessions listing the room id (`rooms/07`). */
@@ -50,10 +52,12 @@ export interface RoomSummary {
   readonly count: number;
 }
 
+/** Reason of a `roomRefused` effect, sent to the client as the protocol `warning` code. */
 export type RoomRefusal =
   | "unknownRoom"
   | "notMember"
   | "full"
+  | "tooManyRooms"
   | "empty"
   | "tooLong"
   | "flood"
@@ -61,11 +65,13 @@ export type RoomRefusal =
   | "nameTaken"
   | "alreadyOwner";
 
+/** UC5 form. Raw strings are bounded by the protocol layer (#13). */
 export interface CreateRoomCommand {
   readonly sessionId: string;
   readonly name: string;
 }
 
+/** UC4 form. */
 export interface PostRoomCommand {
   readonly sessionId: string;
   readonly roomId: string;
@@ -91,6 +97,7 @@ export type RoomEffect =
     }
   | { readonly type: "roomRefused"; readonly sessionId: string; readonly reason: RoomRefusal };
 
+/** Output of every rooms function. */
 export interface RoomsResult {
   readonly state: HubState;
   readonly effects: readonly RoomEffect[];
@@ -117,9 +124,17 @@ export const emptyHubState = (officialRooms: readonly OfficialRoom[]): HubState 
 export const roomMembers = (state: HubState, roomId: string): Session[] =>
   [...state.sessions.values()].filter((session) => session.rooms.includes(roomId));
 
+/** BR-030 uniqueness key: folded, letters and digits only, so `Paris.` is taken by `Paris`. */
+const roomNameKey = (name: string): string => foldPseudo(name).replace(/[^a-z0-9]/g, "");
+
+/** A room as kept in the state: only its known fields, owner dropped (BR-031). */
+const withoutOwner = (room: Room): Room => ({ id: room.id, name: room.name, kind: room.kind });
+
 /**
- * Rebuild after hibernation (ADR-0011): sessions come from attachments and away records, user rooms from
- * the refs they carry. Keeps user rooms with a member, owners who are members, memberships of known rooms.
+ * Rebuild after hibernation (ADR-0011): sessions come from socket attachments and away records, user rooms
+ * from the `{ id, name, ownerId }` refs they carry (`platform/04b`). The refs come from many sockets, so the
+ * rules are checked again: first ref per id and per name key wins (BR-030), one room per owner (BR-031),
+ * owners must be members, memberships of unknown rooms and duplicates are dropped, empty user rooms too.
  */
 export const restoreHubState = (
   officialRooms: readonly OfficialRoom[],
@@ -127,10 +142,20 @@ export const restoreHubState = (
   userRooms: readonly Room[],
 ): HubState => {
   const rooms = officialRoomMap(officialRooms);
+  const names = new Set([...rooms.values()].map((room) => roomNameKey(room.name)));
+  const owners = new Set<string>();
   for (const room of userRooms) {
-    if (room.kind === "user" && !rooms.has(room.id)) rooms.set(room.id, room);
+    const key = roomNameKey(room.name);
+    if (room.kind !== "user" || rooms.has(room.id) || names.has(key)) continue;
+    names.add(key);
+    const owned = room.ownerId !== undefined && !owners.has(room.ownerId);
+    if (owned) owners.add(room.ownerId);
+    rooms.set(room.id, owned ? { ...withoutOwner(room), ownerId: room.ownerId } : withoutOwner(room));
   }
-  const kept = sessions.map((session) => ({ ...session, rooms: session.rooms.filter((id) => rooms.has(id)) }));
+  const kept = sessions.map((session) => ({
+    ...session,
+    rooms: [...new Set(session.rooms)].filter((id) => rooms.has(id)),
+  }));
   const state: HubState = {
     sessions: new Map(kept.map((session) => [session.id, session])),
     pseudoIndex: new Map(kept.map((session) => [foldPseudo(session.pseudo), session.id])),
@@ -141,9 +166,7 @@ export const restoreHubState = (
   for (const room of [...rooms.values()].filter((candidate) => candidate.kind === "user")) {
     const members = roomMembers(state, room.id);
     if (members.length === 0) rooms.delete(room.id);
-    else if (room.ownerId && !members.some((member) => member.id === room.ownerId)) {
-      rooms.set(room.id, { id: room.id, name: room.name, kind: room.kind });
-    }
+    else if (room.ownerId && !members.some((member) => member.id === room.ownerId)) rooms.set(room.id, withoutOwner(room));
   }
   return state;
 };
@@ -176,27 +199,31 @@ const addMember = (state: HubState, session: Session, roomId: string): RoomsResu
     { type: "memberJoined", roomId, sessionId: session.id, pseudo: session.pseudo },
   );
 
-/** UC3, BR-023. */
+/** UC3, BR-023, BR-024. */
 export const joinRoom = (state: HubState, sessionId: string, roomId: string): RoomsResult => {
   const session = connectedSession(state, sessionId);
   if (!session) return result(state);
   if (!state.rooms.has(roomId)) return refused(state, sessionId, "unknownRoom");
   if (session.rooms.includes(roomId)) return result(state, { type: "roomJoined", sessionId, roomId });
+  if (session.rooms.length >= ROOM_LIMITS.maxRoomsPerSession) return refused(state, sessionId, "tooManyRooms");
   if (roomMembers(state, roomId).length >= ROOM_LIMITS.capacity) return refused(state, sessionId, "full");
   return addMember(state, session, roomId);
 };
 
 /**
- * Removes the memberships of a session that is already out of `state.sessions` or about to leave
- * `roomIds`: ends ownership (BR-031) and deletes user rooms left empty (BR-032).
+ * Announces that `session` left `roomIds`, ends its ownership (BR-031) and deletes user rooms it leaves
+ * empty (BR-032). `session` may still be in `state.sessions` or already removed: it is never counted as a
+ * remaining member. Does not change `session.rooms` (the caller does). Internal to the domain.
  */
 export const vacateRooms = (state: HubState, session: Session, roomIds: readonly string[]): RoomsResult => {
   const rooms = new Map(state.rooms);
   const effects: RoomEffect[] = [];
   for (const roomId of roomIds) {
-    effects.push({ type: "memberLeft", roomId, sessionId: session.id, pseudo: session.pseudo });
     const room = rooms.get(roomId);
-    if (room?.kind !== "user") continue;
+    // Already deleted by another session closed in the same call: nobody is left to tell.
+    if (!room) continue;
+    effects.push({ type: "memberLeft", roomId, sessionId: session.id, pseudo: session.pseudo });
+    if (room.kind !== "user") continue;
     const remaining = [...state.sessions.values()].some(
       (other) => other.id !== session.id && other.rooms.includes(roomId),
     );
@@ -204,13 +231,13 @@ export const vacateRooms = (state: HubState, session: Session, roomIds: readonly
       rooms.delete(roomId);
       effects.push({ type: "roomDeleted", roomId });
     } else if (room.ownerId === session.id) {
-      rooms.set(roomId, { id: room.id, name: room.name, kind: room.kind });
+      rooms.set(roomId, withoutOwner(room));
     }
   }
   return { state: withRooms(state, rooms), effects };
 };
 
-/** Leaving one room; not a member → nothing. */
+/** Leaving one room (UC3 alternative ending), with BR-031 and BR-032 applied by `vacateRooms`. Not a member → nothing. */
 export const leaveRoom = (state: HubState, sessionId: string, roomId: string): RoomsResult => {
   const session = state.sessions.get(sessionId);
   if (!session?.rooms.includes(roomId)) return result(state);
@@ -221,19 +248,21 @@ export const leaveRoom = (state: HubState, sessionId: string, roomId: string): R
   };
 };
 
-/** BR-030 on the canonical, trimmed name. */
-const isValidRoomName = (name: string): boolean => ROOM_NAME_PATTERN.test(name) && !containsReservedWord(name);
+/** BR-030 on the canonical, trimmed name; at least one letter or digit. */
+const isValidRoomName = (name: string): boolean =>
+  ROOM_NAME_PATTERN.test(name) && roomNameKey(name).length > 0 && !containsReservedWord(name);
 
-/** UC5, BR-030, BR-031. */
+/** UC5, BR-030, BR-031, BR-024: refusals `nameInvalid`, `nameTaken`, `alreadyOwner`, `tooManyRooms`, in that order. */
 export const createRoom = (state: HubState, command: CreateRoomCommand, random: Random): RoomsResult => {
   const session = connectedSession(state, command.sessionId);
   if (!session) return result(state);
   const name = canonicalPseudo(command.name).trim();
   if (!isValidRoomName(name)) return refused(state, session.id, "nameInvalid");
-  const key = foldPseudo(name);
-  const rooms = [...state.rooms.values()];
-  if (rooms.some((room) => foldPseudo(room.name) === key)) return refused(state, session.id, "nameTaken");
-  if (rooms.some((room) => room.ownerId === session.id)) return refused(state, session.id, "alreadyOwner");
+  const key = roomNameKey(name);
+  const existing = [...state.rooms.values()];
+  if (existing.some((room) => roomNameKey(room.name) === key)) return refused(state, session.id, "nameTaken");
+  if (existing.some((room) => room.ownerId === session.id)) return refused(state, session.id, "alreadyOwner");
+  if (session.rooms.length >= ROOM_LIMITS.maxRoomsPerSession) return refused(state, session.id, "tooManyRooms");
   const room: Room = { id: random.id(), name, kind: "user", ownerId: session.id };
   const joined = addMember(withRooms(state, new Map(state.rooms).set(room.id, room)), session, room.id);
   return {
@@ -255,6 +284,7 @@ export const postRoom = (state: HubState, command: PostRoomCommand, now: Date): 
   if (!session.rooms.includes(command.roomId)) return refused(state, session.id, "notMember");
   const text = command.text.trim();
   if (text.length === 0) return refused(state, session.id, "empty");
+  // BR-020 counts characters (code points), not UTF-16 units.
   if ([...text].length > ROOM_LIMITS.maxTextLength) return refused(state, session.id, "tooLong");
   const recent = recentMessages(state, session.id, now);
   if (recent.length >= ROOM_LIMITS.floodMessages) return refused(state, session.id, "flood");

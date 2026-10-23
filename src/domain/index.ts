@@ -4,6 +4,27 @@
  */
 export * from "./entry";
 export * from "./pseudo";
-export * from "./rooms";
+export {
+  createRoom,
+  emptyHubState,
+  joinRoom,
+  leaveRoom,
+  postRoom,
+  pruneFlood,
+  restoreHubState,
+  ROOM_LIMITS,
+  roomList,
+  roomMembers,
+  type CreateRoomCommand,
+  type HubState,
+  type OfficialRoom,
+  type PostRoomCommand,
+  type Room,
+  type RoomEffect,
+  type RoomKind,
+  type RoomRefusal,
+  type RoomsResult,
+  type RoomSummary,
+} from "./rooms";
 // Shadow the entry versions: closing a session must also leave its rooms (`rooms/07`).
 export { expireAway, leave, type HubResult } from "./hub";

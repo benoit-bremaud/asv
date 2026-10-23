@@ -154,15 +154,57 @@ describe("UC3 join a room", () => {
 });
 
 describe("BR-023 room capacity", () => {
-  const pseudos = Array.from({ length: ROOM_LIMITS.capacity + 1 }, (_, i) => `chatter${i}`);
+  const pseudos = Array.from({ length: 51 }, (_, i) => `chatter${i}`);
 
   it("refuses the 51st member, away members included", () => {
     const { state, ids, id } = hubWith(...pseudos);
     let s = state;
-    for (const member of ids.slice(0, ROOM_LIMITS.capacity)) s = joined(s, member, "blabla");
+    for (const member of ids.slice(0, 49)) s = joined(s, member, "blabla");
     s = socketLost(s, id(0), T0).state;
-    expect(roomMembers(s, "blabla")).toHaveLength(ROOM_LIMITS.capacity);
-    expect(refusal(joinRoom(s, id(ROOM_LIMITS.capacity), "blabla"))).toBe("full");
+    expect(joinRoom(s, id(49), "blabla").effects[0]?.type).toBe("roomJoined");
+    s = joined(s, id(49), "blabla");
+    expect(roomMembers(s, "blabla")).toHaveLength(50);
+    expect(refusal(joinRoom(s, id(50), "blabla"))).toBe("full");
+    expect(joinRoom(s, id(49), "blabla").effects).toEqual([{ type: "roomJoined", sessionId: id(49), roomId: "blabla" }]);
+  });
+
+  it("keeps the V1 values in one place", () => {
+    expect(ROOM_LIMITS).toEqual({
+      maxTextLength: 500,
+      floodMessages: 5,
+      floodWindowMs: 10_000,
+      capacity: 50,
+      maxRoomsPerSession: 10,
+    });
+  });
+});
+
+describe("BR-024 rooms per session", () => {
+  const inTenRooms = () => {
+    const { state, id, random } = hubWith(...Array.from({ length: 10 }, (_, i) => `chatter${i}`));
+    let s = state;
+    for (let i = 0; i < 10; i += 1) {
+      const created = createRoom(s, { sessionId: id(i), name: `Salon ${i}` }, random);
+      s = joined(created.state, id(0), createdRoomId(created));
+    }
+    return { state: s, id, random };
+  };
+
+  it("refuses an 11th room, joined or created", () => {
+    const { state, id, random } = inTenRooms();
+    expect(state.sessions.get(id(0))?.rooms).toHaveLength(10);
+    expect(refusal(joinRoom(state, id(0), "lyon"))).toBe("tooManyRooms");
+    // Leaving its own room ends the ownership; rejoining an official one fills the 10th slot again.
+    const ownsNothing = leaveRoom(state, id(0), state.sessions.get(id(0))?.rooms[0] ?? "").state;
+    const back = joined(ownsNothing, id(0), "lyon");
+    expect(back.sessions.get(id(0))?.rooms).toHaveLength(10);
+    expect(refusal(createRoom(back, { sessionId: id(0), name: "Brunch" }, random))).toBe("tooManyRooms");
+  });
+
+  it("still answers a room already joined", () => {
+    const { state, id } = inTenRooms();
+    const roomId = state.sessions.get(id(0))?.rooms[0] ?? "";
+    expect(joinRoom(state, id(0), roomId).effects).toEqual([{ type: "roomJoined", sessionId: id(0), roomId }]);
   });
 });
 
@@ -202,6 +244,14 @@ describe("BR-020 message length", () => {
     ]);
   });
 
+  it("refuses a post to an unknown room and ignores an away author", () => {
+    const { state, id } = hubWith("lola");
+    const s = joined(state, id(0), "blabla");
+    expect(refusal(postRoom(s, { sessionId: id(0), roomId: "nowhere", text: "hi" }, T0))).toBe("notMember");
+    const away = socketLost(s, id(0), T0).state;
+    expect(postRoom(away, { sessionId: id(0), roomId: "blabla", text: "hi" }, T0)).toEqual({ state: away, effects: [] });
+  });
+
   it("refuses a chatter who is not a member, and ignores an unknown session", () => {
     const { state, id } = hubWith("lola");
     expect(refusal(postRoom(state, { sessionId: id(0), roomId: "blabla", text: "hi" }, T0))).toBe("notMember");
@@ -214,7 +264,7 @@ describe("BR-021 flood limit", () => {
     const { state, id: nth } = hubWith("lola");
     const id = nth(0);
     let s = joined(joined(state, id, "blabla"), id, "lyon");
-    for (let i = 0; i < ROOM_LIMITS.floodMessages; i += 1) {
+    for (let i = 0; i < 5; i += 1) {
       s = postRoom(s, { sessionId: id, roomId: i % 2 ? "lyon" : "blabla", text: `m${i}` }, at(i * 1000)).state;
     }
     return { state: s, id };
@@ -232,6 +282,23 @@ describe("BR-021 flood limit", () => {
     expect(postRoom(r.state, { sessionId: id, roomId: "lyon", text: "later" }, at(10_000)).effects[0]?.type).toBe(
       "roomMessage",
     );
+  });
+
+  it("does not count empty or too long messages", () => {
+    const { state, id: nth } = hubWith("lola");
+    let s = joined(state, nth(0), "blabla");
+    for (let i = 0; i < 5; i += 1) {
+      s = postRoom(s, { sessionId: nth(0), roomId: "blabla", text: i % 2 ? "   " : "a".repeat(501) }, T0).state;
+    }
+    expect(postRoom(s, { sessionId: nth(0), roomId: "blabla", text: "ok" }, T0).effects[0]?.type).toBe("roomMessage");
+  });
+
+  it("counts per session", () => {
+    const { state, id: nth } = hubWith("lola", "zed");
+    let s = joined(joined(state, nth(0), "blabla"), nth(1), "blabla");
+    for (let i = 0; i < 5; i += 1) s = postRoom(s, { sessionId: nth(0), roomId: "blabla", text: "m" }, T0).state;
+    expect(refusal(postRoom(s, { sessionId: nth(0), roomId: "blabla", text: "m" }, T0))).toBe("flood");
+    expect(postRoom(s, { sessionId: nth(1), roomId: "blabla", text: "m" }, T0).effects[0]?.type).toBe("roomMessage");
   });
 
   it("forgets idle counters on prune and keeps the state when nothing changes", () => {
@@ -269,12 +336,18 @@ describe("BR-030 user room name", () => {
     expect(create(name).effects[0]?.type).toBe("roomCreated");
   });
 
-  it.each(["ab", "a".repeat(31), "two  spaces", "tab\there", "<script>", "Модо", "Chez les modos"])(
+  it.each(["!!!", "? ? ?", "...", "ab", "a".repeat(31), "two  spaces", "tab\there", "<script>", "Модо", "Chez les modos"])(
     "refuses %j",
     (name) => {
       expect(refusal(create(name))).toBe("nameInvalid");
     },
   );
+
+  it.each(["Paris.", "LYON !", "Ly-on", "bla bla"])("refuses %j, taken once spaces and punctuation are ignored", (name) => {
+    const { state, id, random } = hubWith("lola");
+    const s: HubState = { ...state, rooms: new Map(state.rooms).set("paris", { id: "paris", name: "Paris", kind: "regional" }) };
+    expect(refusal(createRoom(s, { sessionId: id(0), name }, random))).toBe("nameTaken");
+  });
 
   it("trims and normalises the name", () => {
     const r = create("  Café  ");
@@ -287,6 +360,23 @@ describe("BR-030 user room name", () => {
     const { state, id, random } = hubWith("lola", "zed");
     const first = createRoom(state, { sessionId: id(0), name: "Poésie" }, random);
     expect(refusal(createRoom(first.state, { sessionId: id(1), name: "POESIE" }, random))).toBe("nameTaken");
+  });
+
+  it("checks name, then uniqueness, then ownership", () => {
+    const { state, id, random } = hubWith("lola");
+    const owned = createRoom(state, { sessionId: id(0), name: "Apéro" }, random).state;
+    expect(refusal(createRoom(owned, { sessionId: id(0), name: "x" }, random))).toBe("nameInvalid");
+    expect(refusal(createRoom(owned, { sessionId: id(0), name: "Lyon" }, random))).toBe("nameTaken");
+  });
+
+  it.each(["  ab ", "     "])("refuses %j once trimmed", (name) => {
+    expect(refusal(create(name))).toBe("nameInvalid");
+  });
+
+  it("finds a decomposed name taken by its composed form", () => {
+    const { state, id, random } = hubWith("lola", "zed");
+    const first = createRoom(state, { sessionId: id(0), name: "Café" }, random);
+    expect(refusal(createRoom(first.state, { sessionId: id(1), name: "Cafe\u0301" }, random))).toBe("nameTaken");
   });
 
   it("ignores an unknown session", () => {
@@ -387,6 +477,13 @@ describe("BR-032 user room deletion", () => {
     expect(r.state.rooms.get(roomId)).toEqual({ id: roomId, name: "Apéro", kind: "user" });
   });
 
+  it("keeps an official room when its last member closes", () => {
+    const { state, id } = hubWith("lola");
+    const r = leave(joined(state, id(0), "lyon"), id(0));
+    expect(r.state.rooms.has("lyon")).toBe(true);
+    expect(r.effects.map((effect) => effect.type)).toEqual(["closed", "memberLeft"]);
+  });
+
   it("does nothing when an unknown session leaves", () => {
     const { state } = hubWith("lola");
     expect(leave(state, "ghost")).toEqual({ state, effects: [] });
@@ -402,7 +499,7 @@ describe("BR-012 and BR-015 rooms across away and expiry", () => {
     if (away?.status !== "away") throw new Error("not away");
     const back = resume(lost.state, { resumeTokenHash: away.resumeTokenHash, ip: "198.51.100.7", age: 30, accountStillExists: true }, at(1000), random);
     expect(back.state.sessions.get(id(0))?.rooms).toEqual(["blabla"]);
-    expect(back.state.rooms).toBe(s.rooms);
+    expect(roomList(back.state)).toEqual(roomList(s));
   });
 
   it("leaves the rooms of expired away sessions", () => {
@@ -414,6 +511,21 @@ describe("BR-012 and BR-015 rooms across away and expiry", () => {
     const r = expireAway(away, at(5 * 60_000));
     expect(r.effects).toEqual([
       { type: "closed", sessionId: id(0), pseudo: "lola" },
+      { type: "memberLeft", roomId, sessionId: id(0), pseudo: "lola" },
+      { type: "roomDeleted", roomId },
+    ]);
+  });
+});
+
+describe("BR-015 two expiries sharing a room", () => {
+  it("deletes the room once, with no presence for a room already gone", () => {
+    const { state, id, random } = hubWith("lola", "zed");
+    const created = createRoom(state, { sessionId: id(0), name: "Apéro" }, random);
+    const roomId = createdRoomId(created);
+    let s = joined(created.state, id(1), roomId);
+    s = socketLost(socketLost(s, id(0), T0).state, id(1), T0).state;
+    const r = expireAway(s, at(5 * 60_000));
+    expect(r.effects.filter((effect) => effect.type !== "closed")).toEqual([
       { type: "memberLeft", roomId, sessionId: id(0), pseudo: "lola" },
       { type: "roomDeleted", roomId },
     ]);
@@ -451,5 +563,22 @@ describe("ADR-0011 rebuild after hibernation", () => {
     expect(state.pseudoIndex.get("helene")).toBe("s1");
     expect(state.flood.size).toBe(0);
     expect(state.entryAttempts.size).toBe(0);
+  });
+
+  it("enforces the rules again on conflicting refs", () => {
+    const state = restoreHubState(
+      OFFICIAL,
+      [session("s1", "lola", ["u1", "u1", "u2", "u3"]), session("s2", "zed", ["u1"])],
+      [
+        { id: "u1", name: "Apéro", kind: "user", ownerId: "s1" },
+        { id: "u2", name: "APERO", kind: "user" },
+        { id: "u3", name: "Brunch", kind: "user", ownerId: "s1" },
+        { id: "u4", name: "lyon", kind: "user" },
+      ],
+    );
+    expect(state.sessions.get("s1")?.rooms).toEqual(["u1", "u3"]);
+    expect(state.rooms.get("u1")?.ownerId).toBe("s1");
+    expect(state.rooms.get("u3")).toEqual({ id: "u3", name: "Brunch", kind: "user" });
+    expect(state.rooms.has("u4")).toBe(false);
   });
 });
