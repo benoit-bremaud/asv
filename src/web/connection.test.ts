@@ -222,6 +222,18 @@ describe("createConnection", () => {
       expect(dispatch).toHaveBeenCalledWith({ type: "link", link: "online" });
     });
 
+    it("refuses leave while the resume is pending, keeping the session", () => {
+      store.set(KEY, JSON.stringify(saved));
+      const socket = start();
+      socket.open();
+
+      connection.leave();
+
+      expect(socket.frames().map((frame) => frame.type)).toEqual(["resume"]);
+      expect(store.has(KEY)).toBe(true);
+      expect(dispatch).toHaveBeenLastCalledWith({ type: "notice", code: "notConnected" });
+    });
+
     it("ignores an error that does not answer the resume", () => {
       store.set(KEY, JSON.stringify(saved));
       const socket = start();
@@ -457,6 +469,7 @@ describe("createConnection", () => {
       store.set(KEY, JSON.stringify(saved));
       const socket = start();
       socket.open();
+      socket.receive(resumed());
 
       connection.leave();
 

@@ -45,7 +45,7 @@ export const EntryScreen = () => {
   const [city, setCity] = useState("");
   const [adult, setAdult] = useState(false);
   const [terms, setTerms] = useState(false);
-  const ready = adult && terms && pseudo.trim() !== "" && age !== "" && state.link === "online";
+  const ready = adult && terms && pseudo.trim() !== "" && age !== "" && state.link === "online" && state.pendingPseudo === undefined;
 
   const submit = (event: SubmitEvent) => {
     event.preventDefault();

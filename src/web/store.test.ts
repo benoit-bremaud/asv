@@ -254,6 +254,12 @@ describe("chatReducer: local actions", () => {
     expect(act(initialState, { type: "link", link: "online" }).link).toBe("online");
   });
 
+  it("a lost link drops the pending entry", () => {
+    const next = act({ ...initialState, link: "online", pendingPseudo: "ana" }, { type: "link", link: "offline" });
+
+    expect(next.pendingPseudo).toBeUndefined();
+  });
+
   it("entering stores the pending pseudo and clears the entry error", () => {
     const next = act({ ...initialState, entryError: "age" }, { type: "entering", pseudo: "ana" });
 

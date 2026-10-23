@@ -176,7 +176,8 @@ export const chatReducer = (state: ChatState, action: Action): ChatState => {
     case "server":
       return onServer(state, action.message);
     case "link":
-      return { ...state, link: action.link };
+      // A lost socket drops a pending entry: the server never answered it.
+      return action.link === "online" ? { ...state, link: action.link } : { ...state, link: action.link, pendingPseudo: undefined };
     case "entering":
       return { ...state, pendingPseudo: action.pseudo, entryError: undefined };
     case "left":

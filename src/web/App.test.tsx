@@ -77,6 +77,16 @@ describe("entry screen", () => {
   };
   const enterButton = () => screen.getByRole("button", { name: STRINGS.enter }) as HTMLButtonElement;
 
+  it("disables ENTRER while an entry is pending", async () => {
+    const user = await setup();
+    await goOnline();
+    await fill(user);
+
+    act(() => dispatch({ type: "entering", pseudo: "ana" }));
+
+    expect(enterButton().disabled).toBe(true);
+  });
+
   it("disables ENTRER while the link is not online", async () => {
     const user = await setup();
 
@@ -450,6 +460,17 @@ describe("room screen", () => {
     await user.click(screen.getByRole("button", { name: STRINGS.closeTab("Cinéma") }));
 
     expect(connection.send).toHaveBeenCalledWith({ type: "leaveRoom", payload: { roomId: "r2" } });
+    expect(screen.getByRole("heading", { name: "# Paris" })).toBeTruthy();
+  });
+
+  it("keeps the tab when leaveRoom could not be sent", async () => {
+    const user = await setup();
+    await enterChat();
+    await joinRoom("r1");
+    connection.send.mockReturnValue(false);
+
+    await user.click(screen.getByRole("button", { name: STRINGS.closeTab("Paris") }));
+
     expect(screen.getByRole("heading", { name: "# Paris" })).toBeTruthy();
   });
 

@@ -53,8 +53,8 @@ export const ChatProvider = ({ connect, children }: { connect: ConnectionFactory
       enter: (form) => connection.current?.enter(form),
       joinRoom: (roomId) => send({ type: "joinRoom", payload: { roomId } }),
       leaveRoom: (roomId) => {
-        send({ type: "leaveRoom", payload: { roomId } });
-        dispatch({ type: "closeRoom", roomId });
+        // Offline: the server keeps the membership, so the tab stays.
+        if (send({ type: "leaveRoom", payload: { roomId } })) dispatch({ type: "closeRoom", roomId });
       },
       createRoom: (name) => send({ type: "createRoom", payload: { name } }),
       post: (roomId, text) => send({ type: "postRoom", payload: { roomId, text } }),

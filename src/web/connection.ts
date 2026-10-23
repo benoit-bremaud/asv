@@ -181,6 +181,11 @@ export const createConnection = (deps: ConnectionDeps): Connection => {
     },
     leave() {
       // Offline: the server still holds the session, so keep the token to resume it (`write` shows the notice).
+      // A pending resume: the socket is not bound yet, so the server would refuse the leave.
+      if (resumeSeq !== undefined) {
+        deps.dispatch({ type: "notice", code: "notConnected" });
+        return;
+      }
       if (!write({ type: "leave", payload: {} })) return;
       forget();
       deps.dispatch({ type: "left" });
