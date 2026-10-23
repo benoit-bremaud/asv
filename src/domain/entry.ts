@@ -43,6 +43,8 @@ interface SessionBase {
   /** Set when linked to an account (ADR-0012). */
   readonly accountId?: string;
   readonly resumeTokenHash: string;
+  /** Ids of the rooms joined (BR-012, `rooms/07`). */
+  readonly rooms: readonly string[];
 }
 
 /** A live session; `ip` and `openedAt` feed the hub's connection line (BR-060). */
@@ -127,9 +129,9 @@ export type Effect =
   | { readonly type: "resumeRefused" }
   | { readonly type: "closed"; readonly sessionId: string; readonly pseudo: string };
 
-/** Output of every domain function. */
-export interface Result {
-  readonly state: EntryState;
+/** Output of every domain function; `S` is the hub state the caller passed in. */
+export interface Result<S extends EntryState = EntryState> {
+  readonly state: S;
   readonly effects: readonly Effect[];
 }
 
@@ -141,14 +143,14 @@ export const emptyEntryState = (): EntryState => ({
 });
 
 /** Wraps a new (or the same) state and its effects. */
-const result = (state: EntryState, ...effects: Effect[]): Result => ({ state, effects });
+const result = <S extends EntryState>(state: S, ...effects: Effect[]): Result<S> => ({ state, effects });
 
-const withSession = (state: EntryState, session: Session): EntryState => ({
+const withSession = <S extends EntryState>(state: S, session: Session): S => ({
   ...state,
   sessions: new Map(state.sessions).set(session.id, session),
 });
 
-const withoutSession = (state: EntryState, session: Session): EntryState => {
+const withoutSession = <S extends EntryState>(state: S, session: Session): S => {
   const sessions = new Map(state.sessions);
   sessions.delete(session.id);
   const pseudoIndex = new Map(state.pseudoIndex);
@@ -157,7 +159,7 @@ const withoutSession = (state: EntryState, session: Session): EntryState => {
 };
 
 /** BR-007: keeps the last minute of attempts from `ip`, this one included. */
-const recordAttempt = (state: EntryState, ip: string, now: Date): { state: EntryState; earlier: number } => {
+const recordAttempt = <S extends EntryState>(state: S, ip: string, now: Date): { state: S; earlier: number } => {
   const since = now.getTime() - ENTRY_LIMITS.attemptWindowMs;
   const recent = (state.entryAttempts.get(ip) ?? []).filter((at) => at.getTime() > since);
   return {
@@ -192,7 +194,7 @@ const toProfile = (input: { gender?: Gender; age: number; city?: string }): Prof
 });
 
 /** UC1: checks run in the order of the study, the first failure wins. */
-export const enter = (state: EntryState, command: EnterCommand, now: Date, random: Random): Result => {
+export const enter = <S extends EntryState>(state: S, command: EnterCommand, now: Date, random: Random): Result<S> => {
   const attempt = recordAttempt(state, command.ip, now);
   const counted = attempt.state;
   if (attempt.earlier >= ENTRY_LIMITS.attemptsPerWindow) {
@@ -223,6 +225,7 @@ export const enter = (state: EntryState, command: EnterCommand, now: Date, rando
     openedAt: now,
     accountId: command.accountId,
     resumeTokenHash: token.hash,
+    rooms: [],
   };
   const next = withSession({ ...counted, pseudoIndex: new Map(counted.pseudoIndex).set(key, session.id) }, session);
   return result(next, {
@@ -234,7 +237,7 @@ export const enter = (state: EntryState, command: EnterCommand, now: Date, rando
 };
 
 /** BR-011, BR-012: a connected session becomes away and keeps its pseudo. */
-export const socketLost = (state: EntryState, sessionId: string, now: Date): Result => {
+export const socketLost = <S extends EntryState>(state: S, sessionId: string, now: Date): Result<S> => {
   const session = state.sessions.get(sessionId);
   if (session?.status !== "connected") return result(state);
   const awayUntil = new Date(now.getTime() + ENTRY_LIMITS.awayMs);
@@ -243,6 +246,7 @@ export const socketLost = (state: EntryState, sessionId: string, now: Date): Res
     pseudo: session.pseudo,
     accountId: session.accountId,
     resumeTokenHash: session.resumeTokenHash,
+    rooms: session.rooms,
     status: "away",
     awayUntil,
     buffered: [],
@@ -256,7 +260,7 @@ export const socketLost = (state: EntryState, sessionId: string, now: Date): Res
 };
 
 /** BR-014: the current token resumes an away session once, then a new one is issued. */
-export const resume = (state: EntryState, command: ResumeCommand, now: Date, random: Random): Result => {
+export const resume = <S extends EntryState>(state: S, command: ResumeCommand, now: Date, random: Random): Result<S> => {
   const session = [...state.sessions.values()].find(
     (candidate): candidate is AwaySession =>
       candidate.status === "away" && candidate.resumeTokenHash === command.resumeTokenHash,
@@ -276,6 +280,7 @@ export const resume = (state: EntryState, command: ResumeCommand, now: Date, ran
     openedAt: now,
     accountId: accountUnlinked ? undefined : session.accountId,
     resumeTokenHash: token.hash,
+    rooms: session.rooms,
   };
   return result(withSession(state, resumed), {
     type: "resumed",
@@ -287,18 +292,18 @@ export const resume = (state: EntryState, command: ResumeCommand, now: Date, ran
 };
 
 /** UC10: removes a connected or away session and frees its pseudo. */
-export const leave = (state: EntryState, sessionId: string): Result => {
+export const leave = <S extends EntryState>(state: S, sessionId: string): Result<S> => {
   const session = state.sessions.get(sessionId);
   if (!session) return result(state);
   return result(withoutSession(state, session), { type: "closed", sessionId, pseudo: session.pseudo });
 };
 
 /** BR-015: closes every away session whose deadline has passed. Called from the hub alarm. */
-export const expireAway = (state: EntryState, now: Date): Result => {
+export const expireAway = <S extends EntryState>(state: S, now: Date): Result<S> => {
   const expired = [...state.sessions.values()].filter(
     (session): session is AwaySession => session.status === "away" && session.awayUntil.getTime() <= now.getTime(),
   );
-  return expired.reduce<Result>(
+  return expired.reduce<Result<S>>(
     (acc, session) => ({
       state: withoutSession(acc.state, session),
       effects: [...acc.effects, { type: "closed", sessionId: session.id, pseudo: session.pseudo }],
@@ -308,7 +313,7 @@ export const expireAway = (state: EntryState, now: Date): Result => {
 };
 
 /** BR-013: keeps the newest 50 private messages of an away session. */
-export const bufferPrivate = (state: EntryState, sessionId: string, message: BufferedMessage): Result => {
+export const bufferPrivate = <S extends EntryState>(state: S, sessionId: string, message: BufferedMessage): Result<S> => {
   const session = state.sessions.get(sessionId);
   if (session?.status !== "away") return result(state);
   const buffered = [...session.buffered, message].slice(-ENTRY_LIMITS.maxBuffered);
@@ -316,7 +321,7 @@ export const bufferPrivate = (state: EntryState, sessionId: string, message: Buf
 };
 
 /** BR-007: forgets IPs with no attempt in the last minute. Called from the hub alarm. */
-export const pruneEntryAttempts = (state: EntryState, now: Date): EntryState => {
+export const pruneEntryAttempts = <S extends EntryState>(state: S, now: Date): S => {
   const since = now.getTime() - ENTRY_LIMITS.attemptWindowMs;
   const kept = [...state.entryAttempts].filter(([, attempts]) => attempts.some((at) => at.getTime() > since));
   return kept.length === state.entryAttempts.size ? state : { ...state, entryAttempts: new Map(kept) };
