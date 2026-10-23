@@ -7,7 +7,7 @@ const RESERVED_WORDS = ["admin", "modo", "moderateur", "asv"] as const;
 
 /** BR-001: ASCII and French letters, digits, `_`, `-`, `.`; 3 to 20 code points. */
 /** BR-001 characters, as a regex class body; room names reuse it (BR-030). */
-export const PSEUDO_CHARS = "A-Za-z0-9_.\\-àâäéèêëîïôöùûüÿçÀÂÄÉÈÊËÎÏÔÖÙÛÜŸÇ";
+export const PSEUDO_CHARS = String.raw`A-Za-z0-9_.\-àâäéèêëîïôöùûüÿçÀÂÄÉÈÊËÎÏÔÖÙÛÜŸÇ`;
 const PSEUDO_PATTERN = new RegExp(`^[${PSEUDO_CHARS}]{3,20}$`, "u");
 
 /** NFC form, the one checked and stored, so `é` typed either way counts once. */
