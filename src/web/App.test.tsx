@@ -77,6 +77,16 @@ describe("entry screen", () => {
   };
   const enterButton = () => screen.getByRole("button", { name: STRINGS.enter }) as HTMLButtonElement;
 
+  it("caps the city at 40 characters, not UTF-16 units (BR-006)", async () => {
+    const user = await setup();
+    const city = screen.getByLabelText(STRINGS.city) as HTMLInputElement;
+    await user.click(city);
+
+    await user.paste("😀".repeat(41));
+
+    expect([...city.value]).toHaveLength(40);
+  });
+
   it("disables ENTRER while an entry is pending", async () => {
     const user = await setup();
     await goOnline();

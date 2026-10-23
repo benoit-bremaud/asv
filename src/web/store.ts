@@ -163,8 +163,10 @@ const onServer = (state: ChatState, message: ServerMessage): ChatState => {
       return { ...next, nextLineId: state.nextLineId + 1 };
     }
     case "warning":
-    case "error":
       return { ...state, notice: message.payload.code };
+    case "error":
+      // Nothing but `enter` can be sent before `entered`, so an error now answers the pending entry.
+      return { ...state, notice: message.payload.code, pendingPseudo: undefined };
     default:
       return state;
   }

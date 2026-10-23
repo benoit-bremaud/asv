@@ -254,6 +254,17 @@ describe("chatReducer: local actions", () => {
     expect(act(initialState, { type: "link", link: "online" }).link).toBe("online");
   });
 
+  it("an error drops the pending entry", () => {
+    const next = server({ ...initialState, pendingPseudo: "ana" }, {
+      type: "error",
+      seq: 0,
+      payload: { code: "logUnavailable", message: "x" },
+    });
+
+    expect(next.pendingPseudo).toBeUndefined();
+    expect(next.notice).toBe("logUnavailable");
+  });
+
   it("a lost link drops the pending entry", () => {
     const next = act({ ...initialState, link: "online", pendingPseudo: "ana" }, { type: "link", link: "offline" });
 

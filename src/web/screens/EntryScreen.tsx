@@ -5,6 +5,8 @@ import { STRINGS } from "../strings";
 import { Header } from "./Header";
 
 const GENDERS = genderSchema.options;
+/** BR-006, in code points: `maxLength` would count UTF-16 units and stop at 20 emoji. */
+const MAX_CITY = 40;
 /** Refresh interval (ms) of the connected count on the entry screen (D8). */
 export const STATS_MS = 30_000;
 
@@ -86,7 +88,7 @@ export const EntryScreen = () => {
             </label>
             <label>
               {STRINGS.city}
-              <input value={city} maxLength={40} onChange={(e) => setCity(e.target.value)} />
+              <input value={city} onChange={(e) => setCity([...e.target.value].slice(0, MAX_CITY).join(""))} />
             </label>
           </div>
           <label className="inline">
