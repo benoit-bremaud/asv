@@ -237,6 +237,7 @@ describe("BR-020 message length", () => {
         roomId: "blabla",
         authorSessionId: id(0),
         pseudo: "lola",
+        gender: "unspecified",
         text: "salut :caramel:",
         sentAt: T0,
         recipients: [id(0), id(1)],

@@ -1,7 +1,7 @@
 # Component diagram — platform — structure and dependencies
 
 > **Feature**: platform (roadmap bricks 2, 7a, 9; adapters in 5 and 8)
-> **Requirements**: ASV-NF-003, NF-009, NF-010
+> **Requirements**: ASV-NF-003, NF-009, NF-010, NF-011
 > **Related ADRs**: ADR-0002, ADR-0003, ADR-0007, ADR-0008, ADR-0010, ADR-0011, ADR-0014
 
 ## Context
@@ -17,16 +17,16 @@ flowchart LR
     Conn["Connection manager"]
   end
   Shared["src/shared/protocol"]
-  subgraph Server ["src/server — Hono app"]
-    Routes["HTTP routes, WebSocket upgrade, passkey ceremonies"]
+  subgraph Server ["src/server — Hono app and hub"]
+    Routes["HTTP routes: /api/stats, passkey ceremonies"]
+    Hub["Transport-neutral hub: state, validation, effect mapping (platform/04c)"]
   end
   subgraph Domain ["src/domain — pure TypeScript"]
     Core["Hub state and rules: sessions, rooms, private conversations, moderation"]
     Ports["Ports: ModerationStore, ModeratorStore, AccountStore, ConnectionLogStore, LegalVaultStore, AwayStore, ReportTriage, Mailer"]
   end
   subgraph NodeT ["src/transports/node — dev and tests"]
-    NodeMain["Node entry: builds Hono app"]
-    NodeHub["In-memory hub"]
+    NodeMain["Node entry: builds Hono app, ws upgrade, heartbeat, tick"]
     NodeStore["In-memory stores, no-AI triage, console mailer"]
   end
   subgraph CfT ["src/transports/cloudflare — production"]
@@ -36,21 +36,25 @@ flowchart LR
   end
   AIAdapter["AI triage adapter, chosen in brick 8"]
   MailAdapter["Mailer adapter, provider chosen in brick 5"]
-  Conn -->|"one WebSocket"| Routes
+  Conn -->|"one WebSocket"| NodeMain
+  Conn -->|"one WebSocket, production"| WorkerEntry
+  Conn -->|"GET /api/stats"| Routes
+  Hub --> Shared
+  Hub --> Core
+  Hub --> Ports
   Conn --> Shared
   Routes --> Shared
   NodeMain -->|"builds and wires"| Routes
   WorkerEntry -->|"builds and wires"| Routes
-  NodeMain --> NodeHub
+  NodeMain -->|"sockets, clock, random"| Hub
   WorkerEntry -->|"forwards WebSocket, RPC"| HubDO
-  NodeHub --> Core
-  HubDO --> Core
+  HubDO -->|"wraps"| Hub
   NodeStore -.->|"implements"| Ports
   Sqlite -.->|"implements"| Ports
   AIAdapter -.->|"implements ReportTriage"| Ports
   MailAdapter -.->|"implements Mailer"| Ports
   HubDO --> MailAdapter
-  NodeHub --> NodeStore
+  NodeMain --> NodeStore
   HubDO --> Sqlite
   HubDO --> AIAdapter
 ```
@@ -62,6 +66,9 @@ flowchart LR
   `src/domain`: no package, no Node built-in, no path into `src/server`, `src/web`, `src/transports`
   or `src/shared`. Files in `src/server` may not import `src/transports`. Files in
   `src/shared/protocol` may import only `zod/mini`.
+- **Hub placement** (brick 7a, owner choice D2, 485/500): the hub logic lives once in `src/server/hub.ts`
+  (`platform/04c`). The Node entry and the Hub Durable Object only own sockets, clock, randomness and
+  storage, and call it. The Node transport is wired in `platform/02-sequence-node-transport`.
 - `src/server` never imports a transport. Each transport entry point builds the Hono app and plugs in its hub.
 - Time and randomness are passed to domain functions as arguments (`now`, `random`), not as ports.
 - The SQLite stores include the legal vault table behind `LegalVaultStore` (record, purgeExpired), added in brick 5 (ADR-0014).

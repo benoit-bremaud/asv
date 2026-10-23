@@ -138,7 +138,7 @@ classDiagram
 - `connectionId` is drawn by the hub and kept in the socket attachment (`entry/04`); the domain does not
   need it.
 - Session ids from `Random.id()` are unique; the hub guarantees it. Raw string sizes are capped by the
-  protocol layer before the domain (issue #13). City text is displayed as text only (BR-022).
+  protocol layer before the domain (`platform/04`, transport caps). City text is displayed as text only (BR-022).
 - `bufferPrivate` is wired to private messages in brick 6 (`private-conversations`).
 - The domain declares its own types (`Gender`, refusals, effects); it does not import
   `src/shared/protocol` (dependency rule). The hub maps effects to protocol messages.

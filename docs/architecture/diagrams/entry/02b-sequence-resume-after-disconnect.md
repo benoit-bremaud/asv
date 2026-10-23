@@ -37,6 +37,11 @@ sequenceDiagram
   alt Chatter returns within 5 minutes
     C->>W: Unlock phone
     W->>H: WebSocket upgrade then resume(token, profile)
+    opt Old socket of the session not swept yet (network change)
+      H->>D: socketLost(state, sessionId, now)
+      H->>LS: close(old connection id, now)
+      H->>H: Unbind the old socket, ask the transport to close it
+    end
     H->>AS: load away record
     H->>ACC: account still exists for record.accountId
     H->>D: resume(state, record, account, token, profile, now, random)
@@ -46,7 +51,7 @@ sequenceDiagram
       H->>H: Draw new connection id
       H->>LS: open(new connection id, IP, port, protocols, pseudo, account id, now)
       H->>H: Save new connection id in socket attachment
-      H-->>W: resumed(newToken, rooms, windows, buffered, accountId or none)
+      H-->>W: resumed(sessionId, pseudo, newToken, rooms, windows, buffered, accountId or none)
       H-->>O: memberBack(X)
     else Token invalid
       D-->>H: Refused
@@ -69,5 +74,10 @@ sequenceDiagram
   connection line of the current socket, since the socket is still open.
 - One connection line per socket connection (BR-060): the line closes on socket loss, a resume opens a new one with
   a new connection id. The away record does not carry the id.
+- A resume whose token matches a session still bound to another socket takes it over: the old socket loses
+  it exactly as on socket loss, then the resume runs. Without this, a phone that changes network before the
+  sweep would get `resumeRefused` and lose its pseudo until expiry.
+- "Quit" while offline sends nothing, so the client keeps its token and shows a notice; the session stays
+  resumable.
 - If the account was deleted while away, the session resumes without it and its private windows close
   (`accountUnlinked`).

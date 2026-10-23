@@ -23,25 +23,30 @@ flowchart LR
       Mod["ModeratorPanel"]
       Account["AccountPanel"]
     end
-    Store["Client state store"]
+    Store["Client state: pure chatReducer + useReducer context (web-ui/04)"]
     Conn["Connection manager: socket, heartbeat, backoff, resume"]
     Render["Message renderer: text + smiley whitelist"]
     Strings["UI strings, French first"]
     Passkey["Passkey client"]
   end
-  Shared["src/shared/protocol, proposed"]
+  Shared["src/shared/protocol"]
+  Stats["GET /api/stats"]
   Screens --> Store
   Screens --> Render
   Screens --> Strings
   Store --> Conn
   Conn --> Shared
+  Entry --> Stats
   Mod --> Passkey
   Entry --> Passkey
 ```
 
 ## Notes
 
-- Only the connection manager talks to the network. Screens read and update the store.
+- Brick 7a builds EntryScreen, RoomsScreen, RoomScreen, the store, the connection manager, the renderer
+  and the strings (`web-ui/04`); the other screens arrive with their slices.
+- Only the connection manager talks to the WebSocket; the entry screen also reads the connected count over
+  HTTP (`platform/04`). Screens read and update the store.
 - The connection manager owns BR-010 (heartbeat), automatic reconnection with backoff, and resume (UC13).
 - The renderer is the single place that turns text into DOM, enforcing BR-022.
 - `src/shared/protocol` is the typed message contract shared with the server (see `platform/04`).
