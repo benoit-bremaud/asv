@@ -34,5 +34,6 @@ stateDiagram-v2
 - `Reconnecting` shows a discreet banner and keeps the last screen visible. On resume the client returns
   to the screen it was on (UML history state, drawn here as a note since Mermaid lacks it).
 - `expelled` and `leave` apply from any screen of `InChat`.
-- The account prompt (UC17) is an overlay in `InChat`: it opens when a chatter without an account tries a
-  private message, and from a "My account" button.
+- The account panel (UC17 to UC19) is an overlay in `InChat`: it opens from the "Mon compte" button in
+  the header, after "recevoir mon code" on the entry screen, and (brick 6) when a chatter without an
+  account tries a private message. Its own states are in `web-ui/06`.

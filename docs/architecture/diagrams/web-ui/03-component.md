@@ -37,11 +37,15 @@ flowchart LR
   Store --> Conn
   Conn --> Shared
   Entry --> Stats
+  Account --> AccountRoutes["POST /account/device, /account/sign-out"]
   Mod --> Passkey
   Entry --> Passkey
 ```
 
 ## Notes
+
+- Brick 5 adds `AccountPanel` (`web-ui/06`) and the working "Membres" panel of `EntryScreen`. The panel
+  reaches the account routes through the connection manager, never with its own socket.
 
 - Brick 7a builds EntryScreen, RoomsScreen, RoomScreen, the store, the connection manager, the renderer
   and the strings (`web-ui/04`); the other screens arrive with their slices.

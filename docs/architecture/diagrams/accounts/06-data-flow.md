@@ -1,7 +1,7 @@
 # Data-flow diagram — accounts — e-mail and sanctions
 
 > **Feature**: accounts
-> **Related**: `docs/architecture/security-and-rgpd.md` §2, ADR-0012, ADR-0013, ADR-0014
+> **Related**: `docs/architecture/security-and-rgpd.md` §2, ADR-0012, ADR-0013, ADR-0014, ADR-0017
 
 ## Context
 
@@ -13,13 +13,13 @@ Where e-mail addresses and account data go. Does not cover reports (see `moderat
 flowchart LR
   Chatter(("Chatter"))
   Mod(("Moderator"))
-  MailProvider(("E-mail provider, processor"))
+  MailProvider(("Brevo, e-mail processor (EU)"))
   Authority(("Authorities"))
   subgraph asv ["asv hub"]
-    Acc[("Accounts: e-mail, strikes")]
+    Acc[("Accounts: e-mail encrypted, keyed e-mail hash, strikes")]
     Dev[("Device records: token hashes")]
     Blocks[("E-mail blocks: keyed hashes")]
-    Vault[("Legal vault: account id, e-mail, creation and closing dates")]
+    Vault[("Legal vault: account id, e-mail sealed to the owner key, creation and closing dates")]
   end
   Browser["Browser cookie: device token"]
   Chatter -->|"PII: e-mail"| Acc
@@ -34,6 +34,10 @@ flowchart LR
 ```
 
 ## Notes
+
+- Every stored e-mail is encrypted at application level; lookups use keyed hashes (ADR-0017). The vault
+  e-mail is sealed to the owner public key: only the owner's offline private key opens it.
+- Brevo receives the address and the code or statement only to deliver the mail; tracking stays off.
 
 - Other chatters never see the e-mail.
 - The vault keeps the account id 1 year and the e-mail and dates 5 years after closing (decree 2021-1362 arts. 2 and 3, ADR-0014).

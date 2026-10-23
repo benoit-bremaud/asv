@@ -71,7 +71,7 @@ Values are owned here. Rationale lives in the ADRs.
 |---|---|
 | BR-070 | A sign-in code has six digits, is single use, valid 10 minutes, stored as a keyed hash, and invalidated after 5 wrong tries. |
 | BR-071 | E-mail addresses from known disposable domains are refused (maintained list). |
-| BR-072 | At most 3 sign-in codes per e-mail and 10 per IP per hour. |
+| BR-072 | At most 3 sign-in codes per e-mail and 10 per IP per hour, and 60 seconds between two codes for the same e-mail. Over the IP quota the request is refused with a reason; a blocked e-mail, the e-mail quota or the cooldown get the same "code sent" answer with no code sent (ADR-0013 amendment). |
 | BR-073 | A remembered device gets a random token in an `HttpOnly`, `Secure`, `SameSite=Lax` cookie valid 30 days, set over HTTPS in exchange for a single-use device claim valid 60 seconds. The server keeps only hashes. |
 | BR-074 | A warning on a chatter with an account adds a strike. A strike expires after 90 days. |
 | BR-075 | While an account has 3 or more active strikes and no decision, the moderator panel proposes a 7-day suspension. Without confirmation, nothing happens. |
@@ -82,6 +82,7 @@ Values are owned here. Rationale lives in the ADRs.
 | BR-080 | A member may delete their account at any time. If strikes are active, a keyed e-mail hash and the strike expiry dates are kept until the last one expires, and restored if the same e-mail creates a new account. |
 | BR-081 | Every account deletion writes, in the same transaction, a legal retention record to the vault: account id, e-mail, creation (= verification) and closing dates. The account id is purged 1 year and the rest 5 years after closing (decree 2021-1362 arts. 2 and 3, ADR-0014). Session pseudonyms stay only in the connection log (BR-060). Never a deletion reason, strike or report. |
 | BR-082 | Only the owner reads the vault and the connection log, to answer an authority entitled by law. Each read appends an access entry: date, request reference, legal basis, ids returned. Access entries are kept 5 years after the read, then purged by the daily alarm. No use case, moderation tool or AI reads them. |
+| BR-083 | Every personal or sensitive stored value is encrypted at application level (AES-256-GCM, versioned keys in secrets) and looked up by keyed hash. Vault values and access entries are sealed to the owner public key, so the application cannot read them back. Only random ids, dates and counters stay clear (ADR-0017). |
 
 ## Retention (legal basis in security-and-rgpd.md §1–2)
 

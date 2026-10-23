@@ -2,7 +2,7 @@
 
 > **Feature**: accounts
 > **Business rules**: BR-070 to BR-082
-> **Related ADRs**: ADR-0012, ADR-0013, ADR-0014
+> **Related ADRs**: ADR-0012, ADR-0013, ADR-0014, ADR-0017
 
 ## Context
 
@@ -15,7 +15,8 @@ Persisted account records and their ports. Does not cover sessions (see `entry`)
 classDiagram
   class Account {
     +AccountId id
-    +String email
+    +String email «encrypted»
+    +String emailKeyedHash
     +Date verifiedAt
     +Date lastSeenAt
     +Strike[] strikes
@@ -34,7 +35,9 @@ classDiagram
   }
   class PendingCode {
     +String codeHash
-    +String email
+    +String email «encrypted»
+    +String emailKeyedHash
+    +String ipKeyedHash
     +SessionId sessionId
     +Boolean remember
     +Number triesLeft
@@ -56,8 +59,8 @@ classDiagram
   }
   class PendingStatement {
     +String id
-    +String email
-    +String statement
+    +String email «encrypted»
+    +String statement «encrypted»
     +Date createdAt
   }
   class AccountStore {
@@ -65,7 +68,9 @@ classDiagram
     +saveCode(code)
     +loadCode(sessionId) PendingCode
     +deleteCode(sessionId)
-    +findAccountByEmail(email) Account
+    +findAccountByEmailHash(emailKeyedHash) Account
+    +codesSince(emailKeyedHash, ipKeyedHash, since) CodeCounts
+    +lastCodeAt(emailKeyedHash) Date
     +saveAccount(account)
     +findAccountById(accountId) Account
     +deleteAccount(accountId)
@@ -85,7 +90,7 @@ classDiagram
   }
   class VaultRecord {
     +AccountId accountId
-    +String email
+    +String email «sealed to owner key»
     +Date createdAt
     +Date closedAt
   }
@@ -93,7 +98,7 @@ classDiagram
     +Date at
     +String requestReference
     +String legalBasis
-    +String[] idsReturned
+    +String[] idsReturned «sealed to owner key»
   }
   class LegalVaultStore {
     <<interface>>
@@ -102,8 +107,14 @@ classDiagram
   }
   class Mailer {
     <<interface>>
-    +sendCode(email, code)
-    +sendStatementOfReasons(email, statement) Boolean
+    +sendCode(email, code) Promise~void~
+    +sendStatementOfReasons(email, statement) Promise~Boolean~
+  }
+  class FieldCipher {
+    <<interface>>
+    +encrypt(value, context) String
+    +decrypt(sealed, context) String
+    +keyedHash(value) String
   }
   Account *-- Strike
   DeviceRecord --> Account
@@ -119,6 +130,14 @@ classDiagram
 ```
 
 ## Notes
+
+- «encrypted» fields go through `FieldCipher` (AES-256-GCM, versioned data keys) in the hub before they
+  reach a store; «sealed to owner key» fields are encrypted to the owner public key and the application
+  cannot read them back (ADR-0017, BR-083). Ids, dates and counters stay clear.
+- `Mailer` is the brasse-bouillon `MailerService` port (ADR-0013 amendment): it never throws for
+  `sendCode`; `sendStatementOfReasons` returns whether Brevo accepted the mail (BR-076 retries).
+- `FieldCipher` lives in `src/server/crypto/` (WebCrypto), not in the domain: the domain never sees
+  ciphertext or keys. It is drawn here because the stores receive its output.
 
 - `EmailBlock` and `StrikeCarryOver` keep only an HMAC of the e-mail, never the address (BR-077, BR-080).
 - A `PendingStatement` keeps the address only until the mailer accepts the statement of reasons, then

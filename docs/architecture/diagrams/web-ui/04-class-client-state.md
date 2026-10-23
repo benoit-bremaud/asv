@@ -28,7 +28,24 @@ classDiagram
     +Record~SessionId, Gender~ known
     +Code notice
     +Code entryError
+    +AccountView account
     +Number nextLineId
+  }
+  class AccountView {
+    +Boolean open
+    +AccountStep step
+    +String accountId
+    +Number triesLeft
+    +Boolean pendingRequest
+  }
+  class AccountStep {
+    <<enumeration>>
+    signedOut
+    askEmail
+    waitingCode
+    redeemingDevice
+    signedIn
+    confirmDelete
   }
   class Screen {
     <<enumeration>>
@@ -65,6 +82,9 @@ classDiagram
     closeRoom(roomId)
     notice(code)
     dismissNotice()
+    openAccount()
+    closeAccount()
+    accountStep(step)
   }
   class chatReducer {
     <<pure function>>
@@ -107,6 +127,12 @@ classDiagram
 ```
 
 ## Rules the code applies
+
+- **Account** (brick 5, `web-ui/06`): `codeSent` → `waitingCode`; `accountLinked` → `redeemingDevice` when
+  it carries a `deviceClaim`, else `signedIn`; `entered`/`resumed` with `accountId` → `signedIn`;
+  `accountUnlinked` → `signedOut`; a `warning` replying to `verifyCode` keeps `waitingCode` with the tries
+  left. The connection manager gains `requestCode`, `verifyCode`, `signOutEverywhere`, `deleteAccount`,
+  and two `fetch` calls to `/account/device` and `/account/sign-out` (`credentials: "same-origin"`).
 
 - **D6**: one pure `chatReducer`, held by `useReducer` in `App` and shared through a React context. The
   connection manager lives outside React; it dispatches actions and screens call its commands. Screens

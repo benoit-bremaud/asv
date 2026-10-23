@@ -10,7 +10,7 @@ constitutionnel. The CNIL website was under maintenance on 2026-10-22, so CNIL t
 Légifrance publication.
 
 | Topic | Official text | What it says | Impact on asv | Status |
-|---|---|---|---|---|
+|---|---|---|---|---|---|
 | asv is a hosting provider | LCEN art. 6 I.2 (version of 2026-08-26), DSA art. 3 g iii | A hosting provider stores information provided by its users. | asv stores messages, reports and accounts: every host duty below applies. | Verified (official text) |
 | Retention of identifying data | LCEN art. 6 V-A and V-B; CPCE art. L34-1 II bis and VI; decree 2021-1362 arts. 2, 3, 5, 7, 8 | Hosts keep data identifying content contributors. E-mail and civil identity 5 years after the contract ends (art. 2); identifier and pseudonyms 1 year after the account closes (art. 3); for each content creation, change or deletion, the connection identifier and the protocols used, 1 year (arts. 5 2° and 7). Art. 5 2° says "l'identifiant de la connexion à l'origine de la communication" and "les types de protocoles utilisés pour la connexion au service et pour le transfert des contenus". Art. 6 2°, only "en cas d'injonction du Premier ministre", adds content id, nature of the operation, date and time, and the author's identifier if provided, 1 year. Only data actually collected (art. 8). Never the content of correspondence (L34-1 VI). Breach: 1 year in prison, 250 000 EUR. | Legal vault for closed accounts (ADR-0014, BR-081, BR-082). Connection and contribution log (BR-060). asv keeps the IP and source port on the connection line, which art. 5 2° does not list for hosts: an interpretation, to settle in the brick 10 professional review. | Verified (official text). Scope for a small free chat and the IP interpretation: professional review, brick 10 |
 | Traffic data under injunction | CPCE art. L34-1 III; decree 2021-1362 art. 6; decree 2026-920 (in force 2026-10-21) | The content id, the operation, date and time, added to the contribution line (decree art. 6 2°), kept 1 year while a Prime Minister's injunction is in force. Renewed every year since 2021. | Included in the contribution line (BR-060). Re-check the yearly renewal each October. | Verified (official text) |
@@ -35,27 +35,27 @@ with their sources (ADR-0004, ADR-0005, ADR-0010, ADR-0014).
 
 ## 2. Personal data inventory
 
-| Data | Where | Purpose | Legal basis | Retention |
-|---|---|---|---|---|
-| Pseudo, gender, age, city | Hub memory, socket attachment, client sessionStorage | Run the chat | Contract / legitimate interest | Session end |
-| Messages | Hub memory | Run the chat | Contract | Room or window end |
-| Away record: pseudo, rooms, windows, buffered private messages | Hub storage | Resume after a disconnect | Contract | 5 minutes max (ADR-0011) |
-| Connection line, one per socket connection: connection id, IP and source port, protocols, pseudo, account id, start and end | Connection log | Identify content contributors (LCEN art. 6 V-A, decree 2021-1362 arts. 5 2° and 7) | Legal obligation | 1 year (BR-060) |
-| Contribution line, one per message: connection id, protocols; under injunction also content id, operation, date and time (never the content) | Connection log | Identify content contributors (decree arts. 5 2° and 7, art. 6 2° under injunction) | Legal obligation | 1 year (BR-060) |
-| Report: reason, excerpt, context lines, pseudos, AI triage | Moderation store | Moderation, DSA | Legal obligation / legitimate interest | 6 months after closing (BR-061) |
-| Reported context with neutral labels | AI provider (processor) | Triage reports | Legitimate interest | Provider contract, no training on data |
-| Ban: keyed IP hash, pseudo, end | Moderation store | Enforce expulsions | Legitimate interest | 30 days after end (BR-062) |
-| Moderator name, credential id, public key; hashed invitations | Moderator store | Authenticate moderators | Legitimate interest | Until revoked; invitations 24 h |
-| Resume token | Client sessionStorage, hash in hub | Resume session | Contract | 5 minutes max |
-| Account: e-mail, verification date, strikes | Account store | Private messages, sanctions (ADR-0012) | Contract / legitimate interest | Until deletion, or 2 years inactive (BR-079, owner proposal) |
-| Legal retention record: account id, e-mail, creation and closing dates | Legal vault, a table in hub storage (ADR-0014) | Answer an authority entitled by law (decree 2021-1362 arts. 2 and 3) | Legal obligation | Account id 1 year, e-mail and dates 5 years after closing (BR-081) |
-| Access entry: date, request reference, legal basis, ids returned | Legal vault table in hub storage | Accountability of disclosures to authorities | Legal obligation (accountability of disclosures) | 5 years after the read, daily purge (BR-082). Owner decision pending, matches the longest disclosable record |
-| Device token | Browser cookie, hash in hub | Stay signed in (ADR-0013) | Contract (authentication cookie, exempt from consent: LIL art. 82, CNIL 2020-091) | 30 days |
-| Sign-in code | E-mail provider, keyed hash in hub | Verify the e-mail | Contract | 10 minutes |
-| Pending statement of reasons: e-mail, text | Account store | Deliver the DSA art. 17 notice | Legal obligation | Until sent, 7 days max |
-| Strike carry-over: keyed e-mail hash, strike expiries | Account store | Prevent escaping strikes by self-deletion | Legitimate interest | Until the last strike expires (BR-080) |
-| Blocked e-mail, keyed hash | Account store | Prevent re-registration after sanction | Legitimate interest | 7 days or 6 months (BR-077, BR-078) |
-| E-mail and statement of reasons | E-mail provider (processor) | Sign-in, DSA art. 17 notices | Contract / legal obligation | Provider contract |
+| Data | Where | Purpose | Legal basis | Retention | Encrypted at rest (ADR-0017) |
+|---|---|---|---|---|---|
+| Pseudo, gender, age, city | Hub memory, socket attachment, client sessionStorage | Run the chat | Contract / legitimate interest | Session end | No (memory only) |
+| Messages | Hub memory | Run the chat | Contract | Room or window end | No (memory only) |
+| Away record: pseudo, rooms, windows, buffered private messages | Hub storage | Resume after a disconnect | Contract | 5 minutes max (ADR-0011) | Yes (brick 9) |
+| Connection line, one per socket connection: connection id, IP and source port, protocols, pseudo, account id, start and end | Connection log | Identify content contributors (LCEN art. 6 V-A, decree 2021-1362 arts. 5 2° and 7) | Legal obligation | 1 year (BR-060) | Yes (brick 9) |
+| Contribution line, one per message: connection id, protocols; under injunction also content id, operation, date and time (never the content) | Connection log | Identify content contributors (decree arts. 5 2° and 7, art. 6 2° under injunction) | Legal obligation | 1 year (BR-060) | Yes (brick 9) |
+| Report: reason, excerpt, context lines, pseudos, AI triage | Moderation store | Moderation, DSA | Legal obligation / legitimate interest | 6 months after closing (BR-061) | Yes (brick 8) |
+| Reported context with neutral labels | AI provider (processor) | Triage reports | Legitimate interest | Provider contract, no training on data | Provider |
+| Ban: keyed IP hash, pseudo, end | Moderation store | Enforce expulsions | Legitimate interest | 30 days after end (BR-062) | Keyed hash; pseudo encrypted (brick 8) |
+| Moderator name, credential id, public key; hashed invitations | Moderator store | Authenticate moderators | Legitimate interest | Until revoked; invitations 24 h | Yes (brick 8) |
+| Resume token | Client sessionStorage, hash in hub | Resume session | Contract | 5 minutes max | Hash |
+| Account: e-mail, verification date, strikes | Account store | Private messages, sanctions (ADR-0012) | Contract / legitimate interest | Until deletion, or 2 years inactive (BR-079, owner proposal) | E-mail encrypted + keyed hash; ids, dates clear |
+| Legal retention record: account id, e-mail, creation and closing dates | Legal vault, a table in hub storage (ADR-0014) | Answer an authority entitled by law (decree 2021-1362 arts. 2 and 3) | Legal obligation | Account id 1 year, e-mail and dates 5 years after closing (BR-081) | E-mail sealed to owner key; id, dates clear |
+| Access entry: date, request reference, legal basis, ids returned | Legal vault table in hub storage | Accountability of disclosures to authorities | Legal obligation (accountability of disclosures) | 5 years after the read, daily purge (BR-082). Owner decision pending, matches the longest disclosable record | Sealed to owner key; date clear |
+| Device token | Browser cookie, hash in hub | Stay signed in (ADR-0013) | Contract (authentication cookie, exempt from consent: LIL art. 82, CNIL 2020-091) | 30 days | Hash |
+| Sign-in code | E-mail provider, keyed hash in hub | Verify the e-mail | Contract | 10 minutes | Keyed hash; e-mail encrypted |
+| Pending statement of reasons: e-mail, text | Account store | Deliver the DSA art. 17 notice | Legal obligation | Until sent, 7 days max | Encrypted |
+| Strike carry-over: keyed e-mail hash, strike expiries | Account store | Prevent escaping strikes by self-deletion | Legitimate interest | Until the last strike expires (BR-080) | Keyed hash |
+| Blocked e-mail, keyed hash | Account store | Prevent re-registration after sanction | Legitimate interest | 7 days or 6 months (BR-077, BR-078) | Keyed hash |
+| E-mail and statement of reasons | Brevo, EU e-mail provider (processor) | Sign-in, DSA art. 17 notices | Contract / legal obligation | Provider contract | Provider (Brevo) |
 
 Never persisted: gender, age, city, message content outside report excerpts and away buffers. The vault
 never holds message content (CPCE art. L34-1 VI).
@@ -73,7 +73,7 @@ No analytics, no ads, no third-party trackers, no cookies other than strictly ne
 | Repudiation | The owner denies or is accused of a disclosure from the vault or the connection log | Every read appends an access entry: date, request reference, legal basis, ids returned (BR-082). |
 | Information disclosure | XSS through messages or smileys | Text only rendering, smiley whitelist (BR-022), strict Content-Security-Policy. |
 | Information disclosure | Reversing banned IPs | HMAC with a server secret, not a plain hash. |
-| Information disclosure | Leak or misuse of the legal vault or the connection log | No read path from the domain, moderation tools or AI: only the `LegalVaultStore` write port, owner-only read call (BR-082). Encryption at rest decided in brick 5. Purge at 1 and 5 years (BR-081). |
+| Information disclosure | Leak or misuse of the legal vault or the connection log | No read path from the domain, moderation tools or AI: only the `LegalVaultStore` write port, owner-only read call (BR-082). Vault sealed to the owner public key (ADR-0017). Purge at 1 and 5 years (BR-081). |
 | Denial of service | Flood, entry spam | Flood limit (BR-021), entry limit (BR-007), report limit (BR-052), message size (BR-020). |
 | Elevation of privilege | Calling moderator actions as a chatter | Domain authorisation check on every moderation command (BR-054). |
 
@@ -82,7 +82,10 @@ No analytics, no ads, no third-party trackers, no cookies other than strictly ne
 - HTTPS only, HSTS, secure headers (CSP, frame-ancestors none, referrer-policy).
 - Origin check on WebSocket upgrade.
 - Input validation at the protocol boundary and in the domain.
-- Secrets (HMAC key, owner invitation secret) in Wrangler secrets, never in the repo.
+- Secrets (HMAC key, data keys, vault public key, Brevo API key, owner invitation secret) in Wrangler
+  secrets, never in the repo. The owner keeps an offline backup of the keys and the vault private key
+  for 5 years (ADR-0017).
+- Application-level encryption of personal data at rest (ADR-0017, BR-083).
 - Dependencies: Dependabot, CodeQL from brick 2, Gitleaks already active.
 
 ## 5. Legal pack to produce before public launch (brick 10, after the brick 1 bis check)

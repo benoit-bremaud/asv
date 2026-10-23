@@ -37,7 +37,9 @@ flowchart LR
 - Preconditions: session connected.
 - Success guarantee: the session is linked to an account with a verified e-mail.
 - Main scenario:
-  1. Chatter types an e-mail address and chooses whether to remember this device.
+  1. Chatter types an e-mail address and chooses whether to remember this device, either in the
+     "Membres" panel of the entry screen (which enters the chat first with the pseudo form) or in the
+     "Mon compte" panel inside the chat (`web-ui/06`).
   2. System checks the format, refuses disposable domains (BR-071), checks the e-mail block list
      (BR-077) and the sending rate (BR-072).
   3. System e-mails a six-digit code valid 10 minutes (BR-070).
@@ -48,7 +50,9 @@ flowchart LR
      kept for legal reasons after deletion (BR-081, GDPR art. 13).
   6. If asked, the client exchanges the returned device claim for a 30-day device cookie (BR-073).
 - Extensions:
-  - 2a. Disposable domain, blocked e-mail or rate exceeded → refused with the reason.
+  - 2a. Disposable domain or per-IP rate exceeded → refused with the reason.
+  - 2b. Blocked e-mail, per-e-mail rate exceeded or 60-second cooldown → the same "code sent" answer, but
+    no code is created or sent, so nobody learns anything about the address (ADR-0013 amendment).
   - 5a. Wrong code → refused, the fifth wrong try invalidates the code.
   - 5b. Code expired → system offers to send a new one.
   - 5c. The e-mail has a pending strike record from a self-deleted account → the strikes come back (BR-080).

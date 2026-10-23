@@ -23,9 +23,9 @@ Links requirements to use cases and every use case to its realisations. All path
 | UC14 | Invite a moderator | F-015 | BR-056 | moderation/02b | moderation/04 | — | moderation/06 |
 | UC15 | Enroll as moderator | F-015 | BR-056 | moderation/02b | moderation/04 | — | moderation/06 |
 | UC16 | Sign in as moderator | F-016 | BR-054 | moderation/02c | moderation/04 | — | — |
-| UC17 | Sign in with an e-mail code | F-020, F-021 | BR-070 to BR-073, BR-077, BR-080, BR-081 | accounts/02 | accounts/04 | accounts/05 | accounts/06 |
-| UC18 | Sign out of this device or everywhere | F-024 | BR-073 | Spec | accounts/04 | — | accounts/06 |
-| UC19 | Delete my account | F-024 | BR-080 to BR-082 | Spec | accounts/04 | accounts/05 | accounts/06 |
+| UC17 | Sign in with an e-mail code | F-020, F-021 | BR-070 to BR-073, BR-077, BR-080, BR-081, BR-083 | accounts/02 | accounts/04, platform/04d | accounts/05, web-ui/06 | accounts/06 |
+| UC18 | Sign out of this device or everywhere | F-024 | BR-073 | Spec | accounts/04, platform/04d | web-ui/06 | accounts/06 |
+| UC19 | Delete my account | F-024 | BR-080 to BR-083 | Spec | accounts/04, platform/04d | accounts/05, web-ui/06 | accounts/06 |
 
 ## Structural and cross-cutting studies
 
