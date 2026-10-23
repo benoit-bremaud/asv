@@ -11,13 +11,13 @@
 |---|---|
 | 1 Tests | ✅ 356 unit/component/integration (node + jsdom projects), including real `ws` integration tests in `server.test.ts` · no E2E suite in the project yet |
 | 2 Coverage | tests 99.77 % stmts / 99.48 % branches / 99.18 % funcs / 99.86 % lines (floor 80) · docs ≈ 70 % presence on the changed public surface (floor 90): **red**, see Must 3 |
-| 3 SonarQube | ⚠️ not run yet: runs after push (`pnpm sonar` needs the pushed head) |
+| 3 SonarQube | ❌ FAILED on the first push (14 new issues: deprecated `FormEvent`, `role="status"`, index keys, needless `async`, default stringification) → fixed in `0c3a87d` → ✅ PASSED (new coverage 99.2 %, 0 duplication, 0 new issues) |
 | 4 Secrets | ✅ gitleaks clean (`--all`, 12 commits) · no tracked `.env*` · diff read: nothing sensitive |
 | 5 QA pass | ✅ full · entry → resume after reload → rooms → join Lyon → post (smiley rendered, `<b>` stays literal text) · light, dark, 375 px (no horizontal overflow, `scrollWidth` 375) · a11y names correct (`pseudo`, `âge`, `ville`, both checkboxes) · console: transient `502` and `ws` connection failures only while the dev server restarted, reconnection recovered · screenshots: `qa/2026-10-23-brick7a-{entry,room,rooms-dark,rooms-light,rooms-mobile}.jpg` |
 
 The Chrome pass was cut short: another extension blocked the Claude in Chrome tab after the entry screenshot. The rest of the pass ran in the app's built-in Chromium browser.
 
-- Gate: **RED** (docs coverage and the Must items below; SonarQube pending)
+- Gate: **GREEN on `0c3a87d` after the fixes** (Resolution below). A clean restart of the dev server and a new entry worked; the only console errors were `ws` retries while the Node server was still starting.
 
 ## Resolution (owner choice B, 420/500)
 
