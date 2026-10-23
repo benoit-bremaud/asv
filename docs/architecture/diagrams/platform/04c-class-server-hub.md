@@ -30,6 +30,8 @@ classDiagram
     +Random random
     +hashToken(value) String
     +ConnectionLogStore log
+    +String protocols
+    +onLogError(error) void
   }
   class ConnectionLogStore {
     <<interface, src/domain/ports.ts>>
@@ -54,7 +56,10 @@ classDiagram
   class Socket {
     +String key
     +String ip
-    +Number port
+    +Number port optional
+    +Bound bound optional
+  }
+  class Bound {
     +String sessionId
     +String connectionId
   }
@@ -71,6 +76,7 @@ classDiagram
   }
   Hub ..> HubDeps
   Hub *-- Socket
+  Socket *-- Bound
   Hub ..> Outgoing
   HubDeps --> ConnectionLogStore
   ConnectionLogStore ..> ConnectionLine
@@ -84,9 +90,11 @@ classDiagram
   write never lets another operation see a stale state; an operation that throws does not block the next.
 - **One mutable place**: the hub keeps the current `HubState` (`emptyHubState(officialRooms)`) and a map
   socket key → `Socket`. Domain functions stay pure; the hub swaps in the returned state.
-- **Incoming** (`receive`): text over 65 536 code units, invalid JSON or a message failing `clientMessage`
-  → `error { code: "invalid", replyTo }` to the sender (`replyTo` when a `seq` could be read). The socket
-  stays open.
+- **Incoming** (`receive`): text over 65 536 code units → `error { code: "invalid", message: "frameTooLarge" }`;
+  invalid JSON or a message failing `clientMessage` → `error { code: "invalid", message: "invalid", replyTo }`
+  (`replyTo` when a `seq` could be read). The socket stays open. An unknown socket key yields nothing.
+- **Socket binding**: `bound` (session id and connection id) is set once `log.open` succeeds and cleared on
+  `leave`; a socket without `bound` has no session.
 - **Socket without session**: only `enter` and `resume` are accepted; anything else → `error forbidden`.
   `enter` or `resume` on a socket that already has a session → `error invalid`.
 - **Commands of later bricks** (`sendPrivate`, `ignore`, `unignore`, `search`, `report`, moderation and
@@ -99,7 +107,8 @@ classDiagram
 - **resume** (`entry/02b`): the hub hashes the token with `hashToken` and passes `accountStillExists: true`
   until brick 5. On `resumed` it opens a new connection line like `enter`, then sends
   `resumed { resumeToken, rooms, windows: [], buffered }`, `rooms` built with `roomMembers` for each room of the
-  session, and `memberBack` to the other connected members of each room.
+  session, then `roomList` to the resumer only (its list is stale after the loss), then `memberBack` to the
+  other connected members of each room.
 - **leave**: `hub.leave`, `log.close` for the socket's connection id; the socket stays open without session,
   so the client can enter again.
 - **Socket closed** (`close`): a connected session goes through `socketLost`; `log.close`; `memberAway` to
@@ -109,6 +118,9 @@ classDiagram
   `roomMessage` or `roomCreated`, and only then keeps the new state and sends. If the write fails, the old
   state is kept and the sender gets `error logUnavailable`. The content id, operation and date fields are
   added only under an injunction (BR-060): not in brick 7a.
+- **Log failures**: every failed write goes to `onLogError` for the operator. A failed `log.open` or
+  `appendContribution` also refuses the command (`logUnavailable`); a failed `log.close` never refuses the
+  close or the leave.
 - **Effect mapping**:
 
 | Domain effect | Sent | To |

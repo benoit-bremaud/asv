@@ -193,7 +193,7 @@ describe("connected count", () => {
     const fetchStub = stubStats({ connected: 1 });
     await setup();
 
-    expect(fetchStub).toHaveBeenCalledWith("/api/stats");
+    expect(fetchStub).toHaveBeenCalledWith("/api/stats", { signal: expect.any(AbortSignal) });
     expect(screen.getByText("1 connecté")).toBeTruthy();
   });
 
@@ -223,12 +223,14 @@ describe("connected count", () => {
     const fetchStub = stubStats({ connected: 3 });
     render(<App connect={connect} />);
     await act(async () => {});
+    stubStats({ connected: 4 });
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(STATS_MS);
     });
 
-    expect(fetchStub).toHaveBeenCalledTimes(2);
+    expect(fetchStub).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("4 connectés")).toBeTruthy();
   });
 
   it("stops refreshing on unmount", async () => {
@@ -246,16 +248,17 @@ describe("connected count", () => {
   it.each([
     ["answer", () => new Promise<Response>((resolve) => setTimeout(() => resolve({ ok: true, json: async () => ({ connected: 3 }) } as Response), 10))],
     ["failure", () => new Promise<Response>((_resolve, reject) => setTimeout(() => reject(new Error("late")), 10))],
-  ])("ignores a late %s after unmount", async (_name, slow) => {
+  ])("aborts the request and ignores a late %s after unmount", async (_name, slow) => {
     vi.useFakeTimers();
-    vi.stubGlobal("fetch", vi.fn(slow));
-    const error = vi.spyOn(console, "error");
+    const fetchStub = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(slow);
+    vi.stubGlobal("fetch", fetchStub);
     const { unmount } = render(<App connect={connect} />);
 
     unmount();
     await vi.advanceTimersByTimeAsync(20);
 
-    expect(error).not.toHaveBeenCalled();
+    const init: unknown = fetchStub.mock.calls[0]?.[1];
+    expect(init).toMatchObject({ signal: { aborted: true } });
   });
 
   it("shows the pseudo and a quit button instead of the count once entered", async () => {

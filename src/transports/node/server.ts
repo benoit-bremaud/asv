@@ -14,6 +14,7 @@ import { CAPS } from "../../shared/protocol";
 import { createMemoryLog } from "./memory-log";
 import { createNodeRandom } from "./random";
 
+/** Where the Node transport listens and how often it runs its timers. */
 export interface NodeServerOptions {
   readonly port: number;
   readonly hostname: string;
@@ -21,12 +22,15 @@ export interface NodeServerOptions {
   readonly allowedOrigins: readonly string[];
   /** Injected in tests; defaults to the wall clock. */
   readonly now?: () => Date;
+  /** Milliseconds between hub ticks (away expiry, pruning); default 1000. */
   readonly tickMs?: number;
+  /** Milliseconds between sweeps of silent sockets; default 60 000. */
   readonly sweepMs?: number;
-  /** A socket silent for longer is terminated (BR-010). */
+  /** Milliseconds after which a silent socket is terminated (BR-010); default 60 000. */
   readonly silenceMs?: number;
 }
 
+/** A running Node transport: its bound port, its in-memory log (tests read it) and a graceful stop. */
 export interface NodeServer {
   readonly port: number;
   readonly log: ReturnType<typeof createMemoryLog>;

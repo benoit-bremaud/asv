@@ -5,6 +5,7 @@ import { createNodeRandom } from "./random";
 import { startNodeServer, type NodeServer } from "./server";
 
 const ORIGIN = "http://localhost:5173";
+const FRAME_MS = 2000;
 let server: NodeServer | undefined;
 
 afterEach(async () => {
@@ -30,15 +31,21 @@ const connect = async (port: number, origin = ORIGIN, path = "/ws") => {
     ws.once("open", () => resolve());
     ws.once("error", reject);
   });
-  /** Next frame matching `type` (or raw text). */
+  /** Next frame matching `type` (or raw text); fails with the awaited type after `FRAME_MS`. */
   const next = async (type: string): Promise<{ type: string; payload: Record<string, unknown> } | string> => {
+    const deadline = Date.now() + FRAME_MS;
     for (;;) {
       const index = frames.findIndex((f) => f === type || (f.startsWith("{") && JSON.parse(f).type === type));
       if (index >= 0) {
         const [frame] = frames.splice(index, 1);
         return frame === type ? frame : JSON.parse(frame as string);
       }
-      await new Promise<void>((resolve) => waiters.push(resolve));
+      const left = deadline - Date.now();
+      if (left <= 0) throw new Error(`no "${type}" frame within ${FRAME_MS} ms`);
+      await new Promise<void>((resolve) => {
+        waiters.push(resolve);
+        setTimeout(resolve, left);
+      });
     }
   };
   const send = (type: string, payload: object, seq = 1) => ws.send(JSON.stringify({ type, seq, payload }));
@@ -118,9 +125,9 @@ describe("Node transport", () => {
     clock += 61_000;
     await closed;
     // The server handles the close on its own turn: wait for it before moving the clock again.
-    await expect.poll(() => log.lines()[0]).toHaveProperty("closedAt");
+    await expect.poll(() => log.lines()[0], { timeout: FRAME_MS }).toHaveProperty("closedAt");
     clock += 5 * 60_000;
-    await expect.poll(async () => (await fetch(`http://127.0.0.1:${port}/api/stats`)).json()).toEqual({ connected: 0 });
+    await expect.poll(async () => (await fetch(`http://127.0.0.1:${port}/api/stats`)).json(), { timeout: FRAME_MS }).toEqual({ connected: 0 });
   });
 });
 

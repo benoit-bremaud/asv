@@ -96,7 +96,7 @@ describe("hub entry (UC1)", () => {
   });
 
   it("refuses the entry when the connection line cannot be written, and frees the pseudo", async () => {
-    const { hub, log, send, enterAs } = setup();
+    const { hub, log, onLogError, send, enterAs } = setup();
     log.fail.open = true;
     hub.open("1", "ip", undefined);
 
@@ -104,8 +104,9 @@ describe("hub entry (UC1)", () => {
 
     expect(only(out, "error").payload).toMatchObject({ code: "logUnavailable", replyTo: 2 });
     expect(hub.stats().connected).toBe(0);
+    expect(onLogError).toHaveBeenCalledWith(expect.any(Error));
     log.fail.open = false;
-    await expect(enterAs("2", "Lola")).resolves.toBeDefined();
+    await expect(enterAs("2", "Lola")).resolves.toMatchObject({ isModerator: false });
   });
 
   it("refuses commands before entry and a second entry", async () => {
@@ -195,7 +196,7 @@ describe("hub rooms (UC3, UC4, UC5)", () => {
   });
 
   it("drops a message whose contribution line cannot be written (BR-060)", async () => {
-    const { log, send, enterAs } = setup();
+    const { log, onLogError, send, enterAs } = setup();
     await enterAs("1", "Lola");
     await send("1", "joinRoom", { roomId: "lyon" });
     log.fail.contribution = true;
@@ -206,9 +207,12 @@ describe("hub rooms (UC3, UC4, UC5)", () => {
     expect(failed.map((o) => o.message.type)).toEqual(["error"]);
     expect(only(failed, "error").payload).toMatchObject({ code: "logUnavailable", replyTo: 7 });
     expect(only(created, "error").payload).toMatchObject({ code: "logUnavailable", replyTo: 8 });
+    expect(onLogError).toHaveBeenCalledTimes(2);
     log.fail.contribution = false;
     // Nothing was kept: the room name is still free.
-    expect(only(await send("1", "createRoom", { name: "Les Viennois" }), "roomJoined").payload.roomId).toBeDefined();
+    const retried = only(await send("1", "createRoom", { name: "Les Viennois" }), "roomJoined").payload;
+    expect(retried.roomId).not.toBe("lyon");
+    expect(retried.members).toHaveLength(1);
   });
 
   it("maps a refusal to a warning linked to the command", async () => {
@@ -292,7 +296,7 @@ describe("hub away, resume, leave and expiry (UC10, UC13)", () => {
     const { hub, max, send } = await maxAway();
     hub.open("9", "ip", undefined);
 
-    expect(only(await send("9", "resume", { resumeToken: "bad", profile: { age: 30 } }), "resumeRefused")).toBeDefined();
+    expect(only(await send("9", "resume", { resumeToken: "bad", profile: { age: 30 } }), "resumeRefused").payload).toEqual({});
     expect(only(await send("9", "resume", { resumeToken: max.resumeToken, profile: { age: 12 } }, 3), "error").payload)
       .toMatchObject({ code: "invalid", replyTo: 3 });
   });
@@ -307,7 +311,7 @@ describe("hub away, resume, leave and expiry (UC10, UC13)", () => {
     const retried = await send("9", "resume", { resumeToken: max.resumeToken, profile: { age: 30 } });
 
     expect(only(failed, "error").payload).toMatchObject({ code: "logUnavailable" });
-    expect(only(retried, "resumed")).toBeDefined();
+    expect(only(retried, "resumed").payload.rooms).toMatchObject([{ roomId: "lyon" }]);
   });
 
   it("expires an away session after 5 minutes (BR-015)", async () => {
@@ -333,7 +337,7 @@ describe("hub away, resume, leave and expiry (UC10, UC13)", () => {
 
     expect(to(out, "memberLeft")).toEqual(["1"]);
     expect(log.closed).toEqual([log.opened[1]?.connectionId]);
-    expect(only(again, "entered")).toBeDefined();
+    expect(only(again, "entered").payload.isModerator).toBe(false);
   });
 
   it("reports a line that cannot be closed and still closes the session", async () => {
@@ -363,8 +367,10 @@ describe("hub away, resume, leave and expiry (UC10, UC13)", () => {
       send("1", "postRoom", { roomId: "lyon", text: "hi" }),
     ]);
 
-    expect(only(joined, "roomJoined")).toBeDefined();
-    expect(only(posted, "roomMessage")).toBeDefined();
+    // The post was accepted, so it ran after the join: before it, the post is refused with notMember.
+    expect(only(joined, "roomJoined").payload.roomId).toBe("lyon");
+    expect(only(posted, "roomMessage").payload).toMatchObject({ roomId: "lyon", text: "hi" });
+    expect(find(posted, "warning")).toEqual([]);
     expect(hub.stats().connected).toBe(1);
   });
 });
@@ -377,6 +383,6 @@ describe("hub queue", () => {
     hub.open("9", "ip", undefined);
 
     await expect(send("9", "resume", { resumeToken: "t", profile: { age: 30 } })).rejects.toThrow("hash");
-    await expect(enterAs("1", "Lola")).resolves.toBeDefined();
+    await expect(enterAs("1", "Lola")).resolves.toMatchObject({ isModerator: false });
   });
 });

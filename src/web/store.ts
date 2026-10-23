@@ -2,13 +2,15 @@
  * Client state (`web-ui/04`, owner choice D6): one pure reducer over server messages and local actions.
  * Nothing here is stored in the browser except by the connection manager.
  */
-import type { Member, ServerMessage } from "../shared/protocol";
+import type { Gender, Member, ServerMessage } from "../shared/protocol";
 
+/** The screen shown (`web-ui/03`). */
 export type Screen = "entry" | "rooms" | "room";
+/** Socket state shown in the banner: `reconnecting` while a saved session waits to resume. */
 export type Link = "offline" | "online" | "reconnecting";
-type Gender = Extract<Member, { away: false }>["gender"];
 type RoomSummary = Extract<ServerMessage, { type: "roomList" }>["payload"]["rooms"][number];
 
+/** One room line, memory only (BR-034). */
 export interface Line {
   readonly id: number;
   readonly authorSessionId: string;
@@ -18,11 +20,13 @@ export interface Line {
   readonly sentAt: string;
 }
 
+/** A room the user has joined: its members and newest lines. */
 export interface OpenRoom {
   readonly members: readonly Member[];
   readonly lines: readonly Line[];
 }
 
+/** Everything the screens render; `notice` and `entryError` are codes the screens translate. */
 export interface ChatState {
   readonly screen: Screen;
   readonly link: Link;
@@ -38,9 +42,11 @@ export interface ChatState {
   readonly known: Readonly<Record<string, Gender>>;
   readonly notice?: string;
   readonly entryError?: string;
+  /** Monotonic key for `Line.id`, never reused. */
   readonly nextLineId: number;
 }
 
+/** Server messages and local actions the reducer handles. */
 export type Action =
   | { readonly type: "server"; readonly message: ServerMessage }
   | { readonly type: "link"; readonly link: Link }
@@ -55,6 +61,7 @@ export type Action =
 /** BR-034: only the newest lines stay in memory, nothing is kept elsewhere. */
 export const MAX_LINES = 200;
 
+/** State before any socket opens: entry screen, offline. */
 export const initialState: ChatState = {
   screen: "entry",
   link: "offline",
@@ -130,14 +137,18 @@ const onServer = (state: ChatState, message: ServerMessage): ChatState => {
       const next = withRoom(state, roomId, (room) => ({ ...room, members: replaceMember(room.members, member) }));
       return { ...next, known: learn(next.known, [member]) };
     }
-    case "memberLeft":
-      return withRoom(state, message.payload.roomId ?? "", (room) => ({
+    case "memberLeft": {
+      const { roomId, sessionId } = message.payload;
+      if (!roomId) return state;
+      return withRoom(state, roomId, (room) => ({
         ...room,
-        members: room.members.filter((member) => member.sessionId !== message.payload.sessionId),
+        members: room.members.filter((member) => member.sessionId !== sessionId),
       }));
+    }
     case "memberAway": {
-      const { sessionId, pseudo } = message.payload;
-      return withRoom(state, message.payload.roomId ?? "", (room) => ({
+      const { roomId, sessionId, pseudo } = message.payload;
+      if (!roomId) return state;
+      return withRoom(state, roomId, (room) => ({
         ...room,
         members: room.members.map((member) =>
           member.sessionId === sessionId ? { sessionId, pseudo, away: true } : member,

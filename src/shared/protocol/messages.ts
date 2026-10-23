@@ -256,5 +256,7 @@ export const serverMessage = z.discriminatedUnion("type", [
 export type ClientMessage = z.infer<typeof clientMessage>;
 /** Inferred from {@link serverMessage}. */
 export type ServerMessage = z.infer<typeof serverMessage>;
+/** Gender of a profile; drives the pseudo colour (ADR-0006). */
+export type Gender = z.infer<typeof gender>;
 /** A room member as sent in `roomJoined` and `resumed`. */
 export type Member = z.infer<typeof member>;

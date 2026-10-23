@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import type { Member } from "../../shared/protocol";
+import type { Gender, Member } from "../../shared/protocol";
 import { useChat } from "../chat-context";
 import { renderText, SMILEYS } from "../render";
 import { STRINGS } from "../strings";
@@ -7,8 +7,6 @@ import { Header } from "./Header";
 import { Pseudo } from "./Pseudo";
 
 const MAX_TEXT = 500;
-
-type Gender = Extract<Member, { away: false }>["gender"];
 
 const MemberLine = ({ member, knownGender }: { member: Member; knownGender?: Gender }) =>
   member.away ? (

@@ -147,6 +147,17 @@ describe("createConnection", () => {
       expect(store.has(KEY)).toBe(false);
     });
 
+    it("forgets the pending profile after a refused entry", () => {
+      const socket = start();
+      socket.open();
+      connection.enter(form);
+
+      socket.receive(JSON.stringify({ type: "entryRefused", seq: 0, payload: { reason: "pseudoTaken" } }));
+      socket.receive(entered());
+
+      expect(store.has(KEY)).toBe(false);
+    });
+
     it("rotates the token on resumed and goes online", () => {
       store.set(KEY, JSON.stringify(saved));
       const socket = start();

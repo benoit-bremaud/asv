@@ -37,7 +37,7 @@ export interface HubDeps {
   readonly log: ConnectionLogStore;
   /** Protocols of the connection line, for example `HTTP/1.1 WebSocket` (BR-060). */
   readonly protocols: string;
-  /** Called when a log line could not be closed; the hub cannot refuse a close. */
+  /** Called on every failed log write; a failed open or contribution also refuses the command. */
   readonly onLogError: (error: unknown) => void;
 }
 
@@ -52,6 +52,10 @@ export interface Stats {
   readonly connected: number;
 }
 
+/**
+ * What a transport calls. `receive`, `close` and `tick` run one after the other; the transport sends each
+ * `Outgoing` as is. Bad client input never throws: it becomes an `error` message. Unknown keys yield `[]`.
+ */
 export interface Hub {
   open(socketKey: string, ip: string, port?: number): void;
   receive(socketKey: string, raw: string, now: Date): Promise<Outgoing[]>;
@@ -82,7 +86,7 @@ const sessionOf = (state: HubState, sessionId: string): Session => {
 };
 
 /** Room effects that change a count or the set of rooms, so every list must be refreshed. */
-const LIST_CHANGES = new Set<string>(["memberJoined", "memberLeft", "roomCreated", "roomDeleted"]);
+const LIST_CHANGES = new Set<(Effect | RoomEffect)["type"]>(["memberJoined", "memberLeft", "roomCreated", "roomDeleted"]);
 
 /** Reads `seq` from a message that failed validation, to link the error to it. */
 const seqOf = (data: unknown): number | undefined => {
@@ -223,7 +227,8 @@ export const createHub = (deps: HubDeps): Hub => {
         accountId: session.accountId,
         openedAt: now,
       });
-    } catch {
+    } catch (cause) {
+      deps.onLogError(cause);
       return false;
     }
     state = next;
@@ -327,7 +332,8 @@ export const createHub = (deps: HubDeps): Hub => {
     if (creates) {
       try {
         await deps.log.appendContribution({ connectionId: bound.connectionId, protocols: deps.protocols, at: now });
-      } catch {
+      } catch (cause) {
+        deps.onLogError(cause);
         return [error(socket, "logUnavailable", "logUnavailable", command.seq)];
       }
     }

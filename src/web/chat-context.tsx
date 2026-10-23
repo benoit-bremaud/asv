@@ -2,6 +2,9 @@ import { createContext, useContext, useEffect, useMemo, useReducer, useRef, type
 import { createConnection, type Connection, type ConnectionDeps, type EnterForm } from "./connection";
 import { chatReducer, initialState, type Action, type ChatState } from "./store";
 
+/** The only local actions screens may dispatch; server actions come from the connection manager. */
+export type LocalAction = Extract<Action, { type: "showRooms" | "showRoom" | "dismissNotice" }>;
+
 /** What screens may do; only the connection manager touches the socket (`web-ui/03`). */
 export interface Commands {
   enter(form: EnterForm): void;
@@ -10,7 +13,7 @@ export interface Commands {
   createRoom(name: string): void;
   post(roomId: string, text: string): void;
   leave(): void;
-  local(action: Action): void;
+  local(action: LocalAction): void;
 }
 
 interface Chat {
@@ -20,7 +23,7 @@ interface Chat {
 
 const ChatContext = createContext<Chat | undefined>(undefined);
 
-/** Socket factory and storage, injected so tests can run without a server. */
+/** Builds the connection from the reducer's dispatch; injected so tests run without a server. */
 export type ConnectionFactory = (dispatch: ConnectionDeps["dispatch"]) => Connection;
 
 /** Same origin `/ws`, `wss:` under HTTPS (`web-ui/04`). */
@@ -32,6 +35,7 @@ export const browserConnection: ConnectionFactory = (dispatch) =>
     dispatch,
   });
 
+/** Owns the connection: opens it on mount, closes it on unmount, and gives screens the state and commands. */
 export const ChatProvider = ({ connect, children }: { connect: ConnectionFactory; children: ReactNode }) => {
   const [state, dispatch] = useReducer(chatReducer, initialState);
   const connection = useRef<Connection | undefined>(undefined);
@@ -62,6 +66,7 @@ export const ChatProvider = ({ connect, children }: { connect: ConnectionFactory
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
 };
 
+/** State and commands of the chat. @throws outside a `ChatProvider`. */
 export const useChat = (): Chat => {
   const chat = useContext(ChatContext);
   if (!chat) throw new Error("useChat outside ChatProvider");

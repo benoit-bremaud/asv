@@ -23,10 +23,11 @@ interface Saved {
 
 type Profile = Extract<ClientMessage, { type: "resume" }>["payload"]["profile"];
 export type EnterForm = Omit<Extract<ClientMessage, { type: "enter" }>["payload"], "moderatorGrant">;
-/** A command without its `seq`, which the manager numbers. */
 type Outbound<M = ClientMessage> = M extends { type: infer T; payload: infer P } ? { type: T; payload: P } : never;
+/** What screens may send, without `seq` (the manager numbers it); enter, resume and leave have their own methods. */
 export type Command = Exclude<Outbound, { type: "enter" | "resume" | "leave" }>;
 
+/** What the manager needs from the browser, injected so tests use fakes. */
 export interface ConnectionDeps {
   readonly url: string;
   readonly createSocket: (url: string) => SocketLike;
@@ -34,6 +35,7 @@ export interface ConnectionDeps {
   readonly dispatch: (action: Action) => void;
 }
 
+/** The live connection the provider holds. */
 export interface Connection {
   enter(form: EnterForm): void;
   send(command: Command): void;
@@ -41,7 +43,9 @@ export interface Connection {
   close(): void;
 }
 
+/** Interval between `ping` frames (ADR-0011). */
 export const HEARTBEAT_MS = 25_000;
+/** How long the manager waits for `pong` before it treats the socket as lost. */
 export const PONG_TIMEOUT_MS = 10_000;
 /** Reconnection delays, the last one repeats (`web-ui/04`). */
 export const BACKOFF_MS = [1_000, 2_000, 4_000, 8_000, 16_000, 30_000] as const;
@@ -104,6 +108,9 @@ export const createConnection = (deps: ConnectionDeps): Connection => {
     const message = parsed.data;
     if (message.type === "entered" && pendingProfile) {
       save({ resumeToken: message.payload.resumeToken, profile: pendingProfile });
+      pendingProfile = undefined;
+    } else if (message.type === "entryRefused") {
+      pendingProfile = undefined;
     } else if (message.type === "resumed") {
       const saved = load();
       if (saved) save({ ...saved, resumeToken: message.payload.resumeToken });
@@ -128,7 +135,7 @@ export const createConnection = (deps: ConnectionDeps): Connection => {
       }, HEARTBEAT_MS);
       const saved = load();
       if (saved) {
-        current.send(JSON.stringify({ type: "resume", seq: seq++, payload: saved }));
+        write({ type: "resume", payload: saved });
       } else {
         deps.dispatch({ type: "link", link: "online" });
       }

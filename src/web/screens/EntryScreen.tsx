@@ -1,31 +1,34 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { gender as genderSchema, type Gender } from "../../shared/protocol";
 import { useChat } from "../chat-context";
 import { STRINGS } from "../strings";
 import { Header } from "./Header";
 
-type Gender = "woman" | "man" | "unspecified";
-const GENDERS: readonly Gender[] = ["woman", "man", "unspecified"];
+const GENDERS = genderSchema.options;
+/** Refresh interval (ms) of the connected count on the entry screen (D8). */
 export const STATS_MS = 30_000;
 
 /** Connected count from `GET /api/stats`, hidden when the request fails (D8). */
 const useConnectedCount = (): number | undefined => {
   const [count, setCount] = useState<number>();
   useEffect(() => {
-    let live = true;
+    // Unmount aborts the request in flight, so no late answer reaches an unmounted screen.
+    const controller = new AbortController();
+    const { signal } = controller;
     const load = async () => {
       try {
-        const response = await fetch("/api/stats");
+        const response = await fetch("/api/stats", { signal });
         const body: unknown = response.ok ? await response.json() : undefined;
         const connected = typeof body === "object" && body !== null && "connected" in body ? body.connected : undefined;
-        if (live) setCount(typeof connected === "number" ? connected : undefined);
+        if (!signal.aborted) setCount(typeof connected === "number" ? connected : undefined);
       } catch {
-        if (live) setCount(undefined);
+        if (!signal.aborted) setCount(undefined);
       }
     };
     void load();
     const timer = setInterval(() => void load(), STATS_MS);
     return () => {
-      live = false;
+      controller.abort();
       clearInterval(timer);
     };
   }, []);
