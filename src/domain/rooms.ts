@@ -2,7 +2,7 @@
  * Rooms: list, join, leave, create and post (UC2 to UC5), study `rooms/07-class-domain-api`.
  * Every function is pure: `(state, command, now, random) → { state, effects }`.
  */
-import type { EntryState, Random, Session } from "./entry";
+import type { ConnectedSession, EntryState, Gender, Random, Session } from "./entry";
 import { canonicalPseudo, containsReservedWord, foldPseudo, PSEUDO_CHARS } from "./pseudo";
 
 /** V1 values of BR-020, BR-021, BR-023 and BR-024, tunable here only (BR-030 lengths live in the name pattern). */
@@ -90,6 +90,8 @@ export type RoomEffect =
       readonly roomId: string;
       readonly authorSessionId: string;
       readonly pseudo: string;
+      /** From the author's profile, for the pseudo colour (ADR-0006). */
+      readonly gender: Gender;
       readonly text: string;
       readonly sentAt: Date;
       /** Connected members, author included (echo). */
@@ -188,7 +190,7 @@ const withSession = (state: HubState, session: Session): HubState => ({
 
 const withRooms = (state: HubState, rooms: Map<string, Room>): HubState => ({ ...state, rooms });
 
-const connectedSession = (state: HubState, sessionId: string): Session | undefined => {
+const connectedSession = (state: HubState, sessionId: string): ConnectedSession | undefined => {
   const session = state.sessions.get(sessionId);
   return session?.status === "connected" ? session : undefined;
 };
@@ -300,6 +302,7 @@ export const postRoom = (state: HubState, command: PostRoomCommand, now: Date): 
       roomId: command.roomId,
       authorSessionId: session.id,
       pseudo: session.pseudo,
+      gender: session.profile.gender,
       text,
       sentAt: now,
       recipients,

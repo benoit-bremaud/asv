@@ -2,12 +2,34 @@
  * WebSocket protocol contract shared by the web client and the server
  * (study `platform/04-class-protocol`, ADR-0015).
  *
- * Schemas check the shape of a message only. Business rules (pseudo format,
- * text length, rate limits) belong to `src/domain`.
+ * Schemas check the shape of a message and cap every string (transport caps,
+ * issue #13). Business rules (pseudo format, text length, rate limits) belong
+ * to `src/domain`; the caps leave a margin over them so the domain still gives
+ * its precise refusal.
  */
 import * as z from "zod/mini";
 
-const id = z.string().check(z.minLength(1));
+/** Transport caps of `platform/04`, in UTF-16 code units; `frame` also in bytes on the wire. */
+export const CAPS = {
+  frame: 65_536,
+  id: 64,
+  pseudo: 64,
+  city: 160,
+  text: 2_000,
+  roomName: 120,
+  query: 64,
+  email: 254,
+  code: 16,
+  moderatorGrant: 512,
+  excerpt: 2_000,
+  contextLine: 1_000,
+  contextLines: 20,
+} as const;
+
+const capped = (max: number) => z.string().check(z.maxLength(max));
+const id = z.string().check(z.minLength(1), z.maxLength(CAPS.id));
+const pseudo = capped(CAPS.pseudo);
+const text = capped(CAPS.text);
 const isoDate = z.iso.datetime();
 
 /** Builds one envelope `{ type, seq, payload }` for a given message type. */
@@ -39,14 +61,17 @@ export const urgency = z.enum(["unknown", "low", "medium", "high"]);
 export const expelDuration = z.enum(["1h", "24h", "7d"]);
 /** Why an entry was refused; `banned` comes with `bannedUntil`. */
 export const entryRefusal = z.enum(["rate", "banned", "pseudoInvalid", "pseudoTaken", "age"]);
-/** Codes of the `error` message; `offline` means the private message target is gone. */
-export const errorCode = z.enum(["offline", "accountRequired", "forbidden", "invalid"]);
+/**
+ * Codes of the `error` message; `offline` means the private message target is gone,
+ * `logUnavailable` that the connection log could not be written (BR-060).
+ */
+export const errorCode = z.enum(["offline", "accountRequired", "forbidden", "invalid", "logUnavailable"]);
 
 /** Self-declared profile; age bounds (BR-004) are checked by the domain. */
 const profile = z.object({
   gender: z.optional(gender),
   age: z.int(),
-  city: z.optional(z.string()),
+  city: z.optional(capped(CAPS.city)),
 });
 
 const roomTarget = z.object({ roomId: id });
@@ -58,35 +83,35 @@ export const clientMessage = z.discriminatedUnion("type", [
   message(
     "enter",
     z.extend(profile, {
-      pseudo: z.string(),
+      pseudo,
       adultConfirmed: z.boolean(),
       termsAccepted: z.boolean(),
-      moderatorGrant: z.optional(z.string()),
+      moderatorGrant: z.optional(capped(CAPS.moderatorGrant)),
     }),
   ),
   message("resume", z.object({ resumeToken: id, profile })),
   message("joinRoom", roomTarget),
   message("leaveRoom", roomTarget),
-  message("createRoom", z.object({ name: z.string() })),
-  message("postRoom", z.object({ roomId: id, text: z.string() })),
-  message("sendPrivate", z.object({ targetPseudo: z.string(), text: z.string() })),
+  message("createRoom", z.object({ name: capped(CAPS.roomName) })),
+  message("postRoom", z.object({ roomId: id, text })),
+  message("sendPrivate", z.object({ targetPseudo: pseudo, text })),
   message("ignore", sessionTarget),
   message("unignore", sessionTarget),
-  message("search", z.object({ query: z.string() })),
+  message("search", z.object({ query: capped(CAPS.query) })),
   message(
     "report",
     z.object({
       targetKind: reportTarget,
-      targetPseudo: z.optional(z.string()),
+      targetPseudo: z.optional(pseudo),
       targetRoomId: z.optional(id),
       reason: reportReason,
-      excerpt: z.string(),
+      excerpt: capped(CAPS.excerpt),
       // BR-051: at most 20 context lines the reporter saw.
-      context: z.array(z.string()).check(z.maxLength(20)),
+      context: z.array(capped(CAPS.contextLine)).check(z.maxLength(CAPS.contextLines)),
     }),
   ),
   message("listOpenReports", empty),
-  message("warn", z.object({ targetSessionId: id, text: z.string() })),
+  message("warn", z.object({ targetSessionId: id, text })),
   message(
     "expel",
     z.object({
@@ -100,23 +125,29 @@ export const clientMessage = z.discriminatedUnion("type", [
   message("confirmSuspension", suspensionTarget),
   message("declineSuspension", suspensionTarget),
   message("removeRoom", roomTarget),
-  message("requestCode", z.object({ email: z.string(), remember: z.boolean() })),
-  message("verifyCode", z.object({ code: z.string() })),
+  message("requestCode", z.object({ email: capped(CAPS.email), remember: z.boolean() })),
+  message("verifyCode", z.object({ code: capped(CAPS.code) })),
   message("signOutEverywhere", empty),
   message("deleteAccount", empty),
   message("leave", empty),
 ]);
 
 const roomSummary = z.object({ id, name: z.string(), kind: roomKind, count: z.int() });
-const member = z.object({
+/** An away session has no profile (ADR-0011): `member` is a union on `away` (issue #21). */
+const awayChatter = z.object({ sessionId: id, pseudo: z.string(), away: z.literal(true) });
+const connectedMember = z.object({
   sessionId: id,
   pseudo: z.string(),
+  away: z.literal(false),
   gender,
   age: z.int(),
   city: z.optional(z.string()),
-  away: z.boolean(),
 });
-const otherChatter = z.pick(member, { sessionId: true, pseudo: true, gender: true, away: true });
+const member = z.discriminatedUnion("away", [connectedMember, awayChatter]);
+const otherChatter = z.discriminatedUnion("away", [
+  z.pick(connectedMember, { sessionId: true, pseudo: true, away: true, gender: true }),
+  awayChatter,
+]);
 const roomJoined = z.object({ roomId: id, members: z.array(member) });
 const presence = z.object({ roomId: z.optional(id), sessionId: id, pseudo: z.string() });
 const roomMessage = z.object({
@@ -168,10 +199,11 @@ export const serverMessage = z.discriminatedUnion("type", [
   message("resumeRefused", empty),
   message("roomList", z.object({ rooms: z.array(roomSummary) })),
   message("roomJoined", roomJoined),
-  message("memberJoined", presence),
+  // Arrivals carry the member, so the list shows age and city without another request.
+  message("memberJoined", z.object({ roomId: id, member })),
   message("memberLeft", presence),
   message("memberAway", presence),
-  message("memberBack", presence),
+  message("memberBack", z.object({ roomId: id, member })),
   message("roomMessage", roomMessage),
   message("privateWindow", privateWindow),
   message("privateMessage", privateMessage),
@@ -179,7 +211,12 @@ export const serverMessage = z.discriminatedUnion("type", [
   message(
     "searchResults",
     z.object({
-      results: z.array(z.extend(member, { rooms: z.array(id) })),
+      results: z.array(
+        z.discriminatedUnion("away", [
+          z.extend(connectedMember, { rooms: z.array(id) }),
+          z.extend(awayChatter, { rooms: z.array(id) }),
+        ]),
+      ),
     }),
   ),
   message("reportSent", z.object({ reportId: id })),
@@ -219,3 +256,5 @@ export const serverMessage = z.discriminatedUnion("type", [
 export type ClientMessage = z.infer<typeof clientMessage>;
 /** Inferred from {@link serverMessage}. */
 export type ServerMessage = z.infer<typeof serverMessage>;
+/** A room member as sent in `roomJoined` and `resumed`. */
+export type Member = z.infer<typeof member>;

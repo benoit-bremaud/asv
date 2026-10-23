@@ -66,7 +66,7 @@ classDiagram
     memberLeft(roomId, sessionId, pseudo)
     roomCreated(roomId, sessionId)
     roomDeleted(roomId)
-    roomMessage(roomId, authorSessionId, pseudo, text, sentAt, recipients)
+    roomMessage(roomId, authorSessionId, pseudo, gender, text, sentAt, recipients)
     roomRefused(sessionId, reason)
   }
   class RoomRefusal {

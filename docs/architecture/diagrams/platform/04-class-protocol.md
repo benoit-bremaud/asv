@@ -115,7 +115,8 @@ Server to client:
 | resumeRefused | — |
 | roomList | rooms (id, name, kind, count) |
 | roomJoined | roomId, members (member: see "Away member shape") |
-| memberJoined / memberLeft / memberAway / memberBack | roomId?, sessionId, pseudo |
+| memberJoined / memberBack | roomId, member (so the members list shows age and city, brick 7a) |
+| memberLeft / memberAway | roomId?, sessionId, pseudo |
 | roomMessage | roomId, authorSessionId, pseudo, gender, text, sentAt |
 | privateWindow | conversationId, other (member without age and city) |
 | privateMessage | conversationId, authorSessionId, text, sentAt |

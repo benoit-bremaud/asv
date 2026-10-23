@@ -22,7 +22,7 @@ classDiagram
     +open(socketKey, ip, port) void
     +receive(socketKey, raw, now) Promise~Outgoing[]~
     +close(socketKey, now) Promise~Outgoing[]~
-    +tick(now) Outgoing[]
+    +tick(now) Promise~Outgoing[]~
     +stats() Stats
   }
   class HubDeps {
@@ -80,6 +80,8 @@ classDiagram
 
 ## Rules the code applies
 
+- **Serial**: `receive`, `close` and `tick` run one after the other (a promise queue), so an awaited log
+  write never lets another operation see a stale state; an operation that throws does not block the next.
 - **One mutable place**: the hub keeps the current `HubState` (`emptyHubState(officialRooms)`) and a map
   socket key → `Socket`. Domain functions stay pure; the hub swaps in the returned state.
 - **Incoming** (`receive`): text over 65 536 code units, invalid JSON or a message failing `clientMessage`
@@ -92,7 +94,8 @@ classDiagram
 - **enter** (`entry/02a`): `activeBan` and `accountId` are absent until bricks 8 and 5. On `entered` the hub
   draws a connection id (`random.id()`), awaits `log.open`, stores session id and connection id on the
   socket, then sends `entered { sessionId, resumeToken, roomList, isModerator: false }`. If `log.open`
-  fails, the hub calls `leave` for the new session and sends `error logUnavailable`.
+  fails, the new state is dropped (the pseudo stays free) and the sender gets `error logUnavailable`; a
+  failed resume likewise leaves the session away.
 - **resume** (`entry/02b`): the hub hashes the token with `hashToken` and passes `accountStillExists: true`
   until brick 5. On `resumed` it opens a new connection line like `enter`, then sends
   `resumed { resumeToken, rooms, windows: [], buffered }`, `rooms` built with `roomMembers` for each room of the
@@ -114,9 +117,10 @@ classDiagram
 | `invalid` | `error { code: "invalid" }` | sender |
 | `resumeRefused` | `resumeRefused` | sender |
 | `roomJoined` | `roomJoined { roomId, members }` from `roomMembers` | the joiner |
-| `memberJoined` / `memberLeft` | presence `{ roomId, sessionId, pseudo }` | connected members of the room except the subject |
-| `wentAway` | `memberAway` per room of the session | connected members of each room except the subject |
-| `resumed` | `memberBack` per room of the session | same |
+| `memberJoined` | `memberJoined { roomId, member }` | connected members of the room except the subject |
+| `memberLeft` | presence `{ roomId, sessionId, pseudo }` | same |
+| `wentAway` | `memberAway` presence per room of the session | connected members of each room except the subject |
+| `resumed` | `memberBack { roomId, member }` per room of the session | same |
 | `roomMessage` | `roomMessage { …, gender, sentAt }`, gender from the author's profile | `recipients` |
 | `roomRefused` | `warning { code: reason, message: reason, replyTo }` | sender |
 | `roomCreated`, `roomDeleted`, `closed` | nothing of their own | — |

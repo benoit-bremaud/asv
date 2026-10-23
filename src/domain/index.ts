@@ -3,6 +3,7 @@
  * the rule is enforced by ESLint (`platform/03-component`).
  */
 export * from "./entry";
+export * from "./ports";
 export * from "./pseudo";
 export {
   createRoom,

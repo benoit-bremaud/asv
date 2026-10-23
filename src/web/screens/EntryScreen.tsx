@@ -1,0 +1,126 @@
+import { useEffect, useState, type FormEvent } from "react";
+import { useChat } from "../chat-context";
+import { STRINGS } from "../strings";
+import { Header } from "./Header";
+
+type Gender = "woman" | "man" | "unspecified";
+const GENDERS: readonly Gender[] = ["woman", "man", "unspecified"];
+export const STATS_MS = 30_000;
+
+/** Connected count from `GET /api/stats`, hidden when the request fails (D8). */
+const useConnectedCount = (): number | undefined => {
+  const [count, setCount] = useState<number>();
+  useEffect(() => {
+    let live = true;
+    const load = async () => {
+      try {
+        const response = await fetch("/api/stats");
+        const body: unknown = response.ok ? await response.json() : undefined;
+        const connected = typeof body === "object" && body !== null && "connected" in body ? body.connected : undefined;
+        if (live) setCount(typeof connected === "number" ? connected : undefined);
+      } catch {
+        if (live) setCount(undefined);
+      }
+    };
+    void load();
+    const timer = setInterval(() => void load(), STATS_MS);
+    return () => {
+      live = false;
+      clearInterval(timer);
+    };
+  }, []);
+  return count;
+};
+
+/** UC1 entry screen from the validated mockup (design pack, `web-ui/04`). */
+export const EntryScreen = () => {
+  const { state, commands } = useChat();
+  const connected = useConnectedCount();
+  const [pseudo, setPseudo] = useState(state.lastPseudo ?? "");
+  const [gender, setGender] = useState<Gender>("unspecified");
+  const [age, setAge] = useState("");
+  const [city, setCity] = useState("");
+  const [adult, setAdult] = useState(false);
+  const [terms, setTerms] = useState(false);
+  const ready = adult && terms && pseudo.trim() !== "" && age !== "" && state.link === "online";
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    if (!ready) return;
+    commands.enter({
+      pseudo: pseudo.trim(),
+      gender,
+      age: Number(age),
+      ...(city.trim() ? { city: city.trim() } : {}),
+      adultConfirmed: adult,
+      termsAccepted: terms,
+    });
+  };
+
+  return (
+    <>
+      <Header connected={connected} />
+      <main className="entry">
+        <form className="panel" onSubmit={submit} aria-labelledby="guest-title">
+          <h2 id="guest-title">{STRINGS.guestTitle}</h2>
+          <label>
+            {STRINGS.pseudo}
+            <input value={pseudo} maxLength={20} autoComplete="off" onChange={(e) => setPseudo(e.target.value)} />
+          </label>
+          <fieldset>
+            <legend>{STRINGS.iAm}</legend>
+            {GENDERS.map((value) => (
+              <label key={value} className="inline">
+                <input type="radio" name="gender" checked={gender === value} onChange={() => setGender(value)} />
+                {STRINGS.genders[value]}
+              </label>
+            ))}
+          </fieldset>
+          <div className="row">
+            <label>
+              {STRINGS.age}
+              <input type="number" min={18} max={99} inputMode="numeric" value={age} onChange={(e) => setAge(e.target.value)} />
+            </label>
+            <label>
+              {STRINGS.city}
+              <input value={city} maxLength={40} onChange={(e) => setCity(e.target.value)} />
+            </label>
+          </div>
+          <label className="inline">
+            <input type="checkbox" checked={adult} onChange={(e) => setAdult(e.target.checked)} />
+            {STRINGS.adult}
+          </label>
+          <label className="inline">
+            <input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} />
+            {STRINGS.terms}
+          </label>
+          {state.entryError && (
+            <p role="alert" className="error">
+              {STRINGS.entryRefused[state.entryError as keyof typeof STRINGS.entryRefused]}
+            </p>
+          )}
+          <button type="submit" className="bevel primary big" disabled={!ready}>{STRINGS.enter}</button>
+        </form>
+        <section className="panel" aria-labelledby="members-title">
+          <h2 id="members-title">{STRINGS.membersTitle}</h2>
+          <p className="soon">{STRINGS.soon}</p>
+          <label>
+            {STRINGS.email}
+            <input type="email" disabled />
+          </label>
+          <button type="button" className="bevel" disabled>{STRINGS.getCode}</button>
+          <label>
+            {STRINGS.code}
+            <input inputMode="numeric" disabled />
+          </label>
+          <button type="button" className="bevel" disabled>{STRINGS.validate}</button>
+          <p className="small">{STRINGS.codeCreates}</p>
+          <p className="small">{STRINGS.emailKept}</p>
+        </section>
+      </main>
+      <footer className="footer">
+        {STRINGS.footer.map((label) => <span key={label}>{label}</span>)}
+      </footer>
+    </>
+  );
+};
