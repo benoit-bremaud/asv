@@ -123,8 +123,8 @@ classDiagram
   only the ADR-0011 away record (id, pseudo, account id, token hash, `awayUntil`, buffer), so the hub can
   rebuild it from storage after hibernation. `socketLost` drops the profile and IP; `resume` takes the new
   socket's IP and opens at `now`.
-- **BR-012**: an away session keeps its pseudo in `pseudoIndex` and its data; rooms and windows are added by
-  bricks 4 and 6.
+- **BR-012**: an away session keeps its pseudo in `pseudoIndex` and its data, rooms included (`rooms/07`);
+  windows are added by brick 6. `leave` and `expireAway` are wrapped by `hub.ts` to leave rooms.
 - **BR-013**: `bufferPrivate` appends to an away session's buffer, keeping the newest 50.
 - **BR-014**: `resume` finds the away session whose stored hash equals `resumeTokenHash`; otherwise
   `resumeRefused`, as is a token whose deadline has passed though the alarm has not run yet. A profile

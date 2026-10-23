@@ -257,6 +257,7 @@ describe("BR-011 / BR-012 socket lost", () => {
       pseudo: "nath_lune",
       accountId: undefined,
       resumeTokenHash: "h(t1)",
+      rooms: [],
       status: "away",
       awayUntil: at(ENTRY_LIMITS.awayMs),
       buffered: [],
