@@ -269,26 +269,30 @@ export const createHub = (deps: HubDeps): Hub => {
 
   /**
    * The token's session is still bound to an older socket the transport has not swept yet (network change):
-   * that socket loses it as if it had closed, so the resume can take over (`entry/02b`).
+   * that socket loses it as if it had closed, so the resume can take over (`entry/02b`). Returns the released
+   * session id; `memberAway` is held back until the resume fails.
    */
-  const releaseStale = async (resumeTokenHash: string, now: Date): Promise<void> => {
+  const releaseStale = async (resumeTokenHash: string, now: Date): Promise<string | undefined> => {
     const session = [...state.sessions.values()].find(
       (candidate) => candidate.status === "connected" && candidate.resumeTokenHash === resumeTokenHash,
     );
     const key = session && socketOfSession.get(session.id);
     const stale = key === undefined ? undefined : sockets.get(key);
-    if (!session || !stale?.bound) return;
+    if (!session || !stale?.bound) return undefined;
     const { connectionId } = stale.bound;
     stale.bound = undefined;
     socketOfSession.delete(session.id);
     state = socketLost(state, session.id, now).state;
     await closeLine(connectionId, now);
+    return session.id;
   };
 
   const onResume = async (socket: Socket, command: Command<"resume">, now: Date): Promise<Outgoing[]> => {
     const { profile, resumeToken } = command.payload;
     const resumeTokenHash = deps.hashToken(resumeToken);
-    await releaseStale(resumeTokenHash, now);
+    const released = await releaseStale(resumeTokenHash, now);
+    // The takeover could not finish: the others must see the session away.
+    const awayIfReleased = () => (released ? presenceInRooms(sessionOf(state, released), "memberAway") : []);
     const result = resume(state, {
       resumeTokenHash,
       ip: socket.ip,
@@ -301,7 +305,7 @@ export const createHub = (deps: HubDeps): Hub => {
     const [effect] = result.effects;
     if (effect?.type === "resumed") {
       if (!(await bind(socket, effect.sessionId, result.state, now))) {
-        return [error(socket, "logUnavailable", "logUnavailable", command.seq)];
+        return [error(socket, "logUnavailable", "logUnavailable", command.seq), ...awayIfReleased()];
       }
       const session = sessionOf(state, effect.sessionId);
       return [
@@ -318,7 +322,7 @@ export const createHub = (deps: HubDeps): Hub => {
       ];
     }
     if (effect?.type === "resumeRefused") return [send([socket.key], "resumeRefused", {})];
-    return [error(socket, "invalid", "invalid", command.seq)];
+    return [error(socket, "invalid", "invalid", command.seq), ...awayIfReleased()];
   };
 
   const onLeave = async (socket: Socket, bound: Bound, now: Date): Promise<Outgoing[]> => {

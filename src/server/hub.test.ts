@@ -310,6 +310,24 @@ describe("hub away, resume, leave and expiry (UC10, UC13)", () => {
     expect(await ctx.hub.close("2", later(3000))).toEqual([]);
   });
 
+  it.each([
+    ["an invalid profile", { age: 12 }, false],
+    ["a log failure", { age: 30 }, true],
+  ])("announces the session away when a takeover fails on %s", async (_case, profile, logFails) => {
+    const ctx = setup();
+    await ctx.enterAs("1", "Lola");
+    const max = await ctx.enterAs("2", "Max");
+    await ctx.send("1", "joinRoom", { roomId: "lyon" });
+    await ctx.send("2", "joinRoom", { roomId: "lyon" });
+    ctx.hub.open("9", "ip", undefined);
+    ctx.log.fail.open = logFails;
+
+    const out = await ctx.send("9", "resume", { resumeToken: max.resumeToken, profile });
+
+    expect(to(out, "memberAway")).toEqual(["1"]);
+    expect(only(out, "memberAway").payload).toEqual({ roomId: "lyon", sessionId: max.sessionId, pseudo: "Max" });
+  });
+
   it("refuses a wrong token and an invalid profile", async () => {
     const { hub, max, send } = await maxAway();
     hub.open("9", "ip", undefined);
