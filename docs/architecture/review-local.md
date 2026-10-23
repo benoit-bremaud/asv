@@ -1,20 +1,20 @@
 # Local review — asv (brick 5, member accounts)
 
 - Date: 2026-10-23
-- Commit: 1a0e4fe + uncommitted brick 5 implementation
-- Scope: branch `feat/32-brick-5-accounts`, diff `main...HEAD` plus working tree
+- Commit: 16f4ca7
+- Scope: branch `feat/32-brick-5-accounts`, diff `main...HEAD`
 - Checks run: design · docs · tests · security · correctness
-- Verdict: ship (pre-push) — Must 0 open (4 fixed) · Should 3 open (6 fixed) · Nice 8
+- Verdict: ship — Must 0 open (4 fixed) · Should 3 open (6 fixed) · Nice 8
 
-## Pre-merge gate (head SHA 1a0e4fe + working tree)
+## Pre-merge gate (head SHA 16f4ca7)
 | Step | Result |
 |---|---|
 | 1 Tests | ✅ 17 files, 510 tests (`pnpm verify`), 33 hub account integration tests |
 | 2 Coverage | tests 98.56 % stmts / 95.86 % branches / 97.08 % funcs / 99.22 % lines (floor 80) · docs 97/97 exports of the touched files (100 %, floor 90) |
-| 3 SonarQube | ⚠️ not run yet (runs after push: `pnpm sonar`) |
+| 3 SonarQube | ✅ PASSED on 16f4ca7 (44 findings of 3228023 fixed) |
 | 4 Secrets | ✅ gitleaks clean (`src`, `docs`, `main..HEAD`) · no tracked .env · diff read: dev code only in dev logs |
-| 5 QA pass | ✅ full · console clean · screenshots: `qa/2026-10-23-brick5-{members-hint,code-sent,signed-in,device-cookie,confirm-delete,deleted}.jpg` |
-- Gate: **pre-push GREEN — SonarQube (step 3) runs after the push; QA to replay on the final SHA before merge**
+| 5 QA pass | ✅ full · console clean · screenshots: `qa/2026-10-23-brick5-{members-hint,code-sent,signed-in,device-cookie,confirm-delete,deleted}.jpg` · replayed on 16f4ca7 (dialog overlay): `qa/2026-10-23-brick5-final-{code-dialog,signed-in}.jpg` |
+- Gate: **GREEN — merge authorised once the PR CI is green**
 
 ## 🔴 Must Have
 - ✅ fixed — `src/server/account-io.ts:49` `[design|docs]` · `AccountIo` is in no study (CLAUDE.md "no conception, no code"); `04d` `signOutDevice(tokenHash, now)` vs code without `now` · add `AccountIo` to `platform/04d`, align the signature.
