@@ -1,6 +1,6 @@
 # ADR-0013 — Members sign in with an e-mail code, device remembered 30 days
 
-- Status: accepted
+- Status: accepted, amended 2026-10-23 (Brevo, brasse-bouillon reuse, no enumeration)
 - Date: 2026-10-16
 - Deciders: Benoît Bremaud
 
@@ -58,3 +58,32 @@ Same weights as above.
   deliberation 2020-091 art. 5, checked in brick 1 bis). It is explained in the privacy notice.
 - Needs the same transactional e-mail provider as ADR-0012.
 - Moderators keep passkeys (ADR-0008), which need stronger assurance.
+
+## Amendment 2026-10-23 — Brevo, reuse of brasse-bouillon, same answer for blocked e-mails (brick 5)
+
+- **Sign-in method confirmed.** The owner re-weighed a password against the e-mail code on 2026-10-23
+  (issue #28): the e-mail code with no password stays (415/500 against 300).
+- **Provider: Brevo**, through its HTTP API (`POST /v3/smtp/email`), EU-based, already used by the
+  owner's brasse-bouillon project. Plain French text plus minimal HTML, no tracking. Secrets:
+  `BREVO_API_KEY`, `ASV_MAIL_FROM`.
+- **Reuse of brasse-bouillon** (`packages/api/src/mailer/`, `packages/api/src/auth/`, its ADR-0034):
+  - the `Mailer` port is asv's `MailerService`: one method per message, sending never throws, a failure
+    is logged with Brevo's allow-listed `{code, message}` only, never the address or the raw body;
+  - without `BREVO_API_KEY` outside production the message is logged with the code, so the flow works
+    in development; in production a missing key is logged as a send failure;
+  - the code logic: six digits from a CSPRNG, single use, a capped number of tries, a constant-time
+    comparison, a 60-second cooldown between two codes for the same e-mail, and per-e-mail and per-IP
+    quotas. asv keeps a keyed hash (HMAC, BR-070) instead of brasse-bouillon's SHA-256, since six digits
+    are cheap to brute-force from a plain hash.
+- **Same answer, no enumeration.** Criteria: no information leak about an address 35, clarity 25, abuse
+  resistance 25, simplicity 15.
+
+  | Option | No leak | Clarity | Abuse | Simplicity | Total /500 |
+  |---|---|---|---|---|---|
+  | **A. Blocked e-mail, per-e-mail quota or cooldown → the same `codeSent`, no mail sent; disposable domain and per-IP quota refused with a reason** | 5 | 3 | 4 | 4 | **410** |
+  | C. Same answer, plus an explanatory mail to the address | 5 | 4 | 3 | 3 | 395 |
+  | B. Explicit reasons for every refusal | 2 | 5 | 3 | 5 | 345 |
+
+  The owner chose A. C would let anyone flood a victim's mailbox. A disposable domain or an IP quota says
+  nothing about a given address, so they keep an explicit reason.
+- **Encryption at rest** of every stored e-mail: ADR-0017.

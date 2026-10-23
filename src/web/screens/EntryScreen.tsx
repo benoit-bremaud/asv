@@ -47,19 +47,28 @@ export const EntryScreen = () => {
   const [city, setCity] = useState("");
   const [adult, setAdult] = useState(false);
   const [terms, setTerms] = useState(false);
+  const [email, setEmail] = useState("");
+  const [remember, setRemember] = useState(true);
+  const [hint, setHint] = useState(false);
   const ready = adult && terms && pseudo.trim() !== "" && age !== "" && state.link === "online" && state.pendingPseudo === undefined;
 
-  const submit = (event: SubmitEvent) => {
-    event.preventDefault();
-    if (!ready) return;
-    commands.enter({
+  const form = () => ({
       pseudo: pseudo.trim(),
       gender,
       age: Number(age),
       ...(city.trim() ? { city: city.trim() } : {}),
       adultConfirmed: adult,
       termsAccepted: terms,
-    });
+  });
+  const submit = (event: SubmitEvent) => {
+    event.preventDefault();
+    if (ready) commands.enter(form());
+  };
+  // The "Membres" panel reuses the pseudo form: enter, then ask for the code (`web-ui/06`).
+  const submitMember = (event: SubmitEvent) => {
+    event.preventDefault();
+    setHint(!ready);
+    if (ready && email.trim() !== "") commands.enter(form(), { email: email.trim(), remember });
   };
 
   return (
@@ -106,22 +115,21 @@ export const EntryScreen = () => {
           )}
           <button type="submit" className="bevel primary big" disabled={!ready}>{STRINGS.enter}</button>
         </form>
-        <section className="panel" aria-labelledby="members-title">
+        <form className="panel" onSubmit={submitMember} aria-labelledby="members-title">
           <h2 id="members-title">{STRINGS.membersTitle}</h2>
-          <p className="soon">{STRINGS.soon}</p>
           <label>
             {STRINGS.email}
-            <input type="email" disabled />
+            <input type="email" autoComplete="email" maxLength={254} value={email} onChange={(e) => setEmail(e.target.value)} />
           </label>
-          <button type="button" className="bevel" disabled>{STRINGS.getCode}</button>
-          <label>
-            {STRINGS.code}
-            <input inputMode="numeric" disabled />
+          <label className="inline">
+            <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+            {STRINGS.remember}
           </label>
-          <button type="button" className="bevel" disabled>{STRINGS.validate}</button>
+          {hint && <p role="alert" className="error">{STRINGS.membersHint}</p>}
+          <button type="submit" className="bevel" disabled={email.trim() === "" || state.pendingPseudo !== undefined}>{STRINGS.getCode}</button>
           <p className="small">{STRINGS.codeCreates}</p>
           <p className="small">{STRINGS.emailKept}</p>
-        </section>
+        </form>
       </main>
       <footer className="footer">
         {STRINGS.footer.map((label) => <span key={label}>{label}</span>)}

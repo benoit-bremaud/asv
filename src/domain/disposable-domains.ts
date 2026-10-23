@@ -1,0 +1,37 @@
+/**
+ * Known disposable e-mail domains refused at sign-in (BR-071). A maintained list: add domains here when
+ * abuse shows them, the check also covers their subdomains.
+ */
+export const DISPOSABLE_DOMAINS: ReadonlySet<string> = new Set([
+  "10minutemail.com",
+  "20minutemail.com",
+  "33mail.com",
+  "anonaddy.me",
+  "burnermail.io",
+  "discard.email",
+  "dispostable.com",
+  "emailondeck.com",
+  "fakeinbox.com",
+  "getairmail.com",
+  "getnada.com",
+  "guerrillamail.com",
+  "guerrillamail.net",
+  "jetable.org",
+  "maildrop.cc",
+  "mailinator.com",
+  "mailnesia.com",
+  "mintemail.com",
+  "mohmal.com",
+  "moakt.com",
+  "mytemp.email",
+  "sharklasers.com",
+  "spamgourmet.com",
+  "temp-mail.org",
+  "tempail.com",
+  "tempmail.dev",
+  "tempmailo.com",
+  "throwawaymail.com",
+  "trashmail.com",
+  "yopmail.com",
+  "yopmail.fr",
+]);

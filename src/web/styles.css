@@ -130,7 +130,9 @@ input { font: inherit; padding: 4px; min-height: 32px; }
   margin-top: var(--gap);
 }
 
-.soon { font-weight: bold; color: var(--brand); }
+/* Account overlay (`web-ui/06`): floats over the chat, closable. */
+.overlay { position: fixed; top: 128px; right: var(--gap); left: auto; margin: 0; color: var(--text); width: min(340px, calc(100vw - 2 * var(--gap))); z-index: 10; display: flex; flex-direction: column; gap: 8px; box-shadow: 4px 4px 0 var(--bevel-dark); }
+.overlay form { display: flex; flex-direction: column; gap: 4px; }
 .error { color: var(--brand); font-weight: bold; }
 
 .footer {

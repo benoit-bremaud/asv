@@ -56,7 +56,7 @@ flowchart LR
     Hub["Hub Durable Object — domain + SQLite"]
   end
   AI["AI provider — report triage"]
-  Mail["E-mail provider — sign-in codes, statements of reasons"]
+  Mail["Brevo — sign-in codes, statements of reasons"]
   Hub -->|"e-mails to send"| Mail
   Browser -->|"HTTPS: assets, passkey ceremonies"| Worker
   Browser -->|"WebSocket: chat protocol"| Worker
@@ -107,6 +107,7 @@ Coverage: [traceability matrix](traceability-matrix.md).
 | [0014](decisions/0014-legal-retention-vault.md) | Legal retention vault for closed accounts (account id 1 year, e-mail and dates 5 years) |
 | [0015](decisions/0015-protocol-validation-zod-mini.md) | Protocol validation with Zod Mini |
 | [0016](decisions/0016-sonarqube-local-scan-commit-status.md) | SonarQube local scan, quality gate as commit status |
+| [0017](decisions/0017-encryption-at-rest.md) | Application-level encryption at rest, vault sealed to an owner key |
 
 ## 9. Risks and technical debt
 

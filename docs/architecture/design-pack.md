@@ -47,15 +47,27 @@ ENTRY (validated mockup 2026-10-22)
 | Entrer sans compte           | Membres                       |  lavender panels
 | pseudo [__________]          | e-mail [________________]     |
 | je suis (o)F (o)H (o)pas dit | [recevoir mon code]           |
-| âge [__]  ville [_________]  | code [______] [valider]       |
+| âge [__]  ville [_________]  | [x] se souvenir de l'appareil |
 | [x] j'ai 18 ans ou plus      | Le même code crée ton compte. |
 | [x] j'accepte les règles     | E-mail gardé 5 ans après la   |
 | [ ENTRER ]   (big, red)      | fermeture, pour la loi.       |
-|                              | (brick 7a: disabled, Bientôt) |
+|                              | (uses the pseudo form; the    |
+|                              |  code is typed in the chat)   |
 +------------------------------+-------------------------------+
 | connexion modérateur · règles du chat · mentions légales ·   |
 | confidentialité                                              |
 +--------------------------------------------------------------+
+
+ACCOUNT OVERLAY (brick 5, web-ui/06)
++-------------------------------+
+| Mon compte                [x] |  lavender, bevelled
+| code reçu par e-mail          |
+| [_ _ _ _ _ _]  [valider]      |
+| 4 essais restants             |
+| [nouveau code]                |
+| signed in: [me déconnecter    |
+|  ici] [partout] [supprimer]   |
++-------------------------------+
 
 ROOMS
 +-----------------------------------+

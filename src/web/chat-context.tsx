@@ -1,13 +1,19 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, useRef, type ReactNode } from "react";
-import { createConnection, type Connection, type ConnectionDeps, type EnterForm } from "./connection";
+import { createConnection, type CodeRequest, type Connection, type ConnectionDeps, type EnterForm } from "./connection";
 import { chatReducer, initialState, type Action, type ChatState } from "./store";
 
 /** The only local actions screens may dispatch; server actions come from the connection manager. */
-export type LocalAction = Extract<Action, { type: "showRooms" | "showRoom" | "dismissNotice" }>;
+export type LocalAction = Extract<Action, { type: "showRooms" | "showRoom" | "dismissNotice" | "openAccount" | "closeAccount" | "accountStep" }>;
 
 /** What screens may do; only the connection manager touches the socket (`web-ui/03`). */
 export interface Commands {
-  enter(form: EnterForm): void;
+  /** With a code request, the "Membres" panel asks for a code once entered (`web-ui/06`). */
+  enter(form: EnterForm, codeRequest?: CodeRequest): void;
+  requestCode(request: CodeRequest): void;
+  verifyCode(code: string): void;
+  signOutDevice(): void;
+  signOutEverywhere(): void;
+  deleteAccount(): void;
   joinRoom(roomId: string): void;
   leaveRoom(roomId: string): void;
   /** False when nothing was sent (offline), so the screen keeps the name. */
@@ -51,7 +57,14 @@ export const ChatProvider = ({ connect, children }: { connect: ConnectionFactory
   const commands = useMemo<Commands>(() => {
     const send: Connection["send"] = (command) => connection.current?.send(command) ?? false;
     return {
-      enter: (form) => connection.current?.enter(form),
+      enter: (form, codeRequest) => connection.current?.enter(form, codeRequest),
+      requestCode: (request) => send({ type: "requestCode", payload: request }),
+      verifyCode: (code) => {
+        if (send({ type: "verifyCode", payload: { code } })) dispatch({ type: "verifyingCode" });
+      },
+      signOutDevice: () => void connection.current?.signOutDevice(),
+      signOutEverywhere: () => send({ type: "signOutEverywhere", payload: {} }),
+      deleteAccount: () => send({ type: "deleteAccount", payload: {} }),
       joinRoom: (roomId) => send({ type: "joinRoom", payload: { roomId } }),
       leaveRoom: (roomId) => {
         // Offline: the server keeps the membership, so the tab stays.

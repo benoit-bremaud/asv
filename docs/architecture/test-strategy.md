@@ -26,6 +26,22 @@ TDD is not imposed on this project.
   manually with a small fixed sample.
 - Hibernation rebuild (ADR-0011) gets integration tests in Wrangler's local runtime: state survives a
   forced eviction of in-memory variables.
+- Encryption at rest planned cases (ADR-0017, BR-083), brick 5:
+  - field cipher round-trip; a changed context or a tampered value fails; an unknown key version fails;
+  - rotation: a value written with version 1 still decrypts once version 2 encrypts;
+  - keyed hash: same normalised e-mail gives the same hash, different keys give different hashes;
+  - vault sealer: the owner private key (test fixture) opens a sealed value; the application has no unseal path;
+  - `fromEnv`: production refuses missing keys, development generates them with a warning.
+- Mailer planned cases (ADR-0013 amendment), brick 5, `fetch` stubbed at the boundary:
+  - Brevo request shape (URL, `api-key`, sender, recipient, subject, text and HTML);
+  - non-2xx and network errors resolve without throwing and log no address or raw body;
+  - no key: logs the code outside production, logs a failure in production;
+  - `sendStatementOfReasons` resolves `true` only on 2xx.
+- Sign-in planned cases (UC17, BR-070 to BR-073), brick 5: code format and expiry, fifth wrong try
+  invalidates, silent `codeSent` for blocked e-mail, e-mail quota, cooldown and 20 wrong tries in 24 h, explicit refusal for a
+  disposable domain and the IP quota, account created on first valid code, existing account linked,
+  strike carry-over restored, device claim single use and 60 seconds, cookie attributes, Origin check on
+  the account routes, sign-out of this device and everywhere, account deletion writes the vault record.
 - Legal vault planned cases (ADR-0014, BR-081, BR-082), brick 5:
   - deleting an account writes the vault record in the same transaction (a failed write rolls back the deletion);
   - `purgeExpired` drops the account id after 1 year and the whole record after 5 years, purges access entries older than 5 years, and the daily alarm calls it;

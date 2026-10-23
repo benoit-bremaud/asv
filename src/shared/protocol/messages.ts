@@ -254,7 +254,8 @@ export const serverMessage = z.discriminatedUnion("type", [
   message("codeSent", empty),
   message("accountLinked", z.object({ accountId: id, deviceClaim: z.optional(z.string()) })),
   message("accountUnlinked", empty),
-  message("warning", z.object({ code: z.string(), message: z.string(), replyTo })),
+  // `triesLeft` answers a wrong `verifyCode` (BR-070).
+  message("warning", z.object({ code: z.string(), message: z.string(), replyTo, triesLeft: z.optional(z.int().check(z.nonnegative())) })),
   message("error", z.object({ code: errorCode, message: z.string(), replyTo })),
 ]);
 

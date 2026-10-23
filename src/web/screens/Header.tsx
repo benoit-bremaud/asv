@@ -12,6 +12,7 @@ export const Header = ({ connected }: { connected?: number }) => {
         {state.me ? (
           <>
             <strong>{state.me.pseudo}</strong>
+            <button type="button" className="bevel" onClick={() => commands.local({ type: "openAccount" })}>{STRINGS.myAccount}</button>
             <button type="button" className="bevel" onClick={commands.leave}>{STRINGS.quit}</button>
           </>
         ) : (

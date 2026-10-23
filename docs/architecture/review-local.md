@@ -1,74 +1,51 @@
-# Local review — asv (brick 7a, branch diff main...HEAD)
+# Local review — asv (brick 5, member accounts)
 
 - Date: 2026-10-23
-- Commit: a491d1d
-- Scope: branch diff `main...feat/13-brick-7a-transport-ui`
-- Checks run: design · docs · tests · security · correctness · execution gate · QA pass
-- Verdict: **fix Must Have first** · Must 4 · Should 8 · Nice 7
+- Commit: 16f4ca7
+- Scope: branch `feat/32-brick-5-accounts`, diff `main...HEAD`
+- Checks run: design · docs · tests · security · correctness
+- Verdict: ship — Must 0 open (4 fixed) · Should 3 open (6 fixed) · Nice 8
 
-## Pre-merge gate (head SHA a491d1d)
+## Pre-merge gate (head SHA 16f4ca7)
 | Step | Result |
 |---|---|
-| 1 Tests | ✅ 356 unit/component/integration (node + jsdom projects), including real `ws` integration tests in `server.test.ts` · no E2E suite in the project yet |
-| 2 Coverage | tests 99.77 % stmts / 99.48 % branches / 99.18 % funcs / 99.86 % lines (floor 80) · docs ≈ 70 % presence on the changed public surface (floor 90): **red**, see Must 3 |
-| 3 SonarQube | ❌ FAILED on the first push (14 new issues: deprecated `FormEvent`, `role="status"`, index keys, needless `async`, default stringification) → fixed in `0c3a87d` → ✅ PASSED (new coverage 99.2 %, 0 duplication, 0 new issues) |
-| 4 Secrets | ✅ gitleaks clean (`--all`, 12 commits) · no tracked `.env*` · diff read: nothing sensitive |
-| 5 QA pass | ✅ full · entry → resume after reload → rooms → join Lyon → post (smiley rendered, `<b>` stays literal text) · light, dark, 375 px (no horizontal overflow, `scrollWidth` 375) · a11y names correct (`pseudo`, `âge`, `ville`, both checkboxes) · console: transient `502` and `ws` connection failures only while the dev server restarted, reconnection recovered · screenshots: `qa/2026-10-23-brick7a-{entry,room,rooms-dark,rooms-light,rooms-mobile}.jpg` |
-
-The Chrome pass was cut short: another extension blocked the Claude in Chrome tab after the entry screenshot. The rest of the pass ran in the app's built-in Chromium browser.
-
-- Gate: **GREEN on `0c3a87d` after the fixes** (Resolution below). A clean restart of the dev server and a new entry worked; the only console errors were `ws` retries while the Node server was still starting.
-
-## Resolution (owner choice B, 420/500)
-
-The 4 Must and 7 of the 8 Should were fixed on the branch: both diagrams were updated, public docstrings added, the stats request is aborted on unmount and that test now asserts it, failed log writes are reported, `Gender` is defined once, `LocalAction` narrows what screens can dispatch, a missing `roomId` changes nothing, Vite ignores `coverage/`, and the hub and transport tests have stronger assertions and bounded waits. After the fixes there are 357 tests at 99.77 / 99.48 / 99.18 / 99.86 %. The socket caps go to an issue for brick 9, and the Nice items go to issues.
+| 1 Tests | ✅ 17 files, 510 tests (`pnpm verify`), 33 hub account integration tests |
+| 2 Coverage | tests 98.56 % stmts / 95.86 % branches / 97.08 % funcs / 99.22 % lines (floor 80) · docs 97/97 exports of the touched files (100 %, floor 90) |
+| 3 SonarQube | ✅ PASSED on 16f4ca7 (44 findings of 3228023 fixed) |
+| 4 Secrets | ✅ gitleaks clean (`src`, `docs`, `main..HEAD`) · no tracked .env · diff read: dev code only in dev logs |
+| 5 QA pass | ✅ full · console clean · screenshots: `qa/2026-10-23-brick5-{members-hint,code-sent,signed-in,device-cookie,confirm-delete,deleted}.jpg` · replayed on 16f4ca7 (dialog overlay): `qa/2026-10-23-brick5-final-{code-dialog,signed-in}.jpg` |
+- Gate: **GREEN — merge authorised once the PR CI is green**
 
 ## 🔴 Must Have
-- `docs/architecture/diagrams/web-ui/04-class-client-state.md` `[design]`: drifted from `src/web/store.ts:44` and `src/web/connection.ts:30`. Differences:
-  - the `Action` union (`entering`, `left`, `closeRoom`, `notice`, `dismissNotice`; no `resumeFailed`);
-  - the `createConnection(deps)` signature and `send(Command): void`;
-  - the `ChatState` fields (`pendingPseudo`, `lastPseudo`, `nextLineId`, `known: Record`);
-  - notices stored as codes, not French text.
-
-  Fix: update the diagram, since the code is the better design.
-- `docs/architecture/diagrams/platform/04c-class-server-hub.md:28,54,87,101` `[design|docs]`: the diagram no longer matches the hub.
-  - `HubDeps` lacks `protocols` and `onLogError`.
-  - `Socket` holds `bound?` and an optional `port`.
-  - Resume also sends `roomList` to the resumer.
-  - The frame-too-large message is `frameTooLarge`.
-  - A failed `log.close` is only reported.
-
-  Fix: update the diagram.
-- `src/server/hub.ts:55`, `src/transports/node/server.ts:17,30`, `src/web/connection.ts:28-45`, `src/web/store.ts:7-58` and `src/web/chat-context.tsx:23,35,65` `[docs]`: the public API is undocumented (`Hub`, `NodeServerOptions` with its millisecond units and defaults, `ConnectionDeps`, `Connection`, the timers, the state types, `ChatProvider` and `useChat`). The `ConnectionFactory` doc is wrong: it says storage is injected. The comment on `Outbound` belongs on `Command`. Fix: add one-line docstrings.
-- `src/web/App.test.tsx:247-261` `[tests]`: "ignores a late stats after unmount" cannot fail, because React 19 does not warn on an update after unmount. Fix: assert the observable effect, or delete the test.
+- ✅ fixed — `src/server/account-io.ts:49` `[design|docs]` · `AccountIo` is in no study (CLAUDE.md "no conception, no code"); `04d` `signOutDevice(tokenHash, now)` vs code without `now` · add `AccountIo` to `platform/04d`, align the signature.
+- ✅ fixed — `docs/architecture/diagrams/accounts/07-class-domain-api.md:24-81` `[docs]` · drift from `src/domain/accounts.ts`: `redeemDeviceClaim` takes `random`, `unlinkSessions` returns `{state, unlinked}`, `LinkResult` has no effects and a string claim, `checkCode` signature, `closeAccount` anonymous result · align the diagram.
+- ✅ fixed — `src/domain/accounts.ts:13` `[security]` · slow brute force (≈ 1 % per month by rotating IPs) · owner decision 2026-10-23 (A, 435/500): at most 20 wrong tries per e-mail per 24 h, then silent refusal; amend BR-072 and `accounts/02` first.
+- ✅ fixed — doc coverage `[docs]` · ≈ 80 % < 90 % · docstrings on `createAccountIo`, `AccountIoDeps`, `toBase64Url`/`fromBase64`, `BrevoOptions`, `createBrevoMailer`, `CodeRefusal`/`CodeDecision`/`CodeCheck`/`LinkResult`.
 
 ## 🟡 Should Have
-- `src/server/hub.ts:226,330` `[design|security]`: failed `log.open` and `appendContribution` writes go to the client as `logUnavailable` but are never reported to `onLogError`. Legal log failures (BR-060) stay invisible to the operator. Fix: call `deps.onLogError(cause)` in both catches.
-- `src/web/store.ts:9`, `screens/Pseudo.tsx:4`, `screens/RoomScreen.tsx:11` and `screens/EntryScreen.tsx:6` `[design]`: `Gender` is defined four times, once as a hand-written union. Fix: export `Gender` from the protocol.
-- `src/web/chat-context.tsx` (`local(action: Action)`) `[design]`: screens can dispatch server actions. Fix: narrow the parameter to `showRooms | showRoom | dismissNotice`.
-- `src/web/store.ts:134,140` `[correctness]`: `roomId ?? ""` stands in for a missing room id. Fix: return early when `roomId` is missing.
-- `src/transports/node/server.ts:66-101` `[security]`: nothing caps concurrent sockets per IP or in total, so a socket that never enters can be kept open with pings. Fix: add caps in `upgrade` (429/503) and close a socket that is still unbound after N seconds. Can be filed for brick 9, where the Durable Object adds its own limits.
-- `vite.config.ts` `[correctness]`: the dev server watches `coverage/`, so `pnpm verify` reloads open pages. Fix: add `server.watch.ignored: ["**/coverage/**"]`.
-- `src/server/hub.test.ts:211,295,310,336,366` `[tests]`: `toBeDefined()` after `only(...)` adds nothing, so the queue-order test does not prove the order. Fix: assert on the payloads.
-- `src/transports/node/server.test.ts:92-123` `[tests]`: the `next()` helper has no timeout, and `expect.poll` uses the default timeouts. Fix: bound `next()` with a named rejection, and give `poll` an explicit timeout.
+- ✅ fixed — `src/web/screens/AccountPanel.tsx:40` `[correctness]` · auto-send on the sixth digit plus "valider" sends `verifyCode` twice: two tries burned, or `codeMissing` after success · `pendingVerify` flag, button disabled while in flight.
+- ✅ fixed — `src/server/hub.ts` `redeemDeviceClaim`/`signOutDevice` `[correctness]` · a failed `saveDevice` consumes the claim, rejects the route, skips `onStoreError` · commit state after the save, catch and report.
+- ✅ fixed — `src/server/hub.ts:334`, `src/web/store.ts:113` `[design]` · tries left travel in the human `message` · optional `triesLeft` in the `warning` schema.
+- `src/web/store.ts:94` `[design]` · account warning codes are free strings on both sides · one shared union in `src/shared/protocol`.
+- ✅ fixed — `src/server/account-io.ts:64` `[design]` · invalid e-mail still queries the store with `""` · answer `emailInvalid` first.
+- ✅ fixed — `src/transports/node/memory-accounts.ts:13` `[design]` · BR-081 1-year/5-year limits are bare numbers · add to `ACCOUNT_LIMITS`.
+- `src/server/hub.ts:153` `[design]` · hub at 611 lines mixes entry, rooms, accounts · extract `hub-accounts.ts` (follow-up issue).
+- ✅ fixed — `src/transports/node/hub-accounts.test.ts:77`, `src/server/mailer/brevo.test.ts:84` `[tests]` · random-code assertion, missing mock restore · stub random, `afterEach(vi.restoreAllMocks)`.
+- `src/transports/node/server.ts` `[security]` · production flags hard-coded false, raw socket IP for the quota · fail closed on `NODE_ENV=production`; trusted proxy IP and IPv6 /64 in brick 9 (follow-up issue).
 
 ## 🔵 Nice to Have
-- `src/transports/node/memory-log.ts:19-27` `[security]`: each write copies the whole array, O(10 000) work per write. Fix: use `push` + `shift` and update closes in place.
-- `src/web/connection.ts:105,150` `[correctness]`: `pendingProfile` is never cleared after `entered` or `entryRefused`.
-- `src/web/connection.ts:118-145` `[correctness]`: there is no connect timeout, and reconnection after a pong timeout waits for the late `onclose`.
-- `src/web/connection.ts:131` `[design]`: `resume` builds its `seq` by hand instead of going through `write`.
-- `src/server/hub.ts:85,136,153` `[design]`: an untyped `Set<string>` of effect names, repeated `error(…, "invalid", "invalid")`, and a type-switched `presenceInRooms`.
-- `eslint.config.js:47` `[design]`: no import boundary for `src/web/**`.
-- `src/web/App.test.tsx:184-232` `[tests]`: the 30 s refresh test does not check the new value, and the footer and plural tests restate constants (use `it.each`).
+- `src/domain/accounts.ts:191` `[security]` · claim redeemable after the session unlinks · refuse when the session no longer matches.
+- `src/server/hub.ts:359` `[security]` · deletion needs no fresh code · follow-up issue.
+- `src/server/crypto/cipher.ts:70` `[security]` · seal binds no AAD · bind `accountId`.
+- `src/server/mailer/brevo.ts:62,106` `[security|design]` · ✅ `'` now escaped; derive "10 minutes" from `codeTtlMs`.
+- `src/server/hub.ts:85` `[design]` · `open` with four positional parameters · options object.
+- `src/domain/ports.ts:74,83` `[design]` · `email` holds ciphertext · rename `emailCiphertext`.
+- `src/domain/accounts.ts:7` `[design]` · type-only import cycle with `rooms.ts`.
+- `src/web/App.test.tsx`, `src/server/mailer/brevo.test.ts`, `src/server/crypto/cipher.test.ts` `[tests]` · `toBeTruthy` on `getBy*`, mixed scenarios in one `it`.
 
 ## ⚪ Disagree / Intentional
-- `src/server/hub.ts:386` `[correctness]`: `stats().connected` counts away sessions. This is intentional: `04c` says "connected and away".
-- `src/server/hub.ts` size (388 lines) `[design]`: the handler-map split waits for brick 6 (YAGNI). Noted in `04c`.
-- `src/domain/ports.ts` and `SocketLike` `[design]`: seams justified by test fakes and the brick 9 SQLite store.
+- `src/server/app.ts` `secureCookie: false` in the Node transport `[design]` · development-only transport per `platform/04d`; production goes through brick 9.
+- "Sign out this device" without a cookie signs out locally only `[correctness]` · known gap, follow-up issue.
 
 ## Per-dimension summary
-- Design: dependency rule holds and there is no over-engineering. Two diagrams drifted (fix the docs, not the code), plus minor leaks and duplication.
-- Docs: about 70 % presence on the public surface; `04c` and `web-ui/04` are stale.
-- Tests: healthy pyramid with boundary-only doubles. One test cannot fail, and some assertions are weak.
-- Security: Origin check, caps, XSS-safe rendering, HMAC token hashing and personal data all hold. There is no socket-count cap.
-- Correctness: no blocking bug. There are small client reconnect and cleanup issues.
+- Design: dependency rule holds; study gap on `AccountIo`, hub growing. · Docs: diagrams drifted, ≈ 80 % coverage. · Tests: pyramid healthy, real crypto, two hygiene fixes. · Security: no Must from the review; slow brute force escalated by owner choice. · Correctness: double verify and claim consumption on store failure.

@@ -243,7 +243,7 @@ describe("chatReducer: server messages", () => {
   });
 
   it("returns the same state for an unhandled message type", () => {
-    const next = server(initialState, { type: "codeSent", seq: 0, payload: {} });
+    const next = server(initialState, { type: "suspensionProposed", seq: 0, payload: { accountId: "a", reportId: "r", activeStrikes: 1 } });
 
     expect(next).toBe(initialState);
   });
@@ -342,5 +342,74 @@ describe("chatReducer: local actions", () => {
 
     expect(noticed.notice).toBe("flood");
     expect(act(noticed, { type: "dismissNotice" }).notice).toBeUndefined();
+  });
+});
+
+describe("chatReducer: account (web-ui/06)", () => {
+  const entered = (accountId?: string): ServerMessage => ({
+    type: "entered",
+    seq: 0,
+    payload: { sessionId: "s1", resumeToken: "t", roomList: [], isModerator: false, ...(accountId ? { accountId } : {}) },
+  });
+  const warning = (code: string, triesLeft?: number): ServerMessage => ({ type: "warning", seq: 0, payload: { code, message: code, triesLeft } });
+
+  it("opens on the e-mail step when signed out, and keeps the step when closed", () => {
+    const opened = act(initialState, { type: "openAccount" });
+    expect(opened.account).toMatchObject({ open: true, step: "askEmail" });
+
+    const closed = act({ ...opened, account: { ...opened.account, step: "signedIn" } }, { type: "closeAccount" });
+    expect(closed.account).toMatchObject({ open: false, step: "signedIn" });
+    expect(act(closed, { type: "openAccount" }).account.step).toBe("signedIn");
+  });
+
+  it("walks requestCode, codeSent and accountLinked", () => {
+    const requesting = act(initialState, { type: "requestingCode" });
+    expect(requesting.account).toMatchObject({ open: true, step: "askEmail", pendingRequest: true });
+
+    const waiting = server(requesting, { type: "codeSent", seq: 0, payload: {} });
+    expect(waiting.account).toMatchObject({ step: "waitingCode", pendingRequest: false });
+    expect(waiting.notice).toBe("codeSent");
+
+    const linked = server(waiting, { type: "accountLinked", seq: 0, payload: { accountId: "a1" } });
+    expect(linked.account).toMatchObject({ step: "signedIn", accountId: "a1" });
+    const remembered = server(waiting, { type: "accountLinked", seq: 0, payload: { accountId: "a1", deviceClaim: "c" } });
+    expect(remembered.account.step).toBe("redeemingDevice");
+  });
+
+  it.each([
+    ["codeWrong", "waitingCode", 3],
+    ["codeExpired", "askEmail", undefined],
+    ["disposable", "askEmail", undefined],
+  ])("maps the %s warning to a step", (code, step, triesLeft) => {
+    const next = server(act(initialState, { type: "verifyingCode" }), warning(code, triesLeft));
+
+    expect(next.account).toMatchObject({ open: true, step, triesLeft, pendingRequest: false, pendingVerify: false });
+    expect(next.notice).toBe(code);
+  });
+
+  it("leaves the panel alone on other warnings", () => {
+    const next = server(initialState, warning("flood"));
+    expect(next.account).toEqual({ ...initialState.account, pendingRequest: false, pendingVerify: false });
+    expect(next.notice).toBe("flood");
+  });
+
+  it("signs in from entered or resumed with an account, signs out otherwise", () => {
+    expect(server(initialState, entered("a1")).account).toMatchObject({ step: "signedIn", accountId: "a1" });
+    const signedIn = { ...initialState, account: { ...initialState.account, step: "signedIn" as const, accountId: "a1" } };
+    expect(server(signedIn, entered()).account).toMatchObject({ step: "signedOut", accountId: undefined });
+    const resumed: ServerMessage = {
+      type: "resumed",
+      seq: 0,
+      payload: { sessionId: "s1", pseudo: "ana", resumeToken: "t", rooms: [], windows: [], buffered: [], accountId: "a2" },
+    };
+    expect(server(initialState, resumed).account.accountId).toBe("a2");
+  });
+
+  it("signs out on accountUnlinked and on a local signedOut step", () => {
+    const signedIn = { ...initialState, account: { ...initialState.account, step: "signedIn" as const, accountId: "a1" } };
+
+    expect(server(signedIn, { type: "accountUnlinked", seq: 0, payload: {} })).toMatchObject({ notice: "accountUnlinked", account: { step: "signedOut" } });
+    expect(act(signedIn, { type: "accountStep", step: "signedOut" }).account.accountId).toBeUndefined();
+    expect(act(signedIn, { type: "accountStep", step: "confirmDelete" }).account).toMatchObject({ step: "confirmDelete", accountId: "a1" });
   });
 });

@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import type { ConnectionLine, ContributionLine, ConnectionLogStore } from "../domain";
+import type { AccountStore, ConnectionLine, ContributionLine, ConnectionLogStore } from "../domain";
+import { createAccountIo } from "./account-io";
+import { createCrypto } from "./crypto/cipher";
+import { cryptoKeysFromEnv } from "./crypto/keys";
 import type { ServerMessage } from "../shared/protocol";
 import { createHub, type Outgoing } from "./hub";
 
@@ -29,6 +32,31 @@ const fakeLog = () => {
   return { store, opened, closed, contributions, fail };
 };
 
+/** Account stores are exercised in `transports/node/hub-accounts.test.ts`; here they only exist. */
+const unused = () => Promise.reject(new Error("unused in these tests"));
+const unusedStore: AccountStore = {
+  saveCode: unused,
+  loadCode: unused,
+  deleteCode: unused,
+  recordCodeIssued: unused,
+  recordWrongTry: unused,
+  codeCounts: unused,
+  findAccountByEmailHash: unused,
+  findAccountById: unused,
+  saveAccount: unused,
+  deleteAccount: unused,
+  saveDevice: unused,
+  accountForDevice: unused,
+  deleteDevice: unused,
+  deleteAllDevices: unused,
+  isBlocked: unused,
+  loadCarryOver: unused,
+  saveCarryOver: unused,
+  deleteCarryOver: unused,
+  purgeExpired: () => Promise.resolve(),
+};
+const crypto = createCrypto(await cryptoKeysFromEnv({}, false, () => undefined));
+
 const setup = (hashToken = (value: string) => `h:${value}`) => {
   let n = 0;
   const log = fakeLog();
@@ -45,12 +73,16 @@ const setup = (hashToken = (value: string) => `h:${value}`) => {
         const value = `tok${++n}`;
         return { value, hash: `h:${value}` };
       },
+      code: () => "123456",
     },
     hashToken,
     log: log.store,
     protocols: "HTTP/1.1 WebSocket",
     onLogError,
     closeSocket,
+    accounts: createAccountIo({ store: unusedStore, vault: { record: unused, purgeExpired: () => Promise.resolve() }, crypto }),
+    mailer: { sendCode: unused, sendStatementOfReasons: unused },
+    onStoreError: vi.fn(),
   });
   const send = (key: string, type: string, payload: object, seq = 1, now = T0) =>
     hub.receive(key, JSON.stringify({ type, seq, payload }), now);

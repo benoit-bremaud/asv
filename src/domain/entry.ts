@@ -42,6 +42,8 @@ interface SessionBase {
   readonly pseudo: string;
   /** Set when linked to an account (ADR-0012). */
   readonly accountId?: string;
+  /** Hash of the device cookie that linked or remembered this session (ADR-0013). */
+  readonly deviceTokenHash?: string;
   readonly resumeTokenHash: string;
   /** Ids of the rooms joined (BR-012, `rooms/07`). */
   readonly rooms: readonly string[];
@@ -96,6 +98,8 @@ export interface EnterCommand {
   readonly activeBan?: { readonly until: Date };
   /** Account behind a valid device cookie, if any (ADR-0013). */
   readonly accountId?: string;
+  /** Hash of that device cookie, so UC18 can sign this device out. */
+  readonly deviceTokenHash?: string;
 }
 
 /** UC13: the client resends its profile, never stored (ADR-0011). */
@@ -224,6 +228,7 @@ export const enter = <S extends EntryState>(state: S, command: EnterCommand, now
     ip: command.ip,
     openedAt: now,
     accountId: command.accountId,
+    deviceTokenHash: command.accountId === undefined ? undefined : command.deviceTokenHash,
     resumeTokenHash: token.hash,
     rooms: [],
   };
@@ -245,6 +250,7 @@ export const socketLost = <S extends EntryState>(state: S, sessionId: string, no
     id: session.id,
     pseudo: session.pseudo,
     accountId: session.accountId,
+    deviceTokenHash: session.deviceTokenHash,
     resumeTokenHash: session.resumeTokenHash,
     rooms: session.rooms,
     status: "away",
@@ -279,6 +285,7 @@ export const resume = <S extends EntryState>(state: S, command: ResumeCommand, n
     ip: command.ip,
     openedAt: now,
     accountId: accountUnlinked ? undefined : session.accountId,
+    deviceTokenHash: accountUnlinked ? undefined : session.deviceTokenHash,
     resumeTokenHash: token.hash,
     rooms: session.rooms,
   };

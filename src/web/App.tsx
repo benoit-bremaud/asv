@@ -1,4 +1,5 @@
 import { ChatProvider, browserConnection, useChat, type ConnectionFactory } from "./chat-context";
+import { AccountPanel } from "./screens/AccountPanel";
 import { EntryScreen } from "./screens/EntryScreen";
 import { RoomScreen } from "./screens/RoomScreen";
 import { RoomsScreen } from "./screens/RoomsScreen";
@@ -21,6 +22,8 @@ const Banners = () => {
   );
 };
 
+const AccountWhenInChat = () => (useChat().state.screen === "entry" ? null : <AccountPanel />);
+
 const Screens = () => {
   const { state } = useChat();
   if (state.screen === "room") return <RoomScreen />;
@@ -34,6 +37,8 @@ export const App = ({ connect = browserConnection }: { connect?: ConnectionFacto
     <div className="app">
       <Banners />
       <Screens />
+      {/* In the chat only (`web-ui/05`). */}
+      <AccountWhenInChat />
     </div>
   </ChatProvider>
 );
