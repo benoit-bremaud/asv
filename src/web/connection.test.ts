@@ -55,6 +55,7 @@ describe("createConnection", () => {
   let store: Map<string, string>;
   let dispatch: ReturnType<typeof vi.fn<(action: Action) => void>>;
   let connection: Connection;
+  let fetchStub: ReturnType<typeof vi.fn<typeof fetch>>;
 
   const storage = {
     getItem: (key: string) => store.get(key) ?? null,
@@ -73,6 +74,7 @@ describe("createConnection", () => {
       },
       storage,
       dispatch,
+      fetch: fetchStub,
     });
     return last();
   };
@@ -82,6 +84,7 @@ describe("createConnection", () => {
     sockets = [];
     store = new Map();
     dispatch = vi.fn();
+    fetchStub = vi.fn<typeof fetch>(async () => new Response(null, { status: 204 }));
   });
   afterEach(() => {
     connection.close();
@@ -496,6 +499,81 @@ describe("createConnection", () => {
       expect(socket.send).not.toHaveBeenCalled();
       expect(store.has(KEY)).toBe(true);
       expect(dispatch).toHaveBeenLastCalledWith({ type: "notice", code: "notConnected" });
+    });
+  });
+
+  describe("accounts (web-ui/06)", () => {
+    const posted = () => fetchStub.mock.calls.map(([path, init]) => [path, init?.body]);
+
+    it("asks for the code once entered, from the members panel", () => {
+      const socket = start();
+      socket.open();
+
+      connection.enter(form, { email: "nath@example.org", remember: true });
+      expect(socket.frames().map((f) => f.type)).toEqual(["enter"]);
+      socket.receive(entered());
+
+      expect(socket.frames().at(-1)).toMatchObject({ type: "requestCode", payload: { email: "nath@example.org", remember: true } });
+      expect(dispatch).toHaveBeenCalledWith({ type: "requestingCode" });
+    });
+
+    it("forgets the code request when the entry is refused", () => {
+      const socket = start();
+      socket.open();
+      connection.enter(form, { email: "nath@example.org", remember: true });
+      socket.receive(simple("entryRefused", { reason: "pseudoTaken" }));
+      socket.receive(entered());
+
+      expect(socket.frames().map((f) => f.type)).toEqual(["enter"]);
+    });
+
+    it("sends requestCode through send, and reports a closed socket", () => {
+      const socket = start();
+      socket.open();
+      expect(connection.send({ type: "requestCode", payload: { email: "a@b.fr", remember: false } })).toBe(true);
+      socket.drop();
+      expect(connection.send({ type: "requestCode", payload: { email: "a@b.fr", remember: false } })).toBe(false);
+    });
+
+    it("clears a stale device cookie silently", () => {
+      const socket = start();
+      socket.open();
+      socket.receive(JSON.stringify({ type: "entered", seq: 0, payload: { sessionId: "s1", resumeToken: "t", roomList: [], isModerator: false, staleDevice: true } }));
+
+      expect(posted()).toEqual([["/account/sign-out", "{}"]]);
+      expect(fetchStub.mock.calls[0]?.[1]).toMatchObject({ method: "POST", credentials: "same-origin" });
+    });
+
+    it("redeems the device claim, then shows the panel signed in", async () => {
+      const socket = start();
+      socket.open();
+      socket.receive(simple("accountLinked", { accountId: "a1", deviceClaim: "c1" }));
+      await vi.waitFor(() => expect(dispatch).toHaveBeenCalledWith({ type: "accountStep", step: "signedIn" }));
+
+      expect(posted()).toEqual([["/account/device", JSON.stringify({ claim: "c1" })]]);
+      expect(dispatch).not.toHaveBeenCalledWith({ type: "notice", code: "deviceNotSaved" });
+    });
+
+    it.each([
+      ["refused", () => Promise.resolve(new Response(null, { status: 400 }))],
+      ["unreachable", () => Promise.reject(new Error("offline"))],
+    ])("keeps this visit signed in when the claim is %s", async (_, answer) => {
+      fetchStub.mockImplementationOnce(answer);
+      const socket = start();
+      socket.open();
+      socket.receive(simple("accountLinked", { accountId: "a1", deviceClaim: "c1" }));
+
+      await vi.waitFor(() => expect(dispatch).toHaveBeenCalledWith({ type: "accountStep", step: "signedIn" }));
+      expect(dispatch).toHaveBeenCalledWith({ type: "notice", code: "deviceNotSaved" });
+    });
+
+    it("signs this device out, then shows the panel signed out", async () => {
+      start().open();
+
+      await connection.signOutDevice();
+
+      expect(posted()).toEqual([["/account/sign-out", "{}"]]);
+      expect(dispatch).toHaveBeenCalledWith({ type: "accountStep", step: "signedOut" });
     });
   });
 });

@@ -4,34 +4,45 @@
  * sockets and send what it returns (`platform/02`).
  */
 import {
+  checkCode,
+  closeAccount,
   createRoom,
+  decideCodeRequest,
   emptyHubState,
   enter,
   expireAway,
   joinRoom,
   leave,
   leaveRoom,
+  linkAccount,
+  normaliseEmail,
   postRoom,
+  pruneDeviceClaims,
   pruneEntryAttempts,
   pruneFlood,
+  redeemDeviceClaim,
   resume,
   roomList,
   roomMembers,
   socketLost,
+  unlinkSessions,
+  type CodeRandom,
   type ConnectionLogStore,
   type Effect,
   type HubState,
+  type Mailer,
   type OfficialRoom,
-  type Random,
   type RoomEffect,
+  type SessionFilter,
   type Session,
 } from "../domain";
+import type { AccountIo } from "./account-io";
 import { CAPS, clientMessage, type ClientMessage, type Member, type ServerMessage } from "../shared/protocol";
 
 /** What a transport plugs into the hub. */
 export interface HubDeps {
   readonly officialRooms: readonly OfficialRoom[];
-  readonly random: Random;
+  readonly random: CodeRandom;
   /** Same keyed hash as `random.token()` (`entry/07`). */
   readonly hashToken: (value: string) => string;
   readonly log: ConnectionLogStore;
@@ -41,6 +52,17 @@ export interface HubDeps {
   readonly onLogError: (error: unknown) => void;
   /** Asks the transport to close a socket whose session a resume took over; its `close` then follows. */
   readonly closeSocket: (socketKey: string) => void;
+  /** Account and vault stores behind the crypto of ADR-0017 (`platform/04d`). */
+  readonly accounts: AccountIo;
+  readonly mailer: Mailer;
+  /** Called on every failed account store write or purge; the command then gets `warning unavailable`. */
+  readonly onStoreError: (error: unknown) => void;
+}
+
+/** A device token set by `POST /account/device` (BR-073). */
+export interface DeviceToken {
+  readonly token: string;
+  readonly expiresAt: Date;
 }
 
 /** One server message for one or more sockets. */
@@ -59,10 +81,15 @@ export interface Stats {
  * `Outgoing` as is. Bad client input never throws: it becomes an `error` message. Unknown keys yield `[]`.
  */
 export interface Hub {
-  open(socketKey: string, ip: string, port?: number): void;
+  /** `deviceTokenHash`: the device cookie hashed like `Random.token`, if the upgrade carried one. */
+  open(socketKey: string, ip: string, port?: number, deviceTokenHash?: string): void;
   receive(socketKey: string, raw: string, now: Date): Promise<Outgoing[]>;
   close(socketKey: string, now: Date): Promise<Outgoing[]>;
   tick(now: Date): Promise<Outgoing[]>;
+  /** `POST /account/device`: exchanges a device claim for a token, or `undefined` (BR-073). */
+  redeemDeviceClaim(claim: string, now: Date): Promise<DeviceToken | undefined>;
+  /** `POST /account/sign-out`: forgets this device and unlinks its sessions (UC18). */
+  signOutDevice(tokenHash: string): Promise<Outgoing[]>;
   stats(): Stats;
 }
 
@@ -70,6 +97,7 @@ interface Socket {
   readonly key: string;
   readonly ip: string;
   readonly port?: number;
+  readonly deviceTokenHash?: string;
   /** Set once the socket holds a session, with the id of its connection line (BR-060). */
   bound?: { readonly sessionId: string; readonly connectionId: string };
 }
@@ -86,6 +114,8 @@ const sessionOf = (state: HubState, sessionId: string): Session => {
   if (!session) throw new Error(`hub invariant: unknown session ${sessionId}`);
   return session;
 };
+
+const ACCOUNT_COMMANDS = new Set<ClientMessage["type"]>(["requestCode", "verifyCode", "signOutEverywhere", "deleteAccount"]);
 
 /** Room effects that change a count or the set of rooms, so every list must be refreshed. */
 const LIST_CHANGES = new Set<(Effect | RoomEffect)["type"]>(["memberJoined", "memberLeft", "roomCreated", "roomDeleted"]);
@@ -239,8 +269,136 @@ export const createHub = (deps: HubDeps): Hub => {
     return true;
   };
 
+  const warning = (socket: Socket, code: string, replyTo?: number): Outgoing =>
+    send([socket.key], "warning", { code, message: code, replyTo });
+
+  /** Unlinks the matching sessions and tells their sockets (UC18, UC19). */
+  const unlink = (filter: SessionFilter): Outgoing[] => {
+    const result = unlinkSessions(state, filter);
+    state = result.state;
+    const to = keysOf(result.unlinked);
+    return to.length > 0 ? [send(to, "accountUnlinked", {})] : [];
+  };
+
+  /** The account behind the socket's device cookie (`entry/02a`); a cookie of a deleted account is stale. */
+  const deviceAccount = async (socket: Socket, now: Date): Promise<{ accountId?: string; stale: boolean } | "unavailable"> => {
+    if (!socket.deviceTokenHash) return { stale: false };
+    try {
+      const account = await deps.accounts.accountForDevice(socket.deviceTokenHash, now);
+      return account ? { accountId: account.id, stale: false } : { stale: true };
+    } catch (cause) {
+      deps.onStoreError(cause);
+      return "unavailable";
+    }
+  };
+
+  /** UC13: an away session linked to an account resumes linked only if the account still exists. */
+  const linkedAccountExists = async (resumeTokenHash: string): Promise<boolean> => {
+    const away = [...state.sessions.values()].find(
+      (candidate) => candidate.status === "away" && candidate.resumeTokenHash === resumeTokenHash,
+    );
+    return away?.accountId === undefined || deps.accounts.accountExists(away.accountId);
+  };
+
+  /** UC17 steps 1–3 (`accounts/02`): refusals are explicit only when they reveal nothing about the address. */
+  const onRequestCode = async (socket: Socket, bound: Bound, command: Command<"requestCode">, now: Date): Promise<Outgoing[]> => {
+    const email = normaliseEmail(command.payload.email);
+    // An invalid address never reaches the store.
+    if (email === undefined) return [warning(socket, "emailInvalid", command.seq)];
+    const { facts, emailKeyedHash, ipKeyedHash } = await deps.accounts.codeFacts(email, socket.ip, now);
+    const decision = decideCodeRequest(facts, now, deps.random);
+    if (decision.kind === "refused") return [warning(socket, decision.reason, command.seq)];
+    if (decision.kind === "issue") {
+      await deps.accounts.saveIssued({
+        sessionId: bound.sessionId,
+        email,
+        emailKeyedHash,
+        ipKeyedHash,
+        code: decision.code,
+        remember: command.payload.remember,
+        expiresAt: decision.expiresAt,
+        now,
+      });
+      // Not awaited: the answer must not depend on the provider (ADR-0013 amendment).
+      void deps.mailer.sendCode(email, decision.code).catch(deps.onStoreError);
+    }
+    return [send([socket.key], "codeSent", {})];
+  };
+
+  /** UC17 steps 4–6. */
+  const onVerifyCode = async (socket: Socket, bound: Bound, command: Command<"verifyCode">, now: Date): Promise<Outgoing[]> => {
+    const pending = await deps.accounts.loadPending(bound.sessionId);
+    if (!pending) return [warning(socket, "codeMissing", command.seq)];
+    const check = checkCode(pending.stored, await deps.accounts.codeMatches(pending, command.payload.code), now);
+    if (check.kind === "refused") {
+      if (check.reason !== "expired") await deps.accounts.recordWrongTry(pending, now);
+      if (check.reason === "wrong") {
+        await deps.accounts.saveTries(pending, check.triesLeft);
+        return [send([socket.key], "warning", { code: "codeWrong", message: "codeWrong", replyTo: command.seq, triesLeft: check.triesLeft })];
+      }
+      await deps.accounts.deleteCode(bound.sessionId);
+      return [warning(socket, check.reason === "expired" ? "codeExpired" : "codeExhausted", command.seq)];
+    }
+    const facts = await deps.accounts.linkFacts(pending, now);
+    const result = linkAccount(state, {
+      sessionId: bound.sessionId,
+      email: pending.email,
+      remember: pending.stored.remember,
+      blocked: facts.blocked,
+      existing: facts.existing,
+      carryOver: facts.carryOver,
+    }, now, deps.random);
+    await deps.accounts.deleteCode(bound.sessionId);
+    if (result.kind === "refused") return [warning(socket, result.reason, command.seq)];
+    await deps.accounts.saveAccount(result.account, facts.emailKeyedHash, result.created);
+    state = result.state;
+    return [send([socket.key], "accountLinked", {
+      accountId: result.account.id,
+      ...(result.deviceClaim ? { deviceClaim: result.deviceClaim } : {}),
+    })];
+  };
+
+  /** UC18 "everywhere" and UC19, over the WebSocket. */
+  const onAccountWide = async (socket: Socket, bound: Bound, command: Command<"signOutEverywhere" | "deleteAccount">, now: Date): Promise<Outgoing[]> => {
+    const accountId = sessionOf(state, bound.sessionId).accountId;
+    if (!accountId) return [warning(socket, "notSignedIn", command.seq)];
+    if (command.type === "deleteAccount") {
+      const found = await deps.accounts.accountById(accountId);
+      if (found) {
+        const closure = closeAccount(found.account, now);
+        await deps.accounts.close(closure.vault, found.emailKeyedHash, closure.carryOver);
+      }
+    } else {
+      await deps.accounts.deleteAllDevices(accountId);
+    }
+    return unlink({ by: "account", accountId });
+  };
+
+  /** Account commands; a failed store call answers `warning unavailable` and changes nothing in memory. */
+  const onAccount = async (socket: Socket, bound: Bound, command: ClientMessage, now: Date): Promise<Outgoing[]> => {
+    try {
+      switch (command.type) {
+        case "requestCode":
+          return await onRequestCode(socket, bound, command, now);
+        case "verifyCode":
+          return await onVerifyCode(socket, bound, command, now);
+        case "signOutEverywhere":
+        case "deleteAccount":
+          return await onAccountWide(socket, bound, command, now);
+        /* v8 ignore next 2 -- invariant: dispatch passes ACCOUNT_COMMANDS only. */
+        default:
+          return [error(socket, "invalid", "notAvailable", command.seq)];
+      }
+    } catch (cause) {
+      deps.onStoreError(cause);
+      return [warning(socket, "unavailable", command.seq)];
+    }
+  };
+
   const onEnter = async (socket: Socket, command: Command<"enter">, now: Date): Promise<Outgoing[]> => {
     const { payload } = command;
+    const device = await deviceAccount(socket, now);
+    if (device === "unavailable") return [warning(socket, "unavailable", command.seq)];
     const result = enter(state, {
       pseudo: payload.pseudo,
       gender: payload.gender,
@@ -249,6 +407,8 @@ export const createHub = (deps: HubDeps): Hub => {
       adultConfirmed: payload.adultConfirmed,
       termsAccepted: payload.termsAccepted,
       ip: socket.ip,
+      accountId: device.accountId,
+      deviceTokenHash: socket.deviceTokenHash,
     }, now, deps.random);
     const [effect] = result.effects;
     if (effect?.type === "entered") {
@@ -260,6 +420,8 @@ export const createHub = (deps: HubDeps): Hub => {
         resumeToken: effect.resumeToken,
         roomList: roomList(state),
         isModerator: false,
+        ...(effect.accountId ? { accountId: effect.accountId } : {}),
+        ...(device.stale ? { staleDevice: true } : {}),
       })];
     }
     state = result.state;
@@ -297,14 +459,20 @@ export const createHub = (deps: HubDeps): Hub => {
     const released = await releaseStale(resumeTokenHash, now);
     // The takeover could not finish: the others must see the session away.
     const awayIfReleased = () => (released ? presenceInRooms(sessionOf(state, released), "memberAway") : []);
+    let accountStillExists: boolean;
+    try {
+      accountStillExists = await linkedAccountExists(resumeTokenHash);
+    } catch (cause) {
+      deps.onStoreError(cause);
+      return [warning(socket, "unavailable", command.seq), ...awayIfReleased()];
+    }
     const result = resume(state, {
       resumeTokenHash,
       ip: socket.ip,
       gender: profile.gender,
       age: profile.age,
       city: profile.city,
-      // Accounts arrive with brick 5.
-      accountStillExists: true,
+      accountStillExists,
     }, now, deps.random);
     const [effect] = result.effects;
     if (effect?.type === "resumed") {
@@ -320,6 +488,7 @@ export const createHub = (deps: HubDeps): Hub => {
           rooms: session.rooms.map(roomJoined),
           windows: [],
           buffered: [],
+          ...(session.accountId ? { accountId: session.accountId } : {}),
         }),
         send([socket.key], "roomList", { rooms: roomList(state) }),
         ...presenceInRooms(session, "memberBack"),
@@ -379,12 +548,13 @@ export const createHub = (deps: HubDeps): Hub => {
     }
     if (!bound) return [error(socket, "forbidden", "forbidden", command.seq)];
     if (command.type === "leave") return onLeave(socket, bound, now);
+    if (ACCOUNT_COMMANDS.has(command.type)) return onAccount(socket, bound, command, now);
     return onRooms(socket, bound, command, now);
   };
 
   return {
-    open(socketKey, ip, port) {
-      sockets.set(socketKey, { key: socketKey, ip, port });
+    open(socketKey, ip, port, deviceTokenHash) {
+      sockets.set(socketKey, { key: socketKey, ip, port, deviceTokenHash });
     },
 
     receive: (socketKey, raw, now) =>
@@ -413,10 +583,44 @@ export const createHub = (deps: HubDeps): Hub => {
       }),
 
     tick: (now) =>
-      serial(() => {
+      serial(async () => {
         const expired = expireAway(state, now);
-        state = pruneEntryAttempts(pruneFlood(expired.state, now), now);
-        return Promise.resolve(roomOutgoing(expired.effects));
+        state = pruneDeviceClaims(pruneEntryAttempts(pruneFlood(expired.state, now), now), now);
+        try {
+          await deps.accounts.purgeExpired(now);
+        } catch (cause) {
+          deps.onStoreError(cause);
+        }
+        return roomOutgoing(expired.effects);
+      }),
+
+    redeemDeviceClaim: (claim, now) =>
+      serial(async () => {
+        const result = redeemDeviceClaim(state, deps.hashToken(claim), now, deps.random);
+        if (result.kind === "refused") {
+          state = result.state;
+          return undefined;
+        }
+        try {
+          await deps.accounts.saveDevice(result.token.hash, result.accountId, result.expiresAt);
+        } catch (cause) {
+          // The claim stays usable for a retry (`accounts/07`).
+          deps.onStoreError(cause);
+          return undefined;
+        }
+        state = result.state;
+        return { token: result.token.value, expiresAt: result.expiresAt };
+      }),
+
+    signOutDevice: (tokenHash) =>
+      serial(async () => {
+        try {
+          await deps.accounts.deleteDevice(tokenHash);
+        } catch (cause) {
+          // The sessions are still unlinked; the record expires with its 30 days.
+          deps.onStoreError(cause);
+        }
+        return unlink({ by: "device", tokenHash });
       }),
 
     stats: () => ({ connected: state.sessions.size }),

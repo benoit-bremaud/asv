@@ -26,6 +26,21 @@ export interface OpenRoom {
   readonly lines: readonly Line[];
 }
 
+/** Steps of the account panel (`web-ui/06`). */
+export type AccountStep = "signedOut" | "askEmail" | "waitingCode" | "redeemingDevice" | "signedIn" | "confirmDelete";
+
+/** The account panel; the client never holds the e-mail (`web-ui/04`). */
+export interface AccountView {
+  readonly open: boolean;
+  readonly step: AccountStep;
+  readonly accountId?: string;
+  readonly triesLeft?: number;
+  /** A `requestCode` is on its way, so the button waits. */
+  readonly pendingRequest: boolean;
+  /** A `verifyCode` is on its way, so the code is not sent twice. */
+  readonly pendingVerify?: boolean;
+}
+
 /** Everything the screens render; `notice` and `entryError` are codes the screens translate. */
 export interface ChatState {
   readonly screen: Screen;
@@ -42,6 +57,7 @@ export interface ChatState {
   readonly known: Readonly<Record<string, Gender>>;
   readonly notice?: string;
   readonly entryError?: string;
+  readonly account: AccountView;
   /** Monotonic key for `Line.id`, never reused. */
   readonly nextLineId: number;
 }
@@ -56,6 +72,11 @@ export type Action =
   | { readonly type: "showRoom"; readonly roomId: string }
   | { readonly type: "closeRoom"; readonly roomId: string }
   | { readonly type: "notice"; readonly code: string }
+  | { readonly type: "openAccount" }
+  | { readonly type: "closeAccount" }
+  | { readonly type: "accountStep"; readonly step: AccountStep }
+  | { readonly type: "requestingCode" }
+  | { readonly type: "verifyingCode" }
   | { readonly type: "dismissNotice" };
 
 /** BR-034: only the newest lines stay in memory, nothing is kept elsewhere. */
@@ -68,7 +89,32 @@ export const initialState: ChatState = {
   roomList: [],
   open: {},
   known: {},
+  account: { open: false, step: "signedOut", pendingRequest: false },
   nextLineId: 0,
+};
+
+/** Warnings answering `requestCode` or `verifyCode` (`hub.ts`), and the step each one leads to. */
+const ACCOUNT_WARNINGS: Readonly<Record<string, AccountStep>> = {
+  emailInvalid: "askEmail",
+  disposable: "askEmail",
+  rate: "askEmail",
+  codeWrong: "waitingCode",
+  codeMissing: "askEmail",
+  codeExpired: "askEmail",
+  codeExhausted: "askEmail",
+  blocked: "askEmail",
+  gone: "askEmail",
+};
+
+const signedOut = (account: AccountView): AccountView => ({ ...account, step: "signedOut", accountId: undefined, triesLeft: undefined, pendingRequest: false });
+const linkedTo = (account: AccountView, accountId: string | undefined): AccountView =>
+  accountId ? { ...account, step: "signedIn", accountId, triesLeft: undefined } : signedOut(account);
+
+const onWarning = (state: ChatState, code: string, triesLeft: number | undefined): ChatState => {
+  const step = ACCOUNT_WARNINGS[code];
+  const settled = { ...state.account, pendingRequest: false, pendingVerify: false };
+  if (!step) return { ...state, notice: code, account: settled };
+  return { ...state, notice: code, account: { ...settled, open: true, step, triesLeft } };
 };
 
 const learn = (known: ChatState["known"], members: readonly Member[]): ChatState["known"] => {
@@ -103,6 +149,7 @@ const onServer = (state: ChatState, message: ServerMessage): ChatState => {
         pendingPseudo: undefined,
         entryError: undefined,
         roomList: message.payload.roomList,
+        account: linkedTo(state.account, message.payload.accountId),
       };
     case "entryRefused":
       return { ...state, pendingPseudo: undefined, entryError: message.payload.reason };
@@ -116,7 +163,7 @@ const onServer = (state: ChatState, message: ServerMessage): ChatState => {
       const active = state.active && open[state.active] ? state.active : Object.keys(open)[0];
       const screen = state.screen === "room" && active ? "room" : "rooms";
       const me = { sessionId: message.payload.sessionId, pseudo: message.payload.pseudo };
-      return { ...state, me, open, known, active, screen };
+      return { ...state, me, open, known, active, screen, account: linkedTo(state.account, message.payload.accountId) };
     }
     case "resumeRefused":
       return { ...initialState, link: state.link, lastPseudo: state.me?.pseudo };
@@ -162,8 +209,16 @@ const onServer = (state: ChatState, message: ServerMessage): ChatState => {
       const next = withRoom(state, roomId, (room) => ({ ...room, lines: [...room.lines, line].slice(-MAX_LINES) }));
       return { ...next, nextLineId: state.nextLineId + 1 };
     }
+    case "codeSent":
+      return { ...state, notice: "codeSent", account: { ...state.account, open: true, step: "waitingCode", triesLeft: undefined, pendingRequest: false } };
+    case "accountLinked": {
+      const { accountId, deviceClaim } = message.payload;
+      return { ...state, account: { ...state.account, step: deviceClaim ? "redeemingDevice" : "signedIn", accountId, triesLeft: undefined, pendingVerify: false } };
+    }
+    case "accountUnlinked":
+      return { ...state, notice: "accountUnlinked", account: signedOut(state.account) };
     case "warning":
-      return { ...state, notice: message.payload.code };
+      return onWarning(state, message.payload.code, message.payload.triesLeft);
     case "error":
       // Nothing but `enter` can be sent before `entered`, so an error now answers the pending entry.
       return { ...state, notice: message.payload.code, pendingPseudo: undefined };
@@ -196,5 +251,15 @@ export const chatReducer = (state: ChatState, action: Action): ChatState => {
       return { ...state, notice: action.code };
     case "dismissNotice":
       return { ...state, notice: undefined };
+    case "openAccount":
+      return { ...state, account: { ...state.account, open: true, step: state.account.step === "signedOut" ? "askEmail" : state.account.step } };
+    case "closeAccount":
+      return { ...state, account: { ...state.account, open: false } };
+    case "accountStep":
+      return { ...state, account: action.step === "signedOut" ? signedOut(state.account) : { ...state.account, step: action.step } };
+    case "verifyingCode":
+      return { ...state, account: { ...state.account, pendingVerify: true } };
+    case "requestingCode":
+      return { ...state, account: { ...state.account, open: true, step: "askEmail", pendingRequest: true } };
   }
 };

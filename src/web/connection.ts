@@ -22,6 +22,7 @@ interface Saved {
 }
 
 type Profile = Extract<ClientMessage, { type: "resume" }>["payload"]["profile"];
+/** The entry form as screens send it; the moderator grant is never sent from the web client. */
 export type EnterForm = Omit<Extract<ClientMessage, { type: "enter" }>["payload"], "moderatorGrant">;
 type Outbound<M = ClientMessage> = M extends { type: infer T; payload: infer P } ? { type: T; payload: P } : never;
 /** What screens may send, without `seq` (the manager numbers it); enter, resume and leave have their own methods. */
@@ -33,11 +34,21 @@ export interface ConnectionDeps {
   readonly createSocket: (url: string) => SocketLike;
   readonly storage: Pick<Storage, "getItem" | "setItem" | "removeItem">;
   readonly dispatch: (action: Action) => void;
+  /** Same-origin account routes (`platform/04d`); the browser's `fetch` by default. */
+  readonly fetch?: typeof fetch;
+}
+
+/** The "Membres" panel of the entry screen: a code requested as soon as `entered` arrives (`web-ui/06`). */
+export interface CodeRequest {
+  readonly email: string;
+  readonly remember: boolean;
 }
 
 /** The live connection the provider holds. */
 export interface Connection {
-  enter(form: EnterForm): void;
+  enter(form: EnterForm, codeRequest?: CodeRequest): void;
+  /** UC18 "this device": forgets the device cookie, then shows the panel signed out. */
+  signOutDevice(): Promise<void>;
   /** False when the socket is not open: nothing was sent. */
   send(command: Command): boolean;
   leave(): void;
@@ -61,6 +72,26 @@ export const createConnection = (deps: ConnectionDeps): Connection => {
   let attempt = 0;
   let stopped = false;
   let pendingProfile: Profile | undefined;
+  let pendingCode: CodeRequest | undefined;
+  const post = async (path: string, body?: object): Promise<boolean> => {
+    try {
+      const response = await (deps.fetch ?? fetch)(path, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body ?? {}),
+      });
+      return response.ok;
+    } catch {
+      return false;
+    }
+  };
+  /** BR-073: the claim becomes the HttpOnly cookie; a failure keeps this visit signed in only. */
+  const redeem = async (claim: string) => {
+    const ok = await post("/account/device", { claim });
+    if (!ok) deps.dispatch({ type: "notice", code: "deviceNotSaved" });
+    deps.dispatch({ type: "accountStep", step: "signedIn" });
+  };
   /** `seq` of the resume awaiting an answer, so an `error` replying to it is not left hanging. */
   let resumeSeq: number | undefined;
   let heartbeat: ReturnType<typeof setInterval> | undefined;
@@ -91,6 +122,12 @@ export const createConnection = (deps: ConnectionDeps): Connection => {
     return true;
   };
 
+  const requestCode = (code: CodeRequest): boolean => {
+    const sent = write({ type: "requestCode", payload: code });
+    if (sent) deps.dispatch({ type: "requestingCode" });
+    return sent;
+  };
+
   const stopTimers = () => {
     clearInterval(heartbeat);
     clearTimeout(pongTimer);
@@ -110,11 +147,23 @@ export const createConnection = (deps: ConnectionDeps): Connection => {
     const parsed = serverMessage.safeParse(json);
     if (!parsed.success) return;
     const message = parsed.data;
-    if (message.type === "entered" && pendingProfile) {
-      save({ resumeToken: message.payload.resumeToken, profile: pendingProfile });
+    if (message.type === "entered") {
+      if (pendingProfile) save({ resumeToken: message.payload.resumeToken, profile: pendingProfile });
       pendingProfile = undefined;
+      // An unknown or expired cookie: drop it silently (`web-ui/06`).
+      if (message.payload.staleDevice) void post("/account/sign-out");
+      const code = pendingCode;
+      pendingCode = undefined;
+      deps.dispatch({ type: "server", message });
+      if (code) requestCode(code);
+      return;
+    } else if (message.type === "accountLinked" && message.payload.deviceClaim) {
+      deps.dispatch({ type: "server", message });
+      void redeem(message.payload.deviceClaim);
+      return;
     } else if (message.type === "entryRefused") {
       pendingProfile = undefined;
+      pendingCode = undefined;
     } else if (message.type === "error" && resumeSeq !== undefined && message.payload.replyTo === resumeSeq) {
       resumeSeq = undefined;
       if (message.payload.code === "logUnavailable") {
@@ -171,14 +220,19 @@ export const createConnection = (deps: ConnectionDeps): Connection => {
   connect();
 
   return {
-    enter(form) {
+    enter(form, codeRequest) {
       // Pending only once the frame left: a failed write gets no answer to clear it.
       if (!write({ type: "enter", payload: form })) return;
       pendingProfile = { gender: form.gender, age: form.age, city: form.city };
+      pendingCode = codeRequest;
       deps.dispatch({ type: "entering", pseudo: form.pseudo.normalize("NFC") });
     },
     send(command) {
-      return write(command);
+      return command.type === "requestCode" ? requestCode(command.payload) : write(command);
+    },
+    async signOutDevice() {
+      await post("/account/sign-out");
+      deps.dispatch({ type: "accountStep", step: "signedOut" });
     },
     leave() {
       // Offline: the server still holds the session, so keep the token to resume it (`write` shows the notice).

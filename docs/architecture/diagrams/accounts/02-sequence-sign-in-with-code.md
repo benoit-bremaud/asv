@@ -25,12 +25,12 @@ sequenceDiagram
   C->>W: Type e-mail, choose remember device
   W->>H: requestCode(email, remember)
   H->>K: emailKeyedHash(normalised email)
-  H->>AS: isBlocked(hash, now), lastCodeAt(hash), codesSince(hash, ip, 1 h)
+  H->>AS: isBlocked(hash, now), codeCounts(hash, ip, now): codes in 1 h, last code, wrong tries in 24 h
   H->>D: requestCode(state, sessionId, email, ip, checks, now, random)
   alt Disposable domain or IP quota
     D-->>H: Refused(reason)
     H-->>W: warning(reason)
-  else Blocked, e-mail quota or cooldown (silent)
+  else Blocked, e-mail quota, cooldown or 20 wrong tries in 24 h (silent)
     D-->>H: Silent
     H-->>W: codeSent
   else Accepted
@@ -46,7 +46,7 @@ sequenceDiagram
   H->>D: verifyCode(state, sessionId, pending, codeMatches, account, carryOver, blocked, now, random)
   alt Wrong, expired or blocked
     D-->>H: Refused + tries left
-    H->>AS: update tries or delete code
+    H->>AS: update tries or delete code, recordWrongTry(hash, now) on a wrong code
     H-->>W: warning(reason)
   else Valid
     D-->>H: createAccount or linkExisting + device claim if remember

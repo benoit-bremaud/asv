@@ -53,7 +53,7 @@ const joinRoom = (roomId: string, members: Member[] = [man("s2", "bob")]) =>
   fromServer(msg("roomJoined", { roomId, members }));
 
 beforeEach(() => {
-  connection = { enter: vi.fn(), send: vi.fn(() => true), leave: vi.fn(), close: vi.fn() };
+  connection = { enter: vi.fn(), signOutDevice: vi.fn(async () => undefined), send: vi.fn(() => true), leave: vi.fn(), close: vi.fn() };
   connect = (d) => {
     dispatch = d;
     return connection;
@@ -153,7 +153,7 @@ describe("entry screen", () => {
       age: 30,
       adultConfirmed: true,
       termsAccepted: true,
-    });
+    }, undefined);
   });
 
   it("sends the trimmed city when given", async () => {
@@ -164,7 +164,7 @@ describe("entry screen", () => {
 
     await user.click(enterButton());
 
-    expect(connection.enter).toHaveBeenCalledWith(expect.objectContaining({ city: "Lyon", gender: "unspecified" }));
+    expect(connection.enter).toHaveBeenCalledWith(expect.objectContaining({ city: "Lyon", gender: "unspecified" }), undefined);
   });
 
   it("does not submit a form that is not ready", async () => {
@@ -191,14 +191,29 @@ describe("entry screen", () => {
     expect((screen.getByLabelText(STRINGS.pseudo) as HTMLInputElement).value).toBe("ana");
   });
 
-  it("keeps the members panel disabled", async () => {
-    await setup();
+  it("enters then asks for a code from the members panel", async () => {
+    const user = await setup();
+    await goOnline();
+    await fill(user);
+    const panel = screen.getByRole("form", { name: STRINGS.membersTitle });
+    await user.type(within(panel).getByLabelText(STRINGS.email), " nath@example.org ");
+    await user.click(within(panel).getByLabelText(STRINGS.remember));
 
-    const panel = screen.getByRole("region", { name: STRINGS.membersTitle });
+    await user.click(within(panel).getByRole("button", { name: STRINGS.getCode }));
 
-    expect((within(panel).getByLabelText(STRINGS.email) as HTMLInputElement).disabled).toBe(true);
-    expect((within(panel).getByRole("button", { name: STRINGS.getCode }) as HTMLButtonElement).disabled).toBe(true);
-    expect((within(panel).getByRole("button", { name: STRINGS.validate }) as HTMLButtonElement).disabled).toBe(true);
+    expect(connection.enter).toHaveBeenCalledWith(expect.objectContaining({ pseudo: "ana" }), { email: "nath@example.org", remember: false });
+  });
+
+  it("shows a hint when the members panel is used before the pseudo form is ready", async () => {
+    const user = await setup();
+    await goOnline();
+    const panel = screen.getByRole("form", { name: STRINGS.membersTitle });
+    await user.type(within(panel).getByLabelText(STRINGS.email), "nath@example.org");
+
+    await user.click(within(panel).getByRole("button", { name: STRINGS.getCode }));
+
+    expect(within(panel).getByRole("alert").textContent).toBe(STRINGS.membersHint);
+    expect(connection.enter).not.toHaveBeenCalled();
   });
 
   it("renders the footer links", async () => {
@@ -721,5 +736,87 @@ describe("browserConnection", () => {
 
     expect(FakeWebSocket.instances[0]?.url).toBe("wss://chat.example/ws");
     built.close();
+  });
+});
+
+describe("account panel", () => {
+  const openPanel = async () => {
+    const user = await setup();
+    await goOnline();
+    await enterChat();
+    await user.click(screen.getByRole("button", { name: STRINGS.myAccount }));
+    return user;
+  };
+  const panel = () => screen.getByRole("dialog", { name: STRINGS.accountTitle });
+
+  it("is not shown on the entry screen", async () => {
+    await setup();
+    await fire({ type: "openAccount" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("requests a code with the e-mail and the remember box", async () => {
+    const user = await openPanel();
+
+    await user.type(within(panel()).getByLabelText(STRINGS.email), "nath@example.org");
+    await user.click(within(panel()).getByRole("button", { name: STRINGS.getCode }));
+
+    expect(connection.send).toHaveBeenCalledWith({ type: "requestCode", payload: { email: "nath@example.org", remember: true } });
+  });
+
+  it("keeps digits only and sends the code on the sixth digit", async () => {
+    const user = await openPanel();
+    await fromServer(msg("codeSent", {}));
+
+    await user.type(within(panel()).getByLabelText(STRINGS.code), "12a3456");
+
+    expect(connection.send).toHaveBeenCalledWith({ type: "verifyCode", payload: { code: "123456" } });
+    expect(screen.getByRole("alert").textContent).toContain(STRINGS.notices.codeSent);
+  });
+
+  it("shows the tries left and goes back to the e-mail on 'nouveau code'", async () => {
+    const user = await openPanel();
+    await fromServer(msg("codeSent", {}));
+    await fromServer(msg("warning", { code: "codeWrong", message: "codeWrong", triesLeft: 2 }));
+
+    expect(within(panel()).getByText(STRINGS.triesLeft(2))).toBeTruthy();
+    await user.click(within(panel()).getByRole("button", { name: STRINGS.newCode }));
+    expect(within(panel()).getByLabelText(STRINGS.email)).toBeTruthy();
+  });
+
+  it("offers the account actions once linked, and confirms before deleting", async () => {
+    const user = await openPanel();
+    await fromServer(msg("accountLinked", { accountId: "a1" }));
+
+    await user.click(within(panel()).getByRole("button", { name: STRINGS.signOutEverywhere }));
+    expect(connection.send).toHaveBeenCalledWith({ type: "signOutEverywhere", payload: {} });
+    await user.click(within(panel()).getByRole("button", { name: STRINGS.signOutDevice }));
+    expect(connection.signOutDevice).toHaveBeenCalled();
+
+    await user.click(within(panel()).getByRole("button", { name: STRINGS.deleteAccount }));
+    await user.click(within(panel()).getByRole("button", { name: STRINGS.cancel }));
+    await user.click(within(panel()).getByRole("button", { name: STRINGS.deleteAccount }));
+    await user.click(within(panel()).getByRole("button", { name: STRINGS.confirm }));
+    expect(connection.send).toHaveBeenCalledWith({ type: "deleteAccount", payload: {} });
+  });
+
+  it("sends the code once, even when 'valider' follows the sixth digit", async () => {
+    const user = await openPanel();
+    await fromServer(msg("codeSent", {}));
+
+    await user.type(within(panel()).getByLabelText(STRINGS.code), "123456");
+    await user.click(within(panel()).getByRole("button", { name: STRINGS.validate }));
+
+    expect(connection.send.mock.calls.filter(([command]) => command.type === "verifyCode")).toHaveLength(1);
+  });
+
+  it("waits while the device is saved, and closes on demand", async () => {
+    const user = await openPanel();
+    await fromServer(msg("accountLinked", { accountId: "a1", deviceClaim: "c" }));
+    expect(within(panel()).getByText(STRINGS.savingDevice)).toBeTruthy();
+
+    await user.click(within(panel()).getByRole("button", { name: STRINGS.close }));
+
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 });

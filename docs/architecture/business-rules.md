@@ -71,7 +71,7 @@ Values are owned here. Rationale lives in the ADRs.
 |---|---|
 | BR-070 | A sign-in code has six digits, is single use, valid 10 minutes, stored as a keyed hash, and invalidated after 5 wrong tries. |
 | BR-071 | E-mail addresses from known disposable domains are refused (maintained list). |
-| BR-072 | At most 3 sign-in codes per e-mail and 10 per IP per hour, and 60 seconds between two codes for the same e-mail. Over the IP quota the request is refused with a reason; a blocked e-mail, the e-mail quota or the cooldown get the same "code sent" answer with no code sent (ADR-0013 amendment). |
+| BR-072 | At most 3 sign-in codes per e-mail and 10 per IP per hour, and 60 seconds between two codes for the same e-mail. After 20 wrong codes for one e-mail within 24 hours, no new code is sent for that e-mail until the oldest of those tries is 24 hours old (owner choice 2026-10-23, 435/500, against slow brute force from rotating IPs). Over the IP quota the request is refused with a reason; a blocked e-mail, the e-mail quota, the cooldown or the wrong-try cap get the same "code sent" answer with no code sent (ADR-0013 amendment). |
 | BR-073 | A remembered device gets a random token in an `HttpOnly`, `Secure`, `SameSite=Lax` cookie valid 30 days, set over HTTPS in exchange for a single-use device claim valid 60 seconds. The server keeps only hashes. |
 | BR-074 | A warning on a chatter with an account adds a strike. A strike expires after 90 days. |
 | BR-075 | While an account has 3 or more active strikes and no decision, the moderator panel proposes a 7-day suspension. Without confirmation, nothing happens. |

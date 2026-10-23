@@ -30,25 +30,20 @@ classDiagram
     +sendCode(email, code) Promise~void~
     +sendStatementOfReasons(email, statement) Promise~Boolean~
   }
-  class FieldCipher {
-    <<src/server/crypto/field-cipher.ts>>
+  class Crypto {
+    <<src/server/crypto/cipher.ts>>
     +encrypt(value, context) Promise~String~
     +decrypt(sealed, context) Promise~String~
-  }
-  class KeyedHash {
-    <<src/server/crypto/keyed-hash.ts>>
-    +hash(value) Promise~String~
-  }
-  class VaultSealer {
-    <<src/server/crypto/vault-sealer.ts>>
+    +keyedHash(value) Promise~String~
     +seal(value) Promise~String~
   }
   class CryptoKeys {
+    <<src/server/crypto/keys.ts>>
     +Map~Number, CryptoKey~ dataKeys
     +Number currentVersion
     +CryptoKey hmacKey
     +CryptoKey vaultPublicKey
-    +fromEnv(env, production) CryptoKeys
+    +cryptoKeysFromEnv(env, production, warn) CryptoKeys
   }
   class AccountStore {
     <<interface, src/domain/ports.ts>>
@@ -62,7 +57,22 @@ classDiagram
     <<src/transports/node/memory-accounts.ts>>
   }
   class MemoryLegalVault {
-    <<src/transports/node/memory-vault.ts>>
+    <<src/transports/node/memory-accounts.ts>>
+  }
+  class AccountIo {
+    <<src/server/account-io.ts>>
+    +codeFacts(email, ip, now) CodeFacts
+    +saveIssued(issued)
+    +loadPending(sessionId) PendingCode
+    +codeMatches(pending, code) Boolean
+    +saveTries(pending, triesLeft)
+    +recordWrongTry(pending, now)
+    +linkFacts(pending, now) LinkFacts
+    +saveAccount(account, emailKeyedHash, created)
+    +accountForDevice(tokenHash, now) Account
+    +saveDevice(tokenHash, accountId, expiresAt)
+    +close(vaultRecord, emailKeyedHash, carryOver)
+    +purgeExpired(now)
   }
   class AccountRoutes {
     <<src/server/app.ts>>
@@ -72,14 +82,16 @@ classDiagram
   class HubAccountCalls {
     <<Hub methods>>
     +redeemDeviceClaim(claim, now) DeviceToken?
-    +signOutDevice(tokenHash, now)
+    +signOutDevice(tokenHash)
   }
   Mailer <|.. BrevoMailer
   AccountStore <|.. MemoryAccountStore
   LegalVaultStore <|.. MemoryLegalVault
-  FieldCipher --> CryptoKeys
-  KeyedHash --> CryptoKeys
-  VaultSealer --> CryptoKeys
+  Crypto --> CryptoKeys
+  AccountIo --> AccountStore
+  AccountIo --> LegalVaultStore
+  AccountIo --> Crypto
+  HubAccountCalls --> AccountIo
   AccountRoutes --> HubAccountCalls
 ```
 
@@ -92,12 +104,12 @@ classDiagram
   raw body. Without a key outside production it logs the subject and the code (dev only) and resolves;
   in production without a key it logs a send failure. `sendStatementOfReasons` resolves `true` only on
   a 2xx answer.
-- **FieldCipher**: AES-256-GCM, random 12-byte IV, `context` (record id and field name) as additional
+- **Crypto** (`encrypt`/`decrypt`): AES-256-GCM, random 12-byte IV, `context` (record id and field name) as additional
   data, output `v<version>.<iv>.<ciphertext>` in base64url. Decryption picks the key by version and fails
   on any unknown version or tampered value.
-- **KeyedHash**: HMAC-SHA-256 with `ASV_HMAC_KEY`, base64url. E-mails are trimmed and lower-cased first.
+- **Crypto.keyedHash**: HMAC-SHA-256 with `ASV_HMAC_KEY`, base64url. E-mails are trimmed and lower-cased first.
   The six-digit code hash includes the session id so the same code in two sessions hashes differently.
-- **VaultSealer**: ephemeral ECDH P-256 key pair per value, shared secret with `ASV_VAULT_PUBLIC_KEY`,
+- **Crypto.seal**: ephemeral ECDH P-256 key pair per value, shared secret with `ASV_VAULT_PUBLIC_KEY`,
   HKDF-SHA-256 (info `asv-vault-v1`) to an AES-256-GCM key; output `e1.<ephemeral public key>.<iv>.<ciphertext>`.
   No unseal method exists in the application; the owner opens values offline with the private key.
 - **CryptoKeys.fromEnv**: `ASV_DATA_KEYS` is `version:base64key` pairs separated by commas, the highest
@@ -110,7 +122,12 @@ classDiagram
   `/account/sign-out` hashes the cookie, calls `signOutDevice`, and always clears the cookie (204).
   Both answer `Cache-Control: no-store`.
 - **WebSocket upgrade**: the transport reads `asv_device` from the upgrade request, hashes it with
-  `KeyedHash` and passes the hash to the hub with the IP, as `entry/02a` shows. The raw token never
+  the transport's token hash (`random.hashToken`, as for resume tokens) and passes the hash to the hub with the IP, as `entry/02a` shows. The raw token never
   reaches the hub.
+- **AccountIo** is the only place where the hub's clear values meet the stores: it computes keyed hashes,
+  encrypts e-mails with the record context (`account:<id>:email`, `code:<sessionId>:email`), decrypts on
+  load, compares the code hash in constant time, and seals the e-mail for the vault. `close` writes the
+  vault record first, then deletes the account and its devices, then saves the carry-over. Every store
+  error propagates to the hub, which answers `warning unavailable` and calls `onStoreError`.
 - **Memory stores** implement the ports with `Map`s and receive already encrypted or hashed values. They
   apply the expiry rules in `purgeExpired(now)`, called by the existing sweep.

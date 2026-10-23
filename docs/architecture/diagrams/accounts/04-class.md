@@ -69,8 +69,9 @@ classDiagram
     +loadCode(sessionId) PendingCode
     +deleteCode(sessionId)
     +findAccountByEmailHash(emailKeyedHash) Account
-    +codesSince(emailKeyedHash, ipKeyedHash, since) CodeCounts
-    +lastCodeAt(emailKeyedHash) Date
+    +recordCodeIssued(emailKeyedHash, ipKeyedHash, at)
+    +recordWrongTry(emailKeyedHash, at)
+    +codeCounts(emailKeyedHash, ipKeyedHash, now) CodeCounts
     +saveAccount(account)
     +findAccountById(accountId) Account
     +deleteAccount(accountId)
@@ -145,7 +146,7 @@ classDiagram
 - `Session` gains optional `accountId` and `deviceTokenHash` (see `entry/04`).
 - One port for all account records is enough: there is one SQLite store and one in-memory twin.
 - `LegalVaultStore` is a separate write-only port (ADR-0014, brick 5): `record` and `purgeExpired`, no read
-  operation. `deleteAccount` and `record` run in the same transaction (BR-081). `createdAt` is `verifiedAt`.
+  operation. `record` runs first and `deleteAccount` only after it succeeds; brick 9 wraps both in one storage transaction (BR-081). `createdAt` is `verifiedAt`.
   `purgeExpired` drops `accountId` 1 year and the whole record 5 years after `closedAt`, and also purges access
   entries older than 5 years. Each owner read appends an `AccessEntry` (BR-082). The owner-only read
   is a dedicated hub call outside this port (BR-082).

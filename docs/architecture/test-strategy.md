@@ -38,7 +38,7 @@ TDD is not imposed on this project.
   - no key: logs the code outside production, logs a failure in production;
   - `sendStatementOfReasons` resolves `true` only on 2xx.
 - Sign-in planned cases (UC17, BR-070 to BR-073), brick 5: code format and expiry, fifth wrong try
-  invalidates, silent `codeSent` for blocked e-mail, e-mail quota and cooldown, explicit refusal for a
+  invalidates, silent `codeSent` for blocked e-mail, e-mail quota, cooldown and 20 wrong tries in 24 h, explicit refusal for a
   disposable domain and the IP quota, account created on first valid code, existing account linked,
   strike carry-over restored, device claim single use and 60 seconds, cookie attributes, Origin check on
   the account routes, sign-out of this device and everywhere, account deletion writes the vault record.

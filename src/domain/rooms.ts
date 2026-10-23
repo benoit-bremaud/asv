@@ -2,6 +2,7 @@
  * Rooms: list, join, leave, create and post (UC2 to UC5), study `rooms/07-class-domain-api`.
  * Every function is pure: `(state, command, now, random) → { state, effects }`.
  */
+import type { DeviceClaim } from "./accounts";
 import type { ConnectedSession, EntryState, Gender, Random, Session } from "./entry";
 import { canonicalPseudo, containsReservedWord, foldPseudo, PSEUDO_CHARS } from "./pseudo";
 
@@ -42,6 +43,8 @@ export interface HubState extends EntryState {
   readonly rooms: ReadonlyMap<string, Room>;
   /** Times of the accepted messages of each session in the flood window (BR-021). */
   readonly flood: ReadonlyMap<string, readonly Date[]>;
+  /** Device claims waiting for `POST /account/device`, keyed by claim hash (BR-073). */
+  readonly deviceClaims: ReadonlyMap<string, DeviceClaim>;
 }
 
 /** One line of the room list (UC2). */
@@ -120,6 +123,7 @@ export const emptyHubState = (officialRooms: readonly OfficialRoom[]): HubState 
   entryAttempts: new Map(),
   rooms: officialRoomMap(officialRooms),
   flood: new Map(),
+  deviceClaims: new Map(),
 });
 
 /** Members of a room, connected and away (BR-023 counts both). */
@@ -167,6 +171,7 @@ export const restoreHubState = (
     entryAttempts: new Map(),
     rooms,
     flood: new Map(),
+    deviceClaims: new Map(),
   };
   for (const room of [...rooms.values()].filter((candidate) => candidate.kind === "user")) {
     const members = roomMembers(state, room.id);
