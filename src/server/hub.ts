@@ -267,10 +267,30 @@ export const createHub = (deps: HubDeps): Hub => {
     return [error(socket, "invalid", "invalid", command.seq)];
   };
 
+  /**
+   * The token's session is still bound to an older socket the transport has not swept yet (network change):
+   * that socket loses it as if it had closed, so the resume can take over (`entry/02b`).
+   */
+  const releaseStale = async (resumeTokenHash: string, now: Date): Promise<void> => {
+    const session = [...state.sessions.values()].find(
+      (candidate) => candidate.status === "connected" && candidate.resumeTokenHash === resumeTokenHash,
+    );
+    const key = session && socketOfSession.get(session.id);
+    const stale = key === undefined ? undefined : sockets.get(key);
+    if (!session || !stale?.bound) return;
+    const { connectionId } = stale.bound;
+    stale.bound = undefined;
+    socketOfSession.delete(session.id);
+    state = socketLost(state, session.id, now).state;
+    await closeLine(connectionId, now);
+  };
+
   const onResume = async (socket: Socket, command: Command<"resume">, now: Date): Promise<Outgoing[]> => {
     const { profile, resumeToken } = command.payload;
+    const resumeTokenHash = deps.hashToken(resumeToken);
+    await releaseStale(resumeTokenHash, now);
     const result = resume(state, {
-      resumeTokenHash: deps.hashToken(resumeToken),
+      resumeTokenHash,
       ip: socket.ip,
       gender: profile.gender,
       age: profile.age,

@@ -66,8 +66,8 @@ sequenceDiagram
 - The hub also refuses a text frame over 65 536 UTF-16 code units, so the Cloudflare transport, whose
   incoming cap is not configurable, gets the same rule (D3, `platform/04`).
 - **Heartbeat** (ADR-0011): the transport answers the raw text `ping` with `pong` without calling the hub,
-  like the Durable Object auto-response. The sweep every 60 s terminates sockets whose last frame is older
-  than 60 s; termination then follows the "socket closed" path, so the session goes away (BR-011).
+  like the Durable Object auto-response. The sweep every 15 s (a quarter of the silence limit) terminates sockets whose
+  last frame is older than 60 s, so a dead socket goes within 75 s; termination then follows the "socket closed" path, so the session goes away (BR-011).
 - **Tick**: once a second the transport calls `hub.tick(now)`, which runs `expireAway`, `pruneFlood` and
   `pruneEntryAttempts`. On Cloudflare the single alarm calls the same `tick` (`platform/05`).
 - The IP and source port come from `req.socket.remoteAddress` and `remotePort` (`entry/02a`). They reach

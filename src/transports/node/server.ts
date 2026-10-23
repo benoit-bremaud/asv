@@ -24,7 +24,7 @@ export interface NodeServerOptions {
   readonly now?: () => Date;
   /** Milliseconds between hub ticks (away expiry, pruning); default 1000. */
   readonly tickMs?: number;
-  /** Milliseconds between sweeps of silent sockets; default 60 000. */
+  /** Milliseconds between sweeps of silent sockets; default a quarter of `silenceMs`, so a dead socket goes within 1.25 × `silenceMs`. */
   readonly sweepMs?: number;
   /** Milliseconds after which a silent socket is terminated (BR-010); default 60 000. */
   readonly silenceMs?: number;
@@ -42,7 +42,8 @@ const toText = (data: RawData): string => (Array.isArray(data) ? Buffer.concat(d
 
 /** Starts the Node transport and resolves once it listens. */
 export const startNodeServer = async (options: NodeServerOptions): Promise<NodeServer> => {
-  const { now = () => new Date(), tickMs = 1000, sweepMs = 60_000, silenceMs = 60_000 } = options;
+  const { now = () => new Date(), tickMs = 1000, silenceMs = 60_000 } = options;
+  const sweepMs = options.sweepMs ?? silenceMs / 4;
   const log = createMemoryLog();
   const random = createNodeRandom();
   const hub = createHub({

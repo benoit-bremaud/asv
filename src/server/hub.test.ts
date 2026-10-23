@@ -292,6 +292,24 @@ describe("hub away, resume, leave and expiry (UC10, UC13)", () => {
     expect(log.opened.at(-1)).toMatchObject({ ip: "10.0.0.9", port: 5000, pseudo: "Max", openedAt: later(2000) });
   });
 
+  it("takes the session over from a socket not swept yet (network change)", async () => {
+    const ctx = setup();
+    await ctx.enterAs("1", "Lola");
+    const max = await ctx.enterAs("2", "Max");
+    await ctx.send("1", "joinRoom", { roomId: "lyon" });
+    await ctx.send("2", "joinRoom", { roomId: "lyon" });
+    ctx.hub.open("9", "10.0.0.9", undefined);
+
+    const out = await ctx.send("9", "resume", { resumeToken: max.resumeToken, profile: { age: 30 } }, 1, later(2000));
+    const posted = await ctx.send("9", "postRoom", { roomId: "lyon", text: "re" });
+
+    expect(only(out, "resumed").payload).toMatchObject({ sessionId: max.sessionId, rooms: [{ roomId: "lyon" }] });
+    expect(ctx.log.closed).toEqual([ctx.log.opened[1]?.connectionId]);
+    expect(to(posted, "roomMessage")).toEqual(["1", "9"]);
+    expect(only(await ctx.send("2", "postRoom", { roomId: "lyon", text: "x" }), "error").payload).toMatchObject({ code: "forbidden" });
+    expect(await ctx.hub.close("2", later(3000))).toEqual([]);
+  });
+
   it("refuses a wrong token and an invalid profile", async () => {
     const { hub, max, send } = await maxAway();
     hub.open("9", "ip", undefined);

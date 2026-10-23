@@ -429,5 +429,16 @@ describe("createConnection", () => {
       expect(store.has(KEY)).toBe(false);
       expect(dispatch).toHaveBeenLastCalledWith({ type: "left" });
     });
+
+    it("leave while not open keeps the session to resume it", () => {
+      store.set(KEY, JSON.stringify(saved));
+      const socket = start();
+
+      connection.leave();
+
+      expect(socket.send).not.toHaveBeenCalled();
+      expect(store.has(KEY)).toBe(true);
+      expect(dispatch).toHaveBeenLastCalledWith({ type: "notice", code: "notConnected" });
+    });
   });
 });

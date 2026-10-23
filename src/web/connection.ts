@@ -164,7 +164,8 @@ export const createConnection = (deps: ConnectionDeps): Connection => {
       write(command);
     },
     leave() {
-      write({ type: "leave", payload: {} });
+      // Offline: the server still holds the session, so keep the token to resume it (`write` shows the notice).
+      if (!write({ type: "leave", payload: {} })) return;
       forget();
       deps.dispatch({ type: "left" });
     },
