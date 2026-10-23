@@ -46,7 +46,7 @@ sequenceDiagram
       H->>H: Draw new connection id
       H->>LS: open(new connection id, IP, port, protocols, pseudo, account id, now)
       H->>H: Save new connection id in socket attachment
-      H-->>W: resumed(newToken, rooms, windows, buffered, accountId or none)
+      H-->>W: resumed(sessionId, pseudo, newToken, rooms, windows, buffered, accountId or none)
       H-->>O: memberBack(X)
     else Token invalid
       D-->>H: Refused

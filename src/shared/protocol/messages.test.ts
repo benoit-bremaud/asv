@@ -85,7 +85,7 @@ describe("serverMessage", () => {
     const resumed = (buffered: unknown[]) => ({
       type: "resumed",
       seq: 1,
-      payload: { resumeToken: "t", rooms: [], windows: [], buffered },
+      payload: { sessionId: "s1", pseudo: "Lola", resumeToken: "t", rooms: [], windows: [], buffered },
     });
     const privateMsg = { conversationId: "c1", authorSessionId: "s1", text: "re", sentAt: "2026-10-22T10:00:00Z" };
     const roomMsg = { roomId: "r1", authorSessionId: "s1", pseudo: "Lola", gender: "woman", text: "hi", sentAt: "2026-10-22T10:00:00Z" };

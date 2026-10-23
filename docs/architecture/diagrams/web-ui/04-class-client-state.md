@@ -116,7 +116,7 @@ classDiagram
   `roomList` → list; `roomJoined` → room opened with its members and active, screen `room`; `memberJoined`,
   `memberLeft`, `memberAway`, `memberBack` → member list of that room updated; `roomMessage` → line
   appended, at most the last 200 lines per room in memory (BR-034: never stored); `warning`, `error` →
-  `notice` (the code); `resumed` → rooms rebuilt from `rooms`, previous screen kept;
+  `notice` (the code); `resumed` → `me` restored from `sessionId` and `pseudo`, rooms rebuilt from `rooms`, previous screen kept;
   `resumeRefused` → screen `entry` with the previous pseudo prefilled; `leave` → back to `entry`, state
   cleared, last pseudo kept for the form. `memberLeft` and `memberAway` without `roomId` change nothing.
   Notices and entry errors stay codes in the state; screens translate them through `strings.ts`.
@@ -131,7 +131,7 @@ classDiagram
   closed and treated as lost. On loss: link `reconnecting`, retry after 1, 2, 4, 8, 16 then 30 s
   (NF-011). On reopen with a resume token → `resume { resumeToken, profile }`; without one → link `online`
   on the entry screen.
-- **sessionStorage** (ADR-0011): `{ resumeToken, profile }` only, written on `entered` and `resumed`
+- **sessionStorage** (ADR-0011): `{ resumeToken, profile }` only, checked against the protocol `resumePayload` schema on load (an invalid record is removed, the link goes `online`), written on `entered` and `resumed`
   (token rotated, BR-014), removed on `leave`, `resumeRefused` and `expelled`. Nothing else is stored in
   the browser.
 - **Renderer** (BR-022): splits the text on the whitelisted smiley codes and returns text nodes and smiley
@@ -150,7 +150,7 @@ classDiagram
 - **Rooms screen**: official rooms then user rooms with counts (UC2); click joins (UC3); a create field with
   the room name (UC5); "quitter" sends `leave` (UC10).
 - **Room screen**: tabs for the joined rooms, lines, members list with age and city (connected) or
-  "(absent)" (away), message field with 500 code-point counter, send on Enter. Phone width (< 768 px): the
+  "(absent)" (away), message field with 500 code-point counter, send on Enter; over 500 the counter is flagged, sending is disabled and the text stays in the field (BR-020). Phone width (< 768 px): the
   members list is a toggled panel (NF-006). Leaving a tab sends `leaveRoom`.
 - **Strings**: every UI text lives in `src/web/strings.ts`, French (NF-012).
 - **Accessibility** (NF-004): native form controls with labels, the message list is an `aria-live="polite"`

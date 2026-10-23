@@ -281,7 +281,7 @@ describe("hub away, resume, leave and expiry (UC10, UC13)", () => {
     const out = await send("9", "resume", { resumeToken: max.resumeToken, profile: { gender: "man", age: 31 } }, 1, later(2000));
 
     const resumed = only(out, "resumed").payload;
-    expect(resumed).toMatchObject({ windows: [], buffered: [], rooms: [{ roomId: "lyon" }] });
+    expect(resumed).toMatchObject({ sessionId: max.sessionId, pseudo: "Max", windows: [], buffered: [], rooms: [{ roomId: "lyon" }] });
     expect(resumed.resumeToken).not.toBe(max.resumeToken);
     expect(to(out, "roomList")).toEqual(["9"]);
     expect(to(out, "memberBack")).toEqual(["1"]);

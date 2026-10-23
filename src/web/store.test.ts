@@ -65,7 +65,7 @@ describe("chatReducer: server messages", () => {
     const resumed = (rooms: { roomId: string; members: Member[] }[]): ServerMessage => ({
       type: "resumed",
       seq: 0,
-      payload: { resumeToken: "t2", rooms, windows: [], buffered: [] },
+      payload: { sessionId: "me1", pseudo: "ana", resumeToken: "t2", rooms, windows: [], buffered: [] },
     });
 
     it("keeps existing lines and the active room, and learns genders", () => {
@@ -78,6 +78,7 @@ describe("chatReducer: server messages", () => {
       expect(next.open.r2?.lines).toEqual([]);
       expect(next.active).toBe("r1");
       expect(next.screen).toBe("room");
+      expect(next.me).toEqual({ sessionId: "me1", pseudo: "ana" });
       expect(next.known).toEqual({ s2: "man" });
     });
 

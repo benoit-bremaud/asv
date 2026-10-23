@@ -286,6 +286,8 @@ export const createHub = (deps: HubDeps): Hub => {
       const session = sessionOf(state, effect.sessionId);
       return [
         send([socket.key], "resumed", {
+          sessionId: session.id,
+          pseudo: session.pseudo,
           resumeToken: effect.resumeToken,
           rooms: session.rooms.map(roomJoined),
           windows: [],

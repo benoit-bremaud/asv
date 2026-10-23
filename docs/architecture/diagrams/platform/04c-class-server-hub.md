@@ -106,7 +106,7 @@ classDiagram
   failed resume likewise leaves the session away.
 - **resume** (`entry/02b`): the hub hashes the token with `hashToken` and passes `accountStillExists: true`
   until brick 5. On `resumed` it opens a new connection line like `enter`, then sends
-  `resumed { resumeToken, rooms, windows: [], buffered }`, `rooms` built with `roomMembers` for each room of the
+  `resumed { sessionId, pseudo, resumeToken, rooms, windows: [], buffered }`, `rooms` built with `roomMembers` for each room of the
   session, then `roomList` to the resumer only (its list is stale after the loss), then `memberBack` to the
   other connected members of each room.
 - **leave**: `hub.leave`, `log.close` for the socket's connection id; the socket stays open without session,

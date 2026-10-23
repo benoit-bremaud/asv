@@ -47,7 +47,7 @@ const form: EnterForm = { pseudo: "ana", gender: "woman", age: 30, city: "Lyon",
 const entered = (resumeToken = "tok1") =>
   JSON.stringify({ type: "entered", seq: 0, payload: { sessionId: "s1", resumeToken, roomList: [], isModerator: false } });
 const resumed = (resumeToken = "tok2") =>
-  JSON.stringify({ type: "resumed", seq: 0, payload: { resumeToken, rooms: [], windows: [], buffered: [] } });
+  JSON.stringify({ type: "resumed", seq: 0, payload: { sessionId: "s1", pseudo: "ana", resumeToken, rooms: [], windows: [], buffered: [] } });
 const simple = (type: string, payload: object = {}) => JSON.stringify({ type, seq: 0, payload });
 
 describe("createConnection", () => {
@@ -115,13 +115,16 @@ describe("createConnection", () => {
       ["a missing profile", JSON.stringify({ resumeToken: "t" })],
       ["a missing token", JSON.stringify({ profile })],
       ["a non-string token", JSON.stringify({ resumeToken: 1, profile })],
-    ])("ignores stored %s", (_name, value) => {
+      ["a null profile", JSON.stringify({ resumeToken: "t", profile: null })],
+      ["a non-integer age", JSON.stringify({ resumeToken: "t", profile: { ...profile, age: "30" } })],
+    ])("ignores and forgets stored %s", (_name, value) => {
       store.set(KEY, value);
       const socket = start();
 
       socket.open();
 
       expect(socket.sent).toEqual([]);
+      expect(store.has(KEY)).toBe(false);
       expect(dispatch).toHaveBeenCalledWith({ type: "link", link: "online" });
     });
   });

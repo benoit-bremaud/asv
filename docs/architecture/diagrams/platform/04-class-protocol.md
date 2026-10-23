@@ -111,7 +111,7 @@ Server to client:
 |---|---|
 | entered | sessionId, resumeToken, roomList, isModerator, accountId?, staleDevice? |
 | entryRefused | reason (rate, banned until, pseudo invalid, pseudo taken, age) |
-| resumed | resumeToken, rooms, windows, buffered, accountId? |
+| resumed | sessionId, pseudo, resumeToken, rooms, windows, buffered, accountId? (identity sent back because the browser stores only token and profile, ADR-0011) |
 | resumeRefused | — |
 | roomList | rooms (id, name, kind, count) |
 | roomJoined | roomId, members (member: see "Away member shape") |

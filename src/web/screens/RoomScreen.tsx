@@ -28,9 +28,11 @@ export const RoomScreen = () => {
   const nameOf = (id: string) => state.roomList.find((summary) => summary.id === id)?.name ?? id;
   if (!room) return null;
 
+  // BR-020 counts code points; the text stays in the field until it fits.
+  const tooLong = [...text].length > MAX_TEXT;
   const submit = (event: SubmitEvent) => {
     event.preventDefault();
-    if (text.trim() === "") return;
+    if (text.trim() === "" || tooLong) return;
     commands.post(roomId, text);
     setText("");
   };
@@ -74,14 +76,14 @@ export const RoomScreen = () => {
         <form className="composer" onSubmit={submit}>
           <label className="sr-only" htmlFor="message">{STRINGS.message}</label>
           <input id="message" value={text} maxLength={2000} autoComplete="off" onChange={(e) => setText(e.target.value)} />
-          <span className="small" aria-live="polite">{[...text].length}/{MAX_TEXT}</span>
+          <span className={`small${tooLong ? " too-long" : ""}`} aria-live="polite">{[...text].length}/{MAX_TEXT}</span>
           <details className="smileys">
             <summary>{STRINGS.smileys}</summary>
             {Object.entries(SMILEYS).map(([code, symbol]) => (
               <button key={code} type="button" className="link" aria-label={code} onClick={() => setText(`${text}${code}`)}>{symbol}</button>
             ))}
           </details>
-          <button type="submit" className="bevel primary">{STRINGS.send}</button>
+          <button type="submit" className="bevel primary" disabled={tooLong}>{STRINGS.send}</button>
         </form>
       </main>
     </>

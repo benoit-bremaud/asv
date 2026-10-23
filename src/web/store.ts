@@ -115,7 +115,8 @@ const onServer = (state: ChatState, message: ServerMessage): ChatState => {
       }
       const active = state.active && open[state.active] ? state.active : Object.keys(open)[0];
       const screen = state.screen === "room" && active ? "room" : "rooms";
-      return { ...state, open, known, active, screen };
+      const me = { sessionId: message.payload.sessionId, pseudo: message.payload.pseudo };
+      return { ...state, me, open, known, active, screen };
     }
     case "resumeRefused":
       return { ...initialState, link: state.link, lastPseudo: state.me?.pseudo };

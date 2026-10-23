@@ -79,6 +79,9 @@ const sessionTarget = z.object({ targetSessionId: id });
 const suspensionTarget = z.object({ accountId: id, reportId: id });
 
 /** Every message a client may send, discriminated on `type`. */
+/** What `resume` carries; the client also checks its saved session against it (ADR-0011). */
+export const resumePayload = z.object({ resumeToken: id, profile });
+
 export const clientMessage = z.discriminatedUnion("type", [
   message(
     "enter",
@@ -89,7 +92,7 @@ export const clientMessage = z.discriminatedUnion("type", [
       moderatorGrant: z.optional(capped(CAPS.moderatorGrant)),
     }),
   ),
-  message("resume", z.object({ resumeToken: id, profile })),
+  message("resume", resumePayload),
   message("joinRoom", roomTarget),
   message("leaveRoom", roomTarget),
   message("createRoom", z.object({ name: capped(CAPS.roomName) })),
@@ -188,6 +191,9 @@ export const serverMessage = z.discriminatedUnion("type", [
   message(
     "resumed",
     z.object({
+      // The session identity, so the client can show its pseudo again (it is not stored, ADR-0011).
+      sessionId: id,
+      pseudo: z.string(),
       resumeToken: id,
       rooms: z.array(roomJoined),
       windows: z.array(privateWindow),

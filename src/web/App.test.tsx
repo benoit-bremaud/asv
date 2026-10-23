@@ -560,6 +560,21 @@ describe("room screen", () => {
     expect(connection.send).not.toHaveBeenCalled();
   });
 
+  it("keeps a message over 500 characters in the field and does not send it (BR-020)", async () => {
+    const user = await setup();
+    await enterChat();
+    await joinRoom("r1");
+    const field = screen.getByLabelText(STRINGS.message) as HTMLInputElement;
+    await user.click(field);
+
+    await user.paste("a".repeat(501));
+    await user.keyboard("{Enter}");
+
+    expect(connection.send).not.toHaveBeenCalled();
+    expect(field.value).toHaveLength(501);
+    expect((screen.getByRole("button", { name: STRINGS.send }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it("appends a smiley code from the palette", async () => {
     const user = await setup();
     await enterChat();

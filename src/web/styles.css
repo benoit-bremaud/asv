@@ -193,3 +193,6 @@ input { font: inherit; padding: 4px; min-height: 32px; }
   .members-toggle { display: inline-block; grid-area: toggle; justify-self: end; }
   .row { flex-direction: column; gap: 0; }
 }
+
+/* Over the BR-020 limit: colour plus weight, never colour alone. */
+.too-long { color: var(--brand); font-weight: bold; }

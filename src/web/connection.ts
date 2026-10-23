@@ -2,7 +2,7 @@
  * Connection manager (`web-ui/04`): the only module that talks to the WebSocket. Heartbeat (BR-010),
  * reconnection with backoff (ASV-NF-011) and resume (UC13, BR-014). Outside React: it dispatches actions.
  */
-import { serverMessage, type ClientMessage } from "../shared/protocol";
+import { resumePayload, serverMessage, type ClientMessage } from "../shared/protocol";
 import type { Action } from "./store";
 
 /** The subset of the browser WebSocket the manager uses, so tests can pass a fake. */
@@ -52,9 +52,6 @@ export const BACKOFF_MS = [1_000, 2_000, 4_000, 8_000, 16_000, 30_000] as const;
 const KEY = "asv.session";
 const OPEN = 1;
 
-const isSaved = (value: unknown): value is Saved =>
-  typeof value === "object" && value !== null && "resumeToken" in value && "profile" in value &&
-  typeof value.resumeToken === "string";
 
 /** Opens the socket and keeps it alive until `close()`. */
 export const createConnection = (deps: ConnectionDeps): Connection => {
@@ -69,11 +66,15 @@ export const createConnection = (deps: ConnectionDeps): Connection => {
 
   const load = (): Saved | undefined => {
     try {
-      const parsed: unknown = JSON.parse(deps.storage.getItem(KEY) ?? "null");
-      return isSaved(parsed) ? parsed : undefined;
+      const raw = deps.storage.getItem(KEY);
+      if (raw === null) return undefined;
+      const saved = resumePayload.safeParse(JSON.parse(raw));
+      if (saved.success) return saved.data;
     } catch {
-      return undefined;
+      // Unreadable JSON: dropped below like any invalid record.
     }
+    forget();
+    return undefined;
   };
   const save = (saved: Saved) => deps.storage.setItem(KEY, JSON.stringify(saved));
   const forget = () => deps.storage.removeItem(KEY);
