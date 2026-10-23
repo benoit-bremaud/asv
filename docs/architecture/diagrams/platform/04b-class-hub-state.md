@@ -48,7 +48,7 @@ classDiagram
 | Accounts, devices, pending codes, e-mail blocks, strike carry-overs | Account store in hub storage (never held whole in memory) |
 | Away sessions | Away records in storage |
 | Official rooms | Configuration |
-| User rooms | Derived from members' attachments and away records |
+| User rooms | Derived from members' attachments and away records, which carry `{ id, name, ownerId }` of each user room (`rooms/07`) |
 | Private conversations | Derived from attachments (open windows) and away records |
 | Flood counters, entry attempts, code requests | Reset, accepted (ADR-0011) |
 

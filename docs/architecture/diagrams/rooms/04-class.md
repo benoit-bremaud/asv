@@ -16,11 +16,7 @@ classDiagram
     +String name
     +RoomKind kind
     +Number capacity
-    +SessionId owner
-    +SessionId[] members
-    +join(sessionId) Room
-    +leave(sessionId) Room
-    +isEmpty() Boolean
+    +SessionId ownerId
   }
   class RoomKind {
     <<enumeration>>
@@ -37,7 +33,6 @@ classDiagram
   class FloodCounter {
     +SessionId sessionId
     +Date[] recent
-    +allows(now) Boolean
   }
   Room --> RoomKind
   Room "1" ..> "0..*" RoomMessage : broadcasts
@@ -45,6 +40,7 @@ classDiagram
 
 ## Notes
 
-- `owner` is set only for user rooms (BR-031).
+- `ownerId` is set only for user rooms (BR-031).
+- Members are the sessions whose `rooms` list the room id (`rooms/07`); capacity 50 is a domain limit (BR-023).
 - Messages are not stored in the room, they are broadcast and forgotten (BR-034).
 - `FloodCounter` is shared with private messages (BR-021).
