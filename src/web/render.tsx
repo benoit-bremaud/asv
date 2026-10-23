@@ -20,11 +20,16 @@ const PATTERN = new RegExp(
 );
 
 /** The single place that turns chat text into nodes: text nodes and smiley spans only (BR-022). */
-export const renderText = (text: string): ReactNode[] =>
-  text.split(PATTERN).flatMap<ReactNode>((part, index) => {
+export const renderText = (text: string): ReactNode[] => {
+  let offset = 0;
+  return text.split(PATTERN).flatMap<ReactNode>((part) => {
+    // The character offset is a stable key: the text of a line never changes.
+    const at = offset;
+    offset += part.length;
     if (part === "") return [];
     const symbol = SMILEYS[part];
     return symbol === undefined
       ? [part]
-      : [<span key={index} role="img" aria-label={part} className="smiley">{symbol}</span>];
+      : [<span key={at} role="img" aria-label={part} className="smiley">{symbol}</span>];
   });
+};

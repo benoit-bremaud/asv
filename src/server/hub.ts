@@ -383,10 +383,10 @@ export const createHub = (deps: HubDeps): Hub => {
       }),
 
     tick: (now) =>
-      serial(async () => {
+      serial(() => {
         const expired = expireAway(state, now);
         state = pruneEntryAttempts(pruneFlood(expired.state, now), now);
-        return roomOutgoing(expired.effects);
+        return Promise.resolve(roomOutgoing(expired.effects));
       }),
 
     stats: () => ({ connected: state.sessions.size }),

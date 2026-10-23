@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type SubmitEvent } from "react";
 import { gender as genderSchema, type Gender } from "../../shared/protocol";
 import { useChat } from "../chat-context";
 import { STRINGS } from "../strings";
@@ -47,7 +47,7 @@ export const EntryScreen = () => {
   const [terms, setTerms] = useState(false);
   const ready = adult && terms && pseudo.trim() !== "" && age !== "" && state.link === "online";
 
-  const submit = (event: FormEvent) => {
+  const submit = (event: SubmitEvent) => {
     event.preventDefault();
     if (!ready) return;
     commands.enter({

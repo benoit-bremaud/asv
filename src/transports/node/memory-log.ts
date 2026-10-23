@@ -7,18 +7,21 @@ export type LogLine =
 
 /** In-memory connection log for development and tests, bounded to the newest `max` lines. */
 export const createMemoryLog = (max = 10_000): ConnectionLogStore & { lines(): readonly LogLine[] } => {
-  let lines: LogLine[] = [];
-  const push = (line: LogLine) => {
-    lines = [...lines, line].slice(-max);
+  const lines: LogLine[] = [];
+  const push = (line: LogLine): Promise<void> => {
+    lines.push(line);
+    if (lines.length > max) lines.shift();
+    return Promise.resolve();
   };
   return {
-    open: async (line) => push({ kind: "connection", ...line }),
-    close: async (connectionId, at) => {
-      lines = lines.map((line) =>
-        line.kind === "connection" && line.connectionId === connectionId ? { ...line, closedAt: at } : line,
-      );
+    open: (line) => push({ kind: "connection", ...line }),
+    close: (connectionId, at) => {
+      const index = lines.findLastIndex((line) => line.kind === "connection" && line.connectionId === connectionId);
+      const line = lines[index];
+      if (line?.kind === "connection") lines[index] = { ...line, closedAt: at };
+      return Promise.resolve();
     },
-    appendContribution: async (line) => push({ kind: "contribution", ...line }),
-    lines: () => lines,
+    appendContribution: (line) => push({ kind: "contribution", ...line }),
+    lines: () => [...lines],
   };
 };

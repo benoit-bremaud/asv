@@ -37,8 +37,8 @@ export interface NodeServer {
   stop(): Promise<void>;
 }
 
-// The default `binaryType` ("nodebuffer") always delivers one Buffer.
-const toText = (data: RawData): string => data.toString();
+// The default `binaryType` ("nodebuffer") delivers one Buffer; the other shapes are typed, never sent.
+const toText = (data: RawData): string => (Array.isArray(data) ? Buffer.concat(data) : Buffer.from(data as ArrayBuffer)).toString();
 
 /** Starts the Node transport and resolves once it listens. */
 export const startNodeServer = async (options: NodeServerOptions): Promise<NodeServer> => {

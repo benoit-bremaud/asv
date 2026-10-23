@@ -9,8 +9,8 @@ const Banners = () => {
   const { state, commands } = useChat();
   return (
     <>
-      {state.link === "reconnecting" && <p className="banner" role="status">{STRINGS.reconnecting}</p>}
-      {state.link === "offline" && state.screen === "entry" && <p className="banner" role="status">{STRINGS.offline}</p>}
+      {state.link === "reconnecting" && <output className="banner">{STRINGS.reconnecting}</output>}
+      {state.link === "offline" && state.screen === "entry" && <output className="banner">{STRINGS.offline}</output>}
       {state.notice && (
         <p className="notice" role="alert">
           {STRINGS.notices[state.notice] ?? STRINGS.genericNotice}

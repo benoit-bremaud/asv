@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState, type SubmitEvent } from "react";
 import type { Gender, Member } from "../../shared/protocol";
 import { useChat } from "../chat-context";
 import { renderText, SMILEYS } from "../render";
@@ -28,7 +28,7 @@ export const RoomScreen = () => {
   const nameOf = (id: string) => state.roomList.find((summary) => summary.id === id)?.name ?? id;
   if (!room) return null;
 
-  const submit = (event: FormEvent) => {
+  const submit = (event: SubmitEvent) => {
     event.preventDefault();
     if (text.trim() === "") return;
     commands.post(roomId, text);

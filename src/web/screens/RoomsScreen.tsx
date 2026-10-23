@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState, type SubmitEvent } from "react";
 import { useChat } from "../chat-context";
 import { STRINGS } from "../strings";
 import { Header } from "./Header";
@@ -22,7 +22,7 @@ export const RoomsScreen = () => {
       ))}
     </ul>
   );
-  const create = (event: FormEvent) => {
+  const create = (event: SubmitEvent) => {
     event.preventDefault();
     if (name.trim() === "") return;
     commands.createRoom(name);
