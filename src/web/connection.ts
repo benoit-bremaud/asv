@@ -38,7 +38,8 @@ export interface ConnectionDeps {
 /** The live connection the provider holds. */
 export interface Connection {
   enter(form: EnterForm): void;
-  send(command: Command): void;
+  /** False when the socket is not open: nothing was sent. */
+  send(command: Command): boolean;
   leave(): void;
   close(): void;
 }
@@ -60,6 +61,8 @@ export const createConnection = (deps: ConnectionDeps): Connection => {
   let attempt = 0;
   let stopped = false;
   let pendingProfile: Profile | undefined;
+  /** `seq` of the resume awaiting an answer, so an `error` replying to it is not left hanging. */
+  let resumeSeq: number | undefined;
   let heartbeat: ReturnType<typeof setInterval> | undefined;
   let pongTimer: ReturnType<typeof setTimeout> | undefined;
   let retryTimer: ReturnType<typeof setTimeout> | undefined;
@@ -112,11 +115,23 @@ export const createConnection = (deps: ConnectionDeps): Connection => {
       pendingProfile = undefined;
     } else if (message.type === "entryRefused") {
       pendingProfile = undefined;
+    } else if (message.type === "error" && resumeSeq !== undefined && message.payload.replyTo === resumeSeq) {
+      resumeSeq = undefined;
+      if (message.payload.code === "logUnavailable") {
+        // Transient: the close path reconnects with backoff and resumes again.
+        socket?.close();
+      } else {
+        // The saved session cannot resume (e.g. a profile the domain refuses): back to entry.
+        forget();
+        deps.dispatch({ type: "link", link: "online" });
+      }
     } else if (message.type === "resumed") {
+      resumeSeq = undefined;
       const saved = load();
       if (saved) save({ ...saved, resumeToken: message.payload.resumeToken });
       deps.dispatch({ type: "link", link: "online" });
     } else if (message.type === "resumeRefused" || message.type === "expelled") {
+      resumeSeq = undefined;
       forget();
       deps.dispatch({ type: "link", link: "online" });
     }
@@ -136,6 +151,7 @@ export const createConnection = (deps: ConnectionDeps): Connection => {
       }, HEARTBEAT_MS);
       const saved = load();
       if (saved) {
+        resumeSeq = seq;
         write({ type: "resume", payload: saved });
       } else {
         deps.dispatch({ type: "link", link: "online" });
@@ -161,7 +177,7 @@ export const createConnection = (deps: ConnectionDeps): Connection => {
       write({ type: "enter", payload: form });
     },
     send(command) {
-      write(command);
+      return write(command);
     },
     leave() {
       // Offline: the server still holds the session, so keep the token to resume it (`write` shows the notice).

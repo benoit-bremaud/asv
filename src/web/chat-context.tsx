@@ -11,7 +11,8 @@ export interface Commands {
   joinRoom(roomId: string): void;
   leaveRoom(roomId: string): void;
   createRoom(name: string): void;
-  post(roomId: string, text: string): void;
+  /** False when nothing was sent (offline), so the screen keeps the draft. */
+  post(roomId: string, text: string): boolean;
   leave(): void;
   local(action: LocalAction): void;
 }
@@ -47,7 +48,7 @@ export const ChatProvider = ({ connect, children }: { connect: ConnectionFactory
   }, [connect]);
 
   const commands = useMemo<Commands>(() => {
-    const send: Connection["send"] = (command) => connection.current?.send(command);
+    const send: Connection["send"] = (command) => connection.current?.send(command) ?? false;
     return {
       enter: (form) => connection.current?.enter(form),
       joinRoom: (roomId) => send({ type: "joinRoom", payload: { roomId } }),

@@ -36,8 +36,8 @@ export const RoomScreen = () => {
   const submit = (event: SubmitEvent) => {
     event.preventDefault();
     if (text.trim() === "" || tooLong) return;
-    commands.post(roomId, text);
-    setText("");
+    // Offline: nothing left, so the draft stays (`write` shows the notice).
+    if (commands.post(roomId, text)) setText("");
   };
 
   return (

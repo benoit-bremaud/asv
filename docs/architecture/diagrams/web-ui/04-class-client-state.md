@@ -72,7 +72,7 @@ classDiagram
   }
   class Connection {
     <<module createConnection(ConnectionDeps)>>
-    +send(Command) void
+    +send(Command) boolean
     +enter(EnterForm) void
     +leave() void
     +close() void
@@ -125,11 +125,11 @@ classDiagram
   by "(absent)". Never written to storage.
 - **Connection manager**: `createConnection({ url, createSocket, storage, dispatch })`, the socket factory
   and storage injected so tests use fakes. `send(Command)` numbers the command; when the socket is not open
-  it sends nothing and dispatches `notice notConnected`. One WebSocket to `/ws` on the page's origin (`wss:` under HTTPS). It numbers
+  it sends nothing, dispatches `notice notConnected` and returns false, so the composer keeps its draft. One WebSocket to `/ws` on the page's origin (`wss:` under HTTPS). It numbers
   messages with `seq`. It validates every incoming message with the protocol `serverMessage` schema and
   drops invalid ones. Heartbeat (BR-010, ADR-0011): `ping` every 25 s; no `pong` within 10 s → the socket is
   closed and treated as lost. On loss: link `reconnecting`, retry after 1, 2, 4, 8, 16 then 30 s
-  (NF-011). On reopen with a resume token → `resume { resumeToken, profile }`; without one → link `online`
+  (NF-011). On reopen with a resume token → `resume { resumeToken, profile }`; an `error` replying to that resume either closes the socket to retry (`logUnavailable`) or forgets the session and shows entry (any other code); without one → link `online`
   on the entry screen.
 - **sessionStorage** (ADR-0011): `{ resumeToken, profile }` only, checked against the protocol `resumePayload` schema on load (an invalid record is removed, the link goes `online`), written on `entered` and `resumed`
   (token rotated, BR-014), removed on `leave`, `resumeRefused` and `expelled`. Nothing else is stored in

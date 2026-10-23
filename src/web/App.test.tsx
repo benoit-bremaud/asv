@@ -53,7 +53,7 @@ const joinRoom = (roomId: string, members: Member[] = [man("s2", "bob")]) =>
   fromServer(msg("roomJoined", { roomId, members }));
 
 beforeEach(() => {
-  connection = { enter: vi.fn(), send: vi.fn(), leave: vi.fn(), close: vi.fn() };
+  connection = { enter: vi.fn(), send: vi.fn(() => true), leave: vi.fn(), close: vi.fn() };
   connect = (d) => {
     dispatch = d;
     return connection;
@@ -548,6 +548,18 @@ describe("room screen", () => {
 
     expect(connection.send).toHaveBeenCalledWith({ type: "postRoom", payload: { roomId: "r1", text: "bonjour" } });
     expect(field.value).toBe("");
+  });
+
+  it("keeps the draft when the post could not be sent", async () => {
+    const user = await setup();
+    await enterChat();
+    await joinRoom("r1");
+    connection.send.mockReturnValue(false);
+    const field = screen.getByLabelText(STRINGS.message) as HTMLInputElement;
+
+    await user.type(field, "bonjour{Enter}");
+
+    expect(field.value).toBe("bonjour");
   });
 
   it("keeps one draft per room across tab switches", async () => {

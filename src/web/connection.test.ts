@@ -197,6 +197,41 @@ describe("createConnection", () => {
       expect(dispatch).toHaveBeenLastCalledWith(expect.objectContaining({ type: "server" }));
     });
 
+    it("closes to retry when the resume hits logUnavailable, keeping the session", () => {
+      store.set(KEY, JSON.stringify(saved));
+      const socket = start();
+      socket.open();
+      const replyTo = socket.frames().at(-1)?.seq;
+
+      socket.receive(simple("error", { code: "logUnavailable", message: "x", replyTo }));
+
+      expect(socket.close).toHaveBeenCalled();
+      expect(store.has(KEY)).toBe(true);
+    });
+
+    it("forgets the session and goes online when the resume hits another error", () => {
+      store.set(KEY, JSON.stringify(saved));
+      const socket = start();
+      socket.open();
+      const replyTo = socket.frames().at(-1)?.seq;
+
+      socket.receive(simple("error", { code: "invalid", message: "x", replyTo }));
+
+      expect(socket.close).not.toHaveBeenCalled();
+      expect(store.has(KEY)).toBe(false);
+      expect(dispatch).toHaveBeenCalledWith({ type: "link", link: "online" });
+    });
+
+    it("ignores an error that does not answer the resume", () => {
+      store.set(KEY, JSON.stringify(saved));
+      const socket = start();
+      socket.open();
+
+      socket.receive(simple("error", { code: "invalid", message: "x", replyTo: 99 }));
+
+      expect(store.has(KEY)).toBe(true);
+    });
+
     it("keeps the session on other server messages", () => {
       store.set(KEY, JSON.stringify(saved));
       const socket = start();
