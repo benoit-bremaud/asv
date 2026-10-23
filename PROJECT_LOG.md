@@ -180,3 +180,26 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
 - Follow-up in the study: protocol `member` needs optional profile fields for away members (brick 7a).
 - Roadmap reordered (owner, 410/500): vertical slices, brick 7a (Node transport + retro UI for entry and rooms)
   next, then 5, 6, 8, 9, 10, each with its UI; priorities added.
+
+## 2026-10-23 — Brick 7a: Node transport, hub and retro web UI (PR #22 merged)
+
+- Squash-merged as `e9fc394`; issues #13 (caps) and #21 (away member shape) closed. Studies validated first:
+  `platform/04c` (server hub), `web-ui/04` (client state) and the entry resume sequence.
+- `src/server/hub.ts`: transport-neutral hub with a serial queue; contributions are logged before anything is
+  kept (BR-060); every failed log write goes to `onLogError`. `src/transports/node/`: `ws` with `noServer`,
+  64 KiB frames, Origin check, heartbeat sweep at a quarter of the silence limit. `src/web/`: React 19 reducer
+  and context, connection manager outside React with backoff and resume from sessionStorage (ADR-0011).
+- Protocol refinements: `memberJoined` and `memberBack` carry `{ roomId, member }`; `resumed` carries `sessionId`
+  and `pseudo`; `member` is a union on `away` (#21).
+- Local review: 4 Must, 8 Should and 7 Nice; owner option B (420/500) fixed every Must and 7 Should, the rest
+  filed. SonarQube failed on the first scan (14 issues) and passed after the fixes. QA in the built-in
+  browser (Claude in Chrome was blocked by another extension); screenshots in `docs/architecture/qa/`.
+- Codex: eight review rounds; each finding got an MCDA and an inline reply, no thread resolved. Fixed: resume
+  identity, saved-session validation, composer cap, resume takeover of a socket not swept yet (the displaced
+  socket is closed, `memberAway` on a failed takeover), offline leave, drafts per room and kept when not sent,
+  resume errors, one entry at a time, city cap in code points. Owner rule for the loop (420/500): one last
+  round, then new reconnection edge cases go to #24.
+- 378 tests, 99.87 % lines. Follow-ups #23 to #30 on Project #69.
+- Owner product decisions recorded in #28: earned trust (room creation and photos unlocked by behaviour
+  tiers, credit falls only by human decision), zero tolerance on photos, 3 warnings mean a ban; member sign-in
+  stays on the ADR-0013 e-mail code with Brevo (415/500 vs password 300), to amend in brick 5.
