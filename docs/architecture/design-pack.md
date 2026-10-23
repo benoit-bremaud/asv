@@ -40,16 +40,33 @@ followed by "(absent)". Colour is never the only cue.
 ## Screens (wireframes)
 
 ```text
-ENTRY                               ROOMS
-+---------------------------+       +-----------------------------------+
-| (asv)  âge ? sexe ? ville?|       | (asv)            nath_lune [quit] |
-| pseudo [__________]       |       | Official rooms    | Search        |
-| je suis  (o)F (o)H (o)-   |       |  Lyon (12)        | [city____] Go |
-| âge [__]  ville [_______] |       |  Poésie (7)       |               |
-| [x] j'ai 18 ans ou plus   |       |  Ciné (4)         |               |
-| [ ENTRER ]                |       | User rooms        |               |
-| Connexion modérateur      |       |  Les Viennois (3) | [+ create]    |
-+---------------------------+       +-----------------------------------+
+ENTRY (validated mockup 2026-10-22)
++--------------------------------------------------------------+
+| (asv)  âge ? sexe ? ville ?                    42 connectés  |  orange header
++------------------------------+-------------------------------+
+| Entrer sans compte           | Membres                       |  lavender panels
+| pseudo [__________]          | e-mail [________________]     |
+| je suis (o)F (o)H (o)pas dit | [recevoir mon code]           |
+| âge [__]  ville [_________]  | code [______] [valider]       |
+| [x] j'ai 18 ans ou plus      | Le même code crée ton compte. |
+| [x] j'accepte les règles     | E-mail gardé 5 ans après la   |
+| [ ENTRER ]   (big, red)      | fermeture, pour la loi.       |
+|                              | (brick 7a: disabled, Bientôt) |
++------------------------------+-------------------------------+
+| connexion modérateur · règles du chat · mentions légales ·   |
+| confidentialité                                              |
++--------------------------------------------------------------+
+
+ROOMS
++-----------------------------------+
+| (asv)            nath_lune [quit] |
+| Official rooms    | Search        |
+|  Lyon (12)        | [city____] Go |
+|  Poésie (7)       |               |
+|  Ciné (4)         |               |
+| User rooms        |               |
+|  Les Viennois (3) | [+ create]    |
++-----------------------------------+
 
 ROOM (desktop)                                   ROOM (phone)
 +-----------------------------+---------------+  +------------------+
@@ -68,4 +85,7 @@ ROOM (desktop)                                   ROOM (phone)
 - Clicking a pseudo opens a small menu: private message, ignore, report.
 - Ignore is two clicks away: pseudo, then "ignore". Report adds a reason pick.
 - Private windows are floating panels on desktop, a stacked tab bar on phones (ASV-NF-006).
-- Smileys: a small palette button inserts codes. Rendering follows BR-022.
+- Smileys: a small palette button inserts codes. Rendering follows BR-022; whitelist and renderer in
+  `web-ui/04`.
+- Away members: `-away` colour of the last gender the client saw, else unspecified, italics and "(absent)"
+  (`platform/04`, away member shape).

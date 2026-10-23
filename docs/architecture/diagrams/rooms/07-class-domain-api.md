@@ -148,5 +148,5 @@ classDiagram
 - `pruneFlood`, called from the hub alarm, forgets sessions with no message in the last 10 s.
 - Refusals map to the protocol `warning { code: reason }`. The domain declares its own types and never
   imports `src/shared/protocol`.
-- An away session has no profile (ADR-0011): the hub lists it without gender, age and city. The protocol
-  `member` schema needs these fields optional for away members (follow-up, brick 7a).
+- An away session has no profile (ADR-0011): the hub lists it without gender, age and city, as the
+  protocol `member` union `{ away: true }` (`platform/04`, issue #21).

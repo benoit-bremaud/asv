@@ -31,13 +31,16 @@ Links requirements to use cases and every use case to its realisations. All path
 
 | Study | Covers |
 |---|---|
+| platform/02-sequence-node-transport | Node socket life cycle, Origin, frame cap, heartbeat, tick (brick 7a, NF-011) |
 | platform/03-component | Dependency rule, transports, ports (NF-009, NF-010) |
 | platform/04-class-protocol | WebSocket contract and payloads for every chat use case |
+| platform/04c-class-server-hub | Transport-neutral hub, effect mapping, connection log port (BR-060, brick 7a) |
 | platform/04b-class-hub-state | Hub aggregate and its rebuild after hibernation (ADR-0011) |
 | platform/05-state-hub | Hibernation, alarm, eviction, link to UC13 |
 | platform/07-deployment | Environments, secrets, NF-003 |
 | platform/08-ci-pipeline | Checks before merge, local SonarQube gate (NF-009, NF-010) |
 | web-ui/03-component | Front-end modules (NF-004 to NF-006, NF-011, NF-012) |
+| web-ui/04-class-client-state | Client reducer, connection manager, renderer, entry and rooms screens (BR-022, NF-004, NF-011, brick 7a) |
 | web-ui/05-state-navigation | Screens for UC1, UC2, UC3, UC6, UC7, UC10, UC12, UC13, UC16 |
 
 ## Coverage check
