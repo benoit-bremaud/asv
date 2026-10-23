@@ -9,7 +9,7 @@
 
 The pure functions in `src/domain` that the hub calls to list, join, leave, create and post in rooms,
 and how closing a session leaves its rooms. Extends the types of `entry/07`. Does not cover ignore
-filtering (brick 6), moderator room removal (brick 8) or smiley rendering (`web-ui`, brick 7).
+filtering (brick 6), moderator room removal (brick 8) or smiley rendering (`web-ui`, brick 7a).
 
 ## Diagram
 
@@ -135,7 +135,7 @@ classDiagram
   `roomMessage` with the trimmed text and the connected members as recipients, author included (echo).
   Away members receive nothing (BR-013 buffers private messages only). Ignore filtering is added in brick 6.
 - **BR-022** (D4, 485/500): the domain keeps the raw text. The smiley whitelist and the text-only renderer
-  belong to `web-ui` (brick 7), the single place that turns text into DOM.
+  belong to `web-ui` (brick 7a), the single place that turns text into DOM.
 - **BR-034**: no message is kept in the state.
 - **Closing a session** (D6, 455/500): `hub.ts` exports `leave` and `expireAway`, which call the entry
   functions and then leave every room of each closed session (internal `vacateRooms`, not exported by `index.ts`): `memberLeft` per room, ownership ended,
@@ -149,4 +149,4 @@ classDiagram
 - Refusals map to the protocol `warning { code: reason }`. The domain declares its own types and never
   imports `src/shared/protocol`.
 - An away session has no profile (ADR-0011): the hub lists it without gender, age and city. The protocol
-  `member` schema needs these fields optional for away members (follow-up, brick 7).
+  `member` schema needs these fields optional for away members (follow-up, brick 7a).

@@ -13,7 +13,7 @@ Retro web chat inspired by Caramail. Product and technical decisions live in the
 
 ## Status
 
-Brick 3 done: pure domain for entry, away, resume, leave and pseudo rules (`src/domain`). Brick 2 tooling
+Brick 4 done: pure domain for rooms and posting (`src/domain/rooms.ts`, `hub.ts`). Brick 3: entry, away, resume, leave and pseudo rules. Brick 2: tooling Next: brick 7a (see roadmap).
 (Vite, Hono, Vitest, ESLint dependency rule, protocol schemas, CodeQL, local SonarQube gate). Checks: `pnpm verify`, then `pnpm sonar` after push.
 
 ## Project invariants
