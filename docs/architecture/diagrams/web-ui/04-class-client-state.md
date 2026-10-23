@@ -150,7 +150,7 @@ classDiagram
 - **Rooms screen**: official rooms then user rooms with counts (UC2); click joins (UC3); a create field with
   the room name (UC5); "quitter" sends `leave` (UC10).
 - **Room screen**: tabs for the joined rooms, lines, members list with age and city (connected) or
-  "(absent)" (away), message field with 500 code-point counter, send on Enter; over 500 the counter is flagged, sending is disabled and the text stays in the field (BR-020). Phone width (< 768 px): the
+  "(absent)" (away), message field with 500 code-point counter, send on Enter; over 500 the counter is flagged, sending is disabled and the text stays in the field (BR-020). Each room keeps its own draft, so a draft never follows a tab switch. Phone width (< 768 px): the
   members list is a toggled panel (NF-006). Leaving a tab sends `leaveRoom`.
 - **Strings**: every UI text lives in `src/web/strings.ts`, French (NF-012).
 - **Accessibility** (NF-004): native form controls with labels, the message list is an `aria-live="polite"`

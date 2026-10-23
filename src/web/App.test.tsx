@@ -550,6 +550,24 @@ describe("room screen", () => {
     expect(field.value).toBe("");
   });
 
+  it("keeps one draft per room across tab switches", async () => {
+    const user = await setup();
+    await enterChat();
+    await joinRoom("r1");
+    await joinRoom("r2");
+    const nav = screen.getByRole("navigation");
+    const field = () => screen.getByLabelText(STRINGS.message) as HTMLInputElement;
+    await user.type(field(), "pour cinéma");
+
+    await user.click(within(nav).getByRole("button", { name: "# Paris" }));
+
+    expect(field().value).toBe("");
+
+    await user.click(within(nav).getByRole("button", { name: "# Cinéma" }));
+
+    expect(field().value).toBe("pour cinéma");
+  });
+
   it("ignores a blank message", async () => {
     const user = await setup();
     await enterChat();

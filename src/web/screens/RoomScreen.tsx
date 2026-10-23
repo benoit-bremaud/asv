@@ -21,9 +21,12 @@ const MemberLine = ({ member, knownGender }: { member: Member; knownGender?: Gen
 /** UC3, UC4: room tabs, lines, members and the message field. */
 export const RoomScreen = () => {
   const { state, commands } = useChat();
-  const [text, setText] = useState("");
+  // One draft per room, so a draft never follows a tab switch into another room.
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [showMembers, setShowMembers] = useState(false);
   const roomId = state.active ?? "";
+  const text = drafts[roomId] ?? "";
+  const setText = (value: string) => setDrafts((current) => ({ ...current, [roomId]: value }));
   const room = state.open[roomId];
   const nameOf = (id: string) => state.roomList.find((summary) => summary.id === id)?.name ?? id;
   if (!room) return null;
