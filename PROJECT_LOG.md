@@ -162,3 +162,21 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   profile and IP). Accepted V1 limit: reserved words with separators (`a.d.m.i.n`) pass.
 - SonarQube note: the `SONAR_TOKEN` exported by the shell gave 401; the scan works with
   `~/.config/sonarqube/analysis-token`.
+
+## 2026-10-23 — Brick 4: domain rooms and posting (PR #19 merged)
+
+- Squash-merged as `d55a5d1`; issue #18 closed. Study completed and validated first:
+  `rooms/07-class-domain-api.md`. Owner choices (MCDA): membership on the session, so the away session stays
+  the ADR-0011 record (450/500); user room refs `{ id, name, ownerId }` carried by members for the rebuild, no
+  new persisted data (465); flood counts accepted messages only (440); smileys left to `web-ui` (485);
+  official rooms injected from `src/server/official-rooms.ts` (450); `hub.ts` facade so closing a session
+  leaves its rooms, exported by `index.ts` in place of the entry `leave`/`expireAway` (455); room name
+  character set (435).
+- From the local review (0 Must, 15 Should fixed): new BR-024, 10 rooms per session (435), against room churn
+  growing the attachment; room names need a letter or digit and are unique ignoring spaces and punctuation
+  (420). `restoreHubState` checks the rules again on refs from many sockets. BR-021, BR-023, BR-030 reworded.
+- Codex P2 fixed: a rebuilt owner claim counts only from a member. 160 tests, 100 % coverage, SonarQube passed
+  (one S7780 fixed with `String.raw`).
+- Follow-up in the study: protocol `member` needs optional profile fields for away members (brick 7a).
+- Roadmap reordered (owner, 410/500): vertical slices, brick 7a (Node transport + retro UI for entry and rooms)
+  next, then 5, 6, 8, 9, 10, each with its UI; priorities added.

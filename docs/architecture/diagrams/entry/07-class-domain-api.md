@@ -108,7 +108,7 @@ classDiagram
 - **Terms and BR-006**: `termsAccepted` false, or a city longer than 40 characters after trimming, gives the
   `invalid` effect, mapped by the hub to the existing `error { code: "invalid" }`. An honest client never
   sends them: the entry form keeps "enter" disabled until the terms box is ticked and caps the city field at
-  40 characters (`web-ui`, brick 7). The protocol `entryRefusal` enum is unchanged. The stored city is the
+  40 characters (`web-ui`, brick 7a). The protocol `entryRefusal` enum is unchanged. The stored city is the
   trimmed one, empty when blank.
 - **BR-007**: every `enter` from an IP, accepted or refused, is recorded with `now`. Attempts older than
   60 s are dropped. If 5 attempts are already recorded in the last 60 s, the new one is refused `rate`

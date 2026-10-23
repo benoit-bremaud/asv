@@ -1,6 +1,6 @@
 # Component diagram — platform — structure and dependencies
 
-> **Feature**: platform (roadmap bricks 2, 7, 9)
+> **Feature**: platform (roadmap bricks 2, 7a, 9; adapters in 5 and 8)
 > **Requirements**: ASV-NF-003, NF-009, NF-010
 > **Related ADRs**: ADR-0002, ADR-0003, ADR-0007, ADR-0008, ADR-0010, ADR-0011, ADR-0014
 
