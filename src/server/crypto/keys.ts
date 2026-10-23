@@ -23,12 +23,12 @@ export interface CryptoEnv {
 
 /** Unpadded base64url, the encoding of every ciphertext, hash and sealed value. */
 export const toBase64Url = (bytes: Uint8Array): string =>
-  btoa(String.fromCharCode(...bytes)).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
+  btoa(String.fromCodePoint(...bytes)).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
 
 /** Decodes base64 or base64url, padded or not. @throws on characters outside both alphabets. */
 export const fromBase64 = (text: string): Uint8Array<ArrayBuffer> => {
   const binary = atob(text.replaceAll("-", "+").replaceAll("_", "/"));
-  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  return Uint8Array.from(binary, (char) => char.codePointAt(0) ?? 0);
 };
 
 const importAes = (raw: Uint8Array<ArrayBuffer>): Promise<CryptoKey> => {
@@ -46,16 +46,18 @@ export const importVaultPublicKey = (raw: Uint8Array<ArrayBuffer>): Promise<Cryp
   crypto.subtle.importKey("raw", raw, { name: "ECDH", namedCurve: "P-256" }, true, []);
 
 const parseDataKeys = async (value: string): Promise<Map<number, CryptoKey>> => {
-  const keys = new Map<number, CryptoKey>();
-  for (const pair of value.split(",")) {
+  const seen = new Set<number>();
+  const pairs = value.split(",").map((pair) => {
     const [version, key] = pair.trim().split(":");
     const number = Number(version);
-    if (!Number.isInteger(number) || number < 1 || !key || keys.has(number)) {
+    if (!Number.isInteger(number) || number < 1 || !key || seen.has(number)) {
       throw new Error("ASV_DATA_KEYS must be version:base64key pairs with distinct positive versions");
     }
-    keys.set(number, await importAes(fromBase64(key)));
-  }
-  return keys;
+    seen.add(number);
+    return [number, key] as const;
+  });
+  const imported = await Promise.all(pairs.map(async ([number, key]) => [number, await importAes(fromBase64(key))] as const));
+  return new Map(imported);
 };
 
 const randomBytes = (length: number): Uint8Array<ArrayBuffer> => crypto.getRandomValues(new Uint8Array(length));

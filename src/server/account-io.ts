@@ -43,7 +43,7 @@ const codeContext = (sessionId: string) => `code:${sessionId}:email`;
 const sameHash = (a: string, b: string): boolean => {
   if (a.length !== b.length) return false;
   let diff = 0;
-  for (let index = 0; index < a.length; index += 1) diff |= a.charCodeAt(index) ^ b.charCodeAt(index);
+  for (let index = 0; index < a.length; index += 1) diff |= (a.codePointAt(index) ?? 0) ^ (b.codePointAt(index) ?? 0);
   return diff === 0;
 };
 

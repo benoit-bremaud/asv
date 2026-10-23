@@ -65,7 +65,7 @@ export const normaliseEmail = (raw: string): string | undefined => {
   if (parts.length !== 2) return undefined;
   const [local, domain] = parts as [string, string];
   const labels = domain.split(".");
-  if (local === "" || labels.length < 2 || labels.some((label) => label === "")) return undefined;
+  if (local === "" || labels.length < 2 || labels.includes("")) return undefined;
   return email;
 };
 

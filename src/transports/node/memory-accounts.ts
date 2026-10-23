@@ -32,44 +32,77 @@ export const createMemoryAccountStore = (): AccountStore & {
   const carryOvers = new Map<string, readonly Date[]>();
   let issued: Issued[] = [];
   let wrongTries: { readonly emailKeyedHash: string; readonly at: Date }[] = [];
+  /** The ports are async; a Map answers at once. */
+  const done = (): Promise<void> => Promise.resolve();
   const byEmailHash = (hash: string) => [...accounts.values()].find((account) => account.emailKeyedHash === hash);
 
   return {
-    saveCode: async (code) => void codes.set(code.sessionId, code),
-    loadCode: async (sessionId) => codes.get(sessionId),
-    deleteCode: async (sessionId) => void codes.delete(sessionId),
-    recordCodeIssued: async (emailKeyedHash, ipKeyedHash, at) => void issued.push({ emailKeyedHash, ipKeyedHash, at }),
-    recordWrongTry: async (emailKeyedHash, at) => void wrongTries.push({ emailKeyedHash, at }),
-    async codeCounts(emailKeyedHash, ipKeyedHash, now): Promise<CodeCounts> {
+    saveCode: (code) => {
+      codes.set(code.sessionId, code);
+      return done();
+    },
+    loadCode: (sessionId) => Promise.resolve(codes.get(sessionId)),
+    deleteCode: (sessionId) => {
+      codes.delete(sessionId);
+      return done();
+    },
+    recordCodeIssued: (emailKeyedHash, ipKeyedHash, at) => {
+      issued.push({ emailKeyedHash, ipKeyedHash, at });
+      return done();
+    },
+    recordWrongTry: (emailKeyedHash, at) => {
+      wrongTries.push({ emailKeyedHash, at });
+      return done();
+    },
+    codeCounts(emailKeyedHash, ipKeyedHash, now): Promise<CodeCounts> {
       const since = now.getTime() - ACCOUNT_LIMITS.quotaWindowMs;
       const daySince = now.getTime() - ACCOUNT_LIMITS.wrongTryWindowMs;
       const recent = issued.filter((entry) => entry.at.getTime() > since);
       const forEmail = recent.filter((entry) => entry.emailKeyedHash === emailKeyedHash);
-      return {
+      return Promise.resolve({
         email: forEmail.length,
         ip: recent.filter((entry) => entry.ipKeyedHash === ipKeyedHash).length,
         lastEmailCodeAt: forEmail.at(-1)?.at,
         wrongTries: wrongTries.filter((entry) => entry.emailKeyedHash === emailKeyedHash && entry.at.getTime() > daySince).length,
-      };
+      });
     },
-    findAccountByEmailHash: async (hash) => byEmailHash(hash),
-    findAccountById: async (accountId) => accounts.get(accountId),
-    saveAccount: async (account) => void accounts.set(account.id, account),
-    deleteAccount: async (accountId) => void accounts.delete(accountId),
-    saveDevice: async (device) => void devices.set(device.tokenHash, device),
-    async accountForDevice(tokenHash, now) {
+    findAccountByEmailHash: (hash) => Promise.resolve(byEmailHash(hash)),
+    findAccountById: (accountId) => Promise.resolve(accounts.get(accountId)),
+    saveAccount: (account) => {
+      accounts.set(account.id, account);
+      return done();
+    },
+    deleteAccount: (accountId) => {
+      accounts.delete(accountId);
+      return done();
+    },
+    saveDevice: (device) => {
+      devices.set(device.tokenHash, device);
+      return done();
+    },
+    accountForDevice(tokenHash, now) {
       const device = devices.get(tokenHash);
-      return device && device.expiresAt.getTime() > now.getTime() ? accounts.get(device.accountId) : undefined;
+      return Promise.resolve(device && device.expiresAt.getTime() > now.getTime() ? accounts.get(device.accountId) : undefined);
     },
-    deleteDevice: async (tokenHash) => void devices.delete(tokenHash),
-    async deleteAllDevices(accountId) {
+    deleteDevice: (tokenHash) => {
+      devices.delete(tokenHash);
+      return done();
+    },
+    deleteAllDevices(accountId) {
       for (const [hash, device] of devices) if (device.accountId === accountId) devices.delete(hash);
+      return done();
     },
-    isBlocked: async (hash, now) => (blocks.get(hash)?.getTime() ?? 0) > now.getTime(),
-    loadCarryOver: async (hash) => carryOvers.get(hash),
-    saveCarryOver: async (hash, expiries) => void carryOvers.set(hash, expiries),
-    deleteCarryOver: async (hash) => void carryOvers.delete(hash),
-    async purgeExpired(now) {
+    isBlocked: (hash, now) => Promise.resolve((blocks.get(hash)?.getTime() ?? 0) > now.getTime()),
+    loadCarryOver: (hash) => Promise.resolve(carryOvers.get(hash)),
+    saveCarryOver: (hash, expiries) => {
+      carryOvers.set(hash, expiries);
+      return done();
+    },
+    deleteCarryOver: (hash) => {
+      carryOvers.delete(hash);
+      return done();
+    },
+    purgeExpired(now) {
       const time = now.getTime();
       for (const [key, code] of codes) if (code.expiresAt.getTime() <= time) codes.delete(key);
       for (const [key, device] of devices) if (device.expiresAt.getTime() <= time) devices.delete(key);
@@ -77,9 +110,12 @@ export const createMemoryAccountStore = (): AccountStore & {
       for (const [key, expiries] of carryOvers) if (expiries.every((at) => at.getTime() <= time)) carryOvers.delete(key);
       issued = issued.filter((entry) => entry.at.getTime() > time - ACCOUNT_LIMITS.quotaWindowMs);
       wrongTries = wrongTries.filter((entry) => entry.at.getTime() > time - ACCOUNT_LIMITS.wrongTryWindowMs);
+      return done();
     },
     dump: () => ({ accounts: [...accounts.values()], codes: [...codes.values()], devices: [...devices.values()] }),
-    block: (hash, until) => void blocks.set(hash, until),
+    block: (hash, until) => {
+      blocks.set(hash, until);
+    },
   };
 };
 
@@ -87,12 +123,16 @@ export const createMemoryAccountStore = (): AccountStore & {
 export const createMemoryVault = (): LegalVaultStore & { entries(): readonly VaultEntry[] } => {
   let entries: VaultEntry[] = [];
   return {
-    record: async (entry) => void entries.push(entry),
-    async purgeExpired(now) {
+    record: (entry) => {
+      entries.push(entry);
+      return Promise.resolve();
+    },
+    purgeExpired(now) {
       const time = now.getTime();
       entries = entries
         .filter((entry) => entry.closedAt.getTime() + ACCOUNT_LIMITS.vaultRetentionMs > time)
         .map((entry) => (entry.closedAt.getTime() + ACCOUNT_LIMITS.vaultIdentityMs > time ? entry : { ...entry, accountId: "" }));
+      return Promise.resolve();
     },
     entries: () => [...entries],
   };

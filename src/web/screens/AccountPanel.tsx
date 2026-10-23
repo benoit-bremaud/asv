@@ -90,7 +90,7 @@ export const AccountPanel = () => {
   if (!state.account.open) return null;
   const { step } = state.account;
   return (
-    <section className="panel overlay" role="dialog" aria-modal="false" aria-labelledby="account-title">
+    <dialog open className="panel overlay" aria-labelledby="account-title">
       <h2 id="account-title">{STRINGS.accountTitle}</h2>
       {(step === "askEmail" || step === "signedOut") && <AskEmail />}
       {step === "waitingCode" && <WaitingCode />}
@@ -98,6 +98,6 @@ export const AccountPanel = () => {
       {step === "signedIn" && <SignedIn />}
       {step === "confirmDelete" && <ConfirmDelete />}
       <button type="button" className="link" onClick={() => commands.local({ type: "closeAccount" })}>{STRINGS.close}</button>
-    </section>
+    </dialog>
   );
 };

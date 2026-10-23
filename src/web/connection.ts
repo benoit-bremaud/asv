@@ -2,7 +2,7 @@
  * Connection manager (`web-ui/04`): the only module that talks to the WebSocket. Heartbeat (BR-010),
  * reconnection with backoff (ASV-NF-011) and resume (UC13, BR-014). Outside React: it dispatches actions.
  */
-import { resumePayload, serverMessage, type ClientMessage } from "../shared/protocol";
+import { resumePayload, serverMessage, type ClientMessage, type ServerMessage } from "../shared/protocol";
 import type { Action } from "./store";
 
 /** The subset of the browser WebSocket the manager uses, so tests can pass a fake. */
@@ -133,6 +133,29 @@ export const createConnection = (deps: ConnectionDeps): Connection => {
     clearTimeout(pongTimer);
   };
 
+  const onEntered = (message: Extract<ServerMessage, { type: "entered" }>) => {
+    if (pendingProfile) save({ resumeToken: message.payload.resumeToken, profile: pendingProfile });
+    pendingProfile = undefined;
+    // An unknown or expired cookie: drop it silently (`web-ui/06`).
+    if (message.payload.staleDevice) void post("/account/sign-out");
+    const code = pendingCode;
+    pendingCode = undefined;
+    deps.dispatch({ type: "server", message });
+    if (code) requestCode(code);
+  };
+
+  const onResumeError = (code: string) => {
+    resumeSeq = undefined;
+    if (code === "logUnavailable") {
+      // Transient: the close path reconnects with backoff and resumes again.
+      socket?.close();
+    } else {
+      // The saved session cannot resume (e.g. a profile the domain refuses): back to entry.
+      forget();
+      deps.dispatch({ type: "link", link: "online" });
+    }
+  };
+
   const onMessage = (data: unknown) => {
     if (data === "pong") {
       clearTimeout(pongTimer);
@@ -146,16 +169,13 @@ export const createConnection = (deps: ConnectionDeps): Connection => {
     }
     const parsed = serverMessage.safeParse(json);
     if (!parsed.success) return;
-    const message = parsed.data;
+    handle(parsed.data);
+  };
+
+  /** Bookkeeping per message type, then the reducer sees every message once. */
+  const handle = (message: ServerMessage) => {
     if (message.type === "entered") {
-      if (pendingProfile) save({ resumeToken: message.payload.resumeToken, profile: pendingProfile });
-      pendingProfile = undefined;
-      // An unknown or expired cookie: drop it silently (`web-ui/06`).
-      if (message.payload.staleDevice) void post("/account/sign-out");
-      const code = pendingCode;
-      pendingCode = undefined;
-      deps.dispatch({ type: "server", message });
-      if (code) requestCode(code);
+      onEntered(message);
       return;
     } else if (message.type === "accountLinked" && message.payload.deviceClaim) {
       deps.dispatch({ type: "server", message });
@@ -165,15 +185,7 @@ export const createConnection = (deps: ConnectionDeps): Connection => {
       pendingProfile = undefined;
       pendingCode = undefined;
     } else if (message.type === "error" && resumeSeq !== undefined && message.payload.replyTo === resumeSeq) {
-      resumeSeq = undefined;
-      if (message.payload.code === "logUnavailable") {
-        // Transient: the close path reconnects with backoff and resumes again.
-        socket?.close();
-      } else {
-        // The saved session cannot resume (e.g. a profile the domain refuses): back to entry.
-        forget();
-        deps.dispatch({ type: "link", link: "online" });
-      }
+      onResumeError(message.payload.code);
     } else if (message.type === "resumed") {
       resumeSeq = undefined;
       const saved = load();

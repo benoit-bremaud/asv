@@ -397,7 +397,9 @@ describe("sign out everywhere and delete (UC18, UC19)", () => {
     const { accountId } = await signIn("1", false);
     await store.deleteAccount(accountId);
 
-    only(await send("1", "deleteAccount", {}), "accountUnlinked");
+    const out = await send("1", "deleteAccount", {});
+
+    expect(only(out, "accountUnlinked").payload).toEqual({});
   });
 });
 

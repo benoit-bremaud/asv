@@ -49,7 +49,12 @@ export const parseBrevoFailure = (rawBody: string): { providerCode: string; prov
 };
 
 /** Removes e-mail addresses and caps the length of a provider or error message. */
-export const scrub = (text: string): string => text.replace(/[^\s@]+@[^\s@]+/g, "[address]").slice(0, 200);
+export const scrub = (text: string): string =>
+  text
+    .split(/(\s+)/)
+    .map((word) => (word.includes("@") ? "[address]" : word))
+    .join("")
+    .slice(0, 200);
 
 const escapeHtml = (text: string): string =>
   text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
