@@ -53,6 +53,7 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
     log,
     protocols: "HTTP/1.1 WebSocket",
     onLogError: (error) => console.error("connection log write failed", error),
+    closeSocket: (key) => sockets.get(key)?.ws.close(),
   });
   const server = createAdaptorServer({ fetch: createApp({ stats: hub.stats }).fetch, hostname: options.hostname });
   const wss = new WebSocketServer({ noServer: true, maxPayload: CAPS.frame });

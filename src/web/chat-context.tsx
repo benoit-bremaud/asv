@@ -10,7 +10,8 @@ export interface Commands {
   enter(form: EnterForm): void;
   joinRoom(roomId: string): void;
   leaveRoom(roomId: string): void;
-  createRoom(name: string): void;
+  /** False when nothing was sent (offline), so the screen keeps the name. */
+  createRoom(name: string): boolean;
   /** False when nothing was sent (offline), so the screen keeps the draft. */
   post(roomId: string, text: string): boolean;
   leave(): void;

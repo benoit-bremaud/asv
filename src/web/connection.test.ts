@@ -456,6 +456,15 @@ describe("createConnection", () => {
       expect(socket.frames()[0]).toMatchObject({ type: "enter", payload: { ...form, pseudo: "Zoé" } });
     });
 
+    it("enter while not open leaves no pending entry", () => {
+      start();
+
+      connection.enter(form);
+
+      expect(dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: "entering" }));
+      expect(dispatch).toHaveBeenLastCalledWith({ type: "notice", code: "notConnected" });
+    });
+
     it("send while not open raises a notConnected notice and sends nothing", () => {
       const socket = start();
 

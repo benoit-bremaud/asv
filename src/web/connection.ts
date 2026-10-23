@@ -172,9 +172,10 @@ export const createConnection = (deps: ConnectionDeps): Connection => {
 
   return {
     enter(form) {
+      // Pending only once the frame left: a failed write gets no answer to clear it.
+      if (!write({ type: "enter", payload: form })) return;
       pendingProfile = { gender: form.gender, age: form.age, city: form.city };
       deps.dispatch({ type: "entering", pseudo: form.pseudo.normalize("NFC") });
-      write({ type: "enter", payload: form });
     },
     send(command) {
       return write(command);

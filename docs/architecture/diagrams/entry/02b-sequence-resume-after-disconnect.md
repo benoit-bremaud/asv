@@ -40,7 +40,7 @@ sequenceDiagram
     opt Old socket of the session not swept yet (network change)
       H->>D: socketLost(state, sessionId, now)
       H->>LS: close(old connection id, now)
-      H->>H: Unbind the old socket
+      H->>H: Unbind the old socket, ask the transport to close it
     end
     H->>AS: load away record
     H->>ACC: account still exists for record.accountId

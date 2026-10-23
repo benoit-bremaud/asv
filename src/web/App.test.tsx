@@ -413,6 +413,17 @@ describe("rooms screen", () => {
     expect(field.value).toBe("");
   });
 
+  it("keeps the room name when the create could not be sent", async () => {
+    const user = await setup();
+    await enterChat();
+    connection.send.mockReturnValue(false);
+    const field = screen.getByLabelText(STRINGS.roomName) as HTMLInputElement;
+
+    await user.type(field, "Mon salon{Enter}");
+
+    expect(field.value).toBe("Mon salon");
+  });
+
   it("ignores a blank room name", async () => {
     const user = await setup();
     await enterChat();

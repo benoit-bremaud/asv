@@ -39,6 +39,8 @@ export interface HubDeps {
   readonly protocols: string;
   /** Called on every failed log write; a failed open or contribution also refuses the command. */
   readonly onLogError: (error: unknown) => void;
+  /** Asks the transport to close a socket whose session a resume took over; its `close` then follows. */
+  readonly closeSocket: (socketKey: string) => void;
 }
 
 /** One server message for one or more sockets. */
@@ -284,6 +286,8 @@ export const createHub = (deps: HubDeps): Hub => {
     socketOfSession.delete(session.id);
     state = socketLost(state, session.id, now).state;
     await closeLine(connectionId, now);
+    // The displaced page still pings, so the silence sweep would never close it.
+    deps.closeSocket(stale.key);
     return session.id;
   };
 

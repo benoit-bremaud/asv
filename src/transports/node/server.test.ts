@@ -114,6 +114,21 @@ describe("Node transport", () => {
     expect(log.lines().find((line) => line.kind === "connection" && line.pseudo === "Max")).toHaveProperty("closedAt");
   });
 
+  it("closes the socket displaced by a resume takeover", async () => {
+    const { port } = await start();
+    const old = await connect(port);
+    old.send("enter", { pseudo: "Lola", ...ENTER });
+    const entered = await old.next("entered");
+    const resumeToken = typeof entered === "string" ? "" : String(entered.payload.resumeToken);
+    const closed = new Promise((resolve) => old.ws.once("close", resolve));
+    const fresh = await connect(port);
+
+    fresh.send("resume", { resumeToken, profile: { age: 30 } });
+
+    expect(await fresh.next("resumed")).toMatchObject({ payload: { pseudo: "Lola" } });
+    await closed;
+  });
+
   it("terminates a silent socket and expires the away session (BR-010, BR-015)", async () => {
     let clock = Date.parse("2026-10-23T10:00:00Z");
     const { port, log } = await start({ now: () => new Date(clock), tickMs: 5, sweepMs: 5, silenceMs: 60_000 });

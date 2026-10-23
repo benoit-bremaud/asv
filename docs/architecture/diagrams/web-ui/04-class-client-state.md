@@ -125,7 +125,7 @@ classDiagram
   by "(absent)". Never written to storage.
 - **Connection manager**: `createConnection({ url, createSocket, storage, dispatch })`, the socket factory
   and storage injected so tests use fakes. `send(Command)` numbers the command; when the socket is not open
-  it sends nothing, dispatches `notice notConnected` and returns false, so the composer keeps its draft. Closing a tab dispatches `closeRoom` only once `leaveRoom` was written. `leave()` while a resume is pending, or offline, sends nothing, keeps the token and shows `notConnected`. ENTRER stays disabled while an entry is pending (`pendingPseudo`), and a lost link drops that pending entry. One WebSocket to `/ws` on the page's origin (`wss:` under HTTPS). It numbers
+  it sends nothing, dispatches `notice notConnected` and returns false, so the composer keeps its draft. Closing a tab dispatches `closeRoom` only once `leaveRoom` was written; the room name and the entry are kept the same way (`entering` only after `enter` was written). `leave()` while a resume is pending, or offline, sends nothing, keeps the token and shows `notConnected`. ENTRER stays disabled while an entry is pending (`pendingPseudo`), and a lost link drops that pending entry. One WebSocket to `/ws` on the page's origin (`wss:` under HTTPS). It numbers
   messages with `seq`. It validates every incoming message with the protocol `serverMessage` schema and
   drops invalid ones. Heartbeat (BR-010, ADR-0011): `ping` every 25 s; no `pong` within 10 s → the socket is
   closed and treated as lost. On loss: link `reconnecting`, retry after 1, 2, 4, 8, 16 then 30 s

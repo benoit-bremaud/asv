@@ -33,6 +33,7 @@ const setup = (hashToken = (value: string) => `h:${value}`) => {
   let n = 0;
   const log = fakeLog();
   const onLogError = vi.fn();
+  const closeSocket = vi.fn();
   const hub = createHub({
     officialRooms: [
       { id: "lyon", name: "Lyon", kind: "regional" },
@@ -49,6 +50,7 @@ const setup = (hashToken = (value: string) => `h:${value}`) => {
     log: log.store,
     protocols: "HTTP/1.1 WebSocket",
     onLogError,
+    closeSocket,
   });
   const send = (key: string, type: string, payload: object, seq = 1, now = T0) =>
     hub.receive(key, JSON.stringify({ type, seq, payload }), now);
@@ -58,7 +60,7 @@ const setup = (hashToken = (value: string) => `h:${value}`) => {
     const entered = only(out, "entered");
     return entered.payload;
   };
-  return { hub, log, onLogError, send, enterAs };
+  return { hub, log, onLogError, closeSocket, send, enterAs };
 };
 
 /** The single outgoing message of a type, with its recipients checked by the caller. */
@@ -305,6 +307,7 @@ describe("hub away, resume, leave and expiry (UC10, UC13)", () => {
 
     expect(only(out, "resumed").payload).toMatchObject({ sessionId: max.sessionId, rooms: [{ roomId: "lyon" }] });
     expect(ctx.log.closed).toEqual([ctx.log.opened[1]?.connectionId]);
+    expect(ctx.closeSocket).toHaveBeenCalledExactlyOnceWith("2");
     expect(to(posted, "roomMessage")).toEqual(["1", "9"]);
     expect(only(await ctx.send("2", "postRoom", { roomId: "lyon", text: "x" }), "error").payload).toMatchObject({ code: "forbidden" });
     expect(await ctx.hub.close("2", later(3000))).toEqual([]);

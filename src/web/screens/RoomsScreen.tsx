@@ -25,8 +25,8 @@ export const RoomsScreen = () => {
   const create = (event: SubmitEvent) => {
     event.preventDefault();
     if (name.trim() === "") return;
-    commands.createRoom(name);
-    setName("");
+    // Offline: nothing left, so the name stays (`write` shows the notice).
+    if (commands.createRoom(name)) setName("");
   };
 
   return (
