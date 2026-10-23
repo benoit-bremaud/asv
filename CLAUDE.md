@@ -13,8 +13,8 @@ Retro web chat inspired by Caramail. Product and technical decisions live in the
 
 ## Status
 
-Brick 7a done: Node WebSocket transport (`src/transports/node/`), transport-neutral hub (`src/server/hub.ts`) and retro web UI for entry and rooms (`src/web/`). Brick 4: pure domain for rooms and posting. Brick 3: entry, away, resume, leave and pseudo rules. Brick 2: tooling
-(Vite, Hono, Vitest, ESLint dependency rule, protocol schemas, CodeQL, local SonarQube gate). Checks: `pnpm verify`, then `pnpm sonar` after push. Next: brick 5, accounts (see roadmap).
+Brick 5 done: member accounts (e-mail code by Brevo, HttpOnly device cookie, encryption at rest in `src/server/crypto/`, account dialog). Brick 7a: Node WebSocket transport (`src/transports/node/`), transport-neutral hub (`src/server/hub.ts`) and retro web UI for entry and rooms (`src/web/`). Brick 4: pure domain for rooms and posting. Brick 3: entry, away, resume, leave and pseudo rules. Brick 2: tooling
+(Vite, Hono, Vitest, ESLint dependency rule, protocol schemas, CodeQL, local SonarQube gate). Checks: `pnpm verify`, then `pnpm sonar` after push. Next: brick 6, private conversations and directory (see roadmap).
 
 ## Project invariants
 

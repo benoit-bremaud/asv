@@ -203,3 +203,18 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
 - Owner product decisions recorded in #28: earned trust (room creation and photos unlocked by behaviour
   tiers, credit falls only by human decision), zero tolerance on photos, 3 warnings mean a ban; member sign-in
   stays on the ADR-0013 e-mail code with Brevo (415/500 vs password 300), to amend in brick 5.
+
+## 2026-10-23 — Brick 5: member accounts (PR #33 merged)
+
+- Squash-merged as `b933085`; issues #32 and #8 closed. Studies validated first (`1a0e4fe`): Brevo mailer,
+  encryption at rest (ADR-0017), account UI (`web-ui/06`).
+- E-mail code sign-in (BR-070–073), HttpOnly `asv_device` cookie redeemed through `POST /account/device`,
+  sign-out on this device or everywhere, deletion with the legal vault written first (BR-081).
+  `src/server/crypto/`: AES-GCM field cipher with versioned keys, HMAC keyed hash, ECDH vault seal.
+- Local review: 4 Must and 6 Should fixed. Owner decision (A, 435/500): at most 20 wrong codes per e-mail
+  per 24 h (BR-072 amended). SonarQube failed on the first scan (44 issues), passed after the fixes.
+  QA replayed on the final SHA; screenshots in `docs/architecture/qa/`.
+- Codex hit its usage limit; owner chose an adversarial Opus review instead (B, 400/500): no Must or Should,
+  3 Nice filed. Merge was first blocked because the `sonarqube` status sat on the previous SHA: `pnpm sonar`
+  must run on the head commit, even a docs-only one.
+- 510 tests, 98.6 % statements. Follow-ups #34 to #44 on Project #69. Next: brick 6.
