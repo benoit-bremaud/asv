@@ -55,7 +55,7 @@ stateDiagram-v2
 - **Opening**: "message privé" opens a window in `Opening` with the composer focused; nothing is sent until
   the first message. A refusal (`warning` or `error` replying to that `sendPrivate`) shows the notice and
   keeps the draft. `accountRequired` also opens the account panel.
-- **Windows**: at most 10 open (BR-043; the server enforces it). Each window holds its last 200 lines in
+- **Windows**: at most 3 open (BR-043; the server enforces it). Each window holds its last 200 lines in
   memory only (BR-034), its own draft, the 500 code point counter of the room composer (BR-020) and an
   unread count while minimised. Lines render through the same `Renderer` (smileys, never HTML).
 - **Desktop** (≥ 768 px): floating panels docked bottom right, side by side, the last opened in front.

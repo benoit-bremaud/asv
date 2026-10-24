@@ -9,7 +9,7 @@ import { countMessage, ROOM_LIMITS, type HubState } from "./rooms";
 
 /** V1 values of BR-043 and BR-044, tunable here only. */
 export const PRIVATE_LIMITS = {
-  maxWindows: 10,
+  maxWindows: 3,
   maxIgnored: 100,
 } as const;
 

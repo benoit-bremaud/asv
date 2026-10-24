@@ -76,9 +76,9 @@ classDiagram
   4. Target without account → `accountRequired`.
   5. Text trimmed empty → `empty`; over 500 code points → `tooLong` (BR-020).
   6. Flood: the shared counter of `rooms` (BR-021, 5 per 10 s across rooms and private) → `flood`.
-  7. The conversation is not open for the sender and the sender already has 10 open windows →
+  7. The conversation is not open for the sender and the sender already has 3 open windows →
      `tooManyWindows` (BR-043).
-  8. The conversation is not open for the target and the target already has 10 open windows →
+  8. The conversation is not open for the target and the target already has 3 open windows →
      `targetBusy` (BR-043, owner choice C). Checked whatever the ignore state, so it reveals no block.
 - On acceptance the flood counter counts the message, the conversation is created if missing (a random id from
   `random.id()`, since two UUIDs would pass the protocol's 64-character id cap; it is found again by its
@@ -91,7 +91,7 @@ classDiagram
     past 50), the target's side is opened without effect (it comes back in `resumed.windows`), and the
     sender gets `privateMessage` (echo).
   - Target connected → the target's side is opened (`privateWindowOpened` for the target when it was
-    closed; step 8 already refused it past 10), then
+    closed; step 8 already refused it past 3), then
     `privateMessage` to both.
 - Every accepted message, also dropped or buffered, yields exactly one `privateMessage` effect, so the hub
   writes one contribution line per accepted message (BR-060, `private-conversations/02`).

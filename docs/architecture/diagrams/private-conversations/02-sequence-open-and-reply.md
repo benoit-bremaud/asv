@@ -30,7 +30,7 @@ sequenceDiagram
   else B gone (or B is A)
     D-->>H: privateRefused(offline or self)
     H-->>WA: error(offline) or warning(self)
-  else Empty, too long, flood or 10 windows open
+  else Empty, too long, flood or 3 windows open
     D-->>H: privateRefused(reason)
     H-->>WA: warning(reason)
   else Accepted

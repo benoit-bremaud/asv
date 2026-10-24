@@ -42,7 +42,7 @@ flowchart LR
 - Replies follow the same path inside the open window.
 - Alternative (D1, BR-043): the chatter closes a window, which frees a slot. The other side is not told; a
   new message reopens the window on both sides.
-- Extensions: 2b. More than 10 open windows → refused with `tooManyWindows`. 2c. Target is the sender →
+- Extensions: 2b. More than 3 open windows → refused with `tooManyWindows`. 2c. Target is the sender →
   refused. 3d. The other chatter goes away, comes back or leaves → the window shows it.
 - Extension (ASV-F-024): signing out of the account or deleting it closes the chatter's windows; the
   other side's next message gets `accountRequired`.

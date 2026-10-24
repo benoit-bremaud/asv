@@ -14,7 +14,7 @@ The client view of the same window is in `web-ui/07`. Does not cover the session
 ```mermaid
 stateDiagram-v2
   [*] --> Closed
-  Closed --> Open: sends a message (refused past 10 open windows)
+  Closed --> Open: sends a message (refused past 3 open windows)
   Closed --> Open: receives a message, connected and not blocked
   Closed --> OpenWhileAway: receives a message while away (buffered)
   OpenWhileAway --> Open: resumed (window and buffer sent)
