@@ -252,7 +252,7 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   exception to BR-083, a vault that survives restarts, owner as both editor and host, a GDPR art. 13 table, and
   one `secureCookie` option. Codex then raised a P1 (vault depended on a graceful stop) and a P2
   (contribution row), both fixed.
-- Code: JSONL connection log and sealed vault files, crash-safe. The vault opening record is written before
+- Code, PR #56 (`0d230cd`, closes #48 and #50): JSONL connection log and sealed vault files, crash-safe. The vault opening record is written before
   the account is saved, start-up closes what a crash left open, purges rewrite through a temp file and a
   rename, and unreadable lines are kept. Also:
   - client IP from `CF-Connecting-IP` only in tunnel mode on loopback;
@@ -263,5 +263,8 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   - runbook `docs/product/tester-runbook.md`.
 - QA in tunnel mode on the build (desktop and mobile): CSP and headers present, WebSocket entry works, no console
   errors, log file 0600. The legal table overflowed on mobile; it now stacks as labelled blocks.
+- Codex on #56 (two rounds, 5 findings, all fixed): tunnel mode now also refuses to start without both legal
+  files, with one file shared by both, or without a Brevo key (no dev mail). A line cut by a crash gets its newline
+  at start-up. Only a folder the stores create is set to 0700.
 - Not done yet: the vault key tool (#35, openssl commands in the runbook meanwhile); checking the Brevo and
   Cloudflare DPAs; the tunnel session itself.
