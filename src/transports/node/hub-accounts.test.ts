@@ -127,6 +127,22 @@ describe("request a code (UC17 steps 1–3)", () => {
     expect(only(await send("1", "requestCode", { email: EMAIL, remember: false }), "error").payload.code).toBe("forbidden");
   });
 
+  it.each([
+    ["verifyCode", { code: "123456" }],
+    ["signOutEverywhere", {}],
+    ["deleteAccount", {}],
+  ] as const)("answers unavailable when %s hits a failing store", async (type, payload) => {
+    const { enterAs, signIn, send, store, onStoreError } = await setup();
+    await enterAs("1", "Lola");
+    if (type !== "verifyCode") await signIn("1", false);
+    vi.spyOn(store, "loadCode").mockRejectedValue(new Error("down"));
+    vi.spyOn(store, "deleteAllDevices").mockRejectedValue(new Error("down"));
+    vi.spyOn(store, "findAccountById").mockRejectedValue(new Error("down"));
+
+    expect(warningOf(await send("1", type, payload))).toMatchObject({ code: "unavailable" });
+    expect(onStoreError).toHaveBeenCalledWith(expect.any(Error));
+  });
+
   it("answers unavailable when a store call fails, and reports it", async () => {
     const { enterAs, send, store, onStoreError } = await setup();
     await enterAs("1", "Lola");

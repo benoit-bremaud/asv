@@ -4,18 +4,13 @@
  * sockets and send what it returns (`platform/02`).
  */
 import {
-  checkCode,
-  closeAccount,
   createRoom,
-  decideCodeRequest,
   emptyHubState,
   enter,
   expireAway,
   joinRoom,
   leave,
   leaveRoom,
-  linkAccount,
-  normaliseEmail,
   postRoom,
   pruneDeviceClaims,
   pruneEntryAttempts,
@@ -23,21 +18,20 @@ import {
   redeemDeviceClaim,
   resume,
   roomList,
-  roomMembers,
   socketLost,
-  unlinkSessions,
   type CodeRandom,
   type ConnectionLogStore,
-  type Effect,
   type HubState,
   type Mailer,
   type OfficialRoom,
-  type RoomEffect,
-  type SessionFilter,
-  type Session,
+  type RoomsResult,
 } from "../domain";
 import type { AccountIo } from "./account-io";
-import { CAPS, clientMessage, type ClientMessage, type Member, type ServerMessage } from "../shared/protocol";
+import { createAccountHandlers, type Caller } from "./hub-accounts";
+import { createOutgoing, sessionOf, type Outgoing } from "./outgoing";
+import { CAPS, clientMessage, type ClientMessage } from "../shared/protocol";
+
+export type { Outgoing } from "./outgoing";
 
 /** What a transport plugs into the hub. */
 export interface HubDeps {
@@ -63,12 +57,6 @@ export interface HubDeps {
 export interface DeviceToken {
   readonly token: string;
   readonly expiresAt: Date;
-}
-
-/** One server message for one or more sockets. */
-export interface Outgoing {
-  readonly to: readonly string[];
-  readonly message: ServerMessage;
 }
 
 /** `GET /api/stats` (`platform/04`): an aggregate only. */
@@ -102,23 +90,13 @@ interface Socket {
   bound?: { readonly sessionId: string; readonly connectionId: string };
 }
 
-type Payload<T extends ServerMessage["type"]> = Extract<ServerMessage, { type: T }>["payload"];
 type Command<T extends ClientMessage["type"]> = Extract<ClientMessage, { type: T }>;
-type ErrorCode = Payload<"error">["code"];
 type Bound = NonNullable<Socket["bound"]>;
-
-/** A session the hub just saw in the state; missing means a hub bug, not a client error. */
-const sessionOf = (state: HubState, sessionId: string): Session => {
-  const session = state.sessions.get(sessionId);
-  /* v8 ignore next -- invariant: callers pass ids taken from this state. */
-  if (!session) throw new Error(`hub invariant: unknown session ${sessionId}`);
-  return session;
-};
-
-const ACCOUNT_COMMANDS = new Set<ClientMessage["type"]>(["requestCode", "verifyCode", "signOutEverywhere", "deleteAccount"]);
-
-/** Room effects that change a count or the set of rooms, so every list must be refreshed. */
-const LIST_CHANGES = new Set<(Effect | RoomEffect)["type"]>(["memberJoined", "memberLeft", "roomCreated", "roomDeleted"]);
+/** Commands that need a session; `enter` and `resume` need a socket without one. */
+type BoundType = Exclude<ClientMessage["type"], "enter" | "resume">;
+type BoundHandler<K extends BoundType> = (socket: Socket, bound: Bound, command: Command<K>, now: Date) => Promise<Outgoing[]>;
+/** One entry per command, so the type checker refuses a missing one (issue #25). */
+type HandlerMap = { readonly [K in BoundType]: BoundHandler<K> };
 
 /** Reads `seq` from a message that failed validation, to link the error to it. */
 const seqOf = (data: unknown): number | undefined => {
@@ -135,26 +113,11 @@ const parseJson = (raw: string): { ok: true; data: unknown } | { ok: false } => 
   }
 };
 
-/** Protocol `member` union (issue #21): an away session has no profile (ADR-0011). */
-const toMember = (session: Session): Member => {
-  if (session.status === "away") return { sessionId: session.id, pseudo: session.pseudo, away: true };
-  const { gender, age, city } = session.profile;
-  return {
-    sessionId: session.id,
-    pseudo: session.pseudo,
-    away: false,
-    gender,
-    age,
-    ...(city ? { city } : {}),
-  };
-};
-
 /** Builds the hub for one transport. */
 export const createHub = (deps: HubDeps): Hub => {
   let state: HubState = emptyHubState(deps.officialRooms);
   const sockets = new Map<string, Socket>();
   const socketOfSession = new Map<string, string>();
-  let seq = 0;
   // Log writes are awaited: every operation runs after the previous one, so none sees a stale state.
   let queue: Promise<unknown> = Promise.resolve();
   const serial = <T>(task: () => Promise<T>): Promise<T> => {
@@ -163,79 +126,13 @@ export const createHub = (deps: HubDeps): Hub => {
     return run;
   };
 
-  const message = <T extends ServerMessage["type"]>(type: T, payload: Payload<T>): ServerMessage =>
-    ({ type, seq: seq++, payload }) as Extract<ServerMessage, { type: T }>;
-  const send = <T extends ServerMessage["type"]>(to: readonly string[], type: T, payload: Payload<T>): Outgoing => ({
-    to,
-    message: message(type, payload),
+  const out = createOutgoing({
+    state: () => state,
+    socketOf: (sessionId) => socketOfSession.get(sessionId),
+    allSockets: () => [...socketOfSession.values()],
   });
-  const error = (socket: Socket, code: ErrorCode, text: string, replyTo?: number): Outgoing =>
-    send([socket.key], "error", { code, message: text, replyTo });
-
-  const keysOf = (sessionIds: readonly string[]): string[] =>
-    sessionIds.flatMap((id) => {
-      const key = socketOfSession.get(id);
-      return key ? [key] : [];
-    });
-  /** Connected members of `roomId` other than `except`, as socket keys. */
-  const othersIn = (roomId: string, except: string): string[] =>
-    keysOf(roomMembers(state, roomId).filter((member) => member.id !== except).map((member) => member.id));
-  const roomJoined = (roomId: string): Payload<"roomJoined"> => ({
-    roomId,
-    members: roomMembers(state, roomId).map(toMember),
-  });
-  const listToAll = (): Outgoing => send([...socketOfSession.values()], "roomList", { rooms: roomList(state) });
-  /** `memberAway` or `memberBack` in every room of the session, to the other connected members. */
-  const presenceInRooms = (session: Session, type: "memberAway" | "memberBack"): Outgoing[] =>
-    session.rooms
-      .map((roomId) =>
-        type === "memberAway"
-          ? send(othersIn(roomId, session.id), type, { roomId, sessionId: session.id, pseudo: session.pseudo })
-          : send(othersIn(roomId, session.id), type, { roomId, member: toMember(session) }),
-      )
-      .filter((outgoing) => outgoing.to.length > 0);
-
-  /** Room effects to messages, read against the already committed `state`. */
-  const roomOutgoing = (effects: readonly (Effect | RoomEffect)[], replyTo?: number): Outgoing[] => {
-    const out: Outgoing[] = [];
-    for (const effect of effects) {
-      switch (effect.type) {
-        case "roomJoined":
-          out.push(send(keysOf([effect.sessionId]), "roomJoined", roomJoined(effect.roomId)));
-          break;
-        case "memberJoined":
-          out.push(send(othersIn(effect.roomId, effect.sessionId), "memberJoined", {
-            roomId: effect.roomId,
-            member: toMember(sessionOf(state, effect.sessionId)),
-          }));
-          break;
-        case "memberLeft":
-          out.push(send(othersIn(effect.roomId, effect.sessionId), "memberLeft", {
-            roomId: effect.roomId,
-            sessionId: effect.sessionId,
-            pseudo: effect.pseudo,
-          }));
-          break;
-        case "roomMessage":
-          out.push(send(keysOf(effect.recipients), "roomMessage", {
-            roomId: effect.roomId,
-            authorSessionId: effect.authorSessionId,
-            pseudo: effect.pseudo,
-            gender: effect.gender,
-            text: effect.text,
-            sentAt: effect.sentAt.toISOString(),
-          }));
-          break;
-        case "roomRefused":
-          out.push(send(keysOf([effect.sessionId]), "warning", { code: effect.reason, message: effect.reason, replyTo }));
-          break;
-        default:
-          break;
-      }
-    }
-    if (effects.some((effect) => LIST_CHANGES.has(effect.type))) out.push(listToAll());
-    return out.filter((outgoing) => outgoing.to.length > 0);
-  };
+  const { send } = out;
+  const accounts = createAccountHandlers({ deps, out, state: () => state, setState: (next) => { state = next; } });
 
   const closeLine = async (connectionId: string, now: Date): Promise<void> => {
     try {
@@ -269,17 +166,6 @@ export const createHub = (deps: HubDeps): Hub => {
     return true;
   };
 
-  const warning = (socket: Socket, code: string, replyTo?: number): Outgoing =>
-    send([socket.key], "warning", { code, message: code, replyTo });
-
-  /** Unlinks the matching sessions and tells their sockets (UC18, UC19). */
-  const unlink = (filter: SessionFilter): Outgoing[] => {
-    const result = unlinkSessions(state, filter);
-    state = result.state;
-    const to = keysOf(result.unlinked);
-    return to.length > 0 ? [send(to, "accountUnlinked", {})] : [];
-  };
-
   /** The account behind the socket's device cookie (`entry/02a`); a cookie of a deleted account is stale. */
   const deviceAccount = async (socket: Socket, now: Date): Promise<{ accountId?: string; stale: boolean } | "unavailable"> => {
     if (!socket.deviceTokenHash) return { stale: false };
@@ -300,105 +186,10 @@ export const createHub = (deps: HubDeps): Hub => {
     return away?.accountId === undefined || deps.accounts.accountExists(away.accountId);
   };
 
-  /** UC17 steps 1–3 (`accounts/02`): refusals are explicit only when they reveal nothing about the address. */
-  const onRequestCode = async (socket: Socket, bound: Bound, command: Command<"requestCode">, now: Date): Promise<Outgoing[]> => {
-    const email = normaliseEmail(command.payload.email);
-    // An invalid address never reaches the store.
-    if (email === undefined) return [warning(socket, "emailInvalid", command.seq)];
-    const { facts, emailKeyedHash, ipKeyedHash } = await deps.accounts.codeFacts(email, socket.ip, now);
-    const decision = decideCodeRequest(facts, now, deps.random);
-    if (decision.kind === "refused") return [warning(socket, decision.reason, command.seq)];
-    if (decision.kind === "issue") {
-      await deps.accounts.saveIssued({
-        sessionId: bound.sessionId,
-        email,
-        emailKeyedHash,
-        ipKeyedHash,
-        code: decision.code,
-        remember: command.payload.remember,
-        expiresAt: decision.expiresAt,
-        now,
-      });
-      // Not awaited: the answer must not depend on the provider (ADR-0013 amendment).
-      void deps.mailer.sendCode(email, decision.code).catch(deps.onStoreError);
-    }
-    return [send([socket.key], "codeSent", {})];
-  };
-
-  /** UC17 steps 4–6. */
-  const onVerifyCode = async (socket: Socket, bound: Bound, command: Command<"verifyCode">, now: Date): Promise<Outgoing[]> => {
-    const pending = await deps.accounts.loadPending(bound.sessionId);
-    if (!pending) return [warning(socket, "codeMissing", command.seq)];
-    const check = checkCode(pending.stored, await deps.accounts.codeMatches(pending, command.payload.code), now);
-    if (check.kind === "refused") {
-      if (check.reason !== "expired") await deps.accounts.recordWrongTry(pending, now);
-      if (check.reason === "wrong") {
-        await deps.accounts.saveTries(pending, check.triesLeft);
-        return [send([socket.key], "warning", { code: "codeWrong", message: "codeWrong", replyTo: command.seq, triesLeft: check.triesLeft })];
-      }
-      await deps.accounts.deleteCode(bound.sessionId);
-      return [warning(socket, check.reason === "expired" ? "codeExpired" : "codeExhausted", command.seq)];
-    }
-    const facts = await deps.accounts.linkFacts(pending, now);
-    const result = linkAccount(state, {
-      sessionId: bound.sessionId,
-      email: pending.email,
-      remember: pending.stored.remember,
-      blocked: facts.blocked,
-      existing: facts.existing,
-      carryOver: facts.carryOver,
-    }, now, deps.random);
-    await deps.accounts.deleteCode(bound.sessionId);
-    if (result.kind === "refused") return [warning(socket, result.reason, command.seq)];
-    await deps.accounts.saveAccount(result.account, facts.emailKeyedHash, result.created);
-    state = result.state;
-    return [send([socket.key], "accountLinked", {
-      accountId: result.account.id,
-      ...(result.deviceClaim ? { deviceClaim: result.deviceClaim } : {}),
-    })];
-  };
-
-  /** UC18 "everywhere" and UC19, over the WebSocket. */
-  const onAccountWide = async (socket: Socket, bound: Bound, command: Command<"signOutEverywhere" | "deleteAccount">, now: Date): Promise<Outgoing[]> => {
-    const accountId = sessionOf(state, bound.sessionId).accountId;
-    if (!accountId) return [warning(socket, "notSignedIn", command.seq)];
-    if (command.type === "deleteAccount") {
-      const found = await deps.accounts.accountById(accountId);
-      if (found) {
-        const closure = closeAccount(found.account, now);
-        await deps.accounts.close(closure.vault, found.emailKeyedHash, closure.carryOver);
-      }
-    } else {
-      await deps.accounts.deleteAllDevices(accountId);
-    }
-    return unlink({ by: "account", accountId });
-  };
-
-  /** Account commands; a failed store call answers `warning unavailable` and changes nothing in memory. */
-  const onAccount = async (socket: Socket, bound: Bound, command: ClientMessage, now: Date): Promise<Outgoing[]> => {
-    try {
-      switch (command.type) {
-        case "requestCode":
-          return await onRequestCode(socket, bound, command, now);
-        case "verifyCode":
-          return await onVerifyCode(socket, bound, command, now);
-        case "signOutEverywhere":
-        case "deleteAccount":
-          return await onAccountWide(socket, bound, command, now);
-        /* v8 ignore next 2 -- invariant: dispatch passes ACCOUNT_COMMANDS only. */
-        default:
-          return [error(socket, "invalid", "notAvailable", command.seq)];
-      }
-    } catch (cause) {
-      deps.onStoreError(cause);
-      return [warning(socket, "unavailable", command.seq)];
-    }
-  };
-
   const onEnter = async (socket: Socket, command: Command<"enter">, now: Date): Promise<Outgoing[]> => {
     const { payload } = command;
     const device = await deviceAccount(socket, now);
-    if (device === "unavailable") return [warning(socket, "unavailable", command.seq)];
+    if (device === "unavailable") return [out.warning(socket.key, "unavailable", command.seq)];
     const result = enter(state, {
       pseudo: payload.pseudo,
       gender: payload.gender,
@@ -413,7 +204,7 @@ export const createHub = (deps: HubDeps): Hub => {
     const [effect] = result.effects;
     if (effect?.type === "entered") {
       if (!(await bind(socket, effect.sessionId, result.state, now))) {
-        return [error(socket, "logUnavailable", "logUnavailable", command.seq)];
+        return [out.error(socket.key, "logUnavailable", command.seq)];
       }
       return [send([socket.key], "entered", {
         sessionId: effect.sessionId,
@@ -428,7 +219,7 @@ export const createHub = (deps: HubDeps): Hub => {
     if (effect?.type === "entryRefused") {
       return [send([socket.key], "entryRefused", { reason: effect.reason, bannedUntil: effect.bannedUntil?.toISOString() })];
     }
-    return [error(socket, "invalid", "invalid", command.seq)];
+    return [out.error(socket.key, "invalid", command.seq)];
   };
 
   /**
@@ -458,13 +249,13 @@ export const createHub = (deps: HubDeps): Hub => {
     const resumeTokenHash = deps.hashToken(resumeToken);
     const released = await releaseStale(resumeTokenHash, now);
     // The takeover could not finish: the others must see the session away.
-    const awayIfReleased = () => (released ? presenceInRooms(sessionOf(state, released), "memberAway") : []);
+    const awayIfReleased = () => (released ? out.memberAwayInRooms(sessionOf(state, released)) : []);
     let accountStillExists: boolean;
     try {
       accountStillExists = await linkedAccountExists(resumeTokenHash);
     } catch (cause) {
       deps.onStoreError(cause);
-      return [warning(socket, "unavailable", command.seq), ...awayIfReleased()];
+      return [out.warning(socket.key, "unavailable", command.seq), ...awayIfReleased()];
     }
     const result = resume(state, {
       resumeTokenHash,
@@ -477,7 +268,7 @@ export const createHub = (deps: HubDeps): Hub => {
     const [effect] = result.effects;
     if (effect?.type === "resumed") {
       if (!(await bind(socket, effect.sessionId, result.state, now))) {
-        return [error(socket, "logUnavailable", "logUnavailable", command.seq), ...awayIfReleased()];
+        return [out.error(socket.key, "logUnavailable", command.seq), ...awayIfReleased()];
       }
       const session = sessionOf(state, effect.sessionId);
       return [
@@ -485,17 +276,17 @@ export const createHub = (deps: HubDeps): Hub => {
           sessionId: session.id,
           pseudo: session.pseudo,
           resumeToken: effect.resumeToken,
-          rooms: session.rooms.map(roomJoined),
+          rooms: session.rooms.map(out.roomJoined),
           windows: [],
           buffered: [],
           ...(session.accountId ? { accountId: session.accountId } : {}),
         }),
         send([socket.key], "roomList", { rooms: roomList(state) }),
-        ...presenceInRooms(session, "memberBack"),
+        ...out.memberBackInRooms(session),
       ];
     }
     if (effect?.type === "resumeRefused") return [send([socket.key], "resumeRefused", {})];
-    return [error(socket, "invalid", "invalid", command.seq), ...awayIfReleased()];
+    return [out.error(socket.key, "invalid", command.seq), ...awayIfReleased()];
   };
 
   const onLeave = async (socket: Socket, bound: Bound, now: Date): Promise<Outgoing[]> => {
@@ -504,52 +295,71 @@ export const createHub = (deps: HubDeps): Hub => {
     socketOfSession.delete(bound.sessionId);
     socket.bound = undefined;
     await closeLine(bound.connectionId, now);
-    return roomOutgoing(result.effects);
+    return out.roomOutgoing(result.effects);
   };
 
   /** Rooms commands; content creation is logged before anything is kept or sent (`rooms/02`, BR-060). */
-  const onRooms = async (socket: Socket, bound: Bound, command: ClientMessage, now: Date): Promise<Outgoing[]> => {
-    const { sessionId } = bound;
-    let result;
-    switch (command.type) {
-      case "joinRoom":
-        result = joinRoom(state, sessionId, command.payload.roomId);
-        break;
-      case "leaveRoom":
-        result = leaveRoom(state, sessionId, command.payload.roomId);
-        break;
-      case "createRoom":
-        result = createRoom(state, { sessionId, name: command.payload.name }, deps.random);
-        break;
-      case "postRoom":
-        result = postRoom(state, { sessionId, roomId: command.payload.roomId, text: command.payload.text }, now);
-        break;
-      default:
-        return [error(socket, "invalid", "notAvailable", command.seq)];
-    }
-    const creates = result.effects.some((effect) => effect.type === "roomMessage" || effect.type === "roomCreated");
-    if (creates) {
-      try {
-        await deps.log.appendContribution({ connectionId: bound.connectionId, protocols: deps.protocols, at: now });
-      } catch (cause) {
-        deps.onLogError(cause);
-        return [error(socket, "logUnavailable", "logUnavailable", command.seq)];
+  const roomCommand = <K extends BoundType>(compute: (sessionId: string, command: Command<K>, now: Date) => RoomsResult): BoundHandler<K> =>
+    async (socket, bound, command, now) => {
+      // Every command has `seq`; the generic `Command<K>` hides it from the checker.
+      const { seq } = command as Pick<ClientMessage, "seq">;
+      const result = compute(bound.sessionId, command, now);
+      const creates = result.effects.some((effect) => effect.type === "roomMessage" || effect.type === "roomCreated");
+      if (creates) {
+        try {
+          await deps.log.appendContribution({ connectionId: bound.connectionId, protocols: deps.protocols, at: now });
+        } catch (cause) {
+          deps.onLogError(cause);
+          return [out.error(socket.key, "logUnavailable", seq)];
+        }
       }
-    }
-    state = result.state;
-    return roomOutgoing(result.effects, command.seq);
+      state = result.state;
+      return out.roomOutgoing(result.effects, seq);
+    };
+
+  const caller = (socket: Socket, bound: Bound): Caller => ({ key: socket.key, ip: socket.ip, sessionId: bound.sessionId });
+  /** Commands of later bricks. */
+  const notAvailable = (socket: Socket, _bound: Bound, command: ClientMessage): Promise<Outgoing[]> =>
+    Promise.resolve([out.error(socket.key, "invalid", command.seq, "notAvailable")]);
+
+  const handlers: HandlerMap = {
+    leave: (socket, bound, _command, now) => onLeave(socket, bound, now),
+    joinRoom: roomCommand((sessionId, command) => joinRoom(state, sessionId, command.payload.roomId)),
+    leaveRoom: roomCommand((sessionId, command) => leaveRoom(state, sessionId, command.payload.roomId)),
+    createRoom: roomCommand((sessionId, command) => createRoom(state, { sessionId, name: command.payload.name }, deps.random)),
+    postRoom: roomCommand((sessionId, command, now) =>
+      postRoom(state, { sessionId, roomId: command.payload.roomId, text: command.payload.text }, now)),
+    requestCode: (socket, bound, command, now) => accounts.requestCode(caller(socket, bound), command, now),
+    verifyCode: (socket, bound, command, now) => accounts.verifyCode(caller(socket, bound), command, now),
+    signOutEverywhere: (socket, bound, command, now) => accounts.signOutEverywhere(caller(socket, bound), command, now),
+    deleteAccount: (socket, bound, command, now) => accounts.deleteAccount(caller(socket, bound), command, now),
+    sendPrivate: notAvailable,
+    ignore: notAvailable,
+    unignore: notAvailable,
+    search: notAvailable,
+    report: notAvailable,
+    listOpenReports: notAvailable,
+    warn: notAvailable,
+    expel: notAvailable,
+    closeReport: notAvailable,
+    confirmSuspension: notAvailable,
+    declineSuspension: notAvailable,
+    removeRoom: notAvailable,
+  };
+  const runBound = <K extends BoundType>(type: K, socket: Socket, bound: Bound, command: Command<K>, now: Date): Promise<Outgoing[]> => {
+    // Accepted by TypeScript's correlated-union rule: `handlers[K]` is `BoundHandler<K>`.
+    const handler: BoundHandler<K> = handlers[type];
+    return handler(socket, bound, command, now);
   };
 
   const dispatch = async (socket: Socket, command: ClientMessage, now: Date): Promise<Outgoing[]> => {
     const { bound } = socket;
     if (command.type === "enter" || command.type === "resume") {
-      if (bound) return [error(socket, "invalid", "invalid", command.seq)];
+      if (bound) return [out.error(socket.key, "invalid", command.seq)];
       return command.type === "enter" ? onEnter(socket, command, now) : onResume(socket, command, now);
     }
-    if (!bound) return [error(socket, "forbidden", "forbidden", command.seq)];
-    if (command.type === "leave") return onLeave(socket, bound, now);
-    if (ACCOUNT_COMMANDS.has(command.type)) return onAccount(socket, bound, command, now);
-    return onRooms(socket, bound, command, now);
+    if (!bound) return [out.error(socket.key, "forbidden", command.seq)];
+    return runBound(command.type, socket, bound, command, now);
   };
 
   return {
@@ -562,11 +372,11 @@ export const createHub = (deps: HubDeps): Hub => {
         const socket = sockets.get(socketKey);
         if (!socket) return [];
         // Same cap on every transport, whatever the platform lets through (`platform/04`).
-        if (raw.length > CAPS.frame) return [error(socket, "invalid", "frameTooLarge")];
+        if (raw.length > CAPS.frame) return [out.error(socket.key, "invalid", undefined, "frameTooLarge")];
         const json = parseJson(raw);
-        if (!json.ok) return [error(socket, "invalid", "invalid")];
+        if (!json.ok) return [out.error(socket.key, "invalid")];
         const parsed = clientMessage.safeParse(json.data);
-        if (!parsed.success) return [error(socket, "invalid", "invalid", seqOf(json.data))];
+        if (!parsed.success) return [out.error(socket.key, "invalid", seqOf(json.data))];
         return dispatch(socket, parsed.data, now);
       }),
 
@@ -579,7 +389,7 @@ export const createHub = (deps: HubDeps): Hub => {
         socketOfSession.delete(bound.sessionId);
         state = socketLost(state, bound.sessionId, now).state;
         await closeLine(bound.connectionId, now);
-        return presenceInRooms(sessionOf(state, bound.sessionId), "memberAway");
+        return out.memberAwayInRooms(sessionOf(state, bound.sessionId));
       }),
 
     tick: (now) =>
@@ -591,7 +401,7 @@ export const createHub = (deps: HubDeps): Hub => {
         } catch (cause) {
           deps.onStoreError(cause);
         }
-        return roomOutgoing(expired.effects);
+        return out.roomOutgoing(expired.effects);
       }),
 
     redeemDeviceClaim: (claim, now) =>
@@ -620,7 +430,7 @@ export const createHub = (deps: HubDeps): Hub => {
           // The sessions are still unlinked; the record expires with its 30 days.
           deps.onStoreError(cause);
         }
-        return unlink({ by: "device", tokenHash });
+        return accounts.unlink({ by: "device", tokenHash });
       }),
 
     stats: () => ({ connected: state.sessions.size }),

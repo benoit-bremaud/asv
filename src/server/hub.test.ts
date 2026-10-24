@@ -176,12 +176,34 @@ describe("hub validation (issue #13)", () => {
     expect(await setup().hub.receive("nope", "{}", T0)).toEqual([]);
   });
 
-  it("answers commands of later bricks with notAvailable", async () => {
+  const LATER: readonly (readonly [string, object])[] = [
+    ["sendPrivate", { targetPseudo: "Max", text: "hi" }],
+    ["ignore", { targetSessionId: "s" }],
+    ["unignore", { targetSessionId: "s" }],
+    ["search", { query: "Lyon" }],
+    ["report", { targetKind: "room", targetRoomId: "lyon", reason: "spam", excerpt: "x", context: [] }],
+    ["listOpenReports", {}],
+    ["warn", { targetSessionId: "s", text: "stop" }],
+    ["expel", { targetSessionId: "s", duration: "1h" }],
+    ["closeReport", { reportId: "r", outcome: "noAction" }],
+    ["confirmSuspension", { accountId: "a", reportId: "r" }],
+    ["declineSuspension", { accountId: "a", reportId: "r" }],
+    ["removeRoom", { roomId: "lyon" }],
+  ];
+
+  it.each(LATER)("answers %s, a command of a later brick, with notAvailable", async (type, payload) => {
     const { send, enterAs } = setup();
     await enterAs("1", "Lola");
 
-    expect(only(await send("1", "search", { query: "Lyon" }, 5), "error").payload)
+    expect(only(await send("1", type, payload, 5), "error").payload)
       .toEqual({ code: "invalid", message: "notAvailable", replyTo: 5 });
+  });
+
+  it.each(LATER)("answers %s from a socket without session with forbidden", async (type, payload) => {
+    const { hub, send } = setup();
+    hub.open("1", "ip");
+
+    expect(only(await send("1", type, payload, 6), "error").payload).toMatchObject({ code: "forbidden", replyTo: 6 });
   });
 });
 
