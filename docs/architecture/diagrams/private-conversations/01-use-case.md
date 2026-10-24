@@ -40,12 +40,19 @@ flowchart LR
   - 3b. Target is away → message buffered (BR-013), the window shows "absent".
   - 3c. Target gone → `error` with code `offline`.
 - Replies follow the same path inside the open window.
+- Alternative (D1, BR-043): the chatter closes a window, which frees a slot. The other side is not told; a
+  new message reopens the window on both sides.
+- Extensions: 2b. More than 3 open windows → refused with `tooManyWindows`. 2c. Target is the sender →
+  refused. 3d. The other chatter goes away, comes back or leaves → the window shows it.
+- Extension (ASV-F-024): signing out of the account or deleting it closes the chatter's windows; the
+  other side's next message gets `accountRequired`.
 
 **UC8 — Ignore a chatter** (planned)
 - Main scenario: 1. Chatter picks "ignore" on a pseudo. 2. System adds that chatter's session id to the
   ignore list and confirms with `ignoreUpdated`. 3. The ignored chatter's room messages and private
   messages are hidden both ways (BR-042).
 - Alternative: the chatter removes the ignore during the same session.
+- Extension: 2a. The list already holds 100 chatters (BR-044) → nothing changes.
 
 ## Notes
 

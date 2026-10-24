@@ -1,43 +1,36 @@
-# Local review — asv (hub refactor, issues #25 and #36)
+# Local review — asv (brick 6, private conversations, ignore and directory, issue #46)
 
 - Date: 2026-10-24
-- Commit: 454fe51
-- Scope: branch `refactor/25-36-hub-handler-map`, diff `main...HEAD`
+- Commit: 407940e
+- Scope: branch `feat/46-brick-6-private-directory`, diff `main...HEAD`
 - Checks run: design · docs · tests · security · correctness
-- Verdict: ship. Must 0 · Should 0 open (8 fixed) · Nice 2 open (3 fixed)
+- Verdict: ship. Must 0 · Should 0 open (all fixed in d0dbf10) · Nice 4 open (filed as #49)
 
-## Pre-merge gate (head SHA 454fe51)
+## Pre-merge gate (head SHA 407940e)
 | Step | Result |
 |---|---|
-| 1 Tests | ✅ 17 files, 536 tests (`pnpm test:coverage`), typecheck, lint and build green |
-| 2 Coverage | tests 98.6 % stmts / 95.5 % branches / 97.3 % funcs / 99.3 % lines (floor 80) · docs 16/16 exported symbols of the touched files (100 %, floor 90; one type re-export left out of the count) |
-| 3 SonarQube | ✅ PASSED on 454fe51 (new coverage 97.7 %). The first scan on 1ddfbc7 failed on one new S7503 issue, fixed in 454fe51 |
+| 1 Tests | ✅ 591 tests (`pnpm verify`): typecheck, lint, tests and build all green |
+| 2 Coverage | tests about 98.5 % stmts / 93.8 % branches (floor 80) |
+| 3 SonarQube | ✅ PASSED on 407940e (new coverage 97 %, 0 duplication). The first scan on 0692488 failed on 7 new issues (cognitive complexity, nested ternary, `role="dialog"`, non-native key handler), fixed in 027c37c and 407940e |
 | 4 Secrets | ✅ gitleaks clean (`main..HEAD`) · no tracked .env · diff read: nothing sensitive |
-| 5 QA pass | ✅ full: enter, join Lyon, post, request a code (`codeSent`), wrong code (`codeWrong`, tries left). The console errors come from the first run on port 5174, before `ASV_ALLOWED_ORIGINS` was set (port 5173 was held by another project). Screenshots: `qa/2026-10-24-hub-refactor-{room,code-sent,code-wrong}.jpg` |
-- Gate: **GREEN. The merge is authorised once the PR CI is green.**
+| 5 QA pass | ✅ full: two members (Lola, Max) on two tabs; search by city, pseudo menu, private message both ways, minimise with an unread counter, phone layout (375 px, no horizontal scroll). Console: WebSocket errors only from before the allowed-origins fix of the QA config. Network: no failed request apart from the dev-only StrictMode abort of `/api/stats`. Screenshots: `docs/architecture/qa/2026-10-24-brick6-*.jpg` |
+| 5b Security probes | S1 headers ❌ none sent → #48 · S2 cookie `HttpOnly` + `SameSite=Lax` ✅ but `Secure` hard-coded off → #50 · S3 forged or missing `Origin` on `/ws` and `/account/*` refused 403 ✅ · S4 XSS payloads: refused as pseudo, kept as text in city and messages, rendered through React text nodes only (no `innerHTML`) ✅ · S5 private actions without an account refused, foreign `closePrivate` / `ignore` ignored, moderator commands refused ✅ · S6 bad JSON, wrong types and unknown types refused with `invalid`, a 200 kB frame closes the socket (1009), the server stays up ✅ · S7 room flood throttled after 4 posts ✅, 30 searches unthrottled → #49 · S8 404 and 400 answers carry no stack or path ✅ · S9 prod bundle: no source map, no secret, 280 kB JS (87 kB gzip) ✅ · S10 no third-party host ✅ |
+- Gate: **GREEN — merge authorised**
 
 ## 🔴 Must Have
 _None._
 
 ## 🟡 Should Have
-- ✅ fixed — `src/server/hub-accounts.ts` `[design]` · account commands were dispatched three times (map, `handle` switch, `onAccountWide` branch) · one guarded handler per command, mapped directly.
-- ✅ fixed — `src/server/hub-accounts.ts:16` `[design]` · type import cycle with `hub.ts`, and the full `HubDeps` was handed to the account commands · `AccountDeps` (random, accounts, mailer, onStoreError).
-- ✅ fixed — `platform/04c` `[docs|design]` · drift: `HubContext.out` type, missing `keysOf`/`roomJoined`/`unlink`, `HubDeps` without the brick 5 fields, account commands still listed as `notAvailable` · study synced.
-- ✅ fixed — `src/server/hub-accounts.ts` `[docs]` · `createAccountHandlers` had no docstring · added the never-rejects contract.
-- ✅ fixed — `src/server/outgoing.ts` `[docs]` · `Payload`, `OutgoingModule`, `warning` and the module contract (one `seq` counter, empty recipients dropped) were undocumented.
-- ✅ fixed — `src/server/hub.test.ts:179` `[tests]` · only `search` pinned `notAvailable` · `it.each` over the 12 later-brick commands, plus `forbidden` without a session.
-- ✅ fixed — `src/transports/node/hub-accounts.test.ts:130` `[tests]` · the store guard was proven on `requestCode` only · `it.each` over `verifyCode`, `signOutEverywhere`, `deleteAccount`.
-- ✅ fixed — `src/server/hub.ts:322` `[correctness]` · Sonar S7503, `async` without `await` · `Promise.resolve`.
+_None open. Fixed in d0dbf10: presence hidden from ignored partners, partner lookup and text cap deduplicated, dead `MAX_WINDOWS` removed._
 
 ## 🔵 Nice to Have
-- ✅ fixed — `src/server/outgoing.ts:121` `[design]` · `roomRefused` built a warning inline · uses `warning()`.
-- ✅ fixed — `src/server/hub.ts:351` `[correctness]` · the correlated-union annotation was easy to break · added a comment.
-- ✅ fixed — `src/server/hub-accounts.ts:139` `[correctness]` · `default` branch would swallow a future account command · gone with the per-command handlers.
-- `src/server/hub.ts:305` `[correctness]` · `command as Pick<ClientMessage, "seq">` in `roomCommand` · pass `seq` as its own handler argument if a command ever drops `seq`.
-- `src/server/hub.ts:94` `[design]` · `Command<T>` is defined in both `hub.ts` and `hub-accounts.ts` · share it if a third copy appears.
+- `src/domain/directory.ts` `[security]` · no rate limit on search · #49
+- `src/domain/private.ts` `[design]` · conversation lookup scans for the pair · #49
+- `src/domain/directory.ts` `[correctness]` · whether an away chatter's rooms show in search (ADR-0011) · #49
+- `src/domain/directory.ts` `[security]` · excluding blocked sessions from the results reveals a block · #49
 
 ## ⚪ Disagree / Intentional
-- `src/server/hub.ts:350` `[design]` · `runBound` exists only so the type checker accepts the map lookup. It has no runtime role and is commented.
+- Out of scope, found during QA: no secure headers (CSP, frame-ancestors, nosniff, referrer-policy) although the security study requires them. Filed as #48 (P1).
 
 ## Per-dimension summary
-- Design: clean split by command group; dependency rule holds. Docs: study and code in sync. Tests: the handler map is fully pinned; nothing is over-mocked. Security: no change in behaviour (Opus adversarial pass: seq order, error texts, state commits and the guard are unchanged). Correctness: no Must; type casts are documented.
+- Design: pure domain, dependency rule respected · Docs: studies updated for BR-043 (cap 3, targetBusy) · Tests: domain, hub, store and UI covered · Security: no leak; the block is hidden by checking `targetBusy` first · Correctness: shadows close conversations on leave, away, resume and unlink

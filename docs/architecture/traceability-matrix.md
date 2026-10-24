@@ -12,9 +12,9 @@ Links requirements to use cases and every use case to its realisations. All path
 | UC3 | Join a room | F-003, F-004, F-006 | BR-023, BR-024 | rooms/02 | rooms/04, rooms/07 | rooms/05 | — |
 | UC4 | Post a message in a room | F-006, F-018 | BR-020 to BR-022 | rooms/02 | rooms/04, rooms/07 | — | — |
 | UC5 | Create a room | F-007 | BR-030 to BR-032 | Spec (same path as rooms/02) | rooms/04, rooms/07 | rooms/05 | — |
-| UC6 | Open a private conversation | F-008, F-020 | BR-013, BR-020, BR-021, BR-040, BR-041, BR-043 | private-conversations/02 | private-conversations/04 | — | — |
-| UC7 | Find a chatter by pseudo or city | F-009 | BR-006 | Spec | entry/04 | — | directory/06 |
-| UC8 | Ignore a chatter | F-010 | BR-042 | rooms/02, private-conversations/02 | private-conversations/04 | — | — |
+| UC6 | Open a private conversation | F-008, F-020 | BR-013, BR-020, BR-021, BR-040, BR-041, BR-043 | private-conversations/02 | private-conversations/04, private-conversations/07 | private-conversations/05, web-ui/07 | — |
+| UC7 | Find a chatter by pseudo or city | F-009 | BR-006, BR-042 | Spec | entry/04, directory/07 | web-ui/07 | directory/06 |
+| UC8 | Ignore a chatter | F-010 | BR-042, BR-044 | rooms/02, private-conversations/02 | private-conversations/04, private-conversations/07 | web-ui/07 | — |
 | UC9 | Report a chatter, a message or a room | F-011, F-019 | BR-050 to BR-052 | moderation/02a | moderation/04 | moderation/05 | moderation/06 |
 | UC10 | Leave the chat | F-017 | BR-015 | entry/02b (same closing steps) | entry/04, entry/07, rooms/07 | entry/05 | entry/06 |
 | UC11 | Expel a chatter | F-012, F-022, F-023 | BR-053 to BR-055, BR-076 to BR-078, BR-080, BR-081 | moderation/02a, moderation/02d | moderation/04, accounts/04 | entry/05, rooms/05, accounts/05 | moderation/06, accounts/06 |

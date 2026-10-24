@@ -2,18 +2,20 @@ import { useState, type SubmitEvent } from "react";
 import type { Gender, Member } from "../../shared/protocol";
 import { useChat } from "../chat-context";
 import { renderText, SMILEYS } from "../render";
+import { MAX_TEXT } from "../store";
 import { STRINGS } from "../strings";
 import { Header } from "./Header";
 import { Pseudo } from "./Pseudo";
+import { PseudoMenu } from "./PseudoMenu";
+import { SearchPanel } from "./SearchPanel";
 
-const MAX_TEXT = 500;
 
 const MemberLine = ({ member, knownGender }: { member: Member; knownGender?: Gender }) =>
   member.away ? (
-    <li><Pseudo pseudo={member.pseudo} gender={knownGender} away /></li>
+    <li><PseudoMenu target={{ ...member, gender: knownGender }} /></li>
   ) : (
     <li>
-      <Pseudo pseudo={member.pseudo} gender={member.gender} /> {member.age}
+      <PseudoMenu target={member} /> {member.age}
       {member.city && <span className="small"> {member.city}</span>}
     </li>
   );
@@ -24,6 +26,7 @@ export const RoomScreen = () => {
   // One draft per room, so a draft never follows a tab switch into another room.
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [showMembers, setShowMembers] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
   const roomId = state.active ?? "";
   const text = drafts[roomId] ?? "";
   const setText = (value: string) => setDrafts((current) => ({ ...current, [roomId]: value }));
@@ -45,6 +48,7 @@ export const RoomScreen = () => {
       <Header />
       <nav className="tabs" aria-label="salons">
         <button type="button" className="bevel" onClick={() => commands.local({ type: "showRooms" })}>{STRINGS.backToRooms}</button>
+        <button type="button" className="bevel" aria-expanded={showSearch} onClick={() => setShowSearch(!showSearch)}>{STRINGS.search}</button>
         {Object.keys(state.open).map((id) => (
           <span key={id} className={`tab${id === roomId ? " tab-active" : ""}`}>
             <button type="button" className="link" aria-current={id === roomId} onClick={() => commands.local({ type: "showRoom", roomId: id })}>
@@ -54,11 +58,13 @@ export const RoomScreen = () => {
           </span>
         ))}
       </nav>
+      {showSearch && <div className="overlay"><SearchPanel /></div>}
       <main className="room">
         <section className="lines panel">
           <h2># {nameOf(roomId)}</h2>
           <ol role="log" aria-live="polite">
-            {room.lines.map((line) => (
+            {/* BR-042: a line still held from an ignored chatter is hidden. */}
+            {room.lines.filter((line) => !state.ignored.includes(line.authorSessionId)).map((line) => (
               <li key={line.id}>
                 <Pseudo pseudo={line.pseudo} gender={line.gender} />: {renderText(line.text)}
               </li>

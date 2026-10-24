@@ -57,7 +57,7 @@ const unusedStore: AccountStore = {
 };
 const crypto = createCrypto(await cryptoKeysFromEnv({}, false, () => undefined));
 
-const setup = (hashToken = (value: string) => `h:${value}`) => {
+const setup = (hashToken = (value: string) => `h:${value}`, store: Partial<AccountStore> = {}) => {
   let n = 0;
   const log = fakeLog();
   const onLogError = vi.fn();
@@ -80,7 +80,7 @@ const setup = (hashToken = (value: string) => `h:${value}`) => {
     protocols: "HTTP/1.1 WebSocket",
     onLogError,
     closeSocket,
-    accounts: createAccountIo({ store: unusedStore, vault: { record: unused, purgeExpired: () => Promise.resolve() }, crypto }),
+    accounts: createAccountIo({ store: { ...unusedStore, ...store }, vault: { record: unused, purgeExpired: () => Promise.resolve() }, crypto }),
     mailer: { sendCode: unused, sendStatementOfReasons: unused },
     onStoreError: vi.fn(),
   });
@@ -176,11 +176,14 @@ describe("hub validation (issue #13)", () => {
     expect(await setup().hub.receive("nope", "{}", T0)).toEqual([]);
   });
 
-  const LATER: readonly (readonly [string, object])[] = [
+  const BRICK_6: readonly (readonly [string, object])[] = [
     ["sendPrivate", { targetPseudo: "Max", text: "hi" }],
+    ["closePrivate", { conversationId: "c" }],
     ["ignore", { targetSessionId: "s" }],
     ["unignore", { targetSessionId: "s" }],
     ["search", { query: "Lyon" }],
+  ];
+  const LATER: readonly (readonly [string, object])[] = [
     ["report", { targetKind: "room", targetRoomId: "lyon", reason: "spam", excerpt: "x", context: [] }],
     ["listOpenReports", {}],
     ["warn", { targetSessionId: "s", text: "stop" }],
@@ -199,7 +202,7 @@ describe("hub validation (issue #13)", () => {
       .toEqual({ code: "invalid", message: "notAvailable", replyTo: 5 });
   });
 
-  it.each(LATER)("answers %s from a socket without session with forbidden", async (type, payload) => {
+  it.each([...BRICK_6, ...LATER])("answers %s from a socket without session with forbidden", async (type, payload) => {
     const { hub, send } = setup();
     hub.open("1", "ip");
 
@@ -218,13 +221,13 @@ describe("hub rooms (UC3, UC4, UC5)", () => {
 
     expect(to(out, "roomJoined")).toEqual(["2"]);
     expect(only(out, "roomJoined").payload.members).toEqual([
-      { sessionId: lola.sessionId, pseudo: "Lola", away: false, gender: "woman", age: 30, city: "Lyon" },
-      { sessionId: max.sessionId, pseudo: "Max", away: false, gender: "man", age: 30 },
+      { sessionId: lola.sessionId, pseudo: "Lola", hasAccount: false, away: false, gender: "woman", age: 30, city: "Lyon" },
+      { sessionId: max.sessionId, pseudo: "Max", hasAccount: false, away: false, gender: "man", age: 30 },
     ]);
     expect(to(out, "memberJoined")).toEqual(["1"]);
     expect(only(out, "memberJoined").payload).toEqual({
       roomId: "lyon",
-      member: { sessionId: max.sessionId, pseudo: "Max", away: false, gender: "man", age: 30 },
+      member: { sessionId: max.sessionId, pseudo: "Max", hasAccount: false, away: false, gender: "man", age: 30 },
     });
     expect(to(out, "roomList").sort()).toEqual(["1", "2"]);
     expect(only(out, "roomList").payload.rooms[0]).toMatchObject({ id: "lyon", count: 2 });
@@ -327,7 +330,7 @@ describe("hub away, resume, leave and expiry (UC10, UC13)", () => {
     expect(to(out, "memberAway")).toEqual(["1"]);
     expect(only(out, "memberAway").payload).toEqual({ roomId: "lyon", sessionId: max.sessionId, pseudo: "Max" });
     expect(log.closed).toEqual([log.opened[1]?.connectionId]);
-    expect(only(joined, "roomJoined").payload.members).toContainEqual({ sessionId: max.sessionId, pseudo: "Max", away: true });
+    expect(only(joined, "roomJoined").payload.members).toContainEqual({ sessionId: max.sessionId, pseudo: "Max", hasAccount: false, away: true });
   });
 
   it("resumes with the rooms and a new connection line, announced to the others", async () => {
@@ -343,7 +346,7 @@ describe("hub away, resume, leave and expiry (UC10, UC13)", () => {
     expect(to(out, "memberBack")).toEqual(["1"]);
     expect(only(out, "memberBack").payload).toEqual({
       roomId: "lyon",
-      member: { sessionId: max.sessionId, pseudo: "Max", away: false, gender: "man", age: 31 },
+      member: { sessionId: max.sessionId, pseudo: "Max", hasAccount: false, away: false, gender: "man", age: 31 },
     });
     expect(log.opened.at(-1)).toMatchObject({ ip: "10.0.0.9", port: 5000, pseudo: "Max", openedAt: later(2000) });
   });
@@ -477,5 +480,162 @@ describe("hub queue", () => {
 
     await expect(send("9", "resume", { resumeToken: "t", profile: { age: 30 } })).rejects.toThrow("hash");
     await expect(enterAs("1", "Lola")).resolves.toMatchObject({ isModerator: false });
+  });
+});
+
+describe("hub private conversations, ignore and search (UC6, UC7, UC8)", () => {
+  /** Sessions entered with a device cookie are linked to `acc-<pseudo>`. */
+  const linkedSetup = (accountExists = true) => {
+    const base = setup(undefined, {
+      accountForDevice: (tokenHash) => Promise.resolve({ id: `acc-${tokenHash}` } as Awaited<ReturnType<AccountStore["accountForDevice"]>>),
+      findAccountById: (accountId) =>
+        Promise.resolve(accountExists ? ({ id: accountId } as Awaited<ReturnType<AccountStore["findAccountById"]>>) : undefined),
+    });
+    const enterLinked = async (key: string, pseudo: string, extra: object = {}) => {
+      base.hub.open(key, `10.0.0.${key}`, 4000, pseudo);
+      const out = await base.send(key, "enter", { pseudo, gender: "woman", age: 30, adultConfirmed: true, termsAccepted: true, ...extra });
+      return only(out, "entered").payload;
+    };
+    return { ...base, enterLinked };
+  };
+
+  it("logs the contribution, opens both windows and delivers the message", async () => {
+    const { send, log, enterLinked } = linkedSetup();
+    const lola = await enterLinked("1", "Lola");
+    const max = await enterLinked("2", "Max", { gender: "man" });
+
+    const out = await send("1", "sendPrivate", { targetPseudo: "Max", text: "salut" }, 7);
+
+    expect(log.contributions).toHaveLength(1);
+    const windows = find(out, "privateWindow");
+    expect(windows.map((o) => [o.to, o.message.payload.other.pseudo])).toEqual([[["1"], "Max"], [["2"], "Lola"]]);
+    expect(windows[0]?.message.payload.other).toEqual({ sessionId: max.sessionId, pseudo: "Max", hasAccount: true, away: false, gender: "man" });
+    expect(to(out, "privateMessage")).toEqual(["1", "2"]);
+    expect(only(out, "privateMessage").payload).toMatchObject({ authorSessionId: lola.sessionId, text: "salut", sentAt: T0.toISOString() });
+  });
+
+  it("refuses with error accountRequired or offline, and warning for the rest", async () => {
+    const { send, enterAs, enterLinked } = linkedSetup();
+    await enterLinked("1", "Lola");
+    await enterAs("2", "Max");
+
+    expect(only(await send("1", "sendPrivate", { targetPseudo: "Max", text: "hi" }, 3), "error").payload)
+      .toEqual({ code: "accountRequired", message: "accountRequired", replyTo: 3 });
+    expect(only(await send("1", "sendPrivate", { targetPseudo: "Zoe", text: "hi" }, 4), "error").payload)
+      .toMatchObject({ code: "offline", replyTo: 4 });
+    expect(only(await send("1", "sendPrivate", { targetPseudo: "Lola", text: "hi" }, 5), "warning").payload)
+      .toMatchObject({ code: "self", replyTo: 5 });
+  });
+
+  it("keeps nothing when the contribution line fails", async () => {
+    const { send, log, onLogError, enterLinked } = linkedSetup();
+    await enterLinked("1", "Lola");
+    await enterLinked("2", "Max");
+    log.fail.contribution = true;
+
+    expect(only(await send("1", "sendPrivate", { targetPseudo: "Max", text: "hi" }, 2), "error").payload)
+      .toMatchObject({ code: "logUnavailable", replyTo: 2 });
+    expect(onLogError).toHaveBeenCalled();
+    log.fail.contribution = false;
+    // The conversation was not kept: the next message opens the windows again.
+    expect(find(await send("1", "sendPrivate", { targetPseudo: "Max", text: "hi" }), "privateWindow")).toHaveLength(2);
+  });
+
+  it("closes a window silently and reopens it on the next message", async () => {
+    const { send, enterLinked } = linkedSetup();
+    await enterLinked("1", "Lola");
+    await enterLinked("2", "Max");
+    const opened = await send("1", "sendPrivate", { targetPseudo: "Max", text: "hi" });
+    const { conversationId } = only(opened, "privateMessage").payload;
+
+    expect(await send("2", "closePrivate", { conversationId })).toEqual([]);
+    const again = await send("1", "sendPrivate", { targetPseudo: "Max", text: "re" });
+    expect(to(again, "privateWindow")).toEqual(["2"]);
+  });
+
+  it("shows presence without roomId to the open partner, and resumes with windows and buffer", async () => {
+    const { hub, send, enterLinked } = linkedSetup();
+    const lola = await enterLinked("1", "Lola");
+    await enterLinked("2", "Max");
+    const { conversationId } = only(await send("1", "sendPrivate", { targetPseudo: "Max", text: "hi" }), "privateMessage").payload;
+
+    const away = await hub.close("1", later(1));
+    expect(to(away, "memberAway")).toEqual(["2"]);
+    expect(only(away, "memberAway").payload).toEqual({ sessionId: lola.sessionId, pseudo: "Lola" });
+    await send("2", "sendPrivate", { targetPseudo: "Lola", text: "tu reviens ?" }, 1, later(2));
+
+    hub.open("3", "10.0.0.3", 4000);
+    const back = await send("3", "resume", { resumeToken: lola.resumeToken, profile: { gender: "woman", age: 30 } }, 1, later(3));
+    const resumed = only(back, "resumed").payload;
+    expect(resumed.windows).toEqual([{ conversationId, other: expect.objectContaining({ pseudo: "Max" }) }]);
+    expect(resumed.buffered).toEqual([expect.objectContaining({ conversationId, text: "tu reviens ?" })]);
+    expect(to(back, "privateWindow")).toEqual(["2"]);
+    expect(only(back, "privateWindow").payload).toMatchObject({ conversationId, other: { pseudo: "Lola", away: false } });
+  });
+
+  it("restores the ignore list on resume", async () => {
+    const { hub, send, enterLinked } = linkedSetup();
+    const lola = await enterLinked("1", "Lola");
+    const max = await enterLinked("2", "Max");
+    await send("1", "ignore", { targetSessionId: max.sessionId });
+    await hub.close("1", later(1));
+
+    hub.open("3", "10.0.0.3", 4000);
+    const back = await send("3", "resume", { resumeToken: lola.resumeToken, profile: { gender: "woman", age: 30 } }, 1, later(2));
+
+    expect(to(back, "ignoreUpdated")).toEqual(["3"]);
+    expect(only(back, "ignoreUpdated").payload).toEqual({ ignored: [max.sessionId] });
+  });
+
+  it("closes the windows of a resume whose account is gone", async () => {
+    const { hub, send, enterLinked } = linkedSetup(false);
+    const lola = await enterLinked("1", "Lola");
+    await enterLinked("2", "Max");
+    await send("1", "sendPrivate", { targetPseudo: "Max", text: "hi" });
+    await hub.close("1", later(1));
+
+    hub.open("3", "10.0.0.3", 4000);
+    const back = await send("3", "resume", { resumeToken: lola.resumeToken, profile: { gender: "woman", age: 30 } }, 1, later(2));
+
+    expect(only(back, "resumed").payload.windows).toEqual([]);
+    expect(find(back, "privateWindow")).toEqual([]);
+  });
+
+  it("sends memberLeft without roomId to the partner on leave", async () => {
+    const { send, enterLinked } = linkedSetup();
+    const lola = await enterLinked("1", "Lola");
+    await enterLinked("2", "Max");
+    await send("1", "sendPrivate", { targetPseudo: "Max", text: "hi" });
+
+    const left = await send("1", "leave", {});
+
+    expect(to(left, "memberLeft")).toEqual(["2"]);
+    expect(only(left, "memberLeft").payload).toEqual({ sessionId: lola.sessionId, pseudo: "Lola" });
+  });
+
+  it("answers ignore and unignore with the list", async () => {
+    const { send, enterAs } = setup();
+    await enterAs("1", "Lola");
+    const max = await enterAs("2", "Max");
+
+    const ignored = await send("1", "ignore", { targetSessionId: max.sessionId });
+    expect(to(ignored, "ignoreUpdated")).toEqual(["1"]);
+    expect(only(ignored, "ignoreUpdated").payload).toEqual({ ignored: [max.sessionId] });
+    expect(only(await send("1", "unignore", { targetSessionId: max.sessionId }), "ignoreUpdated").payload)
+      .toEqual({ ignored: [] });
+  });
+
+  it("answers search with members and their rooms", async () => {
+    const { send, enterAs } = setup();
+    await enterAs("1", "Lola");
+    const max = await enterAs("2", "Max", { gender: "man", city: "Lyon" });
+    await send("2", "joinRoom", { roomId: "lyon" });
+
+    const out = await send("1", "search", { query: "lyon" });
+
+    expect(to(out, "searchResults")).toEqual(["1"]);
+    expect(only(out, "searchResults").payload.results).toEqual([
+      { sessionId: max.sessionId, pseudo: "Max", hasAccount: false, away: false, gender: "man", age: 30, city: "Lyon", rooms: ["lyon"] },
+    ]);
   });
 });

@@ -2,8 +2,11 @@
  * Effect mapping of the hub (`platform/04c`, issue #25): turns domain effects into protocol messages for the
  * right sockets, read against the hub's committed state.
  */
-import { roomList, roomMembers, type Effect, type HubState, type RoomEffect, type Session } from "../domain";
+import { roomList, roomMembers, type Effect, type HubState, type PrivateEffect, type RoomEffect, type Session } from "../domain";
 import type { Member, ServerMessage } from "../shared/protocol";
+
+/** Every domain effect the hub maps. */
+export type HubEffect = Effect | RoomEffect | PrivateEffect;
 
 /** One server message for one or more sockets. */
 export interface Outgoing {
@@ -34,11 +37,13 @@ export const sessionOf = (state: HubState, sessionId: string): Session => {
 
 /** Protocol `member` union (issue #21): an away session has no profile (ADR-0011). */
 export const toMember = (session: Session): Member => {
-  if (session.status === "away") return { sessionId: session.id, pseudo: session.pseudo, away: true };
+  const hasAccount = session.accountId !== undefined;
+  if (session.status === "away") return { sessionId: session.id, pseudo: session.pseudo, hasAccount, away: true };
   const { gender, age, city } = session.profile;
   return {
     sessionId: session.id,
     pseudo: session.pseudo,
+    hasAccount,
     away: false,
     gender,
     age,
@@ -46,8 +51,18 @@ export const toMember = (session: Session): Member => {
   };
 };
 
+/** Protocol `otherChatter` of a private window: the member without age and city. */
+export const toOther = (session: Session): Payload<"privateWindow">["other"] => {
+  const member = toMember(session);
+  if (member.away) return member;
+  return { sessionId: member.sessionId, pseudo: member.pseudo, hasAccount: member.hasAccount, away: false, gender: member.gender };
+};
+
+/** Private refusals sent as `error` (`platform/04c`); the others are `warning`. */
+const PRIVATE_ERRORS = new Set<string>(["accountRequired", "offline"]);
+
 /** Room effects that change a count or the set of rooms, so every list must be refreshed. */
-const LIST_CHANGES = new Set<(Effect | RoomEffect)["type"]>(["memberJoined", "memberLeft", "roomCreated", "roomDeleted"]);
+const LIST_CHANGES = new Set<HubEffect["type"]>(["memberJoined", "memberLeft", "roomCreated", "roomDeleted"]);
 
 /**
  * Builds the mapping. One `seq` counter numbers every server message of the hub; outgoing messages with no
@@ -91,8 +106,40 @@ export const createOutgoing = (source: OutgoingSource) => {
     nonEmpty(session.rooms.map((roomId) =>
       send(othersIn(roomId, session.id), "memberBack", { roomId, member: toMember(session) })));
 
-  /** Room effects to messages, read against the already committed state. */
-  const roomOutgoing = (effects: readonly (Effect | RoomEffect)[], replyTo?: number): Outgoing[] => {
+  /** Brick 6 effects to messages; `undefined` for the other effects. */
+  const privateOutgoing = (effect: HubEffect, replyTo?: number): Outgoing | undefined => {
+    switch (effect.type) {
+      case "privateRefused": {
+        const [key] = keysOf([effect.sessionId]);
+        if (key === undefined) return undefined;
+        return PRIVATE_ERRORS.has(effect.reason)
+          ? error(key, effect.reason as ErrorCode, replyTo)
+          : warning(key, effect.reason, replyTo);
+      }
+      case "privateWindowOpened":
+        return send(keysOf([effect.sessionId]), "privateWindow", {
+          conversationId: effect.conversationId,
+          other: toOther(sessionOf(source.state(), effect.otherSessionId)),
+        });
+      case "privateMessage":
+        return send(keysOf(effect.recipients), "privateMessage", {
+          conversationId: effect.conversationId,
+          authorSessionId: effect.authorSessionId,
+          text: effect.text,
+          sentAt: effect.sentAt.toISOString(),
+        });
+      case "ignoreUpdated":
+        return send(keysOf([effect.sessionId]), "ignoreUpdated", { ignored: [...effect.ignored] });
+      case "partnerLeft":
+        // No `roomId`: the chatter left the whole chat (`web-ui/07`).
+        return send(keysOf(effect.recipients), "memberLeft", { sessionId: effect.sessionId, pseudo: effect.pseudo });
+      default:
+        return undefined;
+    }
+  };
+
+  /** Domain effects to messages, read against the already committed state. */
+  const roomOutgoing = (effects: readonly HubEffect[], replyTo?: number): Outgoing[] => {
     const out: Outgoing[] = [];
     for (const effect of effects) {
       switch (effect.type) {
@@ -125,8 +172,11 @@ export const createOutgoing = (source: OutgoingSource) => {
         case "roomRefused":
           out.push(...keysOf([effect.sessionId]).map((key) => warning(key, effect.reason, replyTo)));
           break;
-        default:
+        default: {
+          const mapped = privateOutgoing(effect, replyTo);
+          if (mapped) out.push(mapped);
           break;
+        }
       }
     }
     if (effects.some((effect) => LIST_CHANGES.has(effect.type))) out.push(listToAll());

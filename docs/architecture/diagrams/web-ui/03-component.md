@@ -20,6 +20,7 @@ flowchart LR
       Room["RoomScreen"]
       Search["SearchPanel"]
       Windows["PrivateWindows"]
+      Menu["PseudoMenu"]
       Mod["ModeratorPanel"]
       Account["AccountPanel"]
     end

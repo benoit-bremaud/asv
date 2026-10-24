@@ -201,6 +201,23 @@ describe("verify the code (UC17 steps 4–6)", () => {
     expect(store.dump().codes).toEqual([]);
   });
 
+  it("tells room peers the new hasAccount on link and on sign-out everywhere", async () => {
+    const { send, enterAs, sent } = await setup();
+    const lola = await enterAs("1", "Lola");
+    await enterAs("2", "Max");
+    const { roomId } = only(await send("1", "createRoom", { name: "Salon" }), "roomJoined").payload;
+    only(await send("2", "joinRoom", { roomId }), "roomJoined");
+
+    only(await send("1", "requestCode", { email: EMAIL, remember: false }), "codeSent");
+    const linked = await send("1", "verifyCode", { code: sent.at(-1)?.code ?? "" });
+    const back = only(linked, "memberBack");
+    expect(find(linked, "memberBack")[0]?.to).toEqual(["2"]);
+    expect(back.payload).toMatchObject({ roomId, member: { sessionId: lola.sessionId, hasAccount: true } });
+
+    const unlinked = await send("1", "signOutEverywhere", {});
+    expect(only(unlinked, "memberBack").payload.member).toMatchObject({ sessionId: lola.sessionId, hasAccount: false });
+  });
+
   it("links the same account again from another session", async () => {
     const { enterAs, signIn, store } = await setup();
     await enterAs("1", "Lola");

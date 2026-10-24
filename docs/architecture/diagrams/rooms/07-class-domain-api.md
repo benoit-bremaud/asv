@@ -133,6 +133,8 @@ classDiagram
   after a warning is not punished; a script still delivers 5 messages per 10 s at most. The counter is per
   session and will be shared with private messages (brick 6). An accepted post records `now` and emits
   `roomMessage` with the trimmed text and the connected members as recipients, author included (echo).
+  Brick 6 (BR-042, `private-conversations/07`): members for whom `blocks(author, member)` are left out of
+  the recipients.
   Away members receive nothing (BR-013 buffers private messages only). Ignore filtering is added in brick 6.
 - **BR-022** (D4, 485/500): the domain keeps the raw text. The smiley whitelist and the text-only renderer
   belong to `web-ui` (brick 7a), the single place that turns text into DOM.

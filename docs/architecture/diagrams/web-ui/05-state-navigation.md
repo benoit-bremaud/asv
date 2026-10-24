@@ -37,3 +37,5 @@ stateDiagram-v2
 - The account panel (UC17 to UC19) is an overlay in `InChat`: it opens from the "Mon compte" button in
   the header, after "recevoir mon code" on the entry screen, and (brick 6) when a chatter without an
   account tries a private message. Its own states are in `web-ui/06`.
+- The pseudo menu, the private windows and the search panel (brick 6) are overlays in `InChat`; their
+  states are in `web-ui/07`. A `Reconnecting` banner keeps them visible; `resumed` rebuilds the windows.
