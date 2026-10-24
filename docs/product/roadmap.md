@@ -19,8 +19,8 @@ of the same priority.
 | 4 | Domain: rooms and posting | `rooms` | — | done (PR #19) |
 | 7a | Node transport + retro web UI end to end for entry and rooms; frame and field caps (#13); optional profile fields for away members in the protocol | `platform`, `web-ui` | P1 | done (PR #22) |
 | 5 | Accounts: e-mail code, device cookie, mailer port and provider choice, encryption at rest (#8), account UI | `accounts`, `platform`, `web-ui` | P1 | done (PR #33) |
-| 6 | Private conversations and ignore, directory search, with their UI overlays | `private-conversations`, `directory`, `web-ui` | P1 | next |
-| 8 | Moderation: reports, AI triage, strikes, expel, passkeys, moderator panel, data protection impact assessment, authority reporting channel | `moderation`, `platform`, `web-ui` | P1 | planned |
+| 6 | Private conversations and ignore, directory search, with their UI overlays | `private-conversations`, `directory`, `web-ui` | P1 | done (PR #51) |
+| 8 | Moderation: reports, AI triage, strikes, expel, passkeys, moderator panel, data protection impact assessment, authority reporting channel | `moderation`, `platform`, `web-ui` | P1 | next |
 | 9 | Cloudflare transport (Hub Durable Object), deploy to asvchat.fr, switch the repository to private | `platform` | P1 | planned |
 | 10 | Legal pack: final terms, privacy notice, legal notice, professional review, public launch | `security-and-rgpd.md` | P2 | planned |
 
