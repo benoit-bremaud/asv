@@ -52,6 +52,7 @@ sequenceDiagram
     D-->>H: createAccount or linkExisting + device claim if remember
     H->>AS: persist account (e-mail encrypted), delete code and carry-over
     H-->>W: accountLinked(accountId, deviceClaim)
+    Note over H: memberBack(hasAccount true) to the room peers (BR-040)
     W->>WK: POST /account/device with claim
     WK->>H: redeemDeviceClaim(claim, now)
     H->>AS: save device record hash

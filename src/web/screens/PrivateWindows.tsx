@@ -11,7 +11,7 @@ type Props = { readonly windowKey: string; readonly window: PrivateView; readonl
 
 /** One private window (`web-ui/07`): a non-modal dialog labelled by the other pseudo. */
 const PrivateWindow = ({ windowKey, window, draft, setDraft }: Props) => {
-  const { commands } = useChat();
+  const { state, commands } = useChat();
   const { other } = window;
   const fieldId = `private-${windowKey}`;
   // BR-020 counts code points; the text stays in the field until it fits.
@@ -47,7 +47,8 @@ const PrivateWindow = ({ windowKey, window, draft, setDraft }: Props) => {
         </span>
       </header>
       <ol role="log" aria-live="polite" className="private-lines">
-        {window.lines.map((line) => (
+        {/* BR-042: lines already held from a chatter ignored since are hidden, as in rooms. */}
+        {window.lines.filter((line) => !state.ignored.includes(line.authorSessionId)).map((line) => (
           <li key={line.id}>
             <Pseudo pseudo={line.pseudo} gender={line.gender} />: {renderText(line.text)}
           </li>

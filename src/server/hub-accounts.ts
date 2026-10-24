@@ -59,7 +59,12 @@ export const createAccountHandlers = (ctx: HubContext) => {
     const result = unlinkSessions(ctx.state(), filter);
     ctx.setState(result.state);
     const to = out.keysOf(result.unlinked);
-    return to.length > 0 ? [out.send(to, "accountUnlinked", {})] : [];
+    // Room peers learn the new `hasAccount`, so their pseudo menus grey "message privé" again (BR-040).
+    const peers = result.unlinked.flatMap((id) => {
+      const session = result.state.sessions.get(id);
+      return session ? out.memberBackInRooms(session) : [];
+    });
+    return to.length > 0 ? [out.send(to, "accountUnlinked", {}), ...peers] : peers;
   };
 
   /** UC17 steps 1–3 (`accounts/02`): refusals are explicit only when they reveal nothing about the address. */
@@ -114,10 +119,14 @@ export const createAccountHandlers = (ctx: HubContext) => {
     if (result.kind === "refused") return [out.warning(caller.key, result.reason, command.seq)];
     await deps.accounts.saveAccount(result.account, facts.emailKeyedHash, result.created);
     ctx.setState(result.state);
-    return [out.send([caller.key], "accountLinked", {
-      accountId: result.account.id,
-      ...(result.deviceClaim ? { deviceClaim: result.deviceClaim } : {}),
-    })];
+    return [
+      out.send([caller.key], "accountLinked", {
+        accountId: result.account.id,
+        ...(result.deviceClaim ? { deviceClaim: result.deviceClaim } : {}),
+      }),
+      // Room peers learn `hasAccount: true`, so "message privé" becomes available (BR-040).
+      ...out.memberBackInRooms(sessionOf(result.state, caller.sessionId)),
+    ];
   };
 
   /** UC18 "everywhere" and UC19 share this: the caller must be signed in, then its sessions are unlinked. */

@@ -115,7 +115,12 @@ classDiagram
   (BR-042, neither side ignores the other) with `memberAway`
   without `roomId`. On `resumed` the hub sends `resumed.windows` (the conversations open for the session,
   with the other side as `otherChatter`) and `buffered`, then `privateWindow` to each open partner so its
-  window shows the chatter back (`platform/04c`).
+  window shows the chatter back (`platform/04c`). A non-empty ignore list kept by the server is sent back
+  as `ignoreUpdated`, because a reloaded client starts with none (BR-042).
+- **Account link and unlink**: room peers get `memberBack` with the new `hasAccount`, so their pseudo menu
+  enables or greys "message privé" at once (BR-040).
+- **Closing offline**: the client removes an established window only once `closePrivate` is sent, so the
+  BR-043 slot and the window stay in step with the server.
 - Session ids never leave the server except as the protocol's `sessionId` and `conversationId` fields.
 - Nothing here is persisted: conversations and ignore lists live in the hub memory and die with the
   sessions (ADR-0011). The away buffer is part of the away record.

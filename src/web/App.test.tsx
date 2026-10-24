@@ -909,6 +909,28 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
+  it("hides the private lines of a chatter ignored since", async () => {
+    await setup();
+    await signedIn();
+    await fromServer(msg("privateWindow", { conversationId: "c1", other: { sessionId: "s2", pseudo: "bob", hasAccount: true, away: false, gender: "man" } }));
+    await fromServer(msg("privateMessage", { conversationId: "c1", authorSessionId: "s2", text: "coucou", sentAt: "2026-10-24T10:00:00.000Z" }));
+
+    await fromServer(msg("ignoreUpdated", { ignored: ["s2"] }));
+
+    expect(within(screen.getByRole("dialog")).queryByText(/coucou/)).toBeNull();
+  });
+
+  it("keeps an established window open when closePrivate cannot be sent", async () => {
+    const user = await setup();
+    await signedIn();
+    await fromServer(msg("privateWindow", { conversationId: "c1", other: { sessionId: "s2", pseudo: "bob", hasAccount: true, away: false, gender: "man" } }));
+    connection.send.mockReturnValue(false);
+
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: STRINGS.close }));
+
+    expect(screen.getByRole("dialog")).toBeTruthy();
+  });
+
   it("disables the composer once the partner left, and closes without telling the server", async () => {
     const user = await setup();
     await signedIn();

@@ -81,7 +81,8 @@ export const ChatProvider = ({ connect, children }: { connect: ConnectionFactory
       post: (roomId, text) => send({ type: "postRoom", payload: { roomId, text } }),
       sendPrivate: (targetPseudo, text) => send({ type: "sendPrivate", payload: { targetPseudo, text } }),
       closePrivate: (windowKey, notify) => {
-        if (notify) send({ type: "closePrivate", payload: { conversationId: windowKey } });
+        // Offline: the server keeps the window open (BR-043 slot), so it stays here too, like `leaveRoom`.
+        if (notify && !send({ type: "closePrivate", payload: { conversationId: windowKey } })) return;
         dispatch({ type: "closePrivate", conversationId: windowKey });
       },
       ignore: (sessionId) => send({ type: "ignore", payload: { targetSessionId: sessionId } }),

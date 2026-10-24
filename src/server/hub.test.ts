@@ -573,6 +573,20 @@ describe("hub private conversations, ignore and search (UC6, UC7, UC8)", () => {
     expect(only(back, "privateWindow").payload).toMatchObject({ conversationId, other: { pseudo: "Lola", away: false } });
   });
 
+  it("restores the ignore list on resume", async () => {
+    const { hub, send, enterLinked } = linkedSetup();
+    const lola = await enterLinked("1", "Lola");
+    const max = await enterLinked("2", "Max");
+    await send("1", "ignore", { targetSessionId: max.sessionId });
+    await hub.close("1", later(1));
+
+    hub.open("3", "10.0.0.3", 4000);
+    const back = await send("3", "resume", { resumeToken: lola.resumeToken, profile: { gender: "woman", age: 30 } }, 1, later(2));
+
+    expect(to(back, "ignoreUpdated")).toEqual(["3"]);
+    expect(only(back, "ignoreUpdated").payload).toEqual({ ignored: [max.sessionId] });
+  });
+
   it("closes the windows of a resume whose account is gone", async () => {
     const { hub, send, enterLinked } = linkedSetup(false);
     const lola = await enterLinked("1", "Lola");

@@ -133,6 +133,9 @@ export const createHub = (deps: HubDeps): Hub => {
     allSockets: () => [...socketOfSession.values()],
   });
   const { send } = out;
+  /** A reloaded client starts with no ignore list; the server kept it (BR-042). */
+  const ignoresOf = (key: string, ignored: readonly string[] | undefined): Outgoing[] =>
+    ignored && ignored.length > 0 ? [send([key], "ignoreUpdated", { ignored: [...ignored] })] : [];
   const setState = (next: HubState): void => {
     state = next;
   };
@@ -292,6 +295,7 @@ export const createHub = (deps: HubDeps): Hub => {
           ...(session.accountId ? { accountId: session.accountId } : {}),
         }),
         send([socket.key], "roomList", { rooms: roomList(state) }),
+        ...ignoresOf(socket.key, state.ignores.get(session.id)),
         ...out.memberBackInRooms(session),
         ...windows.back,
       ];
