@@ -203,7 +203,14 @@ describe("tester exposure (ADR-0018)", () => {
   };
 
   it("refuses to start behind the tunnel without every ADR-0017 key", async () => {
-    await expect(startNodeServer({ port: 0, hostname: "127.0.0.1", allowedOrigins: [ORIGIN], behindTunnel: true })).rejects.toThrow(/missing secrets/);
+    await expect(startNodeServer({ port: 0, hostname: "127.0.0.1", allowedOrigins: [ORIGIN], behindTunnel: true, logFile: "/tmp/never.jsonl", vaultFile: "/tmp/never2.jsonl", brevoApiKey: "k" })).rejects.toThrow(/missing secrets/);
+  });
+
+  it("refuses to start behind the tunnel without both legal files or a Brevo key (BR-084)", async () => {
+    const base = { port: 0, hostname: "127.0.0.1", allowedOrigins: [ORIGIN], behindTunnel: true, cryptoEnv: await tunnelKeys() };
+    await expect(startNodeServer({ ...base, vaultFile: "/tmp/never.jsonl", brevoApiKey: "k" })).rejects.toThrow(/logFile and vaultFile/);
+    await expect(startNodeServer({ ...base, logFile: "/tmp/never.jsonl", brevoApiKey: "k" })).rejects.toThrow(/logFile and vaultFile/);
+    await expect(startNodeServer({ ...base, logFile: "/tmp/never.jsonl", vaultFile: "/tmp/never2.jsonl" })).rejects.toThrow(/Brevo/);
   });
 
   it("refuses to start behind the tunnel off loopback (BR-085)", async () => {
@@ -216,7 +223,7 @@ describe("tester exposure (ADR-0018)", () => {
       writeFileSync(join(dir, "index.html"), "<p>asv</p>");
       const logFile = join(dir, "log.jsonl");
       writeFileSync(logFile, '{"kind":"contribution","connectionId":"old","protocols":"p","at":"2020-01-01T00:00:00.000Z"}\n');
-      const { port } = await start({ logFile, vaultFile: join(dir, "vault.jsonl"), behindTunnel: true, secureCookie: true, staticRoot: dir, cryptoEnv: await tunnelKeys() });
+      const { port } = await start({ logFile, vaultFile: join(dir, "vault.jsonl"), behindTunnel: true, brevoApiKey: "test-key", secureCookie: true, staticRoot: dir, cryptoEnv: await tunnelKeys() });
 
       const page = await fetch(`http://127.0.0.1:${port}/`);
       expect(await page.text()).toBe("<p>asv</p>");

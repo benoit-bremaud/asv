@@ -94,6 +94,11 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
   const sweepMs = options.sweepMs ?? silenceMs / 4;
   const behindTunnel = options.behindTunnel ?? false;
   if (behindTunnel && !LOOPBACK.has(options.hostname)) throw new Error("behindTunnel requires a loopback hostname (BR-085)");
+  // Exposed testers need the legal files and a real mailer: no silent memory or dev-mail fallback (BR-084).
+  if (behindTunnel && (options.logFile === undefined || options.vaultFile === undefined)) throw new Error("behindTunnel requires logFile and vaultFile (BR-084)");
+  if (behindTunnel && options.mailer === undefined && !options.brevoApiKey) throw new Error("behindTunnel requires a Brevo API key");
+  // Behind the tunnel real data is kept: every key is required, or the sealed vault could never be read (ADR-0017).
+  const crypto = createCrypto(await cryptoKeysFromEnv(options.cryptoEnv ?? {}, behindTunnel, (text) => console.warn(text)));
   const log = createMemoryLog();
   const random = createNodeRandom();
   const accounts = createMemoryAccountStore();
@@ -111,12 +116,10 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
   purgeFiles();
   const hubLog: ConnectionLogStore = fileLog ?? log;
   const hubVault: LegalVaultStore = fileVault ?? vault;
-  // Behind the tunnel real data is kept: every key is required, or the sealed vault could never be read (ADR-0017).
-  const crypto = createCrypto(await cryptoKeysFromEnv(options.cryptoEnv ?? {}, behindTunnel, (text) => console.warn(text)));
   const mailer = options.mailer ?? createBrevoMailer({
     apiKey: options.brevoApiKey,
     from: options.mailFrom ?? "contact@asvchat.fr",
-    production: false,
+    production: behindTunnel,
     log: (level, fields) => (level === "error" ? console.error : console.info)("mailer", fields),
   });
   const hub = createHub({

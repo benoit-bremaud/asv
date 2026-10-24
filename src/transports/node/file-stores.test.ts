@@ -92,6 +92,20 @@ describe("crash safety (BR-084)", () => {
     warn.mockRestore();
   });
 
+  it("ends a line cut by a crash so the start-up close record stays readable", () => {
+    const path = file("log.jsonl");
+    createFileLog(path, T0);
+    appendFileSync(path, '{"kind":"open","connectionId":"c1","openedAt":"2026-10-24T00:00:00.000Z"}\n{"kind":"op');
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    createFileLog(path, after(1000));
+
+    const lines = readFileSync(path, "utf8").trimEnd().split("\n");
+    expect(lines[1]).toBe('{"kind":"op');
+    expect(JSON.parse(lines[2] ?? "")).toMatchObject({ kind: "close", connectionId: "c1" });
+    warn.mockRestore();
+  });
+
   it("keeps log lines with unreadable dates", () => {
     const path = file("log.jsonl");
     const log = createFileLog(path, T0);
