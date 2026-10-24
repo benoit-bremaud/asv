@@ -96,6 +96,7 @@ The hub is split by command group, all behind the same `createHub(HubDeps)`:
 |---|---|
 | `src/server/hub.ts` | live state, sockets, serial queue, `receive`/`close`/`tick`, entry commands (`enter`, `resume`, `leave`), rooms commands, and the **handler map** |
 | `src/server/outgoing.ts` | effect mapping: `sessionOf`, `toMember`, `send`, `error`, `warning`, `keysOf`, `roomJoined`, `roomOutgoing` (with the `roomList` broadcast), `memberAwayInRooms`, `memberBackInRooms` |
+| `src/server/hub-private.ts` | brick 6 commands (`sendPrivate`, `closePrivate`, `ignore`, `unignore`, `search`), contribution first for `sendPrivate`, and the private presence of `close`, away and resume |
 | `src/server/hub-accounts.ts` | account commands (`requestCode`, `verifyCode`, `signOutEverywhere`, `deleteAccount`) and their `warning unavailable` guard (`platform/04d`) |
 
 ```mermaid
@@ -158,8 +159,7 @@ classDiagram
   `leave`; a socket without `bound` has no session.
 - **Socket without session**: only `enter` and `resume` are accepted; anything else → `error forbidden`.
   `enter` or `resume` on a socket that already has a session → `error invalid`.
-- **Commands of later bricks** (`sendPrivate`, `ignore`, `unignore`, `search`, `report` and moderation
-  commands) → `error invalid` with message `notAvailable` until their brick wires them.
+- **Commands of later bricks** (`report` and moderation commands) → `error invalid` with message `notAvailable` until their brick wires them.
 - **enter** (`entry/02a`): `activeBan` and `accountId` are absent until bricks 8 and 5. On `entered` the hub
   draws a connection id (`random.id()`), awaits `log.open`, stores session id and connection id on the
   socket, then sends `entered { sessionId, resumeToken, roomList, isModerator: false }`. If `log.open`
@@ -170,18 +170,21 @@ classDiagram
   yet), that socket is unbound first as on `close` (`socketLost`, `log.close`), then `closeSocket` asks the
   transport to close it (the displaced page still pings); `memberAway` is sent only if
   the resume then fails. On `resumed` it opens a new connection line like `enter`, then sends
-  `resumed { sessionId, pseudo, resumeToken, rooms, windows: [], buffered }`, `rooms` built with `roomMembers` for each room of the
+  `resumed { sessionId, pseudo, resumeToken, rooms, windows, buffered }` (brick 6: `windows` from `windowsOf`, `buffered` from the domain effect), `rooms` built with `roomMembers` for each room of the
   session, then `roomList` to the resumer only (its list is stale after the loss), then `memberBack` to the
-  other connected members of each room.
+  other connected members of each room, then `privateWindow` (the resumer as `other`) to each connected
+  partner whose window on it is open.
 - **leave**: `hub.leave`, `log.close` for the socket's connection id; the socket stays open without session,
   so the client can enter again.
 - **Socket closed** (`close`): a connected session goes through `socketLost`; `log.close`; `memberAway` to
-  the other connected members of each of its rooms. A socket without session is just forgotten.
+  the other connected members of each of its rooms, and `memberAway` without `roomId` to each connected
+  partner whose window on it is open. A socket without session is just forgotten.
 - **Contribution first** (`rooms/02`, BR-060, D5): for `postRoom` and `createRoom` the hub computes the
   domain result, awaits `log.appendContribution` (connection id, protocols, now) when the result holds
   `roomMessage` or `roomCreated`, and only then keeps the new state and sends. If the write fails, the old
   state is kept and the sender gets `error logUnavailable`. The content id, operation and date fields are
-  added only under an injunction (BR-060): not in brick 7a.
+  added only under an injunction (BR-060): not in brick 7a. Brick 6: `sendPrivate` follows the same rule
+  when the result holds `privateMessage` (`private-conversations/02`).
 - **Log failures**: every failed write goes to `onLogError` for the operator. A failed `log.open` or
   `appendContribution` also refuses the command (`logUnavailable`); a failed `log.close` never refuses the
   close or the leave.
@@ -199,11 +202,18 @@ classDiagram
 | `resumed` | `memberBack { roomId, member }` per room of the session | same |
 | `roomMessage` | `roomMessage { …, gender, sentAt }`, gender from the author's profile | `recipients` |
 | `roomRefused` | `warning { code: reason, message: reason, replyTo }` | sender |
+| `privateRefused` | `error { code }` for `accountRequired` and `offline`, else `warning { code: reason }`, with `replyTo` | sender |
+| `privateWindowOpened` | `privateWindow { conversationId, other }`, `other` = the other side as `otherChatter` | that side |
+| `privateMessage` | `privateMessage { conversationId, authorSessionId, text, sentAt }` | `recipients` |
+| `ignoreUpdated` | `ignoreUpdated { ignored }` | the session |
+| `partnerLeft` | `memberLeft { sessionId, pseudo }` without `roomId` | `recipients` |
+| search hits (`directory/07`) | `searchResults { results }` with `rooms` per hit | the searcher |
 | `roomCreated`, `roomDeleted`, `closed` | nothing of their own | — |
 
 - **Member shape** (D4): `roomMembers` sessions map to the protocol `member` union: a connected session gives
-  `{ away: false, sessionId, pseudo, gender, age, city? }` (city omitted when empty), an away session
-  `{ away: true, sessionId, pseudo }`.
+  `{ away: false, sessionId, pseudo, hasAccount, gender, age, city? }` (city omitted when empty), an away
+  session `{ away: true, sessionId, pseudo, hasAccount }`. `hasAccount` is `accountId !== undefined`
+  (brick 6).
 - **Room list**: after every command or tick that changed membership or the set of rooms, the hub sends
   `roomList` to every connected session. Fine at V1 traffic; to batch in the Durable Object if needed
   (brick 9).

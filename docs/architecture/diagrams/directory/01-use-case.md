@@ -6,8 +6,8 @@
 ## Context
 
 Searching connected chatters by pseudo or city, the most missed feature after Caramail's redesign
-(`docs/research/caramail.md`). A plain read: no sequence, class or state diagram is needed beyond
-the `entry` model. Does not cover opening the conversation that may follow (see `private-conversations`).
+(`docs/research/caramail.md`). A plain read: no sequence or state diagram is needed; the search
+function is in `directory/07`. Does not cover opening the conversation that may follow (see `private-conversations`).
 
 ## Diagram
 
@@ -26,9 +26,9 @@ flowchart LR
 
 **UC7 — Find a chatter by pseudo or city** (planned)
 - Main scenario: 1. Chatter types part of a pseudo or a city. 2. System returns connected and away
-  chatters whose pseudo contains the text or whose city matches, case and accent insensitive, at most
-  50 results. 3. Each result shows pseudo, colour, age, city, away flag and the rooms they are in.
-- Extensions: 2a. Fewer than 2 characters → no search. 2b. Ignored chatters are excluded from results.
+  chatters whose pseudo contains the text or, for connected chatters, whose city equals it, case and
+  accent insensitive, at most 50 results. 3. Each result shows pseudo, colour, age, city, away flag and the rooms they are in.
+- Extensions: 2a. Fewer than 2 characters → no search. 2b. Chatters the searcher ignores, or who ignore the searcher, are excluded (BR-042).
 - Then the chatter may open a private conversation (UC6).
 
 ## Notes

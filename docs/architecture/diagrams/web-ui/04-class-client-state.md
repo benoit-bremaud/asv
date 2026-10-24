@@ -9,8 +9,8 @@
 ## Context
 
 The modules of `src/web` that brick 7a builds: the pure client reducer, the connection manager, the text
-renderer and the screens for entry, rooms and room. Does not cover the overlays of bricks 5, 6 and 8
-(account, private windows, search, moderation).
+renderer and the screens for entry, rooms and room. Brick 5 adds the account overlay (`web-ui/06`), brick 6
+the private windows, ignore and search (`web-ui/07`). Does not cover the moderation overlay (brick 8).
 
 ## Diagram
 
@@ -29,7 +29,22 @@ classDiagram
     +Code notice
     +Code entryError
     +AccountView account
+    +Record~ConversationId, PrivateView~ windows
+    +SessionId[] ignored
+    +SearchView search
     +Number nextLineId
+  }
+  class PrivateView {
+    +OtherChatter other
+    +Line[] lines
+    +Boolean minimised
+    +Number unread
+    +String presence : here, away, gone
+  }
+  class SearchView {
+    +String query
+    +Boolean pending
+    +SearchResult[] results
   }
   class AccountView {
     +Boolean open
@@ -85,6 +100,11 @@ classDiagram
     openAccount()
     closeAccount()
     accountStep(step)
+    openPrivate(other)
+    closePrivate(conversationId)
+    togglePrivate(conversationId)
+    searching(query)
+    clearSearch()
   }
   class chatReducer {
     <<pure function>>
@@ -124,6 +144,9 @@ classDiagram
   Screens ..> Renderer
   ChatState *-- OpenRoom
   OpenRoom *-- Line
+  ChatState *-- PrivateView
+  PrivateView *-- Line
+  ChatState *-- SearchView
 ```
 
 ## Rules the code applies
@@ -133,6 +156,15 @@ classDiagram
   `accountUnlinked` → `signedOut`; a `warning` replying to `verifyCode` keeps `waitingCode` with the tries
   left. The connection manager gains `requestCode`, `verifyCode`, `signOutEverywhere`, `deleteAccount`,
   and two `fetch` calls to `/account/device` and `/account/sign-out` (`credentials: "same-origin"`).
+
+- **Private windows, ignore and search** (brick 6, `web-ui/07`): `privateWindow` → window created or its
+  `other` refreshed (presence `here` or `away`); `privateMessage` → line appended to its window (last 200),
+  `unread` + 1 when minimised; `memberAway` / `memberLeft` without `roomId` → presence `away` / `gone` of
+  the windows with that session; `ignoreUpdated` → `ignored`; `searchResults` → `search.results`, `pending`
+  off; `resumed` → `windows` rebuilt minimised from `resumed.windows`, `buffered` appended with unread counts;
+  `accountUnlinked` → `windows` emptied. A pending window (`openPrivate`, before the first message) is keyed
+  by the other session id until `privateWindow` gives its conversation id. The connection manager gains
+  `sendPrivate`, `closePrivate`, `ignore`, `unignore` and `search`. Nothing of this is stored in the browser.
 
 - **D6**: one pure `chatReducer`, held by `useReducer` in `App` and shared through a React context. The
   connection manager lives outside React; it dispatches actions and screens call its commands. Screens

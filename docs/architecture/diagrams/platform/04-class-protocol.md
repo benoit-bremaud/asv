@@ -28,6 +28,7 @@ classDiagram
     createRoom
     postRoom
     sendPrivate
+    closePrivate
     ignore
     unignore
     search
@@ -91,6 +92,7 @@ Client to server:
 | createRoom | name |
 | postRoom | roomId, text |
 | sendPrivate | targetPseudo, text |
+| closePrivate | conversationId (brick 6, D1: frees a window slot, BR-043) |
 | ignore / unignore | targetSessionId |
 | search | query |
 | report | targetKind, targetPseudo?, targetRoomId?, reason, excerpt, context (≤ 20 lines) |
@@ -140,10 +142,12 @@ An away session has no profile (ADR-0011), so `member` is a union discriminated 
 
 | `away` | Fields |
 |---|---|
-| `false` | sessionId, pseudo, gender, age, city? |
-| `true` | sessionId, pseudo |
+| `false` | sessionId, pseudo, hasAccount, gender, age, city? |
+| `true` | sessionId, pseudo, hasAccount |
 
-`otherChatter` (private windows) is the same union without age and city. The client keeps in memory the
+`hasAccount` (brick 6) tells whether the session is linked to an account, so the client greys "message
+privé" on a chatter who cannot receive one (UC6, BR-040). `otherChatter` (private windows) is the same
+union without age and city. The client keeps in memory the
 last profile it saw for each session id, to colour an away pseudo with its `-away` token; a chatter never
 seen connected shows in `--pseudo-unspecified-away` with "(absent)" (design pack). That memory is never
 written to `sessionStorage`.

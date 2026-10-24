@@ -15,7 +15,7 @@ classDiagram
     +ConversationId id
     +SessionId first
     +SessionId second
-    +Date openedAt
+    +SessionId[] openFor
     +static keyFor(a, b) ConversationId
   }
   class PrivateMessage {
@@ -26,7 +26,7 @@ classDiagram
   }
   class IgnoreList {
     +SessionId owner
-    +SessionId[] ignored
+    +SessionId[] ignored : at most 100, BR-044
     +ignores(sessionId) Boolean
     +add(sessionId) IgnoreList
     +remove(sessionId) IgnoreList
@@ -38,5 +38,7 @@ classDiagram
 ## Notes
 
 - Messages are delivered and forgotten, except the away buffer on the session (BR-013).
+- `openFor` lists the sides whose window is open; the conversation is deleted when both closed (D1).
+  The functions are in `private-conversations/07`.
 - `IgnoreList` belongs to the session and dies with it. It holds session ids, not pseudos, so a newcomer
   who takes a freed pseudo does not inherit someone else's ignore.
