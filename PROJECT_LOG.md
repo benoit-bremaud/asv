@@ -268,3 +268,13 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   at start-up. Only a folder the stores create is set to 0700.
 - Not done yet: the vault key tool (#35, openssl commands in the runbook meanwhile); checking the Brevo and
   Cloudflare DPAs; the tunnel session itself.
+
+## 2026-10-24 — Tester exposure live on asvchat.fr (#54)
+
+- Domain `asvchat.fr` bought and on Cloudflare; named tunnel `asv-tester` replaces trycloudflare (stable origin).
+- Brevo domain authenticated (DKIM, DMARC), sender `contact@asvchat.fr`; Cloudflare Email Routing to the owner.
+- End-to-end QA through the tunnel, validated by the owner: security headers (CSP, HSTS, nosniff), legal pages
+  with the identity from env, guest entry, member code e-mail received and redeemed, log and vault files 0600,
+  e-mail sealed in the vault.
+- Found: #60 (no hint when ENTRER is disabled, stale « Mauvais code. » banner). #58, #59, #60 on the kanban.
+- Runbook updated to the named tunnel. Next: tester session, then feedback synthesis on #54.
