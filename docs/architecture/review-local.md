@@ -1,51 +1,43 @@
-# Local review — asv (brick 5, member accounts)
+# Local review — asv (hub refactor, issues #25 and #36)
 
-- Date: 2026-10-23
-- Commit: 16f4ca7
-- Scope: branch `feat/32-brick-5-accounts`, diff `main...HEAD`
+- Date: 2026-10-24
+- Commit: 454fe51
+- Scope: branch `refactor/25-36-hub-handler-map`, diff `main...HEAD`
 - Checks run: design · docs · tests · security · correctness
-- Verdict: ship — Must 0 open (4 fixed) · Should 3 open (6 fixed) · Nice 8
+- Verdict: ship. Must 0 · Should 0 open (8 fixed) · Nice 2 open (3 fixed)
 
-## Pre-merge gate (head SHA 16f4ca7)
+## Pre-merge gate (head SHA 454fe51)
 | Step | Result |
 |---|---|
-| 1 Tests | ✅ 17 files, 510 tests (`pnpm verify`), 33 hub account integration tests |
-| 2 Coverage | tests 98.56 % stmts / 95.86 % branches / 97.08 % funcs / 99.22 % lines (floor 80) · docs 97/97 exports of the touched files (100 %, floor 90) |
-| 3 SonarQube | ✅ PASSED on 16f4ca7 (44 findings of 3228023 fixed) |
-| 4 Secrets | ✅ gitleaks clean (`src`, `docs`, `main..HEAD`) · no tracked .env · diff read: dev code only in dev logs |
-| 5 QA pass | ✅ full · console clean · screenshots: `qa/2026-10-23-brick5-{members-hint,code-sent,signed-in,device-cookie,confirm-delete,deleted}.jpg` · replayed on 16f4ca7 (dialog overlay): `qa/2026-10-23-brick5-final-{code-dialog,signed-in}.jpg` |
-- Gate: **GREEN — merge authorised once the PR CI is green**
+| 1 Tests | ✅ 17 files, 536 tests (`pnpm test:coverage`), typecheck, lint and build green |
+| 2 Coverage | tests 98.6 % stmts / 95.5 % branches / 97.3 % funcs / 99.3 % lines (floor 80) · docs 16/16 exported symbols of the touched files (100 %, floor 90; one type re-export left out of the count) |
+| 3 SonarQube | ✅ PASSED on 454fe51 (new coverage 97.7 %). The first scan on 1ddfbc7 failed on one new S7503 issue, fixed in 454fe51 |
+| 4 Secrets | ✅ gitleaks clean (`main..HEAD`) · no tracked .env · diff read: nothing sensitive |
+| 5 QA pass | ✅ full: enter, join Lyon, post, request a code (`codeSent`), wrong code (`codeWrong`, tries left). The console errors come from the first run on port 5174, before `ASV_ALLOWED_ORIGINS` was set (port 5173 was held by another project). Screenshots: `qa/2026-10-24-hub-refactor-{room,code-sent,code-wrong}.jpg` |
+- Gate: **GREEN. The merge is authorised once the PR CI is green.**
 
 ## 🔴 Must Have
-- ✅ fixed — `src/server/account-io.ts:49` `[design|docs]` · `AccountIo` is in no study (CLAUDE.md "no conception, no code"); `04d` `signOutDevice(tokenHash, now)` vs code without `now` · add `AccountIo` to `platform/04d`, align the signature.
-- ✅ fixed — `docs/architecture/diagrams/accounts/07-class-domain-api.md:24-81` `[docs]` · drift from `src/domain/accounts.ts`: `redeemDeviceClaim` takes `random`, `unlinkSessions` returns `{state, unlinked}`, `LinkResult` has no effects and a string claim, `checkCode` signature, `closeAccount` anonymous result · align the diagram.
-- ✅ fixed — `src/domain/accounts.ts:13` `[security]` · slow brute force (≈ 1 % per month by rotating IPs) · owner decision 2026-10-23 (A, 435/500): at most 20 wrong tries per e-mail per 24 h, then silent refusal; amend BR-072 and `accounts/02` first.
-- ✅ fixed — doc coverage `[docs]` · ≈ 80 % < 90 % · docstrings on `createAccountIo`, `AccountIoDeps`, `toBase64Url`/`fromBase64`, `BrevoOptions`, `createBrevoMailer`, `CodeRefusal`/`CodeDecision`/`CodeCheck`/`LinkResult`.
+_None._
 
 ## 🟡 Should Have
-- ✅ fixed — `src/web/screens/AccountPanel.tsx:40` `[correctness]` · auto-send on the sixth digit plus "valider" sends `verifyCode` twice: two tries burned, or `codeMissing` after success · `pendingVerify` flag, button disabled while in flight.
-- ✅ fixed — `src/server/hub.ts` `redeemDeviceClaim`/`signOutDevice` `[correctness]` · a failed `saveDevice` consumes the claim, rejects the route, skips `onStoreError` · commit state after the save, catch and report.
-- ✅ fixed — `src/server/hub.ts:334`, `src/web/store.ts:113` `[design]` · tries left travel in the human `message` · optional `triesLeft` in the `warning` schema.
-- `src/web/store.ts:94` `[design]` · account warning codes are free strings on both sides · one shared union in `src/shared/protocol`.
-- ✅ fixed — `src/server/account-io.ts:64` `[design]` · invalid e-mail still queries the store with `""` · answer `emailInvalid` first.
-- ✅ fixed — `src/transports/node/memory-accounts.ts:13` `[design]` · BR-081 1-year/5-year limits are bare numbers · add to `ACCOUNT_LIMITS`.
-- `src/server/hub.ts:153` `[design]` · hub at 611 lines mixes entry, rooms, accounts · extract `hub-accounts.ts` (follow-up issue).
-- ✅ fixed — `src/transports/node/hub-accounts.test.ts:77`, `src/server/mailer/brevo.test.ts:84` `[tests]` · random-code assertion, missing mock restore · stub random, `afterEach(vi.restoreAllMocks)`.
-- `src/transports/node/server.ts` `[security]` · production flags hard-coded false, raw socket IP for the quota · fail closed on `NODE_ENV=production`; trusted proxy IP and IPv6 /64 in brick 9 (follow-up issue).
+- ✅ fixed — `src/server/hub-accounts.ts` `[design]` · account commands were dispatched three times (map, `handle` switch, `onAccountWide` branch) · one guarded handler per command, mapped directly.
+- ✅ fixed — `src/server/hub-accounts.ts:16` `[design]` · type import cycle with `hub.ts`, and the full `HubDeps` was handed to the account commands · `AccountDeps` (random, accounts, mailer, onStoreError).
+- ✅ fixed — `platform/04c` `[docs|design]` · drift: `HubContext.out` type, missing `keysOf`/`roomJoined`/`unlink`, `HubDeps` without the brick 5 fields, account commands still listed as `notAvailable` · study synced.
+- ✅ fixed — `src/server/hub-accounts.ts` `[docs]` · `createAccountHandlers` had no docstring · added the never-rejects contract.
+- ✅ fixed — `src/server/outgoing.ts` `[docs]` · `Payload`, `OutgoingModule`, `warning` and the module contract (one `seq` counter, empty recipients dropped) were undocumented.
+- ✅ fixed — `src/server/hub.test.ts:179` `[tests]` · only `search` pinned `notAvailable` · `it.each` over the 12 later-brick commands, plus `forbidden` without a session.
+- ✅ fixed — `src/transports/node/hub-accounts.test.ts:130` `[tests]` · the store guard was proven on `requestCode` only · `it.each` over `verifyCode`, `signOutEverywhere`, `deleteAccount`.
+- ✅ fixed — `src/server/hub.ts:322` `[correctness]` · Sonar S7503, `async` without `await` · `Promise.resolve`.
 
 ## 🔵 Nice to Have
-- `src/domain/accounts.ts:191` `[security]` · claim redeemable after the session unlinks · refuse when the session no longer matches.
-- `src/server/hub.ts:359` `[security]` · deletion needs no fresh code · follow-up issue.
-- `src/server/crypto/cipher.ts:70` `[security]` · seal binds no AAD · bind `accountId`.
-- `src/server/mailer/brevo.ts:62,106` `[security|design]` · ✅ `'` now escaped; derive "10 minutes" from `codeTtlMs`.
-- `src/server/hub.ts:85` `[design]` · `open` with four positional parameters · options object.
-- `src/domain/ports.ts:74,83` `[design]` · `email` holds ciphertext · rename `emailCiphertext`.
-- `src/domain/accounts.ts:7` `[design]` · type-only import cycle with `rooms.ts`.
-- `src/web/App.test.tsx`, `src/server/mailer/brevo.test.ts`, `src/server/crypto/cipher.test.ts` `[tests]` · `toBeTruthy` on `getBy*`, mixed scenarios in one `it`.
+- ✅ fixed — `src/server/outgoing.ts:121` `[design]` · `roomRefused` built a warning inline · uses `warning()`.
+- ✅ fixed — `src/server/hub.ts:351` `[correctness]` · the correlated-union annotation was easy to break · added a comment.
+- ✅ fixed — `src/server/hub-accounts.ts:139` `[correctness]` · `default` branch would swallow a future account command · gone with the per-command handlers.
+- `src/server/hub.ts:305` `[correctness]` · `command as Pick<ClientMessage, "seq">` in `roomCommand` · pass `seq` as its own handler argument if a command ever drops `seq`.
+- `src/server/hub.ts:94` `[design]` · `Command<T>` is defined in both `hub.ts` and `hub-accounts.ts` · share it if a third copy appears.
 
 ## ⚪ Disagree / Intentional
-- `src/server/app.ts` `secureCookie: false` in the Node transport `[design]` · development-only transport per `platform/04d`; production goes through brick 9.
-- "Sign out this device" without a cookie signs out locally only `[correctness]` · known gap, follow-up issue.
+- `src/server/hub.ts:350` `[design]` · `runBound` exists only so the type checker accepts the map lookup. It has no runtime role and is commented.
 
 ## Per-dimension summary
-- Design: dependency rule holds; study gap on `AccountIo`, hub growing. · Docs: diagrams drifted, ≈ 80 % coverage. · Tests: pyramid healthy, real crypto, two hygiene fixes. · Security: no Must from the review; slow brute force escalated by owner choice. · Correctness: double verify and claim consumption on store failure.
+- Design: clean split by command group; dependency rule holds. Docs: study and code in sync. Tests: the handler map is fully pinned; nothing is over-mocked. Security: no change in behaviour (Opus adversarial pass: seq order, error texts, state commits and the guard are unchanged). Correctness: no Must; type casts are documented.
