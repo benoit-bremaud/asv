@@ -9,7 +9,7 @@
 
 The server-side pieces brick 5 adds around the hub: the Brevo mailer (reused from brasse-bouillon), the
 crypto module, the in-memory account and vault stores of the Node transport, and the two HTTPS account
-routes. Does not cover the domain rules (see `accounts`) or the Durable Object stores (brick 9).
+routes. The hub's account commands live in `src/server/hub-accounts.ts` (`platform/04c`, issue #36). Does not cover the domain rules (see `accounts`) or the Durable Object stores (brick 9).
 
 ## Diagram
 

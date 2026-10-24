@@ -10,8 +10,8 @@
 `src/server/hub.ts` holds the live hub state, validates incoming messages, calls the pure domain, writes
 the connection log and maps domain effects to protocol messages for the right sockets. It knows no socket
 API: transports give it socket keys and send what it returns. Written once, used by the Node transport
-(brick 7a) and wrapped by the Hub Durable Object (brick 9). Does not cover private conversations,
-accounts or moderation: those bricks add their commands here.
+(brick 7a) and wrapped by the Hub Durable Object (brick 9). Does not cover private conversations
+or moderation: those bricks add their commands to the handler map.
 
 ## Diagram
 
@@ -84,6 +84,59 @@ classDiagram
   ConnectionLogStore ..> ContributionLine
   MemoryConnectionLog ..|> ConnectionLogStore
 ```
+
+## Modules (issues #25, #36)
+
+The hub is split by command group, all behind the same `createHub(HubDeps)`:
+
+| Module | Holds |
+|---|---|
+| `src/server/hub.ts` | live state, sockets, serial queue, `receive`/`close`/`tick`, entry commands (`enter`, `resume`, `leave`), rooms commands, and the **handler map** |
+| `src/server/outgoing.ts` | effect mapping: `toMember`, `send`, `error`, `warning`, `roomOutgoing`, `memberAwayInRooms`, `memberBackInRooms`, `roomList` broadcast |
+| `src/server/hub-accounts.ts` | account commands (`requestCode`, `verifyCode`, `signOutEverywhere`, `deleteAccount`) and their `warning unavailable` guard (`platform/04d`) |
+
+```mermaid
+classDiagram
+  class HubContext {
+    <<shared by the modules>>
+    +HubDeps deps
+    +state() HubState
+    +setState(HubState) void
+    +Outgoing out
+  }
+  class HandlerMap {
+    <<Record keyed by ClientMessage type>>
+    +bound(socket, bound, command, now) Promise~Outgoing[]~
+  }
+  class OutgoingModule {
+    <<src/server/outgoing.ts>>
+    +send(to, type, payload) Outgoing
+    +error(socketKey, code, replyTo, text = code) Outgoing
+    +warning(socketKey, code, replyTo) Outgoing
+    +roomOutgoing(effects, replyTo) Outgoing[]
+    +memberAwayInRooms(session) Outgoing[]
+    +memberBackInRooms(session) Outgoing[]
+  }
+  class AccountHandlers {
+    <<src/server/hub-accounts.ts>>
+    +requestCode
+    +verifyCode
+    +signOutEverywhere
+    +deleteAccount
+  }
+  Hub ..> HandlerMap
+  HandlerMap ..> AccountHandlers
+  Hub ..> OutgoingModule
+  AccountHandlers ..> HubContext
+  Hub ..> HubContext
+```
+
+- **Handler map**: every `ClientMessage['type']` except `enter` and `resume` has an entry, so the type
+  checker refuses a missing command. `enter` and `resume` are handled before the map because they need a
+  socket without session. Commands of later bricks map to one `notAvailable` handler.
+- **Error text** defaults to the code (`error(key, "forbidden")` sends `message: "forbidden"`); only
+  `frameTooLarge` and `notAvailable` pass a different text.
+- No behaviour changes: the existing hub tests pass unchanged.
 
 ## Rules the code applies
 
