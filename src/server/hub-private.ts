@@ -6,6 +6,8 @@
 import {
   closePrivate,
   ignore,
+  openPartners,
+  otherSide,
   search,
   sendPrivate,
   unignore,
@@ -90,18 +92,9 @@ export const createPrivateHandlers = (ctx: PrivateContext) => {
     return Promise.resolve([out.send([caller.key], "searchResults", { results })]);
   };
 
-  /** Connected partners whose window on a conversation with the session is open. */
-  const partnersOf = (state: HubState, sessionId: string): { conversationId: string; partner: string }[] =>
-    [...state.conversations.values()].flatMap((conversation) => {
-      if (conversation.first !== sessionId && conversation.second !== sessionId) return [];
-      const partner = conversation.first === sessionId ? conversation.second : conversation.first;
-      const open = conversation.openFor.includes(partner) && state.sessions.get(partner)?.status === "connected";
-      return open ? [{ conversationId: conversation.id, partner }] : [];
-    });
-
   /** Socket lost: `memberAway` without `roomId` to the open partners (`web-ui/07` OtherAway). */
   const wentAway = (session: Session): Outgoing[] => {
-    const to = out.keysOf(partnersOf(ctx.state(), session.id).map(({ partner }) => partner));
+    const to = out.keysOf(openPartners(ctx.state(), session.id).map(({ partner }) => partner));
     return to.length > 0 ? [out.send(to, "memberAway", { sessionId: session.id, pseudo: session.pseudo })] : [];
   };
 
@@ -113,7 +106,7 @@ export const createPrivateHandlers = (ctx: PrivateContext) => {
     const state = ctx.state();
     const windows: Payload<"resumed">["windows"] = windowsOf(state, session.id).map((conversation) => ({
       conversationId: conversation.id,
-      other: toOther(sessionOf(state, conversation.first === session.id ? conversation.second : conversation.first)),
+      other: toOther(sessionOf(state, otherSide(conversation, session.id))),
     }));
     // A conversation closed meanwhile (its author left) drops its buffered lines.
     const open = new Set(windows.map((window) => window.conversationId));
@@ -123,7 +116,7 @@ export const createPrivateHandlers = (ctx: PrivateContext) => {
       text: message.text,
       sentAt: message.sentAt.toISOString(),
     }));
-    const back = partnersOf(state, session.id).flatMap(({ conversationId, partner }) =>
+    const back = openPartners(state, session.id).flatMap(({ conversationId, partner }) =>
       out.keysOf([partner]).map((key) => out.send([key], "privateWindow", { conversationId, other: toOther(session) })));
     return { windows, buffered: messages, back };
   };

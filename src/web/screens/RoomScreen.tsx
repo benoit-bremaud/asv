@@ -2,13 +2,13 @@ import { useState, type SubmitEvent } from "react";
 import type { Gender, Member } from "../../shared/protocol";
 import { useChat } from "../chat-context";
 import { renderText, SMILEYS } from "../render";
+import { MAX_TEXT } from "../store";
 import { STRINGS } from "../strings";
 import { Header } from "./Header";
 import { Pseudo } from "./Pseudo";
 import { PseudoMenu } from "./PseudoMenu";
 import { SearchPanel } from "./SearchPanel";
 
-const MAX_TEXT = 500;
 
 const MemberLine = ({ member, knownGender }: { member: Member; knownGender?: Gender }) =>
   member.away ? (

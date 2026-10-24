@@ -110,6 +110,8 @@ export type Action =
 
 /** BR-034: only the newest lines stay in memory, nothing is kept elsewhere. */
 export const MAX_LINES = 200;
+/** BR-020: the server cap, mirrored so composers count code points before sending. */
+export const MAX_TEXT = 500;
 
 /** State before any socket opens: entry screen, offline. */
 export const initialState: ChatState = {
@@ -125,8 +127,6 @@ export const initialState: ChatState = {
   nextLineId: 0,
 };
 
-/** BR-043: the server refuses more; the client mirrors it to grey "message privé". */
-export const MAX_WINDOWS = 10;
 
 /** Warnings answering `requestCode` or `verifyCode` (`hub.ts`), and the step each one leads to. */
 const ACCOUNT_WARNINGS: Readonly<Record<string, AccountStep>> = {

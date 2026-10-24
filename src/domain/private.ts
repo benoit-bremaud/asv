@@ -55,13 +55,26 @@ export interface PrivateResult {
 
 const result = (state: HubState, ...effects: PrivateEffect[]): PrivateResult => ({ state, effects });
 
-const otherSide = (conversation: PrivateConversation, sessionId: string): string =>
+/** The other session of a conversation. */
+export const otherSide = (conversation: PrivateConversation, sessionId: string): string =>
   conversation.first === sessionId ? conversation.second : conversation.first;
 
 const between = (state: HubState, a: string, b: string): PrivateConversation | undefined =>
   [...state.conversations.values()].find(
     (conversation) => (conversation.first === a && conversation.second === b) || (conversation.first === b && conversation.second === a),
   );
+
+/**
+ * Connected partners whose window on a conversation with the session is open, minus the ones either side
+ * ignores (BR-042): they get the session's presence without `roomId`.
+ */
+export const openPartners = (state: HubState, sessionId: string): { conversationId: string; partner: string }[] =>
+  [...state.conversations.values()].flatMap((conversation) => {
+    if (conversation.first !== sessionId && conversation.second !== sessionId) return [];
+    const partner = otherSide(conversation, sessionId);
+    const open = conversation.openFor.includes(partner) && state.sessions.get(partner)?.status === "connected";
+    return open && !blocks(state.ignores, sessionId, partner) ? [{ conversationId: conversation.id, partner }] : [];
+  });
 
 /** Conversations whose window is open for the session, in opening order. */
 export const windowsOf = (state: HubState, sessionId: string): PrivateConversation[] =>
@@ -164,7 +177,9 @@ export const closeConversations = (
     conversations.delete(conversation.id);
     const partner = otherSide(conversation, side);
     const partnerSession = state.sessions.get(partner);
-    if (notify && !ids.has(partner) && partnerSession?.status === "connected" && conversation.openFor.includes(partner)) {
+    // BR-042: an ignored chatter never learns the other left.
+    const open = partnerSession?.status === "connected" && conversation.openFor.includes(partner);
+    if (notify && !ids.has(partner) && open && !blocks(state.ignores, side, partner)) {
       told.set(side, [...(told.get(side) ?? []), partner]);
     }
   }

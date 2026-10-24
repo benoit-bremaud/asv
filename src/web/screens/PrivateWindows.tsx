@@ -1,12 +1,11 @@
 import { useState, type SubmitEvent } from "react";
 import { useChat } from "../chat-context";
 import { renderText } from "../render";
-import type { PrivateView } from "../store";
+import { MAX_TEXT, type PrivateView } from "../store";
 import { STRINGS } from "../strings";
 import { Pseudo } from "./Pseudo";
 import { PseudoMenu } from "./PseudoMenu";
 
-const MAX_TEXT = 500;
 
 type Props = { readonly windowKey: string; readonly window: PrivateView; readonly draft: string; readonly setDraft: (text: string) => void };
 

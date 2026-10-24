@@ -21,7 +21,7 @@ classDiagram
     +Map~SessionId, SessionId[]~ ignores
   }
   class PrivateConversation {
-    +ConversationId id : first + ":" + second
+    +ConversationId id : random.id()
     +SessionId first : the first sender
     +SessionId second
     +SessionId[] openFor : sides whose window is open
@@ -105,10 +105,11 @@ classDiagram
   `closeConversations` deletes every conversation of the closed or unlinked sessions. On close only,
   `forgetIgnores` removes their ignore lists and drops their ids from the other lists (an unlinked session
   keeps its own). On close (`notify`, not on unlink) it emits `partnerLeft` to the connected partners whose
-  window was open, so their window shows the chatter gone (`memberLeft` without `roomId`). An unlinked
+  window was open and who are not blocked, so their window shows the chatter gone (`memberLeft` without `roomId`). An unlinked
   session's partners are not told; their next message gets `accountRequired` (ASV-F-024 closes the
   unlinked side's windows).
-- **Away and back**: `socketLost` changes nothing here; the hub tells the open partners with `memberAway`
+- **Away and back**: `socketLost` changes nothing here; the hub tells the open partners it does not block
+  (BR-042, neither side ignores the other) with `memberAway`
   without `roomId`. On `resumed` the hub sends `resumed.windows` (the conversations open for the session,
   with the other side as `otherChatter`) and `buffered`, then `privateWindow` to each open partner so its
   window shows the chatter back (`platform/04c`).

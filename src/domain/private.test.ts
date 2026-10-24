@@ -4,7 +4,7 @@ import { search } from "./directory";
 import { enter, socketLost, type EnterCommand, type Random } from "./entry";
 import { expireAway, leave, resume, unlinkSessions as unlinkOnHub } from "./hub";
 import { blocks } from "./ignore";
-import { closePrivate, ignore, PRIVATE_LIMITS, sendPrivate, unignore, windowsOf, type PrivateEffect } from "./private";
+import { closePrivate, forgetIgnores, ignore, openPartners, PRIVATE_LIMITS, sendPrivate, unignore, windowsOf, type PrivateEffect } from "./private";
 import { emptyHubState, joinRoom, postRoom, ROOM_LIMITS, type HubState } from "./rooms";
 
 const T0 = new Date("2026-10-24T10:00:00Z");
@@ -162,6 +162,17 @@ describe("sendPrivate (UC6)", () => {
     expect(windowsOf(sent.state, id(1))).toEqual([]);
   });
 
+  it("buffers nothing for an away target that ignores the sender", () => {
+    const { state: start, id, random } = hubWith({ pseudo: "Lola" }, { pseudo: "Max" });
+    const state = socketLost(ignore(start, id(1), id(0)).state, id(1), T0).state;
+
+    const sent = sendPrivate(state, { sessionId: id(0), targetPseudo: "Max", text: "hi" }, T0, random);
+
+    const max = sent.state.sessions.get(id(1));
+    expect(max?.status === "away" ? max.buffered : undefined).toEqual([]);
+    expect(windowsOf(sent.state, id(1))).toEqual([]);
+  });
+
   it("does nothing for an unknown or away sender", () => {
     const { state: start, id, random } = hubWith({ pseudo: "Lola" }, { pseudo: "Max" });
     const away = socketLost(start, id(0), T0).state;
@@ -252,6 +263,24 @@ describe("session close and unlink", () => {
     expect(left.state.ignores.get(id(2))).toEqual([]);
     expect(left.state.ignores.has(id(0))).toBe(false);
     expect(left.effects).toContainEqual({ type: "partnerLeft", sessionId: id(0), pseudo: "Lola", recipients: [id(1)] });
+  });
+
+  it("tells nothing to a partner either side ignores, and hides presence from it (BR-042)", () => {
+    const { state: start, id, random } = hubWith({ pseudo: "Lola" }, { pseudo: "Max" });
+    let state = sendPrivate(start, { sessionId: id(0), targetPseudo: "Max", text: "hi" }, T0, random).state;
+    state = ignore(state, id(0), id(1)).state;
+
+    expect(openPartners(state, id(0))).toEqual([]);
+    expect(openPartners(unignore(state, id(0), id(1)).state, id(0))).toHaveLength(1);
+    expect(leave(state, id(0)).effects.filter((effect) => effect.type === "partnerLeft")).toEqual([]);
+  });
+
+  it("drops a closed session from the other ignore lists only", () => {
+    const { state: start, id } = hubWith({ pseudo: "Lola" }, { pseudo: "Max" }, { pseudo: "Zoe" });
+    let state = ignore(start, id(2), id(0)).state;
+    state = ignore(state, id(2), id(1)).state;
+
+    expect(forgetIgnores(state, new Set([id(0)])).ignores.get(id(2))).toEqual([id(1)]);
   });
 
   it("tells nobody when the partner closed its side or is away", () => {
