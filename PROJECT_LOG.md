@@ -218,3 +218,27 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   3 Nice filed. Merge was first blocked because the `sonarqube` status sat on the previous SHA: `pnpm sonar`
   must run on the head commit, even a docs-only one.
 - 510 tests, 98.6 % statements. Follow-ups #34 to #44 on Project #69. Next: brick 6.
+
+## 2026-10-24 — Brick 6: private conversations, ignore and directory (PR #51 merged)
+
+- Squash-merged as `b7089f2`; issue #46 closed. Studies first (`e786191`): domain API, window state, web
+  overlays, `closePrivate`. Members only (BR-040), ignore both ways (BR-041/042, cap 100), search by pseudo
+  or city (UC7), non-modal private windows with minimise and an unread counter.
+- Owner decisions: past the target's window cap, a new conversation is refused with `targetBusy`, checked
+  before the ignore test so it reveals no block (C, 370/500). The window cap is 3 instead of 10 (B, 405/500);
+  raising it through trust tiers belongs to #28.
+- Local review: no Must; the Should items were fixed. SonarQube failed on the first scan (7 issues:
+  cognitive complexity, nested ternary, `role="dialog"`), passed after the fixes.
+- New owner rule: every QA pass reads the inspector (console, network, WebSocket frames, storage) and runs
+  the security probes S1–S10; every finding is filed. 7 fully green. S7 is partial: the room flood is
+  throttled, but directory search, added by this brick, is not (#49). #48 (no secure headers, P1) and #50
+  (cookie without `Secure`, P1) predate the brick. The rule went into the global QA skill (claude-skills #52, which
+  absorbed #69).
+- Codex: the first round raised 4 P2 findings, fixed (`hasAccount` refreshed on link and unlink, ignore list
+  restored on resume, private history hidden after an ignore, a window kept open when `closePrivate` cannot
+  be sent). The last round raised 2 edge cases, filed as #52.
+- GitHub Actions blocked on claude-skills (billing): owner rule to rely on the local CI only (`pnpm verify`,
+  gitleaks, `pnpm audit`, `pnpm sonar`) until it is fixed.
+- 595 tests, 98.55 % statements. Follow-ups #48 to #50 and #52 on Project #69. Next: let two real testers
+  try the site (exposure MCDA and legal checks first), then brick 8.
+
