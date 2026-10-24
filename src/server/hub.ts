@@ -319,8 +319,8 @@ export const createHub = (deps: HubDeps): Hub => {
 
   const caller = (socket: Socket, bound: Bound): Caller => ({ key: socket.key, ip: socket.ip, sessionId: bound.sessionId });
   /** Commands of later bricks. */
-  const notAvailable = async (socket: Socket, _bound: Bound, command: ClientMessage): Promise<Outgoing[]> =>
-    [out.error(socket.key, "invalid", command.seq, "notAvailable")];
+  const notAvailable = (socket: Socket, _bound: Bound, command: ClientMessage): Promise<Outgoing[]> =>
+    Promise.resolve([out.error(socket.key, "invalid", command.seq, "notAvailable")]);
 
   const handlers: HandlerMap = {
     leave: (socket, bound, _command, now) => onLeave(socket, bound, now),
