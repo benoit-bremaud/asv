@@ -27,7 +27,7 @@ import {
   type RoomsResult,
 } from "../domain";
 import type { AccountIo } from "./account-io";
-import { createAccountHandlers, type AccountCommand } from "./hub-accounts";
+import { createAccountHandlers, type Caller } from "./hub-accounts";
 import { createOutgoing, sessionOf, type Outgoing } from "./outgoing";
 import { CAPS, clientMessage, type ClientMessage } from "../shared/protocol";
 
@@ -317,8 +317,7 @@ export const createHub = (deps: HubDeps): Hub => {
       return out.roomOutgoing(result.effects, seq);
     };
 
-  const account = async (socket: Socket, bound: Bound, command: AccountCommand, now: Date): Promise<Outgoing[]> =>
-    accounts.handle({ key: socket.key, ip: socket.ip, sessionId: bound.sessionId }, command, now);
+  const caller = (socket: Socket, bound: Bound): Caller => ({ key: socket.key, ip: socket.ip, sessionId: bound.sessionId });
   /** Commands of later bricks. */
   const notAvailable = async (socket: Socket, _bound: Bound, command: ClientMessage): Promise<Outgoing[]> =>
     [out.error(socket.key, "invalid", command.seq, "notAvailable")];
@@ -330,10 +329,10 @@ export const createHub = (deps: HubDeps): Hub => {
     createRoom: roomCommand((sessionId, command) => createRoom(state, { sessionId, name: command.payload.name }, deps.random)),
     postRoom: roomCommand((sessionId, command, now) =>
       postRoom(state, { sessionId, roomId: command.payload.roomId, text: command.payload.text }, now)),
-    requestCode: account,
-    verifyCode: account,
-    signOutEverywhere: account,
-    deleteAccount: account,
+    requestCode: (socket, bound, command, now) => accounts.requestCode(caller(socket, bound), command, now),
+    verifyCode: (socket, bound, command, now) => accounts.verifyCode(caller(socket, bound), command, now),
+    signOutEverywhere: (socket, bound, command, now) => accounts.signOutEverywhere(caller(socket, bound), command, now),
+    deleteAccount: (socket, bound, command, now) => accounts.deleteAccount(caller(socket, bound), command, now),
     sendPrivate: notAvailable,
     ignore: notAvailable,
     unignore: notAvailable,
@@ -348,6 +347,7 @@ export const createHub = (deps: HubDeps): Hub => {
     removeRoom: notAvailable,
   };
   const runBound = <K extends BoundType>(type: K, socket: Socket, bound: Bound, command: Command<K>, now: Date): Promise<Outgoing[]> => {
+    // Accepted by TypeScript's correlated-union rule: `handlers[K]` is `BoundHandler<K>`.
     const handler: BoundHandler<K> = handlers[type];
     return handler(socket, bound, command, now);
   };

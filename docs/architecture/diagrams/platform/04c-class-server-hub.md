@@ -33,6 +33,9 @@ classDiagram
     +String protocols
     +onLogError(error) void
     +closeSocket(socketKey) void
+    +AccountIo accounts
+    +Mailer mailer
+    +onStoreError(error) void
   }
   class ConnectionLogStore {
     <<interface, src/domain/ports.ts>>
@@ -92,17 +95,17 @@ The hub is split by command group, all behind the same `createHub(HubDeps)`:
 | Module | Holds |
 |---|---|
 | `src/server/hub.ts` | live state, sockets, serial queue, `receive`/`close`/`tick`, entry commands (`enter`, `resume`, `leave`), rooms commands, and the **handler map** |
-| `src/server/outgoing.ts` | effect mapping: `toMember`, `send`, `error`, `warning`, `roomOutgoing`, `memberAwayInRooms`, `memberBackInRooms`, `roomList` broadcast |
+| `src/server/outgoing.ts` | effect mapping: `sessionOf`, `toMember`, `send`, `error`, `warning`, `keysOf`, `roomJoined`, `roomOutgoing` (with the `roomList` broadcast), `memberAwayInRooms`, `memberBackInRooms` |
 | `src/server/hub-accounts.ts` | account commands (`requestCode`, `verifyCode`, `signOutEverywhere`, `deleteAccount`) and their `warning unavailable` guard (`platform/04d`) |
 
 ```mermaid
 classDiagram
   class HubContext {
-    <<shared by the modules>>
-    +HubDeps deps
+    <<src/server/hub-accounts.ts>>
+    +AccountDeps deps : random, accounts, mailer, onStoreError
+    +OutgoingModule out
     +state() HubState
     +setState(HubState) void
-    +Outgoing out
   }
   class HandlerMap {
     <<Record keyed by ClientMessage type>>
@@ -113,16 +116,19 @@ classDiagram
     +send(to, type, payload) Outgoing
     +error(socketKey, code, replyTo, text = code) Outgoing
     +warning(socketKey, code, replyTo) Outgoing
+    +keysOf(sessionIds) String[]
+    +roomJoined(roomId) Payload
     +roomOutgoing(effects, replyTo) Outgoing[]
     +memberAwayInRooms(session) Outgoing[]
     +memberBackInRooms(session) Outgoing[]
   }
   class AccountHandlers {
     <<src/server/hub-accounts.ts>>
-    +requestCode
-    +verifyCode
-    +signOutEverywhere
-    +deleteAccount
+    +requestCode(caller, command, now)
+    +verifyCode(caller, command, now)
+    +signOutEverywhere(caller, command, now)
+    +deleteAccount(caller, command, now)
+    +unlink(filter) Outgoing[]
   }
   Hub ..> HandlerMap
   HandlerMap ..> AccountHandlers
@@ -136,7 +142,8 @@ classDiagram
   socket without session. Commands of later bricks map to one `notAvailable` handler.
 - **Error text** defaults to the code (`error(key, "forbidden")` sends `message: "forbidden"`); only
   `frameTooLarge` and `notAvailable` pass a different text.
-- No behaviour changes: the existing hub tests pass unchanged.
+- Each account handler is wrapped in the same guard: a store failure answers `warning unavailable` and
+  commits nothing. `unlink` also serves `signOutDevice`.
 
 ## Rules the code applies
 
@@ -151,8 +158,8 @@ classDiagram
   `leave`; a socket without `bound` has no session.
 - **Socket without session**: only `enter` and `resume` are accepted; anything else → `error forbidden`.
   `enter` or `resume` on a socket that already has a session → `error invalid`.
-- **Commands of later bricks** (`sendPrivate`, `ignore`, `unignore`, `search`, `report`, moderation and
-  account commands) → `error invalid` with message `notAvailable` until their brick wires them.
+- **Commands of later bricks** (`sendPrivate`, `ignore`, `unignore`, `search`, `report` and moderation
+  commands) → `error invalid` with message `notAvailable` until their brick wires them.
 - **enter** (`entry/02a`): `activeBan` and `accountId` are absent until bricks 8 and 5. On `entered` the hub
   draws a connection id (`random.id()`), awaits `log.open`, stores session id and connection id on the
   socket, then sends `entered { sessionId, resumeToken, roomList, isModerator: false }`. If `log.open`

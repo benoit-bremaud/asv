@@ -11,6 +11,7 @@ export interface Outgoing {
   readonly message: ServerMessage;
 }
 
+/** Payload of one server message type. */
 export type Payload<T extends ServerMessage["type"]> = Extract<ServerMessage, { type: T }>["payload"];
 type ErrorCode = Payload<"error">["code"];
 
@@ -48,7 +49,10 @@ export const toMember = (session: Session): Member => {
 /** Room effects that change a count or the set of rooms, so every list must be refreshed. */
 const LIST_CHANGES = new Set<(Effect | RoomEffect)["type"]>(["memberJoined", "memberLeft", "roomCreated", "roomDeleted"]);
 
-/** Builds the mapping; `seq` numbers every server message of the hub. */
+/**
+ * Builds the mapping. One `seq` counter numbers every server message of the hub; outgoing messages with no
+ * recipient are dropped.
+ */
 export const createOutgoing = (source: OutgoingSource) => {
   let seq = 0;
 
@@ -59,6 +63,7 @@ export const createOutgoing = (source: OutgoingSource) => {
   /** The text defaults to the code (issue #25). */
   const error = (socketKey: string, code: ErrorCode, replyTo?: number, text: string = code): Outgoing =>
     send([socketKey], "error", { code, message: text, replyTo });
+  /** The text equals the code; the client translates it. */
   const warning = (socketKey: string, code: string, replyTo?: number): Outgoing =>
     send([socketKey], "warning", { code, message: code, replyTo });
 
@@ -118,7 +123,7 @@ export const createOutgoing = (source: OutgoingSource) => {
           }));
           break;
         case "roomRefused":
-          out.push(send(keysOf([effect.sessionId]), "warning", { code: effect.reason, message: effect.reason, replyTo }));
+          out.push(...keysOf([effect.sessionId]).map((key) => warning(key, effect.reason, replyTo)));
           break;
         default:
           break;
@@ -131,4 +136,5 @@ export const createOutgoing = (source: OutgoingSource) => {
   return { send, error, warning, keysOf, roomJoined, memberAwayInRooms, memberBackInRooms, roomOutgoing };
 };
 
+/** What `createOutgoing` returns, shared with `hub-accounts`. */
 export type OutgoingModule = ReturnType<typeof createOutgoing>;

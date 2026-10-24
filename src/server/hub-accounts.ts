@@ -9,31 +9,48 @@ import {
   linkAccount,
   normaliseEmail,
   unlinkSessions,
+  type CodeRandom,
   type HubState,
+  type Mailer,
   type SessionFilter,
 } from "../domain";
+import type { AccountIo } from "./account-io";
 import type { ClientMessage } from "../shared/protocol";
-import type { HubDeps } from "./hub";
 import { sessionOf, type Outgoing, type OutgoingModule } from "./outgoing";
 
 type Command<T extends ClientMessage["type"]> = Extract<ClientMessage, { type: T }>;
-export type AccountCommand = Command<"requestCode" | "verifyCode" | "signOutEverywhere" | "deleteAccount">;
 
 /** The socket asking, as the account handlers see it. */
 export interface Caller {
   readonly key: string;
+  /** Key of the per-IP code quota (BR-071). */
   readonly ip: string;
   readonly sessionId: string;
 }
 
+/** The hub dependencies the account commands use (the subset of `HubDeps`). */
+export interface AccountDeps {
+  readonly random: CodeRandom;
+  readonly accounts: AccountIo;
+  readonly mailer: Mailer;
+  readonly onStoreError: (error: unknown) => void;
+}
+
 /** What the account handlers share with the hub. */
 export interface HubContext {
-  readonly deps: HubDeps;
+  readonly deps: AccountDeps;
   readonly out: OutgoingModule;
   state(): HubState;
+  /** Commits a new state; called only once every store write of the command succeeded. */
   setState(next: HubState): void;
 }
 
+type AccountHandler<T extends ClientMessage["type"]> = (caller: Caller, command: Command<T>, now: Date) => Promise<Outgoing[]>;
+
+/**
+ * One handler per account command for the hub's handler map, plus `unlink` for `signOutDevice`. A handler
+ * never rejects: a store failure becomes `warning unavailable` and leaves memory untouched.
+ */
 export const createAccountHandlers = (ctx: HubContext) => {
   const { deps, out } = ctx;
 
@@ -46,7 +63,7 @@ export const createAccountHandlers = (ctx: HubContext) => {
   };
 
   /** UC17 steps 1–3 (`accounts/02`): refusals are explicit only when they reveal nothing about the address. */
-  const onRequestCode = async (caller: Caller, command: Command<"requestCode">, now: Date): Promise<Outgoing[]> => {
+  const onRequestCode: AccountHandler<"requestCode"> = async (caller, command, now) => {
     const email = normaliseEmail(command.payload.email);
     // An invalid address never reaches the store.
     if (email === undefined) return [out.warning(caller.key, "emailInvalid", command.seq)];
@@ -71,7 +88,7 @@ export const createAccountHandlers = (ctx: HubContext) => {
   };
 
   /** UC17 steps 4–6. */
-  const onVerifyCode = async (caller: Caller, command: Command<"verifyCode">, now: Date): Promise<Outgoing[]> => {
+  const onVerifyCode: AccountHandler<"verifyCode"> = async (caller, command, now) => {
     const pending = await deps.accounts.loadPending(caller.sessionId);
     if (!pending) return [out.warning(caller.key, "codeMissing", command.seq)];
     const check = checkCode(pending.stored, await deps.accounts.codeMatches(pending, command.payload.code), now);
@@ -103,43 +120,41 @@ export const createAccountHandlers = (ctx: HubContext) => {
     })];
   };
 
-  /** UC18 "everywhere" and UC19, over the WebSocket. */
-  const onAccountWide = async (caller: Caller, command: Command<"signOutEverywhere" | "deleteAccount">, now: Date): Promise<Outgoing[]> => {
+  /** UC18 "everywhere" and UC19 share this: the caller must be signed in, then its sessions are unlinked. */
+  const accountWide = async (caller: Caller, replyTo: number, act: (accountId: string) => Promise<void>): Promise<Outgoing[]> => {
     const accountId = sessionOf(ctx.state(), caller.sessionId).accountId;
-    if (!accountId) return [out.warning(caller.key, "notSignedIn", command.seq)];
-    if (command.type === "deleteAccount") {
-      const found = await deps.accounts.accountById(accountId);
-      if (found) {
-        const closure = closeAccount(found.account, now);
-        await deps.accounts.close(closure.vault, found.emailKeyedHash, closure.carryOver);
-      }
-    } else {
-      await deps.accounts.deleteAllDevices(accountId);
-    }
+    if (!accountId) return [out.warning(caller.key, "notSignedIn", replyTo)];
+    await act(accountId);
     return unlink({ by: "account", accountId });
   };
 
-  /** Every account command goes through this guard. */
-  const guarded = async (caller: Caller, command: AccountCommand, run: () => Promise<Outgoing[]>): Promise<Outgoing[]> => {
-    try {
-      return await run();
-    } catch (cause) {
-      deps.onStoreError(cause);
-      return [out.warning(caller.key, "unavailable", command.seq)];
-    }
-  };
+  const onSignOutEverywhere: AccountHandler<"signOutEverywhere"> = (caller, command) =>
+    accountWide(caller, command.seq, (accountId) => deps.accounts.deleteAllDevices(accountId));
 
-  const handle = (caller: Caller, command: AccountCommand, now: Date): Promise<Outgoing[]> =>
-    guarded(caller, command, () => {
-      switch (command.type) {
-        case "requestCode":
-          return onRequestCode(caller, command, now);
-        case "verifyCode":
-          return onVerifyCode(caller, command, now);
-        default:
-          return onAccountWide(caller, command, now);
-      }
+  const onDeleteAccount: AccountHandler<"deleteAccount"> = (caller, command, now) =>
+    accountWide(caller, command.seq, async (accountId) => {
+      const found = await deps.accounts.accountById(accountId);
+      if (!found) return;
+      const closure = closeAccount(found.account, now);
+      await deps.accounts.close(closure.vault, found.emailKeyedHash, closure.carryOver);
     });
 
-  return { handle, unlink };
+  /** Keeps a failed store call from leaving a command half applied in memory. */
+  const guarded = <T extends ClientMessage["type"]>(run: AccountHandler<T>): AccountHandler<T> =>
+    async (caller, command, now) => {
+      try {
+        return await run(caller, command, now);
+      } catch (cause) {
+        deps.onStoreError(cause);
+        return [out.warning(caller.key, "unavailable", command.seq)];
+      }
+    };
+
+  return {
+    requestCode: guarded(onRequestCode),
+    verifyCode: guarded(onVerifyCode),
+    signOutEverywhere: guarded(onSignOutEverywhere),
+    deleteAccount: guarded(onDeleteAccount),
+    unlink,
+  };
 };
