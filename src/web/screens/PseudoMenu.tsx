@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Gender } from "../../shared/protocol";
 import { useChat } from "../chat-context";
 import { STRINGS } from "../strings";
@@ -31,8 +31,15 @@ export const PseudoMenu = ({ target }: { target: MenuTarget }) => {
     const outside = (event: MouseEvent) => {
       if (!root.current?.contains(event.target as Node)) setOpen(false);
     };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
     document.addEventListener("mousedown", outside);
-    return () => document.removeEventListener("mousedown", outside);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("mousedown", outside);
+      document.removeEventListener("keydown", escape);
+    };
   }, [open]);
 
   if (target.sessionId === state.me?.sessionId) return <Pseudo pseudo={target.pseudo} gender={gender} away={target.away} />;
@@ -53,12 +60,8 @@ export const PseudoMenu = ({ target }: { target: MenuTarget }) => {
           : { sessionId: target.sessionId, pseudo: target.pseudo, hasAccount: target.hasAccount, away: false, gender: gender ?? "unspecified" },
       });
   };
-  const onKey = (event: KeyboardEvent) => {
-    if (event.key === "Escape") setOpen(false);
-  };
-
   return (
-    <span className="pseudo-menu" ref={root} onKeyDown={onKey}>
+    <span className="pseudo-menu" ref={root}>
       <button
         type="button"
         className="link pseudo-button"

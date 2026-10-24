@@ -205,7 +205,8 @@ input { font: inherit; padding: 4px; min-height: 32px; }
 .menu { position: absolute; z-index: 20; top: 100%; left: 0; display: flex; flex-direction: column; gap: 4px; padding: 6px var(--gap); white-space: nowrap; box-shadow: 4px 4px 0 var(--bevel-dark); }
 .menu [aria-disabled="true"] { opacity: 0.55; }
 .privates { position: fixed; right: var(--gap); bottom: 0; z-index: 15; display: flex; flex-direction: row-reverse; align-items: flex-end; gap: 8px; max-width: calc(100vw - 2 * var(--gap)); overflow-x: auto; }
-.private-window { width: 300px; display: flex; flex-direction: column; gap: 6px; box-shadow: 4px 4px 0 var(--bevel-dark); }
+/* A non-modal <dialog open>: reset the user-agent position, margin and colours so it docks like a panel. */
+.private-window { position: static; margin: 0; color: inherit; width: 300px; display: flex; flex-direction: column; gap: 6px; box-shadow: 4px 4px 0 var(--bevel-dark); }
 .private-title { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--brand); }
 .private-actions { display: flex; gap: 8px; }
 .private-lines { list-style: none; margin: 0; padding: 0; height: 200px; overflow-y: auto; }

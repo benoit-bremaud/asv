@@ -36,7 +36,7 @@ const PrivateWindow = ({ windowKey, window, draft, setDraft }: Props) => {
   }
 
   return (
-    <section role="dialog" aria-modal="false" aria-label={STRINGS.privateWith(other.pseudo)} className="private-window panel">
+    <dialog open aria-label={STRINGS.privateWith(other.pseudo)} className="private-window panel">
       <header className="private-title">
         <PseudoMenu target={{ ...other, away: window.presence !== "here" }} />
         <span className="private-actions">
@@ -60,7 +60,7 @@ const PrivateWindow = ({ windowKey, window, draft, setDraft }: Props) => {
         <span className={`small${tooLong ? " too-long" : ""}`} aria-live="polite">{[...draft].length}/{MAX_TEXT}</span>
         <button type="submit" className="bevel primary" disabled={tooLong || gone}>{STRINGS.send}</button>
       </form>
-    </section>
+    </dialog>
   );
 };
 

@@ -180,11 +180,14 @@ type PrivateMessage = Extract<ServerMessage, { type: "privateMessage" }>["payloa
 const privateLine = (state: ChatState, window: PrivateView, message: PrivateMessage, id: number): Line => {
   const mine = message.authorSessionId === state.me?.sessionId;
   const other = window.other;
+  const knownGender = (sessionId: string) => state.known[sessionId] ?? "unspecified";
+  let gender: Gender = other.away ? knownGender(other.sessionId) : other.gender;
+  if (mine) gender = state.me ? knownGender(state.me.sessionId) : "unspecified";
   return {
     id,
     authorSessionId: message.authorSessionId,
     pseudo: mine ? (state.me?.pseudo ?? "") : other.pseudo,
-    gender: mine ? (state.me ? (state.known[state.me.sessionId] ?? "unspecified") : "unspecified") : other.away ? (state.known[other.sessionId] ?? "unspecified") : other.gender,
+    gender,
     text: message.text,
     sentAt: message.sentAt,
   };
@@ -230,6 +233,47 @@ const onResumedWindows = (state: ChatState, payload: Extract<ServerMessage, { ty
   return payload.buffered.reduce((acc, message) => appendPrivate(acc, message, true), { ...state, windows });
 };
 
+const onResumed = (state: ChatState, payload: Extract<ServerMessage, { type: "resumed" }>["payload"]): ChatState => {
+  const open: Record<string, OpenRoom> = {};
+  let known = state.known;
+  for (const room of payload.rooms) {
+    open[room.roomId] = { members: room.members, lines: state.open[room.roomId]?.lines ?? [] };
+    known = learn(known, room.members);
+  }
+  const active = state.active && open[state.active] ? state.active : Object.keys(open)[0];
+  const screen = state.screen === "room" && active ? "room" : "rooms";
+  const me = { sessionId: payload.sessionId, pseudo: payload.pseudo };
+  const next: ChatState = { ...state, me, open, known, active, screen, account: linkedTo(state.account, payload.accountId) };
+  return onResumedWindows(next, payload);
+};
+
+const onError = (state: ChatState, code: Extract<ServerMessage, { type: "error" }>["payload"]["code"]): ChatState => {
+  // Nothing but `enter` can be sent before `entered`, so an error now answers the pending entry.
+  if (code === "accountRequired" && state.account.step === "signedOut") {
+    // `web-ui/07`: a chatter without an account is offered one.
+    return { ...state, notice: "accountRequired", account: { ...state.account, open: true, step: "askEmail" } };
+  }
+  return { ...state, notice: code, pendingPseudo: undefined };
+};
+
+/** Opens (or restores) the window with that chatter; a new one is keyed by its session id until the server answers. */
+const openPrivate = (state: ChatState, other: OtherChatter): ChatState => {
+  const existing = Object.entries(state.windows).find(([, window]) => window.other.sessionId === other.sessionId);
+  if (existing) {
+    const [id, window] = existing;
+    return { ...state, windows: { ...state.windows, [id]: { ...window, minimised: false, unread: 0 } } };
+  }
+  const window: PrivateView = { other, lines: [], minimised: false, unread: 0, presence: other.away ? "away" : "here" };
+  return { ...state, windows: { ...state.windows, [other.sessionId]: window } };
+};
+
+const togglePrivate = (state: ChatState, conversationId: string): ChatState => {
+  const window = state.windows[conversationId];
+  if (!window) return state;
+  const minimised = !window.minimised;
+  return { ...state, windows: { ...state.windows, [conversationId]: { ...window, minimised, unread: minimised ? window.unread : 0 } } };
+};
+
 const onServer = (state: ChatState, message: ServerMessage): ChatState => {
   switch (message.type) {
     case "entered":
@@ -244,19 +288,8 @@ const onServer = (state: ChatState, message: ServerMessage): ChatState => {
       };
     case "entryRefused":
       return { ...state, pendingPseudo: undefined, entryError: message.payload.reason };
-    case "resumed": {
-      const open: Record<string, OpenRoom> = {};
-      let known = state.known;
-      for (const room of message.payload.rooms) {
-        open[room.roomId] = { members: room.members, lines: state.open[room.roomId]?.lines ?? [] };
-        known = learn(known, room.members);
-      }
-      const active = state.active && open[state.active] ? state.active : Object.keys(open)[0];
-      const screen = state.screen === "room" && active ? "room" : "rooms";
-      const me = { sessionId: message.payload.sessionId, pseudo: message.payload.pseudo };
-      const next: ChatState = { ...state, me, open, known, active, screen, account: linkedTo(state.account, message.payload.accountId) };
-      return onResumedWindows(next, message.payload);
-    }
+    case "resumed":
+      return onResumed(state, message.payload);
     case "resumeRefused":
       return { ...initialState, link: state.link, lastPseudo: state.me?.pseudo };
     case "roomList":
@@ -321,12 +354,7 @@ const onServer = (state: ChatState, message: ServerMessage): ChatState => {
     case "warning":
       return onWarning(state, message.payload.code, message.payload.triesLeft);
     case "error":
-      // Nothing but `enter` can be sent before `entered`, so an error now answers the pending entry.
-      if (message.payload.code === "accountRequired" && state.account.step === "signedOut") {
-        // `web-ui/07`: a chatter without an account is offered one.
-        return { ...state, notice: "accountRequired", account: { ...state.account, open: true, step: "askEmail" } };
-      }
-      return { ...state, notice: message.payload.code, pendingPseudo: undefined };
+      return onError(state, message.payload.code);
     default:
       return state;
   }
@@ -366,23 +394,12 @@ export const chatReducer = (state: ChatState, action: Action): ChatState => {
       return { ...state, account: { ...state.account, pendingVerify: true } };
     case "requestingCode":
       return { ...state, account: { ...state.account, open: true, step: "askEmail", pendingRequest: true } };
-    case "openPrivate": {
-      const existing = Object.entries(state.windows).find(([, window]) => window.other.sessionId === action.other.sessionId);
-      if (existing) {
-        const [id, window] = existing;
-        return { ...state, windows: { ...state.windows, [id]: { ...window, minimised: false, unread: 0 } } };
-      }
-      const window: PrivateView = { other: action.other, lines: [], minimised: false, unread: 0, presence: action.other.away ? "away" : "here" };
-      return { ...state, windows: { ...state.windows, [action.other.sessionId]: window } };
-    }
+    case "openPrivate":
+      return openPrivate(state, action.other);
     case "closePrivate":
       return { ...state, windows: Object.fromEntries(Object.entries(state.windows).filter(([id]) => id !== action.conversationId)) };
-    case "togglePrivate": {
-      const window = state.windows[action.conversationId];
-      if (!window) return state;
-      const minimised = !window.minimised;
-      return { ...state, windows: { ...state.windows, [action.conversationId]: { ...window, minimised, unread: minimised ? window.unread : 0 } } };
-    }
+    case "togglePrivate":
+      return togglePrivate(state, action.conversationId);
     case "searching":
       return { ...state, search: { ...state.search, query: action.query, pending: true } };
     case "clearSearch":

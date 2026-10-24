@@ -80,6 +80,10 @@ export const openPartners = (state: HubState, sessionId: string): { conversation
 export const windowsOf = (state: HubState, sessionId: string): PrivateConversation[] =>
   [...state.conversations.values()].filter((conversation) => conversation.openFor.includes(sessionId));
 
+/** BR-043: the window is already open for the session, or it still has room for one more. */
+const hasRoom = (state: HubState, existing: PrivateConversation | undefined, sessionId: string): boolean =>
+  (existing?.openFor.includes(sessionId) ?? false) || windowsOf(state, sessionId).length < PRIVATE_LIMITS.maxWindows;
+
 /** UC6, BR-013, BR-020, BR-021, BR-040 to BR-043. */
 export const sendPrivate = (state: HubState, command: SendPrivateCommand, now: Date, random: Random): PrivateResult => {
   const sender = state.sessions.get(command.sessionId);
@@ -98,12 +102,10 @@ export const sendPrivate = (state: HubState, command: SendPrivateCommand, now: D
   const counted = countMessage(state, sender.id, now);
   if (!counted) return refuse("flood");
   const existing = between(state, sender.id, target.id);
-  const senderOpen = existing?.openFor.includes(sender.id) ?? false;
-  if (!senderOpen && windowsOf(state, sender.id).length >= PRIVATE_LIMITS.maxWindows) return refuse("tooManyWindows");
+  if (!hasRoom(state, existing, sender.id)) return refuse("tooManyWindows");
   // BR-043 (owner choice C): nobody can force windows open past the target's cap; checked before the ignore
   // test so it reveals no block.
-  const targetOpen = existing?.openFor.includes(target.id) ?? false;
-  if (!targetOpen && windowsOf(state, target.id).length >= PRIVATE_LIMITS.maxWindows) return refuse("targetBusy");
+  if (!hasRoom(state, existing, target.id)) return refuse("targetBusy");
 
   const id = existing?.id ?? random.id();
   const openFor = new Set(existing?.openFor);
