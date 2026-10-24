@@ -5,6 +5,7 @@
 import { createAdaptorServer } from "@hono/node-server";
 import type { IncomingMessage } from "node:http";
 import { isIP, type AddressInfo } from "node:net";
+import { resolve } from "node:path";
 import type { Duplex } from "node:stream";
 import { WebSocketServer, type RawData, type WebSocket } from "ws";
 import { createAccountIo } from "../../server/account-io";
@@ -96,6 +97,9 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
   if (behindTunnel && !LOOPBACK.has(options.hostname)) throw new Error("behindTunnel requires a loopback hostname (BR-085)");
   // Exposed testers need the legal files and a real mailer: no silent memory or dev-mail fallback (BR-084).
   if (behindTunnel && (options.logFile === undefined || options.vaultFile === undefined)) throw new Error("behindTunnel requires logFile and vaultFile (BR-084)");
+  if (options.logFile !== undefined && options.vaultFile !== undefined && resolve(options.logFile) === resolve(options.vaultFile)) {
+    throw new Error("logFile and vaultFile must be different files (BR-084)");
+  }
   if (behindTunnel && options.mailer === undefined && !options.brevoApiKey) throw new Error("behindTunnel requires a Brevo API key");
   // Behind the tunnel real data is kept: every key is required, or the sealed vault could never be read (ADR-0017).
   const crypto = createCrypto(await cryptoKeysFromEnv(options.cryptoEnv ?? {}, behindTunnel, (text) => console.warn(text)));

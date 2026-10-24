@@ -55,10 +55,10 @@ const time = (value: unknown): number | undefined => {
   return Number.isNaN(at) ? undefined : at;
 };
 
-/** Creates the folder (0700) and file (0600), tightens them when they already exist, and ends a cut last line. */
+/** Creates the folder (0700) and file (0600), tightens an existing file, and ends a cut last line. */
 const prepare = (path: string) => {
+  // Only a folder created here is set to 0700: an existing, possibly shared folder is left as it is.
   mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
-  chmodSync(dirname(path), 0o700);
   if (!existsSync(path)) appendFileSync(path, "", { mode: 0o600 });
   // A write cut by a crash leaves no newline: end it, so the next record starts on its own line.
   const text = readFileSync(path, "utf8");

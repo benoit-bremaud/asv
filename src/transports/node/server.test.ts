@@ -213,6 +213,10 @@ describe("tester exposure (ADR-0018)", () => {
     await expect(startNodeServer({ ...base, logFile: "/tmp/never.jsonl", vaultFile: "/tmp/never2.jsonl" })).rejects.toThrow(/Brevo/);
   });
 
+  it("refuses one file for both the log and the vault (BR-084)", async () => {
+    await expect(start({ logFile: "/tmp/asv-same.jsonl", vaultFile: "/tmp/../tmp/asv-same.jsonl" })).rejects.toThrow(/different files/);
+  });
+
   it("refuses to start behind the tunnel off loopback (BR-085)", async () => {
     await expect(startNodeServer({ port: 0, hostname: "0.0.0.0", allowedOrigins: [ORIGIN], behindTunnel: true })).rejects.toThrow(/loopback/);
   });

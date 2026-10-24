@@ -37,7 +37,7 @@ describe("createFileLog (BR-084)", () => {
     chmodSync(path, 0o644);
     const log = createFileLog(path, T0);
     expect(statSync(path).mode & 0o777).toBe(0o600);
-    expect(statSync(dirname(path)).mode & 0o777).toBe(0o700);
+    expect(statSync(dirname(path)).mode & 0o777).toBe(0o755);
 
     await log.open({ connectionId: "c1", ip: "203.0.113.7", protocols: "HTTP/1.1 WebSocket", pseudo: "Lola", openedAt: T0 });
     await log.appendContribution({ connectionId: "c1", protocols: "HTTP/1.1 WebSocket", at: after(1000) });
@@ -90,6 +90,14 @@ describe("crash safety (BR-084)", () => {
     expect(text).toContain('{"kind":"open","accou');
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
+  });
+
+  it("creates a missing folder as 0700", () => {
+    const path = join(file("new"), "log.jsonl");
+
+    createFileLog(path, T0);
+
+    expect(statSync(dirname(path)).mode & 0o777).toBe(0o700);
   });
 
   it("ends a line cut by a crash so the start-up close record stays readable", () => {
