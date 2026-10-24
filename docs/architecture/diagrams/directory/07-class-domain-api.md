@@ -17,13 +17,12 @@ nothing logged (`directory/06`). Does not cover opening a conversation from a re
 classDiagram
   class DirectoryApi {
     <<src/domain/directory.ts>>
-    +search(state, sessionId, query) SearchHit[]
+    +search(state, sessionId, query) Session[]
   }
-  class SearchHit {
-    +Session session
-    +RoomId[] rooms
+  class Session {
+    <<entry/04>>
   }
-  DirectoryApi ..> SearchHit
+  DirectoryApi ..> Session
 ```
 
 ## Rules the code applies
@@ -36,7 +35,7 @@ classDiagram
 - Excluded: the searcher, and every session `blocks(searcher, session)` (`private-conversations/07`: either
   one ignores the other, UC7 2b and BR-042).
 - Sorted by folded pseudo, at most 50 hits.
-- The hub maps each hit to the protocol `searchResults` entry: a connected member (pseudo, gender, age,
-  city, `hasAccount`) or an away chatter, plus `rooms` (the room ids the session is in).
+- The hub maps each session to the protocol `searchResults` entry: a connected member (pseudo, gender, age,
+  city, `hasAccount`) or an away chatter, plus `rooms` (the session's `rooms`).
 - The search is a read: no state change, no flood count, no contribution line (it creates no content).
   Queries are never logged (`directory/06`).

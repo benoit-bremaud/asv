@@ -4,6 +4,8 @@
  */
 import type { DeviceClaim } from "./accounts";
 import type { ConnectedSession, EntryState, Gender, Random, Session } from "./entry";
+import { blocks, type IgnoreLists } from "./ignore";
+import type { PrivateConversation } from "./private";
 import { canonicalPseudo, containsReservedWord, foldPseudo, PSEUDO_CHARS } from "./pseudo";
 
 /** V1 values of BR-020, BR-021, BR-023 and BR-024, tunable here only (BR-030 lengths live in the name pattern). */
@@ -38,13 +40,17 @@ export interface OfficialRoom {
   readonly kind: "themed" | "regional";
 }
 
-/** The hub state (`platform/04b`); brick 6 adds conversations and ignore lists. */
+/** The hub state (`platform/04b`). */
 export interface HubState extends EntryState {
   readonly rooms: ReadonlyMap<string, Room>;
   /** Times of the accepted messages of each session in the flood window (BR-021). */
   readonly flood: ReadonlyMap<string, readonly Date[]>;
   /** Device claims waiting for `POST /account/device`, keyed by claim hash (BR-073). */
   readonly deviceClaims: ReadonlyMap<string, DeviceClaim>;
+  /** Private conversations by id (`private-conversations/07`). */
+  readonly conversations: ReadonlyMap<string, PrivateConversation>;
+  /** BR-042, BR-044. */
+  readonly ignores: IgnoreLists;
 }
 
 /** One line of the room list (UC2). */
@@ -124,6 +130,8 @@ export const emptyHubState = (officialRooms: readonly OfficialRoom[]): HubState 
   rooms: officialRoomMap(officialRooms),
   flood: new Map(),
   deviceClaims: new Map(),
+  conversations: new Map(),
+  ignores: new Map(),
 });
 
 /** Members of a room, connected and away (BR-023 counts both). */
@@ -172,6 +180,8 @@ export const restoreHubState = (
     rooms,
     flood: new Map(),
     deviceClaims: new Map(),
+    conversations: new Map(),
+    ignores: new Map(),
   };
   for (const room of [...rooms.values()].filter((candidate) => candidate.kind === "user")) {
     const members = roomMembers(state, room.id);
@@ -286,6 +296,13 @@ const recentMessages = (state: HubState, sessionId: string, now: Date): Date[] =
   return (state.flood.get(sessionId) ?? []).filter((at) => at.getTime() > since);
 };
 
+/** BR-021: counts one accepted message, or `undefined` when the session is over the flood limit. */
+export const countMessage = (state: HubState, sessionId: string, now: Date): HubState | undefined => {
+  const recent = recentMessages(state, sessionId, now);
+  if (recent.length >= ROOM_LIMITS.floodMessages) return undefined;
+  return { ...state, flood: new Map(state.flood).set(sessionId, [...recent, now]) };
+};
+
 /** UC4, BR-020, BR-021. The text stays raw: smileys are rendered by `web-ui` (BR-022). */
 export const postRoom = (state: HubState, command: PostRoomCommand, now: Date): RoomsResult => {
   const session = connectedSession(state, command.sessionId);
@@ -295,13 +312,15 @@ export const postRoom = (state: HubState, command: PostRoomCommand, now: Date): 
   if (text.length === 0) return refused(state, session.id, "empty");
   // BR-020 counts characters (code points), not UTF-16 units.
   if ([...text].length > ROOM_LIMITS.maxTextLength) return refused(state, session.id, "tooLong");
-  const recent = recentMessages(state, session.id, now);
-  if (recent.length >= ROOM_LIMITS.floodMessages) return refused(state, session.id, "flood");
+  const counted = countMessage(state, session.id, now);
+  if (!counted) return refused(state, session.id, "flood");
+  // BR-042: members who ignore the author, or whom the author ignores, do not get the line; the echo stays.
   const recipients = roomMembers(state, command.roomId)
     .filter((member) => member.status === "connected")
+    .filter((member) => member.id === session.id || !blocks(state.ignores, session.id, member.id))
     .map((member) => member.id);
   return result(
-    { ...state, flood: new Map(state.flood).set(session.id, [...recent, now]) },
+    counted,
     {
       type: "roomMessage",
       roomId: command.roomId,

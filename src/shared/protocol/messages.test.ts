@@ -172,8 +172,8 @@ describe("transport caps (issue #13)", () => {
 
 describe("away member shape (issue #21)", () => {
   const joined = (members: unknown[]) => ({ type: "roomJoined", seq: 1, payload: { roomId: "lyon", members } });
-  const connected = { sessionId: "s1", pseudo: "Lola", away: false, gender: "woman", age: 25, city: "Lyon" };
-  const away = { sessionId: "s2", pseudo: "Max", away: true };
+  const connected = { sessionId: "s1", pseudo: "Lola", hasAccount: false, away: false, gender: "woman", age: 25, city: "Lyon" };
+  const away = { sessionId: "s2", pseudo: "Max", hasAccount: false, away: true };
 
   it("accepts a room list with a connected and an away member", () => {
     expect(serverMessage.safeParse(joined([connected, away])).success).toBe(true);

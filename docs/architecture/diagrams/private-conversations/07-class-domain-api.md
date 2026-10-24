@@ -22,19 +22,20 @@ classDiagram
   }
   class PrivateConversation {
     +ConversationId id : first + ":" + second
-    +SessionId first : lower id
+    +SessionId first : the first sender
     +SessionId second
     +SessionId[] openFor : sides whose window is open
   }
   class PrivateApi {
     <<src/domain/private.ts>>
-    +sendPrivate(state, SendPrivateCommand, now) PrivateResult
+    +sendPrivate(state, SendPrivateCommand, now, random) PrivateResult
     +closePrivate(state, sessionId, conversationId) PrivateResult
     +ignore(state, sessionId, targetSessionId) PrivateResult
     +unignore(state, sessionId, targetSessionId) PrivateResult
     +blocks(state, a, b) Boolean
     +windowsOf(state, sessionId) PrivateConversation[]
-    +closeConversations(state, sessionIds) PrivateResult
+    +closeConversations(state, sessions, notify) PrivateResult
+    +forgetIgnores(state, sessionIds) HubState
   }
   class SendPrivateCommand {
     +SessionId sessionId
@@ -76,8 +77,9 @@ classDiagram
   6. Flood: the shared counter of `rooms` (BR-021, 5 per 10 s across rooms and private) → `flood`.
   7. The conversation is not open for the sender and the sender already has 10 open windows →
      `tooManyWindows` (BR-043).
-- On acceptance the flood counter counts the message, the conversation is created if missing (id
-  `first:second`, sorted session ids) and the sender's side is opened (`privateWindowOpened` for the sender
+- On acceptance the flood counter counts the message, the conversation is created if missing (a random id from
+  `random.id()`, since two UUIDs would pass the protocol's 64-character id cap; it is found again by its
+  pair) and the sender's side is opened (`privateWindowOpened` for the sender
   when it was closed).
 - **Delivery**, against the target:
   - `blocks(sender, target)`: either one ignores the other (BR-041, BR-042) → `privateMessage` to the
@@ -99,9 +101,10 @@ classDiagram
   messages are just dropped both ways.
 - **Rooms** (BR-042, `rooms/07` amended): `postRoom` removes from `recipients` every member for whom
   `blocks(author, member)`; the author's echo stays.
-- **Session close** (`hub.ts` `leave` and `expireAway`, and `accounts.unlinkSessions`): `closeConversations`
-  deletes every conversation of the closed or unlinked sessions, removes their ignore lists and drops their
-  ids from the other lists. On close (not on unlink) it emits `partnerLeft` to the connected partners whose
+- **Session close** (`hub.ts` `leave` and `expireAway`, and its `unlinkSessions` and `resume` shadows):
+  `closeConversations` deletes every conversation of the closed or unlinked sessions. On close only,
+  `forgetIgnores` removes their ignore lists and drops their ids from the other lists (an unlinked session
+  keeps its own). On close (`notify`, not on unlink) it emits `partnerLeft` to the connected partners whose
   window was open, so their window shows the chatter gone (`memberLeft` without `roomId`). An unlinked
   session's partners are not told; their next message gets `accountRequired` (ASV-F-024 closes the
   unlinked side's windows).

@@ -21,9 +21,9 @@ const fromServer = (message: ServerMessage) => fire({ type: "server", message })
 const msg = <T extends ServerMessage["type"]>(type: T, payload: Extract<ServerMessage, { type: T }>["payload"]) =>
   ({ type, seq: 0, payload }) as ServerMessage;
 
-const man = (sessionId: string, pseudo = sessionId): Member => ({ sessionId, pseudo, away: false, gender: "man", age: 30 });
-const woman = (sessionId: string, pseudo = sessionId): Member => ({ sessionId, pseudo, away: false, gender: "woman", age: 25, city: "Lyon" });
-const away = (sessionId: string, pseudo = sessionId): Member => ({ sessionId, pseudo, away: true });
+const man = (sessionId: string, pseudo = sessionId): Member => ({ sessionId, pseudo, hasAccount: false, away: false, gender: "man", age: 30 });
+const woman = (sessionId: string, pseudo = sessionId): Member => ({ sessionId, pseudo, hasAccount: false, away: false, gender: "woman", age: 25, city: "Lyon" });
+const away = (sessionId: string, pseudo = sessionId): Member => ({ sessionId, pseudo, hasAccount: false, away: true });
 
 const rooms = [
   { id: "r1", name: "Paris", kind: "regional" as const, count: 2 },
@@ -818,5 +818,138 @@ describe("account panel", () => {
     await user.click(within(panel()).getByRole("button", { name: STRINGS.close }));
 
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+});
+
+describe("pseudo menu, private windows and search (web-ui/07)", () => {
+  const signedIn = async () => {
+    await goOnline();
+    await fire({ type: "entering", pseudo: "ana" });
+    await fromServer(msg("entered", { sessionId: "me", resumeToken: "t", roomList: rooms, isModerator: false, accountId: "a1" }));
+  };
+  const member = (hasAccount: boolean): Member => ({ ...man("s2", "bob"), hasAccount });
+  const openMenu = (user: ReturnType<typeof userEvent.setup>) => user.click(screen.getByRole("button", { name: STRINGS.pseudoMenu("bob") }));
+  const sent = () => connection.send.mock.calls.map(([command]) => command);
+
+  it("opens a pending window from the pseudo menu, then sends from it", async () => {
+    const user = await setup();
+    await signedIn();
+    await joinRoom("r1", [member(true)]);
+
+    await openMenu(user);
+    await user.click(screen.getByRole("menuitem", { name: STRINGS.privateMessage }));
+    const dialog = screen.getByRole("dialog", { name: STRINGS.privateWith("bob") });
+    await user.type(within(dialog).getByLabelText(STRINGS.message), "salut{Enter}");
+
+    expect(sent()).toContainEqual({ type: "sendPrivate", payload: { targetPseudo: "bob", text: "salut" } });
+    expect(within(dialog).getByLabelText(STRINGS.message)).toHaveProperty("value", "");
+  });
+
+  it("closes the menu with Escape and does not show it on my own pseudo", async () => {
+    const user = await setup();
+    await signedIn();
+    await joinRoom("r1", [member(true), man("me", "ana")]);
+
+    await openMenu(user);
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(screen.queryByRole("button", { name: STRINGS.pseudoMenu("ana") })).toBeNull();
+  });
+
+  it("greys message privé for a chatter without account, and opens the account panel when I have none", async () => {
+    const user = await setup();
+    await goOnline();
+    await enterChat();
+    await joinRoom("r1", [member(false)]);
+
+    await openMenu(user);
+    expect(screen.getByRole("menuitem", { name: STRINGS.privateMessage })).toHaveProperty("disabled", true);
+    await user.keyboard("{Escape}");
+
+    await fromServer(msg("roomJoined", { roomId: "r1", members: [member(true)] }));
+    await openMenu(user);
+    await user.click(screen.getByRole("menuitem", { name: STRINGS.privateMessage }));
+    expect(screen.queryByRole("dialog", { name: STRINGS.privateWith("bob") })).toBeNull();
+    expect(screen.getByRole("heading", { name: STRINGS.accountTitle })).toBeTruthy();
+  });
+
+  it("ignores and unignores from the menu, and hides the ignored chatter's lines", async () => {
+    const user = await setup();
+    await signedIn();
+    await joinRoom("r1", [member(true)]);
+    await fromServer(msg("roomMessage", { roomId: "r1", authorSessionId: "s2", pseudo: "bob", gender: "man", text: "spam", sentAt: "2026-10-24T10:00:00.000Z" }));
+
+    await openMenu(user);
+    await user.click(screen.getByRole("menuitem", { name: STRINGS.ignore }));
+    expect(sent()).toContainEqual({ type: "ignore", payload: { targetSessionId: "s2" } });
+    await fromServer(msg("ignoreUpdated", { ignored: ["s2"] }));
+
+    expect(screen.queryByText("spam")).toBeNull();
+    expect(screen.getByText(STRINGS.ignoredMark)).toBeTruthy();
+    await openMenu(user);
+    await user.click(screen.getByRole("menuitem", { name: STRINGS.unignore }));
+    expect(sent()).toContainEqual({ type: "unignore", payload: { targetSessionId: "s2" } });
+  });
+
+  it("shows incoming messages, minimises with an unread count and closes with closePrivate", async () => {
+    const user = await setup();
+    await signedIn();
+    await fromServer(msg("privateWindow", { conversationId: "c1", other: { sessionId: "s2", pseudo: "bob", hasAccount: true, away: false, gender: "man" } }));
+    await fromServer(msg("privateMessage", { conversationId: "c1", authorSessionId: "s2", text: "coucou", sentAt: "2026-10-24T10:00:00.000Z" }));
+    expect(within(screen.getByRole("dialog")).getByText(/coucou/)).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: STRINGS.minimise }));
+    await fromServer(msg("privateMessage", { conversationId: "c1", authorSessionId: "s2", text: "re", sentAt: "2026-10-24T10:00:01.000Z" }));
+    expect(screen.getByText(STRINGS.unread(1))).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: new RegExp(STRINGS.restore("bob")) }));
+
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: STRINGS.close }));
+    expect(sent()).toContainEqual({ type: "closePrivate", payload: { conversationId: "c1" } });
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("disables the composer once the partner left, and closes without telling the server", async () => {
+    const user = await setup();
+    await signedIn();
+    await fromServer(msg("privateWindow", { conversationId: "c1", other: { sessionId: "s2", pseudo: "bob", hasAccount: true, away: false, gender: "man" } }));
+
+    await fromServer(msg("memberLeft", { sessionId: "s2", pseudo: "bob" }));
+
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText(STRINGS.otherGone)).toBeTruthy();
+    expect(within(dialog).getByLabelText(STRINGS.message)).toHaveProperty("disabled", true);
+    await user.click(within(dialog).getByRole("button", { name: STRINGS.close }));
+    expect(sent().filter((command) => command.type === "closePrivate")).toEqual([]);
+  });
+
+  it("searches from 2 characters and lists the results with their rooms", async () => {
+    const user = await setup();
+    await signedIn();
+    const field = screen.getByLabelText(STRINGS.searchLabel);
+
+    await user.type(field, "b{Enter}");
+    expect(screen.getByText(STRINGS.searchShort)).toBeTruthy();
+    await user.type(field, "o{Enter}");
+    expect(sent()).toContainEqual({ type: "search", payload: { query: "bo" } });
+
+    await fromServer(msg("searchResults", { results: [{ sessionId: "s2", pseudo: "bob", hasAccount: true, away: false, gender: "man", age: 30, city: "Lyon", rooms: ["r1"] }] }));
+    expect(screen.getByRole("button", { name: STRINGS.pseudoMenu("bob") })).toBeTruthy();
+    expect(screen.getByText(`— ${STRINGS.inRooms("Paris")}`)).toBeTruthy();
+
+    await fromServer(msg("searchResults", { results: [] }));
+    expect(screen.getByText(STRINGS.noResult)).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: STRINGS.cancel }));
+    expect(screen.queryByText(STRINGS.noResult)).toBeNull();
+  });
+
+  it("opens the search overlay from a room", async () => {
+    const user = await setup();
+    await signedIn();
+    await joinRoom("r1");
+
+    await user.click(screen.getByRole("button", { name: STRINGS.search }));
+
+    expect(screen.getByRole("heading", { name: STRINGS.searchTitle })).toBeTruthy();
   });
 });

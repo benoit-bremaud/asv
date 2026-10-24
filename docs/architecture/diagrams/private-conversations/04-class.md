@@ -16,7 +16,6 @@ classDiagram
     +SessionId first
     +SessionId second
     +SessionId[] openFor
-    +static keyFor(a, b) ConversationId
   }
   class PrivateMessage {
     +ConversationId conversationId

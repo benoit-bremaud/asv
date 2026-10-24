@@ -3,10 +3,14 @@
  * the rule is enforced by ESLint (`platform/03-component`).
  */
 export * from "./accounts";
+export * from "./directory";
+export * from "./ignore";
+export * from "./private";
 export * from "./entry";
 export * from "./ports";
 export * from "./pseudo";
 export {
+  countMessage,
   createRoom,
   emptyHubState,
   joinRoom,
@@ -28,5 +32,6 @@ export {
   type RoomsResult,
   type RoomSummary,
 } from "./rooms";
-// Shadow the entry versions: closing a session must also leave its rooms (`rooms/07`).
-export { expireAway, leave, type HubResult } from "./hub";
+// Shadow the entry and accounts versions: closing a session must also leave its rooms and conversations
+// (`rooms/07`, `private-conversations/07`).
+export { expireAway, leave, resume, unlinkSessions, type HubResult } from "./hub";

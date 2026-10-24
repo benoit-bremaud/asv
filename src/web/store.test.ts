@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { Member, ServerMessage } from "../shared/protocol";
-import { chatReducer, initialState, MAX_LINES, type Action, type ChatState } from "./store";
+import { chatReducer, initialState, MAX_LINES, type Action, type ChatState, type OtherChatter } from "./store";
 
 const server = (state: ChatState, message: ServerMessage) => chatReducer(state, { type: "server", message });
 const act = (state: ChatState, action: Action) => chatReducer(state, action);
 
-const man = (sessionId: string, pseudo = sessionId): Member => ({ sessionId, pseudo, away: false, gender: "man", age: 30 });
-const woman = (sessionId: string, pseudo = sessionId): Member => ({ sessionId, pseudo, away: false, gender: "woman", age: 25, city: "Lyon" });
-const away = (sessionId: string, pseudo = sessionId): Member => ({ sessionId, pseudo, away: true });
+const man = (sessionId: string, pseudo = sessionId): Member => ({ sessionId, pseudo, hasAccount: false, away: false, gender: "man", age: 30 });
+const woman = (sessionId: string, pseudo = sessionId): Member => ({ sessionId, pseudo, hasAccount: false, away: false, gender: "woman", age: 25, city: "Lyon" });
+const away = (sessionId: string, pseudo = sessionId): Member => ({ sessionId, pseudo, hasAccount: false, away: true });
 
 const withRoom = (roomId: string, members: Member[] = [], lines: ChatState["open"][string]["lines"] = []): ChatState => ({
   ...initialState,
@@ -182,12 +182,12 @@ describe("chatReducer: server messages", () => {
     expect(next.open.r1?.members.map((m) => m.sessionId)).toEqual(["s2"]);
   });
 
-  it("memberLeft without a room id is ignored", () => {
+  it("memberLeft without a room id leaves the rooms untouched", () => {
     const state = withRoom("r1", [man("s1")]);
 
     const next = server(state, { type: "memberLeft", seq: 0, payload: { sessionId: "s1", pseudo: "s1" } });
 
-    expect(next).toBe(state);
+    expect(next.open).toEqual(state.open);
   });
 
   it("memberAway turns the member into the away variant and leaves others untouched", () => {
@@ -197,13 +197,13 @@ describe("chatReducer: server messages", () => {
       payload: { roomId: "r1", sessionId: "s1", pseudo: "ana" },
     });
 
-    expect(next.open.r1?.members).toEqual([{ sessionId: "s1", pseudo: "ana", away: true }, man("s2")]);
+    expect(next.open.r1?.members).toEqual([{ sessionId: "s1", pseudo: "ana", hasAccount: false, away: true }, man("s2")]);
   });
 
-  it("memberAway without a room id is ignored", () => {
+  it("memberAway without a room id leaves the rooms untouched", () => {
     const state = withRoom("r1", [man("s1")]);
 
-    expect(server(state, { type: "memberAway", seq: 0, payload: { sessionId: "s1", pseudo: "s1" } })).toBe(state);
+    expect(server(state, { type: "memberAway", seq: 0, payload: { sessionId: "s1", pseudo: "s1" } }).open).toEqual(state.open);
   });
 
   describe("roomMessage", () => {
@@ -411,5 +411,115 @@ describe("chatReducer: account (web-ui/06)", () => {
     expect(server(signedIn, { type: "accountUnlinked", seq: 0, payload: {} })).toMatchObject({ notice: "accountUnlinked", account: { step: "signedOut" } });
     expect(act(signedIn, { type: "accountStep", step: "signedOut" }).account.accountId).toBeUndefined();
     expect(act(signedIn, { type: "accountStep", step: "confirmDelete" }).account).toMatchObject({ step: "confirmDelete", accountId: "a1" });
+  });
+});
+
+describe("private windows, ignore and search (web-ui/07)", () => {
+  const me = { ...initialState, screen: "rooms" as const, me: { sessionId: "me", pseudo: "Lola" }, known: { me: "woman" as const } };
+  const max: OtherChatter = { sessionId: "s2", pseudo: "Max", hasAccount: true, away: false, gender: "man" };
+  const window = (conversationId: string, other: OtherChatter = max) => ({ type: "privateWindow" as const, seq: 0, payload: { conversationId, other } });
+  const message = (conversationId: string, authorSessionId: string, text: string) =>
+    ({ type: "privateMessage" as const, seq: 0, payload: { conversationId, authorSessionId, text, sentAt: "2026-10-24T10:00:00.000Z" } });
+
+  it("opens a pending window keyed by the other session, then moves it to its conversation id", () => {
+    const pending = act(me, { type: "openPrivate", other: max });
+    expect(Object.keys(pending.windows)).toEqual(["s2"]);
+
+    const opened = server(pending, window("c1"));
+
+    expect(Object.keys(opened.windows)).toEqual(["c1"]);
+    expect(opened.windows.c1).toMatchObject({ presence: "here", minimised: false, lines: [] });
+  });
+
+  it("reopens an existing window instead of adding one", () => {
+    const state = act(server(me, window("c1")), { type: "togglePrivate", conversationId: "c1" });
+
+    const again = act(state, { type: "openPrivate", other: max });
+
+    expect(Object.keys(again.windows)).toEqual(["c1"]);
+    expect(again.windows.c1?.minimised).toBe(false);
+  });
+
+  it("appends lines from both sides, counts unread while minimised and clears it on restore", () => {
+    let state = server(me, window("c1"));
+    state = server(state, message("c1", "me", "salut"));
+    state = act(state, { type: "togglePrivate", conversationId: "c1" });
+    state = server(state, message("c1", "s2", "coucou"));
+
+    expect(state.windows.c1?.lines.map((line) => [line.pseudo, line.gender, line.text])).toEqual([["Lola", "woman", "salut"], ["Max", "man", "coucou"]]);
+    expect(state.windows.c1?.unread).toBe(1);
+    expect(act(state, { type: "togglePrivate", conversationId: "c1" }).windows.c1?.unread).toBe(0);
+  });
+
+  it("drops a message for an unknown window or from an ignored chatter", () => {
+    const state = server(server(me, window("c1")), { type: "ignoreUpdated", seq: 0, payload: { ignored: ["s2"] } });
+
+    expect(server(state, message("c1", "s2", "hi"))).toBe(state);
+    expect(server(state, message("nope", "me", "hi"))).toBe(state);
+    expect(state.ignored).toEqual(["s2"]);
+  });
+
+  it("follows the other's presence through memberAway, privateWindow and memberLeft without roomId", () => {
+    let state = server(me, window("c1"));
+    state = server(state, { type: "memberAway", seq: 0, payload: { sessionId: "s2", pseudo: "Max" } });
+    expect(state.windows.c1?.presence).toBe("away");
+    state = server(state, window("c1"));
+    expect(state.windows.c1?.presence).toBe("here");
+    state = server(state, { type: "memberLeft", seq: 0, payload: { sessionId: "s2", pseudo: "Max" } });
+    expect(state.windows.c1?.presence).toBe("gone");
+  });
+
+  it("shows an away chatter's lines in its last known colour", () => {
+    let state = server(me, window("c1"));
+    state = server(state, window("c1", { sessionId: "s2", pseudo: "Max", hasAccount: true, away: true }));
+
+    state = server(state, message("c1", "s2", "re"));
+
+    expect(state.windows.c1?.lines[0]?.gender).toBe("man");
+  });
+
+  it("rebuilds windows minimised on resume and appends the buffer as unread", () => {
+    const resumed = server(me, {
+      type: "resumed",
+      seq: 0,
+      payload: {
+        sessionId: "me",
+        pseudo: "Lola",
+        resumeToken: "t",
+        rooms: [],
+        windows: [{ conversationId: "c1", other: max }],
+        buffered: [message("c1", "s2", "tu es là ?").payload],
+      },
+    });
+
+    expect(resumed.windows.c1).toMatchObject({ minimised: true, unread: 1, presence: "here" });
+    expect(resumed.windows.c1?.lines.map((line) => line.text)).toEqual(["tu es là ?"]);
+  });
+
+  it("closes a window locally and empties all of them on accountUnlinked", () => {
+    const state = server(server(me, window("c1")), window("c2", { ...max, sessionId: "s3", pseudo: "Zoe" }));
+
+    expect(Object.keys(act(state, { type: "closePrivate", conversationId: "c1" }).windows)).toEqual(["c2"]);
+    expect(server(state, { type: "accountUnlinked", seq: 0, payload: {} }).windows).toEqual({});
+    expect(act(state, { type: "togglePrivate", conversationId: "nope" })).toBe(state);
+  });
+
+  it("opens the account panel on accountRequired when signed out, and only notices it otherwise", () => {
+    const refused = { type: "error" as const, seq: 0, payload: { code: "accountRequired" as const, message: "accountRequired" } };
+
+    expect(server(me, refused).account).toMatchObject({ open: true, step: "askEmail" });
+    const signedIn = { ...me, account: { ...me.account, step: "signedIn" as const, accountId: "a" } };
+    expect(server(signedIn, refused)).toMatchObject({ notice: "accountRequired", account: { open: false } });
+  });
+
+  it("tracks a pending search, its results and clears it", () => {
+    const searching = act(me, { type: "searching", query: "lyon" });
+    expect(searching.search).toEqual({ query: "lyon", pending: true, results: [] });
+    const hit = { sessionId: "s2", pseudo: "Max", hasAccount: true, away: false as const, gender: "man" as const, age: 30, rooms: ["lyon"] };
+
+    const found = server(searching, { type: "searchResults", seq: 0, payload: { results: [hit] } });
+
+    expect(found.search).toEqual({ query: "lyon", pending: false, results: [hit] });
+    expect(act(found, { type: "clearSearch" }).search).toEqual(initialState.search);
   });
 });

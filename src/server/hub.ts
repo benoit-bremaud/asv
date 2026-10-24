@@ -28,6 +28,7 @@ import {
 } from "../domain";
 import type { AccountIo } from "./account-io";
 import { createAccountHandlers, type Caller } from "./hub-accounts";
+import { createPrivateHandlers, type PrivateCaller } from "./hub-private";
 import { createOutgoing, sessionOf, type Outgoing } from "./outgoing";
 import { CAPS, clientMessage, type ClientMessage } from "../shared/protocol";
 
@@ -132,7 +133,11 @@ export const createHub = (deps: HubDeps): Hub => {
     allSockets: () => [...socketOfSession.values()],
   });
   const { send } = out;
-  const accounts = createAccountHandlers({ deps, out, state: () => state, setState: (next) => { state = next; } });
+  const setState = (next: HubState): void => {
+    state = next;
+  };
+  const accounts = createAccountHandlers({ deps, out, state: () => state, setState });
+  const privates = createPrivateHandlers({ deps, out, state: () => state, setState });
 
   const closeLine = async (connectionId: string, now: Date): Promise<void> => {
     try {
@@ -249,7 +254,11 @@ export const createHub = (deps: HubDeps): Hub => {
     const resumeTokenHash = deps.hashToken(resumeToken);
     const released = await releaseStale(resumeTokenHash, now);
     // The takeover could not finish: the others must see the session away.
-    const awayIfReleased = () => (released ? out.memberAwayInRooms(sessionOf(state, released)) : []);
+    const awayIfReleased = () => {
+      if (!released) return [];
+      const session = sessionOf(state, released);
+      return [...out.memberAwayInRooms(session), ...privates.wentAway(session)];
+    };
     let accountStillExists: boolean;
     try {
       accountStillExists = await linkedAccountExists(resumeTokenHash);
@@ -271,18 +280,20 @@ export const createHub = (deps: HubDeps): Hub => {
         return [out.error(socket.key, "logUnavailable", command.seq), ...awayIfReleased()];
       }
       const session = sessionOf(state, effect.sessionId);
+      const windows = privates.resumedWindows(session, effect.buffered);
       return [
         send([socket.key], "resumed", {
           sessionId: session.id,
           pseudo: session.pseudo,
           resumeToken: effect.resumeToken,
           rooms: session.rooms.map(out.roomJoined),
-          windows: [],
-          buffered: [],
+          windows: windows.windows,
+          buffered: windows.buffered,
           ...(session.accountId ? { accountId: session.accountId } : {}),
         }),
         send([socket.key], "roomList", { rooms: roomList(state) }),
         ...out.memberBackInRooms(session),
+        ...windows.back,
       ];
     }
     if (effect?.type === "resumeRefused") return [send([socket.key], "resumeRefused", {})];
@@ -318,6 +329,7 @@ export const createHub = (deps: HubDeps): Hub => {
     };
 
   const caller = (socket: Socket, bound: Bound): Caller => ({ key: socket.key, ip: socket.ip, sessionId: bound.sessionId });
+  const privateCaller = (socket: Socket, bound: Bound): PrivateCaller => ({ key: socket.key, ...bound });
   /** Commands of later bricks. */
   const notAvailable = (socket: Socket, _bound: Bound, command: ClientMessage): Promise<Outgoing[]> =>
     Promise.resolve([out.error(socket.key, "invalid", command.seq, "notAvailable")]);
@@ -333,10 +345,11 @@ export const createHub = (deps: HubDeps): Hub => {
     verifyCode: (socket, bound, command, now) => accounts.verifyCode(caller(socket, bound), command, now),
     signOutEverywhere: (socket, bound, command, now) => accounts.signOutEverywhere(caller(socket, bound), command, now),
     deleteAccount: (socket, bound, command, now) => accounts.deleteAccount(caller(socket, bound), command, now),
-    sendPrivate: notAvailable,
-    ignore: notAvailable,
-    unignore: notAvailable,
-    search: notAvailable,
+    sendPrivate: (socket, bound, command, now) => privates.sendPrivate(privateCaller(socket, bound), command, now),
+    closePrivate: (socket, bound, command, now) => privates.closePrivate(privateCaller(socket, bound), command, now),
+    ignore: (socket, bound, command, now) => privates.ignore(privateCaller(socket, bound), command, now),
+    unignore: (socket, bound, command, now) => privates.unignore(privateCaller(socket, bound), command, now),
+    search: (socket, bound, command, now) => privates.search(privateCaller(socket, bound), command, now),
     report: notAvailable,
     listOpenReports: notAvailable,
     warn: notAvailable,
@@ -389,7 +402,8 @@ export const createHub = (deps: HubDeps): Hub => {
         socketOfSession.delete(bound.sessionId);
         state = socketLost(state, bound.sessionId, now).state;
         await closeLine(bound.connectionId, now);
-        return out.memberAwayInRooms(sessionOf(state, bound.sessionId));
+        const session = sessionOf(state, bound.sessionId);
+        return [...out.memberAwayInRooms(session), ...privates.wentAway(session)];
       }),
 
     tick: (now) =>

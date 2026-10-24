@@ -98,6 +98,8 @@ export const clientMessage = z.discriminatedUnion("type", [
   message("createRoom", z.object({ name: capped(CAPS.roomName) })),
   message("postRoom", z.object({ roomId: id, text })),
   message("sendPrivate", z.object({ targetPseudo: pseudo, text })),
+  // D1: frees a window slot (BR-043); the other side is not told.
+  message("closePrivate", z.object({ conversationId: id })),
   message("ignore", sessionTarget),
   message("unignore", sessionTarget),
   message("search", z.object({ query: capped(CAPS.query) })),
@@ -137,10 +139,12 @@ export const clientMessage = z.discriminatedUnion("type", [
 
 const roomSummary = z.object({ id, name: z.string(), kind: roomKind, count: z.int() });
 /** An away session has no profile (ADR-0011): `member` is a union on `away` (issue #21). */
-const awayChatter = z.object({ sessionId: id, pseudo: z.string(), away: z.literal(true) });
+// `hasAccount` (brick 6): the client greys "message privé" on a chatter without an account (BR-040).
+const awayChatter = z.object({ sessionId: id, pseudo: z.string(), hasAccount: z.boolean(), away: z.literal(true) });
 const connectedMember = z.object({
   sessionId: id,
   pseudo: z.string(),
+  hasAccount: z.boolean(),
   away: z.literal(false),
   gender,
   age: z.int(),
@@ -148,7 +152,7 @@ const connectedMember = z.object({
 });
 const member = z.discriminatedUnion("away", [connectedMember, awayChatter]);
 const otherChatter = z.discriminatedUnion("away", [
-  z.pick(connectedMember, { sessionId: true, pseudo: true, away: true, gender: true }),
+  z.pick(connectedMember, { sessionId: true, pseudo: true, hasAccount: true, away: true, gender: true }),
   awayChatter,
 ]);
 const roomJoined = z.object({ roomId: id, members: z.array(member) });

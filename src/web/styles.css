@@ -198,3 +198,23 @@ input { font: inherit; padding: 4px; min-height: 32px; }
 
 /* Over the BR-020 limit: colour plus weight, never colour alone. */
 .too-long { color: var(--brand); font-weight: bold; }
+
+/* Brick 6 (`web-ui/07`): pseudo menu, private windows, search. */
+.pseudo-menu { position: relative; display: inline-block; }
+.pseudo-button { padding: 0; }
+.menu { position: absolute; z-index: 20; top: 100%; left: 0; display: flex; flex-direction: column; gap: 4px; padding: 6px var(--gap); white-space: nowrap; box-shadow: 4px 4px 0 var(--bevel-dark); }
+.menu [aria-disabled="true"] { opacity: 0.55; }
+.privates { position: fixed; right: var(--gap); bottom: 0; z-index: 15; display: flex; flex-direction: row-reverse; align-items: flex-end; gap: 8px; max-width: calc(100vw - 2 * var(--gap)); overflow-x: auto; }
+.private-window { width: 300px; display: flex; flex-direction: column; gap: 6px; box-shadow: 4px 4px 0 var(--bevel-dark); }
+.private-title { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--brand); }
+.private-actions { display: flex; gap: 8px; }
+.private-lines { list-style: none; margin: 0; padding: 0; height: 200px; overflow-y: auto; }
+.private-window .composer input { flex: 1; min-width: 0; }
+.unread { color: var(--brand); font-weight: bold; }
+.search form { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+.search-results { list-style: none; padding: 0; margin: var(--gap) 0 0; }
+@media (max-width: 767px) {
+  .privates { left: var(--gap); flex-direction: column-reverse; align-items: stretch; }
+  .private-window { width: auto; }
+  .private-lines { height: 40vh; }
+}

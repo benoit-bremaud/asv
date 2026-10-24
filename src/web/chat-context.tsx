@@ -3,7 +3,7 @@ import { createConnection, type CodeRequest, type Connection, type ConnectionDep
 import { chatReducer, initialState, type Action, type ChatState } from "./store";
 
 /** The only local actions screens may dispatch; server actions come from the connection manager. */
-export type LocalAction = Extract<Action, { type: "showRooms" | "showRoom" | "dismissNotice" | "openAccount" | "closeAccount" | "accountStep" }>;
+export type LocalAction = Extract<Action, { type: "showRooms" | "showRoom" | "dismissNotice" | "openAccount" | "closeAccount" | "accountStep" | "openPrivate" | "togglePrivate" | "clearSearch" }>;
 
 /** What screens may do; only the connection manager touches the socket (`web-ui/03`). */
 export interface Commands {
@@ -20,6 +20,13 @@ export interface Commands {
   createRoom(name: string): boolean;
   /** False when nothing was sent (offline), so the screen keeps the draft. */
   post(roomId: string, text: string): boolean;
+  /** False when nothing was sent (offline), so the window keeps the draft. */
+  sendPrivate(targetPseudo: string, text: string): boolean;
+  /** `notify`: the window has a conversation on the server (not pending, partner not gone). */
+  closePrivate(windowKey: string, notify: boolean): void;
+  ignore(sessionId: string): void;
+  unignore(sessionId: string): void;
+  search(query: string): void;
   leave(): void;
   local(action: LocalAction): void;
 }
@@ -72,6 +79,16 @@ export const ChatProvider = ({ connect, children }: { connect: ConnectionFactory
       },
       createRoom: (name) => send({ type: "createRoom", payload: { name } }),
       post: (roomId, text) => send({ type: "postRoom", payload: { roomId, text } }),
+      sendPrivate: (targetPseudo, text) => send({ type: "sendPrivate", payload: { targetPseudo, text } }),
+      closePrivate: (windowKey, notify) => {
+        if (notify) send({ type: "closePrivate", payload: { conversationId: windowKey } });
+        dispatch({ type: "closePrivate", conversationId: windowKey });
+      },
+      ignore: (sessionId) => send({ type: "ignore", payload: { targetSessionId: sessionId } }),
+      unignore: (sessionId) => send({ type: "unignore", payload: { targetSessionId: sessionId } }),
+      search: (query) => {
+        if (send({ type: "search", payload: { query } })) dispatch({ type: "searching", query });
+      },
       leave: () => connection.current?.leave(),
       local: dispatch,
     };

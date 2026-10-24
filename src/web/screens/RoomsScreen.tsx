@@ -2,6 +2,7 @@ import { useState, type SubmitEvent } from "react";
 import { useChat } from "../chat-context";
 import { STRINGS } from "../strings";
 import { Header } from "./Header";
+import { SearchPanel } from "./SearchPanel";
 
 /** UC2, UC3, UC5: the room list with counts and the create form. */
 export const RoomsScreen = () => {
@@ -47,6 +48,7 @@ export const RoomsScreen = () => {
           </label>
           <button type="submit" className="bevel">{STRINGS.create}</button>
         </form>
+        <SearchPanel />
       </main>
     </>
   );
