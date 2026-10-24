@@ -1,5 +1,6 @@
 import { Hono, type Context } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
+import { secureHeaders } from "hono/secure-headers";
 import { ACCOUNT_LIMITS } from "../domain";
 import type { DeviceToken, Stats } from "./hub";
 
@@ -13,17 +14,27 @@ export const DEVICE_COOKIE = "asv_device";
 export interface AccountRouteDeps {
   /** Exact `Origin` values allowed, as for the WebSocket upgrade. */
   readonly allowedOrigins: readonly string[];
-  /** `false` only on plain `http://127.0.0.1` in development. */
+  /** `false` only on plain `http://127.0.0.1` in development; also turns HSTS on (BR-086). */
   readonly secureCookie: boolean;
   redeemDeviceClaim(claim: string): Promise<DeviceToken | undefined>;
   /** Forgets the device of this raw cookie value and unlinks its sessions. */
   signOutDevice(token: string): Promise<void>;
 }
 
+/** Owner identity shown on the legal pages (ADR-0018); set from the environment, never committed. */
+export interface LegalIdentity {
+  readonly ownerName?: string;
+  readonly postalAddress?: string;
+  readonly phone?: string;
+  readonly contactEmail?: string;
+  readonly brevoLocation?: string;
+}
+
 /** What the routes read from the hub. */
 export interface AppDeps {
   readonly stats: () => Stats;
   readonly accounts: AccountRouteDeps;
+  readonly legal?: LegalIdentity;
 }
 
 const NO_STORE = { "Cache-Control": "no-store" };
@@ -51,8 +62,27 @@ const readClaim = async (c: Context): Promise<string | undefined> => {
 export const createApp = (deps: AppDeps): Hono => {
   const app = new Hono();
   const { accounts } = deps;
+  // BR-086: on every response, routes added later by the transport included.
+  app.use(
+    "*",
+    secureHeaders({
+      contentSecurityPolicy: {
+        defaultSrc: ["'self'"],
+        connectSrc: ["'self'"],
+        imgSrc: ["'self'", "data:"],
+        styleSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        frameAncestors: ["'none'"],
+        baseUri: ["'none'"],
+        formAction: ["'self'"],
+      },
+      referrerPolicy: "no-referrer",
+      strictTransportSecurity: accounts.secureCookie ? "max-age=15552000" : false,
+    }),
+  );
   // Aggregate only, no pseudo (`platform/04`, D8).
   app.get("/api/stats", (c) => c.json(deps.stats(), 200, NO_STORE));
+  app.get("/api/legal", (c) => c.json(deps.legal ?? {}, 200, NO_STORE));
 
   // BR-073: a single-use claim from `accountLinked` becomes the HttpOnly device cookie.
   app.post("/account/device", async (c) => {

@@ -11,6 +11,7 @@
     "dev": "pnpm run --parallel \"/^dev:/\"",
     "dev:web": "vite",
     "dev:server": "tsx watch src/transports/node/main.ts",
+    "tester": "pnpm build && ASV_TUNNEL=1 ASV_STATIC_ROOT=dist tsx src/transports/node/main.ts",
     "build": "tsc && vite build",
     "lint": "eslint .",
     "typecheck": "tsc",

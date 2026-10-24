@@ -1,6 +1,7 @@
 import { useState, type SubmitEvent } from "react";
 import { useChat } from "../chat-context";
 import { STRINGS } from "../strings";
+import { LegalPage } from "./LegalPage";
 
 const CODE_LENGTH = 6;
 
@@ -9,6 +10,7 @@ const AskEmail = () => {
   const { state, commands } = useChat();
   const [email, setEmail] = useState("");
   const [remember, setRemember] = useState(true);
+  const [privacy, setPrivacy] = useState(false);
   const submit = (event: SubmitEvent) => {
     event.preventDefault();
     if (email.trim() !== "") commands.requestCode({ email: email.trim(), remember });
@@ -25,7 +27,11 @@ const AskEmail = () => {
       </label>
       <button type="submit" className="bevel primary" disabled={email.trim() === "" || state.account.pendingRequest}>{STRINGS.getCode}</button>
       <p className="small">{STRINGS.codeCreates}</p>
-      <p className="small">{STRINGS.emailKept}</p>
+      <p className="small">
+        {STRINGS.emailKept}{" "}
+        <button type="button" className="link" onClick={() => setPrivacy(true)}>{STRINGS.legal.privacy}</button>
+      </p>
+      {privacy && <LegalPage topic="privacy" onClose={() => setPrivacy(false)} />}
     </form>
   );
 };

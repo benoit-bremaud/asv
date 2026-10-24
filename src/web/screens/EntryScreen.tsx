@@ -3,8 +3,10 @@ import { gender as genderSchema, type Gender } from "../../shared/protocol";
 import { useChat } from "../chat-context";
 import { STRINGS } from "../strings";
 import { Header } from "./Header";
+import { LegalPage, type LegalTopic } from "./LegalPage";
 
 const GENDERS = genderSchema.options;
+const LEGAL_TOPICS: readonly LegalTopic[] = ["rules", "notice", "privacy"];
 /** BR-006, in code points: `maxLength` would count UTF-16 units and stop at 20 emoji. */
 const MAX_CITY = 40;
 /** Refresh interval (ms) of the connected count on the entry screen (D8). */
@@ -45,6 +47,7 @@ export const EntryScreen = () => {
   const [gender, setGender] = useState<Gender>("unspecified");
   const [age, setAge] = useState("");
   const [city, setCity] = useState("");
+  const [legal, setLegal] = useState<LegalTopic>();
   const [adult, setAdult] = useState(false);
   const [terms, setTerms] = useState(false);
   const [email, setEmail] = useState("");
@@ -132,8 +135,12 @@ export const EntryScreen = () => {
         </form>
       </main>
       <footer className="footer">
-        {STRINGS.footer.map((label) => <span key={label}>{label}</span>)}
+        <span>{STRINGS.moderatorSignIn}</span>
+        {LEGAL_TOPICS.map((topic) => (
+          <button key={topic} type="button" className="link" onClick={() => setLegal(topic)}>{STRINGS.legal[topic]}</button>
+        ))}
       </footer>
+      {legal && <LegalPage topic={legal} onClose={() => setLegal(undefined)} />}
     </>
   );
 };

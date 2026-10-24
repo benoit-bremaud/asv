@@ -95,8 +95,8 @@ classDiagram
   class FileVault {
     <<src/transports/node>>
     +String path
-    +recordOpening(account) void
-    +closeLeftOpen(now) void
+    +opened(entry) void
+    +purge(now) void
   }
   FileVault ..|> LegalVaultStore
   class NodeServerOptions {
@@ -105,6 +105,8 @@ classDiagram
     +String vaultFile optional
     +Boolean behindTunnel
     +Boolean secureCookie
+    +String staticRoot optional
+    +LegalIdentity legal optional
   }
   NodeServerOptions ..> FileConnectionLog : logFile set
   NodeServerOptions ..> MemoryConnectionLog : logFile absent
@@ -169,6 +171,11 @@ classDiagram
   commits nothing. `unlink` also serves `signOutDevice`.
 
 ## Rules the code applies
+
+- **Tester exposure files (ADR-0018, BR-084)**: `FileVault` and `FileConnectionLog` close, when they are built,
+  every account and connection a previous process left open; the transport runs `purge` on both files at start-up and once a day, since the hub tick
+  calls `purgeExpired` every second. With the tunnel flag the transport refuses to start without every
+  ADR-0017 key or off loopback (BR-085).
 
 - **Serial**: `receive`, `close` and `tick` run one after the other (a promise queue), so an awaited log
   write never lets another operation see a stale state; an operation that throws does not block the next.

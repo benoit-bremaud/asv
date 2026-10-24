@@ -212,9 +212,18 @@ input { font: inherit; padding: 4px; min-height: 32px; }
 .private-lines { list-style: none; margin: 0; padding: 0; height: 200px; overflow-y: auto; }
 .private-window .composer input { flex: 1; min-width: 0; }
 .unread { color: var(--brand); font-weight: bold; }
+/* Legal pages (ADR-0018): a fixed, scrollable non-modal dialog over the current screen. */
+.legal-page { position: fixed; inset: var(--gap); z-index: 30; box-sizing: border-box; width: auto; max-width: min(720px, calc(100vw - 2 * var(--gap))); margin: 0 auto; overflow: auto; color: inherit; box-shadow: 4px 4px 0 var(--bevel-dark); }
+.legal-table { width: 100%; border-collapse: collapse; font-size: 13px; overflow-wrap: break-word; hyphens: auto; }
+.legal-table th, .legal-table td { border: 1px solid var(--bevel-dark); padding: 4px; text-align: left; vertical-align: top; }
 .search form { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
 .search-results { list-style: none; padding: 0; margin: var(--gap) 0 0; }
 @media (max-width: 767px) {
+  /* Legal table as stacked blocks, each cell labelled by its column (ADR-0018). */
+  .legal-table thead { display: none; }
+  .legal-table tr, .legal-table td { display: block; }
+  .legal-table tr { margin-bottom: var(--gap); }
+  .legal-table td::before { content: attr(data-label) " : "; font-weight: bold; }
   .privates { left: var(--gap); flex-direction: column-reverse; align-items: stretch; }
   .private-window { width: auto; }
   .private-lines { height: 40vh; }

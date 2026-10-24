@@ -128,6 +128,10 @@ export const createAccountIo = ({ store, vault, crypto }: AccountIoDeps) => {
     },
 
     async saveAccount(account: Account, emailKeyedHash: string, created: boolean): Promise<void> {
+      // BR-084: a vault that outlives the in-memory accounts learns each account before it exists, so a
+      // failure leaves no account without its trace (an extra opening is closed at the next start-up).
+      if (created && vault.opened)
+        await vault.opened({ accountId: account.id, sealedEmail: await crypto.seal(account.email), createdAt: account.verifiedAt });
       await store.saveAccount({
         id: account.id,
         email: await crypto.encrypt(account.email, emailContext(account.id)),

@@ -101,9 +101,14 @@ export interface VaultEntry {
   readonly closedAt: Date;
 }
 
+/** What the vault learns when an account is created: everything but the closing date (BR-084). */
+export type VaultOpening = Omit<VaultEntry, "closedAt">;
+
 /** Write-only legal vault (ADR-0014): no read operation exists for the application. */
 export interface LegalVaultStore {
   record(entry: VaultEntry): Promise<void>;
+  /** Only stores that outlive the account store implement it (file vault of ADR-0018). */
+  opened?(entry: VaultOpening): Promise<void>;
   purgeExpired(now: Date): Promise<void>;
 }
 
