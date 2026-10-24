@@ -104,6 +104,7 @@ classDiagram
   class LegalVaultStore {
     <<interface>>
     +record(entry)
+    +opened(entry) optional
     +purgeExpired(now)
   }
   class Mailer {
@@ -147,6 +148,8 @@ classDiagram
 - One port for all account records is enough: there is one SQLite store and one in-memory twin.
 - `LegalVaultStore` is a separate write-only port (ADR-0014, brick 5): `record` and `purgeExpired`, no read
   operation. `record` runs first and `deleteAccount` only after it succeeds; brick 9 wraps both in one storage transaction (BR-081). `createdAt` is `verifiedAt`.
+  Optional `opened(entry)`, implemented only by a vault that outlives the account store (file vault of ADR-0018,
+  BR-084): `AccountIo.saveAccount` calls it for a created account with the sealed e-mail and `verifiedAt`.
   `purgeExpired` drops `accountId` 1 year and the whole record 5 years after `closedAt`, and also purges access
   entries older than 5 years. Each owner read appends an `AccessEntry` (BR-082). The owner-only read
   is a dedicated hub call outside this port (BR-082).

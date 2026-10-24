@@ -242,3 +242,26 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
 - 595 tests, 98.55 % statements. Follow-ups #48 to #50 and #52 on Project #69. Next: let two real testers
   try the site (exposure MCDA and legal checks first), then brick 8.
 
+
+## 2026-10-24 — Real-tester exposure: study (PR #55 merged) and code (issue #54)
+
+- Owner chose option A, a Cloudflare Tunnel to the local Node transport (MCDA 410/500, against staging 350
+  and bringing brick 9 forward 310). Issue #54 holds the plan and the 6-question feedback form.
+- Study, PR #55 (`ef84e1a`): ADR-0018 and BR-084 to BR-086, with the diagrams, matrix, test strategy, GDPR
+  inventory and the provisional legal texts. The local review flagged five Must items, all fixed: plaintext log
+  exception to BR-083, a vault that survives restarts, owner as both editor and host, a GDPR art. 13 table, and
+  one `secureCookie` option. Codex then raised a P1 (vault depended on a graceful stop) and a P2
+  (contribution row), both fixed.
+- Code: JSONL connection log and sealed vault files, crash-safe. The vault opening record is written before
+  the account is saved, start-up closes what a crash left open, purges rewrite through a temp file and a
+  rename, and unreadable lines are kept. Also:
+  - client IP from `CF-Connecting-IP` only in tunnel mode on loopback;
+  - the server refuses to start without the ADR-0017 keys or an https tunnel origin;
+  - Hono `secureHeaders` with a strict CSP; `Secure` and HSTS via `secureCookie`;
+  - the built bundle served by Node (`pnpm tester`);
+  - three legal pages and the notice before the e-mail code, with the owner identity from env vars;
+  - runbook `docs/product/tester-runbook.md`.
+- QA in tunnel mode on the build (desktop and mobile): CSP and headers present, WebSocket entry works, no console
+  errors, log file 0600. The legal table overflowed on mobile; it now stacks as labelled blocks.
+- Not done yet: the vault key tool (#35, openssl commands in the runbook meanwhile); checking the Brevo and
+  Cloudflare DPAs; the tunnel session itself.

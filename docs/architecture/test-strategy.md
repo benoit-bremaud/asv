@@ -49,7 +49,7 @@ TDD is not imposed on this project.
   - an owner read through the dedicated call appends an access entry (date, request reference, legal basis, ids returned), same for the connection log;
   - the record holds only account id, e-mail, creation and closing dates.
 - Tester exposure (ADR-0018):
-  - file log and file vault: lines appended, purged after their period, opening record at account creation, closing records at start-up for accounts left open by a crash (BR-084);
+  - file log and file vault: lines appended, purged after their period, opening record written before the account is saved, closing records at start-up for accounts and connections left open by a crash, atomic purge, unreadable lines kept, files 0600 in a 0700 folder (BR-084);
   - `CF-Connecting-IP` used only with the tunnel flag, a single valid address only, start refused off loopback (BR-085);
   - CSP, `nosniff`, `no-referrer` on every response; HSTS and the `Secure` cookie only with `secureCookie` (BR-086, BR-073, #48, #50);
   - legal pages reachable from the entry screen and the account panel.

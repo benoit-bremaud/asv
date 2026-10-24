@@ -2,7 +2,11 @@ import { afterEach, describe, expect, it } from "vitest";
 import { WebSocket } from "ws";
 import { createMemoryLog } from "./memory-log";
 import { createNodeRandom } from "./random";
-import { startNodeServer, type NodeServer } from "./server";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import type { IncomingMessage } from "node:http";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { clientAddress, startNodeServer, type NodeServer } from "./server";
 
 const ORIGIN = "http://localhost:5173";
 const FRAME_MS = 2000;
@@ -172,5 +176,62 @@ describe("memory log", () => {
       { kind: "connection", connectionId: "c2", ip: "ip", protocols: "p", pseudo: "b", openedAt: at, closedAt: at },
       { kind: "contribution", connectionId: "c2", protocols: "p", at },
     ]);
+  });
+});
+
+describe("tester exposure (ADR-0018)", () => {
+  const request = (header: string | string[] | undefined) =>
+    ({ headers: header === undefined ? {} : { "cf-connecting-ip": header }, socket: { remoteAddress: "127.0.0.1", remotePort: 5555 } }) as unknown as IncomingMessage;
+
+  it("takes one valid CF-Connecting-IP only behind the tunnel (BR-085)", () => {
+    expect(clientAddress(request("203.0.113.7"), true)).toEqual({ ip: "203.0.113.7" });
+    expect(clientAddress(request(" 2001:db8::1 "), true)).toEqual({ ip: "2001:db8::1" });
+    expect(clientAddress(request("203.0.113.7"), false)).toEqual({ ip: "127.0.0.1", port: 5555 });
+    expect(clientAddress(request("203.0.113.7, 198.51.100.1"), true)).toEqual({ ip: "127.0.0.1", port: 5555 });
+    expect(clientAddress(request(["203.0.113.7", "198.51.100.1"]), true)).toEqual({ ip: "127.0.0.1", port: 5555 });
+    expect(clientAddress(request(undefined), true)).toEqual({ ip: "127.0.0.1", port: 5555 });
+  });
+
+  const tunnelKeys = async () => {
+    const b64 = (bytes: ArrayBuffer | Uint8Array) => Buffer.from(bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes)).toString("base64");
+    const pair = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]);
+    return {
+      ASV_DATA_KEYS: `1:${b64(crypto.getRandomValues(new Uint8Array(32)))}`,
+      ASV_HMAC_KEY: b64(crypto.getRandomValues(new Uint8Array(32))),
+      ASV_VAULT_PUBLIC_KEY: b64(await crypto.subtle.exportKey("raw", pair.publicKey)),
+    };
+  };
+
+  it("refuses to start behind the tunnel without every ADR-0017 key", async () => {
+    await expect(startNodeServer({ port: 0, hostname: "127.0.0.1", allowedOrigins: [ORIGIN], behindTunnel: true })).rejects.toThrow(/missing secrets/);
+  });
+
+  it("refuses to start behind the tunnel off loopback (BR-085)", async () => {
+    await expect(startNodeServer({ port: 0, hostname: "0.0.0.0", allowedOrigins: [ORIGIN], behindTunnel: true })).rejects.toThrow(/loopback/);
+  });
+
+  it("purges the log at start-up, logs to the file and serves the build with the BR-086 headers in tunnel mode", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "asv-"));
+    try {
+      writeFileSync(join(dir, "index.html"), "<p>asv</p>");
+      const logFile = join(dir, "log.jsonl");
+      writeFileSync(logFile, '{"kind":"contribution","connectionId":"old","protocols":"p","at":"2020-01-01T00:00:00.000Z"}\n');
+      const { port } = await start({ logFile, vaultFile: join(dir, "vault.jsonl"), behindTunnel: true, secureCookie: true, staticRoot: dir, cryptoEnv: await tunnelKeys() });
+
+      const page = await fetch(`http://127.0.0.1:${port}/`);
+      expect(await page.text()).toBe("<p>asv</p>");
+      expect(page.headers.get("strict-transport-security")).toBe("max-age=15552000");
+      expect(page.headers.get("content-security-policy")).toContain("default-src 'self'");
+      expect(page.headers.get("x-content-type-options")).toBe("nosniff");
+      expect(readFileSync(logFile, "utf8")).not.toContain('"old"');
+
+      const client = await connect(port);
+      client.send("enter", { pseudo: "Lola", ...ENTER });
+      await client.next("entered");
+      expect(readFileSync(logFile, "utf8")).toContain('"pseudo":"Lola"');
+      client.ws.close();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

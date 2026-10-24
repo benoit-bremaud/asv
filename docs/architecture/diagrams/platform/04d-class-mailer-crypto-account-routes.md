@@ -51,6 +51,7 @@ classDiagram
   class LegalVaultStore {
     <<interface, src/domain/ports.ts>>
     +record(entry)
+    +opened(entry) optional
     +purgeExpired(now)
   }
   class MemoryAccountStore {
@@ -77,6 +78,7 @@ classDiagram
   class AccountRoutes {
     <<src/server/app.ts>>
     +POST /account/device(claim) 204 + Set-Cookie
+    +GET /api/legal() LegalIdentity
     +POST /account/sign-out() 204 + cleared cookie
   }
   class HubAccountCalls {
@@ -116,7 +118,9 @@ classDiagram
   version encrypts. In production every variable is required; in development missing ones are generated
   for the process lifetime with a warning (values then die with the process, like the in-memory stores).
 - **Account routes**: both check the `Origin` header against the allowed origins (as the WebSocket
-  upgrade does) and answer 403 otherwise. `/account/device` takes `{ claim }`, asks the hub to redeem it
+  upgrade does) and answer 403 otherwise. Every response carries the BR-086 headers (Hono `secureHeaders`,
+  HSTS only with `secureCookie`). `/api/legal` returns the owner identity of the legal pages from the
+  environment (ADR-0018), never stored in the bundle. `/account/device` takes `{ claim }`, asks the hub to redeem it
   and sets `asv_device=<token>; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=2592000` (no `Secure`
   only on plain `http://127.0.0.1` in development). An unknown or expired claim answers 400.
   `/account/sign-out` hashes the cookie, calls `signOutDevice`, and always clears the cookie (204).

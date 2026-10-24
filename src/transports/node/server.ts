@@ -4,19 +4,21 @@
  */
 import { createAdaptorServer } from "@hono/node-server";
 import type { IncomingMessage } from "node:http";
-import type { AddressInfo } from "node:net";
+import { isIP, type AddressInfo } from "node:net";
 import type { Duplex } from "node:stream";
 import { WebSocketServer, type RawData, type WebSocket } from "ws";
 import { createAccountIo } from "../../server/account-io";
-import { createApp, DEVICE_COOKIE } from "../../server/app";
+import { serveStatic } from "@hono/node-server/serve-static";
+import { createApp, DEVICE_COOKIE, type LegalIdentity } from "../../server/app";
 import { createCrypto } from "../../server/crypto/cipher";
 import { cryptoKeysFromEnv, type CryptoEnv } from "../../server/crypto/keys";
 import { createHub, type Outgoing } from "../../server/hub";
 import { createBrevoMailer } from "../../server/mailer/brevo";
 import { OFFICIAL_ROOMS } from "../../server/official-rooms";
-import type { Mailer } from "../../domain";
+import type { ConnectionLogStore, LegalVaultStore, Mailer } from "../../domain";
 import { CAPS } from "../../shared/protocol";
 import { createMemoryAccountStore, createMemoryVault } from "./memory-accounts";
+import { createFileLog, createFileVault } from "./file-stores";
 import { createMemoryLog } from "./memory-log";
 import { createNodeRandom } from "./random";
 
@@ -41,9 +43,31 @@ export interface NodeServerOptions {
   readonly mailFrom?: string;
   /** Injected in tests to read the codes; Brevo otherwise. */
   readonly mailer?: Mailer;
+  /** JSONL connection log and legal vault (BR-084); memory when absent (development and tests). */
+  readonly logFile?: string;
+  readonly vaultFile?: string;
+  /** Behind the Cloudflare Tunnel: client IP from `CF-Connecting-IP`; loopback listener required (BR-085). */
+  readonly behindTunnel?: boolean;
+  /** `Secure` device cookie and HSTS (BR-073, BR-086); default false (plain HTTP in development). */
+  readonly secureCookie?: boolean;
+  /** Folder of the production build to serve (`dist`); the Vite dev server serves it otherwise. */
+  readonly staticRoot?: string;
+  /** Owner identity for the legal pages (ADR-0018). */
+  readonly legal?: LegalIdentity;
 }
 
-/** A running Node transport: its bound port, its in-memory log (tests read it) and a graceful stop. */
+const DAY_MS = 24 * 60 * 60_000;
+const LOOPBACK = new Set(["127.0.0.1", "::1"]);
+
+/** BR-085: one valid address from `CF-Connecting-IP`, otherwise the socket address. */
+export const clientAddress = (request: IncomingMessage, behindTunnel: boolean): { ip: string; port?: number } => {
+  const header = request.headers["cf-connecting-ip"];
+  const value = typeof header === "string" ? header.trim() : "";
+  if (behindTunnel && isIP(value) !== 0) return { ip: value };
+  return { ip: request.socket.remoteAddress ?? "", port: request.socket.remotePort };
+};
+
+/** A running Node transport: its bound port, its in-memory stores (tests read them; unused when files are set) and a graceful stop. */
 export interface NodeServer {
   readonly port: number;
   readonly log: ReturnType<typeof createMemoryLog>;
@@ -68,11 +92,27 @@ const toText = (data: RawData): string => (Array.isArray(data) ? Buffer.concat(d
 export const startNodeServer = async (options: NodeServerOptions): Promise<NodeServer> => {
   const { now = () => new Date(), tickMs = 1000, silenceMs = 60_000 } = options;
   const sweepMs = options.sweepMs ?? silenceMs / 4;
+  const behindTunnel = options.behindTunnel ?? false;
+  if (behindTunnel && !LOOPBACK.has(options.hostname)) throw new Error("behindTunnel requires a loopback hostname (BR-085)");
   const log = createMemoryLog();
   const random = createNodeRandom();
   const accounts = createMemoryAccountStore();
   const vault = createMemoryVault();
-  const crypto = createCrypto(await cryptoKeysFromEnv(options.cryptoEnv ?? {}, false, (text) => console.warn(text)));
+  const fileLog = options.logFile === undefined ? undefined : createFileLog(options.logFile, now());
+  const fileVault = options.vaultFile === undefined ? undefined : createFileVault(options.vaultFile, now());
+  const purgeFiles = () => {
+    try {
+      fileLog?.purge(now());
+      fileVault?.purge(now());
+    } catch (error) {
+      console.error("legal file purge failed", error);
+    }
+  };
+  purgeFiles();
+  const hubLog: ConnectionLogStore = fileLog ?? log;
+  const hubVault: LegalVaultStore = fileVault ?? vault;
+  // Behind the tunnel real data is kept: every key is required, or the sealed vault could never be read (ADR-0017).
+  const crypto = createCrypto(await cryptoKeysFromEnv(options.cryptoEnv ?? {}, behindTunnel, (text) => console.warn(text)));
   const mailer = options.mailer ?? createBrevoMailer({
     apiKey: options.brevoApiKey,
     from: options.mailFrom ?? "contact@asvchat.fr",
@@ -83,11 +123,11 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
     officialRooms: OFFICIAL_ROOMS,
     random,
     hashToken: random.hashToken,
-    log,
+    log: hubLog,
     protocols: "HTTP/1.1 WebSocket",
     onLogError: (error) => console.error("connection log write failed", error),
     closeSocket: (key) => sockets.get(key)?.ws.close(),
-    accounts: createAccountIo({ store: accounts, vault, crypto }),
+    accounts: createAccountIo({ store: accounts, vault: hubVault, crypto }),
     mailer,
     onStoreError: (error) => console.error("account store failed", error),
   });
@@ -95,12 +135,14 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
     stats: hub.stats,
     accounts: {
       allowedOrigins: options.allowedOrigins,
-      // Development only: plain HTTP on 127.0.0.1 (`platform/04d`).
-      secureCookie: false,
+      // Plain HTTP on 127.0.0.1 in development; on behind the tunnel (BR-073, BR-086).
+      secureCookie: options.secureCookie ?? false,
       redeemDeviceClaim: (claim) => hub.redeemDeviceClaim(claim, now()),
       signOutDevice: async (token) => deliver(await hub.signOutDevice(random.hashToken(token))),
     },
+    legal: options.legal,
   });
+  if (options.staticRoot !== undefined) app.use("*", serveStatic({ root: options.staticRoot }));
   const server = createAdaptorServer({ fetch: app.fetch, hostname: options.hostname });
   const wss = new WebSocketServer({ noServer: true, maxPayload: CAPS.frame });
   const sockets = new Map<string, { ws: WebSocket; lastSeen: number }>();
@@ -121,7 +163,8 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
     sockets.set(key, entry);
     // Set on an open socket; empty only if it died before this line.
     const device = deviceCookie(request.headers.cookie);
-    hub.open(key, request.socket.remoteAddress ?? "", request.socket.remotePort, device && random.hashToken(device));
+    const { ip, port } = clientAddress(request, behindTunnel);
+    hub.open(key, ip, port, device && random.hashToken(device));
     ws.on("message", (data, isBinary) => {
       entry.lastSeen = now().getTime();
       const text = toText(data);
@@ -148,6 +191,7 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
   });
 
   const tick = setInterval(() => void run(hub.tick(now())), tickMs);
+  const daily = setInterval(purgeFiles, DAY_MS);
   const sweep = setInterval(() => {
     const limit = now().getTime() - silenceMs;
     for (const { ws, lastSeen } of sockets.values()) if (lastSeen < limit) ws.terminate();
@@ -164,6 +208,7 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
     stop: async () => {
       clearInterval(tick);
       clearInterval(sweep);
+      clearInterval(daily);
       for (const { ws } of sockets.values()) ws.terminate();
       wss.close();
       await new Promise<void>((resolve) => server.close(() => resolve()));

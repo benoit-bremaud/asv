@@ -219,7 +219,47 @@ describe("entry screen", () => {
   it("renders the footer links", async () => {
     await setup();
 
-    for (const label of STRINGS.footer) expect(screen.getByText(label)).toBeTruthy();
+    expect(screen.getByText(STRINGS.moderatorSignIn)).toBeTruthy();
+    for (const label of Object.values(STRINGS.legal)) expect(screen.getByRole("button", { name: label })).toBeTruthy();
+  });
+});
+
+describe("legal pages (ADR-0018)", () => {
+  it("opens each page from the footer with the owner identity from /api/legal, and closes it", async () => {
+    const fetchStub = stubStats({ ownerName: "Owner Name", contactEmail: "contact@example.org" });
+    const user = await setup();
+
+    await user.click(screen.getByRole("button", { name: STRINGS.legal.notice }));
+    const page = await screen.findByRole("dialog", { name: STRINGS.legal.notice });
+    expect(fetchStub).toHaveBeenCalledWith("/api/legal");
+    expect(await within(page).findByText(/Directeur de la publication : Owner Name/)).toBeTruthy();
+    expect(within(page).getByText(/contact@example.org/)).toBeTruthy();
+
+    await user.click(within(page).getByRole("button", { name: STRINGS.close }));
+    expect(screen.queryByRole("dialog", { name: STRINGS.legal.notice })).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: STRINGS.legal.rules }));
+    expect(within(screen.getByRole("dialog", { name: STRINGS.legal.rules })).getByText(/18 ans ou plus/)).toBeTruthy();
+  });
+
+  it("shows the privacy page with placeholders when /api/legal fails", async () => {
+    stubStats({}, false);
+    const user = await setup();
+
+    await user.click(screen.getByRole("button", { name: STRINGS.legal.privacy }));
+
+    const page = screen.getByRole("dialog", { name: STRINGS.legal.privacy });
+    expect(within(page).getAllByText(/\(à compléter\)/).length).toBeGreaterThan(0);
+    expect(within(page).getByRole("table")).toBeTruthy();
+  });
+
+  it("shows the privacy page when the request throws", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => Promise.reject(new Error("offline"))));
+    const user = await setup();
+
+    await user.click(screen.getByRole("button", { name: STRINGS.legal.privacy }));
+
+    expect(screen.getByRole("dialog", { name: STRINGS.legal.privacy })).toBeTruthy();
   });
 });
 
@@ -753,6 +793,16 @@ describe("account panel", () => {
     await setup();
     await fire({ type: "openAccount" });
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("shows the GDPR notice and opens the privacy page before the code request", async () => {
+    stubStats({});
+    const user = await openPanel();
+
+    expect(within(panel()).getByText(new RegExp(STRINGS.emailKept.slice(0, 30)))).toBeTruthy();
+    await user.click(within(panel()).getByRole("button", { name: STRINGS.legal.privacy }));
+
+    expect(screen.getByRole("dialog", { name: STRINGS.legal.privacy })).toBeTruthy();
   });
 
   it("requests a code with the e-mail and the remember box", async () => {

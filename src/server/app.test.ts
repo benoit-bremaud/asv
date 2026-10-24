@@ -15,6 +15,29 @@ describe("createApp", () => {
     expect(await response.json()).toEqual({ connected: 3 });
   });
 
+  it("sends the BR-086 headers on every response, HSTS only with secureCookie", async () => {
+    const response = await app.request("/nowhere");
+
+    expect(response.headers.get("content-security-policy")).toBe(
+      "default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+    );
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(response.headers.get("referrer-policy")).toBe("no-referrer");
+    expect(response.headers.get("strict-transport-security")).toBe("max-age=15552000");
+    const plain = createApp({ stats: () => ({ connected: 0 }), accounts: { allowedOrigins: [], secureCookie: false, redeemDeviceClaim: () => Promise.resolve(undefined), signOutDevice: () => Promise.resolve() } });
+    expect((await plain.request("/api/stats")).headers.get("strict-transport-security")).toBeNull();
+  });
+
+  it("serves the legal identity from the environment, empty when unset", async () => {
+    expect(await (await app.request("/api/legal")).json()).toEqual({});
+    const withLegal = createApp({
+      stats: () => ({ connected: 0 }),
+      accounts: { allowedOrigins: [], secureCookie: true, redeemDeviceClaim: () => Promise.resolve(undefined), signOutDevice: () => Promise.resolve() },
+      legal: { ownerName: "Owner", contactEmail: "contact@example.org" },
+    });
+    expect(await (await withLegal.request("/api/legal")).json()).toEqual({ ownerName: "Owner", contactEmail: "contact@example.org" });
+  });
+
   it("has no other route", async () => {
     expect((await app.request("/")).status).toBe(404);
   });
