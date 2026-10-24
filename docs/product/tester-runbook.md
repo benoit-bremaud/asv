@@ -2,7 +2,7 @@
 
 How the owner opens asv to the two testers through a Cloudflare Tunnel, then closes it.
 
-## Environment (shell only, never committed)
+## Environment (in `~/.config/asv/tester.env`, never committed)
 
 | Variable | Value |
 |---|---|
@@ -36,8 +36,16 @@ The second command prints `ASV_VAULT_PUBLIC_KEY`. `ASV_DATA_KEYS` is `1:` follow
 - Domain `asvchat.fr` on Cloudflare. `cloudflared tunnel login`, then `cloudflared tunnel create asv-tester`
   and `cloudflared tunnel route dns asv-tester asvchat.fr`. Credentials and `cert.pem` stay in `~/.cloudflared/`
   (mode 0600), never in the repository.
-- `~/.cloudflared/asv-tester.yml` (0600): the tunnel id, its credentials file, and an ingress rule sending
-  `asvchat.fr` to `http://127.0.0.1:8787`, then `http_status:404`.
+- `~/.cloudflared/asv-tester.yml` (0600), with absolute paths:
+
+  ```yaml
+  tunnel: <tunnel id>
+  credentials-file: /home/<user>/.cloudflared/<tunnel id>.json
+  ingress:
+    - hostname: asvchat.fr
+      service: http://127.0.0.1:8787
+    - service: http_status:404
+  ```
 - Brevo: domain `asvchat.fr` authenticated (Brevo code TXT, two DKIM CNAMEs, DMARC TXT, all DNS only); sender
   `contact@asvchat.fr`. Cloudflare Email Routing forwards `contact@asvchat.fr` to the owner's mailbox.
 - All variables live in `~/.config/asv/tester.env` (0600), outside the repository.
