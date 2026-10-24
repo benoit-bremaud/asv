@@ -2,8 +2,8 @@
 
 > **Feature**: platform (roadmap brick 7a)
 > **Use cases**: UC1, UC3, UC4, UC10, UC13
-> **Business rules**: BR-010, BR-011, BR-015, BR-060
-> **Related ADRs**: ADR-0002, ADR-0007, ADR-0011; brick 7a owner choices D1 to D5 (below)
+> **Business rules**: BR-010, BR-011, BR-015, BR-060, BR-085
+> **Related ADRs**: ADR-0002, ADR-0007, ADR-0011, ADR-0018; brick 7a owner choices D1 to D5 (below)
 
 ## Context
 
@@ -26,6 +26,11 @@ sequenceDiagram
     N-->>W: 403, socket destroyed
   else Origin allowed
     N->>N: ws.handleUpgrade, maxPayload 64 KiB
+    alt behind the tunnel (BR-085)
+      N->>N: ip from CF-Connecting-IP, no port
+    else direct
+      N->>N: ip and port from the socket
+    end
     N->>H: open(socketKey, ip, port)
   end
   loop Every frame
@@ -70,7 +75,8 @@ sequenceDiagram
   last frame is older than 60 s, so a dead socket goes within 75 s; termination then follows the "socket closed" path, so the session goes away (BR-011).
 - **Tick**: once a second the transport calls `hub.tick(now)`, which runs `expireAway`, `pruneFlood` and
   `pruneEntryAttempts`. On Cloudflare the single alarm calls the same `tick` (`platform/05`).
-- The IP and source port come from `req.socket.remoteAddress` and `remotePort` (`entry/02a`). They reach
+- The IP and source port come from `req.socket.remoteAddress` and `remotePort` (`entry/02a`), or from
+  `CF-Connecting-IP` only when the transport runs behind the tunnel (BR-085, ADR-0018). They reach
   only the hub, which passes the IP to the domain and both to the connection line (BR-060).
 - The transport supplies the hub with `Random` (session ids, resume tokens with their HMAC-SHA-256 hash under
   a key drawn at process start) and `hashToken`, built on `node:crypto`. A restart changes the key, so

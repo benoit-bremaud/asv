@@ -1,36 +1,40 @@
-# Local review — asv (brick 6, private conversations, ignore and directory, issue #46)
+# Local review — asv (branch docs/54-real-tester-exposure)
 
 - Date: 2026-10-24
-- Commit: 407940e
-- Scope: branch `feat/46-brick-6-private-directory`, diff `main...HEAD`
-- Checks run: design · docs · tests · security · correctness
-- Verdict: ship. Must 0 · Should 0 open (all fixed in d0dbf10) · Nice 4 open (filed as #49)
+- Commit: ef68abd + review fixes
+- Scope: branch diff main...HEAD (documentation only: conception study for issue #54)
+- Checks run: design · docs · security · correctness (one combined reviewer; tests not in scope, no code)
+- Verdict: ship — every Must and Should fixed · Must 0 · Should 0 · Nice 1
 
-## Pre-merge gate (head SHA 407940e)
+## Pre-merge gate (pre-push mode)
 | Step | Result |
 |---|---|
-| 1 Tests | ✅ 591 tests (`pnpm verify`): typecheck, lint, tests and build all green |
-| 2 Coverage | tests about 98.5 % stmts / 93.8 % branches (floor 80) |
-| 3 SonarQube | ✅ PASSED on 407940e (new coverage 97 %, 0 duplication). The first scan on 0692488 failed on 7 new issues (cognitive complexity, nested ternary, `role="dialog"`, non-native key handler), fixed in 027c37c and 407940e |
-| 4 Secrets | ✅ gitleaks clean (`main..HEAD`) · no tracked .env · diff read: nothing sensitive |
-| 5 QA pass | ✅ full: two members (Lola, Max) on two tabs; search by city, pseudo menu, private message both ways, minimise with an unread counter, phone layout (375 px, no horizontal scroll). Console: WebSocket errors only from before the allowed-origins fix of the QA config. Network: no failed request apart from the dev-only StrictMode abort of `/api/stats`. Screenshots: `docs/architecture/qa/2026-10-24-brick6-*.jpg` |
-| 5b Security probes | S1 headers ❌ none sent → #48 · S2 cookie `HttpOnly` + `SameSite=Lax` ✅ but `Secure` hard-coded off → #50 · S3 forged or missing `Origin` on `/ws` and `/account/*` refused 403 ✅ · S4 XSS payloads: refused as pseudo, kept as text in city and messages, rendered through React text nodes only (no `innerHTML`) ✅ · S5 private actions without an account refused, foreign `closePrivate` / `ignore` ignored, moderator commands refused ✅ · S6 bad JSON, wrong types and unknown types refused with `invalid`, a 200 kB frame closes the socket (1009), the server stays up ✅ · S7 room flood throttled after 4 posts ✅, 30 searches unthrottled → #49 · S8 404 and 400 answers carry no stack or path ✅ · S9 prod bundle: no source map, no secret, 280 kB JS (87 kB gzip) ✅ · S10 no third-party host ✅ |
-- Gate: **GREEN — merge authorised**
+| 1 Tests | ✅ 595 passed (`pnpm verify`, code unchanged) |
+| 2 Coverage | 98.55 % stmts / 93.84 % branches / 97.89 % funcs / 99.4 % lines (floor 80) · docs n/a (no code) |
+| 3 SonarQube | ⚠️ run after push (`pnpm sonar`, project rule) |
+| 4 Secrets | ✅ gitleaks clean (main..HEAD) · no tracked .env · diff read: owner identity kept as `{placeholders}` |
+| 5 QA pass | skipped: pre-push mode, documentation-only diff |
+- Gate: pre-push GREEN; merge waits for step 3.
 
-## 🔴 Must Have
-_None._
+## 🔴 Must Have (all fixed)
+- `business-rules.md` BR-083 `[security]` · plaintext log contradicted BR-083 · exception added in BR-083 and ADR-0017.
+- `legal-pages-draft.md` `[correctness]` · in-memory vault while the privacy text promised 5 years · file vault plus closing records on stop (BR-084, ADR-0018).
+- `legal-pages-draft.md` mentions `[correctness]` · the owner self-hosts, so the anonymous non-professional regime did not apply · owner named as editor and host, Cloudflare described as transit.
+- `legal-pages-draft.md` privacy `[correctness]` · GDPR art. 13 gaps · added a table (purpose, legal basis, retention), the recipients, the transfer to the US, portability, and that the e-mail is optional.
+- BR-086 / BR-073 / `07-deployment` `[design]` · three different HTTPS triggers · now one `secureCookie` option.
 
-## 🟡 Should Have
-_None open. Fixed in d0dbf10: presence hidden from ignored partners, partner lookup and text cap deduplicated, dead `MAX_WINDOWS` removed._
+## 🟡 Should Have (all fixed)
+- BR-086 `[security]` · CSP breaks the Vite dev server · the rule covers only the production build, and testers get the build.
+- BR-085 `[security]` · header spoofing · loopback-only start, a single valid IP, no `X-Forwarded-*`, tunnel host name in the allowed Origins; shared-IP quota effect stated in ADR-0018.
+- Diagram headers `[docs]` · BR and ADR lists updated in platform/02, 04c, 07 and web-ui/05.
+- `traceability-matrix.md`, `test-strategy.md` `[docs]` · new tester-exposure table and test cases.
+- BR-084 `[docs]` · "older" defined by the connection start or the contribution date.
 
 ## 🔵 Nice to Have
-- `src/domain/directory.ts` `[security]` · no rate limit on search · #49
-- `src/domain/private.ts` `[design]` · conversation lookup scans for the pair · #49
-- `src/domain/directory.ts` `[correctness]` · whether an away chatter's rooms show in search (ADR-0011) · #49
-- `src/domain/directory.ts` `[security]` · excluding blocked sessions from the results reveals a block · #49
+- Mermaid not rendered locally (read-checked only); check the rendering on the GitHub PR view.
 
 ## ⚪ Disagree / Intentional
-- Out of scope, found during QA: no secure headers (CSP, frame-ancestors, nosniff, referrer-policy) although the security study requires them. Filed as #48 (P1).
+- `legal-pages-draft.md` "LCEN art. 6 VII" (false reports) · kept: `security-and-rgpd.md` §1 verified this numbering on Légifrance on 2026-10-22, after the SREN renumbering; the reviewer's doubt was unchecked.
 
 ## Per-dimension summary
-- Design: pure domain, dependency rule respected · Docs: studies updated for BR-043 (cap 3, targetBusy) · Tests: domain, hub, store and UI covered · Security: no leak; the block is hidden by checking `targetBusy` first · Correctness: shadows close conversations on leave, away, resume and unlink
+- Design: one option drives `Secure` and HSTS · Docs: traceability complete · Tests: n/a (no code) · Security: IP trust and CSP scoped · Correctness: legal texts aligned with the stored data.

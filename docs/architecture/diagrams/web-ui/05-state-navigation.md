@@ -2,6 +2,7 @@
 
 > **Feature**: web-ui
 > **Use cases**: UC1, UC2, UC3, UC6, UC7, UC10, UC12, UC13, UC16
+> **Related ADRs**: ADR-0018
 
 ## Context
 
@@ -17,6 +18,10 @@ stateDiagram-v2
   EntryScreen --> ModeratorSignIn: moderator sign-in
   ModeratorSignIn --> EntryScreen: grant received or refused
   EntryScreen --> InChat: entered
+  EntryScreen --> LegalPage: rules, legal notice or privacy link
+  LegalPage --> EntryScreen: back
+  InChat --> LegalPage: privacy link in the account panel
+  LegalPage --> InChat: back
   state InChat {
     [*] --> RoomsScreen
     RoomsScreen --> RoomScreen: join or create a room
@@ -33,6 +38,9 @@ stateDiagram-v2
 
 - `Reconnecting` shows a discreet banner and keeps the last screen visible. On resume the client returns
   to the screen it was on (UML history state, drawn here as a note since Mermaid lacks it).
+- `LegalPage` (ADR-0018) shows one of three static texts (rules, legal notice, privacy) from
+  `docs/product/legal-pages-draft.md`. The account panel shows the short privacy notice before
+  "recevoir mon code" and links to the privacy page.
 - `expelled` and `leave` apply from any screen of `InChat`.
 - The account panel (UC17 to UC19) is an overlay in `InChat`: it opens from the "Mon compte" button in
   the header, after "recevoir mon code" on the entry screen, and (brick 6) when a chatter without an
