@@ -40,7 +40,7 @@ with their sources (ADR-0004, ADR-0005, ADR-0010, ADR-0014).
 | Pseudo, gender, age, city | Hub memory, socket attachment, client sessionStorage | Run the chat | Contract / legitimate interest | Session end | No (memory only) |
 | Messages | Hub memory | Run the chat | Contract | Room or window end | No (memory only) |
 | Away record: pseudo, rooms, windows, buffered private messages | Hub storage | Resume after a disconnect | Contract | 5 minutes max (ADR-0011) | Yes (brick 9) |
-| Connection line, one per socket connection: connection id, IP and source port, protocols, pseudo, account id, start and end | Connection log | Identify content contributors (LCEN art. 6 V-A, decree 2021-1362 arts. 5 2° and 7) | Legal obligation | 1 year (BR-060) | Yes (brick 9) |
+| Connection line, one per socket connection: connection id, IP and source port, protocols, pseudo, account id, start and end | Connection log | Identify content contributors (LCEN art. 6 V-A, decree 2021-1362 arts. 5 2° and 7) | Legal obligation | 1 year (BR-060) | Yes (brick 9). During the tester exposure, a local JSONL file on the owner machine, not encrypted (BR-084, ADR-0018) |
 | Contribution line, one per message: connection id, protocols; under injunction also content id, operation, date and time (never the content) | Connection log | Identify content contributors (decree arts. 5 2° and 7, art. 6 2° under injunction) | Legal obligation | 1 year (BR-060) | Yes (brick 9) |
 | Report: reason, excerpt, context lines, pseudos, AI triage | Moderation store | Moderation, DSA | Legal obligation / legitimate interest | 6 months after closing (BR-061) | Yes (brick 8) |
 | Reported context with neutral labels | AI provider (processor) | Triage reports | Legitimate interest | Provider contract, no training on data | Provider |
@@ -79,7 +79,7 @@ No analytics, no ads, no third-party trackers, no cookies other than strictly ne
 
 ## 4. Security controls checklist (ASVS level 1 targets)
 
-- HTTPS only, HSTS, secure headers (CSP, frame-ancestors none, referrer-policy).
+- HTTPS only, HSTS, secure headers (CSP, frame-ancestors none, referrer-policy): BR-086, from the tester exposure on (ADR-0018).
 - Origin check on WebSocket upgrade.
 - Input validation at the protocol boundary and in the domain.
 - Secrets (HMAC key, data keys, vault public key, Brevo API key, owner invitation secret) in Wrangler

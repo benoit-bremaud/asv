@@ -92,3 +92,11 @@ Values are owned here. Rationale lives in the ADRs.
 | BR-060 | One connection line per socket connection (entry or resume): random connection id, IP and source port if available, protocols, pseudo, account id if any, start and end times. One contribution line per creation of a room message, private message or user room name: connection id and protocols (decree 2021-1362 arts. 5 2° and 7). While a Prime Minister's injunction under CPCE L34-1 III is in force (checked each October), the contribution line also carries the content id, the operation, its date and time (art. 6 2°; the author's identifier is the pseudo or account id on the connection line). Never the content. Each line kept 1 year from its connection or contribution, then deleted (LCEN art. 6 V-A). |
 | BR-061 | Closed reports are kept 6 months, then deleted. |
 | BR-062 | Expired bans are deleted 30 days after their end. |
+| BR-084 | While asv is exposed to testers through a tunnel (ADR-0018), the Node transport appends connection and contribution lines to a local JSONL file outside the repository, one JSON object per line, and at start-up and once a day removes lines older than 1 year (BR-060). Without that file setting, the in-memory log is used (development and tests). |
+
+## Transport security (ADR-0018)
+
+| Rule | Description |
+|---|---|
+| BR-085 | The client IP and source port on the connection line come from the socket. Only when the transport is told it runs behind the Cloudflare Tunnel, the IP comes from the `CF-Connecting-IP` header (no source port is then available). The header is ignored otherwise. |
+| BR-086 | Every HTTP response carries `Content-Security-Policy: default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer` and, over HTTPS, `Strict-Transport-Security: max-age=15552000`. |

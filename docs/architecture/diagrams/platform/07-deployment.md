@@ -2,7 +2,7 @@
 
 > **Feature**: platform
 > **Requirements**: ASV-NF-003
-> **Related ADRs**: ADR-0001, ADR-0002, ADR-0007, ADR-0008, ADR-0010
+> **Related ADRs**: ADR-0001, ADR-0002, ADR-0007, ADR-0008, ADR-0010, ADR-0018
 
 ## Context
 
@@ -17,7 +17,17 @@ flowchart TB
     NodeProc["Node process: Hono + in-memory hub + no-AI triage"]
     Vite["Vite dev server: web client"]
     Vite -->|"proxy /ws, /mod"| NodeProc
+    LogFile[("connection-log.jsonl, outside the repo (BR-084)")]
+    NodeProc -->|"append, purge after 1 year"| LogFile
   end
+  subgraph Test ["tester exposure — temporary (ADR-0018)"]
+    Tester["Tester browser"]
+    Edge["Cloudflare edge: HTTPS, adds CF-Connecting-IP"]
+    Cloudflared["cloudflared on the developer machine"]
+    Tester --> Edge
+    Edge --> Cloudflared
+  end
+  Cloudflared -->|"http://127.0.0.1"| NodeProc
   subgraph Prod ["production — Cloudflare"]
     DNS["asvchat.fr DNS on Cloudflare"]
     Worker["Worker: Hono app + static assets"]
@@ -40,5 +50,8 @@ flowchart TB
 
 - A staging environment (separate Worker and Durable Object namespace) is added before public launch,
   following the owner's environments convention.
+- Tester exposure (ADR-0018): the tunnel runs only during test sessions. The Node process is told it is
+  behind the tunnel, so it trusts `CF-Connecting-IP` (BR-085) and sets the `Secure` cookie (BR-073).
+  Mail goes from the Node process to Brevo with `BREVO_API_KEY` from the shell environment.
 - Exit door: the Node process can be containerised and run elsewhere (ADR-0002).
 - Secret names are proposals for brick 9. Values live in Wrangler secrets, never in the repo.

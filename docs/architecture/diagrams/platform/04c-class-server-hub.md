@@ -86,6 +86,20 @@ classDiagram
   ConnectionLogStore ..> ConnectionLine
   ConnectionLogStore ..> ContributionLine
   MemoryConnectionLog ..|> ConnectionLogStore
+  FileConnectionLog ..|> ConnectionLogStore
+  class FileConnectionLog {
+    <<src/transports/node>>
+    +String path
+    +purge(now) removes lines older than 1 year
+  }
+  class NodeServerOptions {
+    <<src/transports/node>>
+    +String logFile optional
+    +Boolean behindTunnel
+    +Boolean secureCookie
+  }
+  NodeServerOptions ..> FileConnectionLog : logFile set
+  NodeServerOptions ..> MemoryConnectionLog : logFile absent
 ```
 
 ## Modules (issues #25, #36)

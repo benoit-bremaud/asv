@@ -108,6 +108,7 @@ Coverage: [traceability matrix](traceability-matrix.md).
 | [0015](decisions/0015-protocol-validation-zod-mini.md) | Protocol validation with Zod Mini |
 | [0016](decisions/0016-sonarqube-local-scan-commit-status.md) | SonarQube local scan, quality gate as commit status |
 | [0017](decisions/0017-encryption-at-rest.md) | Application-level encryption at rest, vault sealed to an owner key |
+| [0018](decisions/0018-real-tester-exposure-tunnel.md) | Real-tester exposure through a Cloudflare Tunnel to the Node transport |
 
 ## 9. Risks and technical debt
 
