@@ -35,8 +35,9 @@ leads only if faithfulness weighs more than 40. The owner chose A on 2026-10-24.
   (BR-060, BR-084). It is not encrypted at application level: two known testers, a single owner machine
   and a short test. Encryption at rest arrives with storage in brick 9 (BR-083, ADR-0017). This
   interpretation is to be confirmed in the brick 10 professional review. BR-083 carries this exception.
-- Legal vault records (already sealed) are appended to a second local file, and a graceful stop writes a
-  closing record for every account still in memory, so decree 2021-1362 art. 2 is met (BR-084).
+- Legal vault records (sealed) are appended to a second local file when an account opens and when it
+  closes. At start-up, accounts left open by the previous process (stop or crash) get a closing record,
+  so decree 2021-1362 art. 2 is met without relying on a graceful stop (BR-084).
 - Behind the tunnel the socket peer is Cloudflare, so the client IP is read from `CF-Connecting-IP`, and
   only when the transport runs with the tunnel flag and listens on loopback (BR-085). Without the flag
   every tester would share Cloudflare's IP and the per-IP quotas (BR-072) would become global. The tunnel

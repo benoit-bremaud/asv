@@ -95,7 +95,8 @@ classDiagram
   class FileVault {
     <<src/transports/node>>
     +String path
-    +closeOpenAccounts(now) void
+    +recordOpening(account) void
+    +closeLeftOpen(now) void
   }
   FileVault ..|> LegalVaultStore
   class NodeServerOptions {
