@@ -230,8 +230,9 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
 - Local review: no Must; the Should items were fixed. SonarQube failed on the first scan (7 issues:
   cognitive complexity, nested ternary, `role="dialog"`), passed after the fixes.
 - New owner rule: every QA pass reads the inspector (console, network, WebSocket frames, storage) and runs
-  the security probes S1–S10; every finding is filed. 8 green; #48 (no secure headers, P1) and #50 (cookie
-  without `Secure`, P1) predate the brick. The rule went into the global QA skill (claude-skills #52, which
+  the security probes S1–S10; every finding is filed. 7 fully green. S7 is partial: the room flood is
+  throttled, but directory search, added by this brick, is not (#49). #48 (no secure headers, P1) and #50
+  (cookie without `Secure`, P1) predate the brick. The rule went into the global QA skill (claude-skills #52, which
   absorbed #69).
 - Codex: the first round raised 4 P2 findings, fixed (`hasAccount` refreshed on link and unlink, ignore list
   restored on resume, private history hidden after an ignore, a window kept open when `closePrivate` cannot
