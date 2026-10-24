@@ -77,9 +77,9 @@ export const createFileLog = (path: string, startedAt: Date): ConnectionLogStore
   prepare(path);
   for (const line of leftOpen(readLines(path), "connectionId")) append(path, { kind: "close", connectionId: line.connectionId, at: startedAt });
   return {
-    open: async (line) => append(path, { kind: "open", ...line }),
-    close: async (connectionId, at) => append(path, { kind: "close", connectionId, at }),
-    appendContribution: async (line) => append(path, { kind: "contribution", ...line }),
+    open: (line) => Promise.resolve(append(path, { kind: "open", ...line })),
+    close: (connectionId, at) => Promise.resolve(append(path, { kind: "close", connectionId, at })),
+    appendContribution: (line) => Promise.resolve(append(path, { kind: "contribution", ...line })),
     /** Drops every line of a connection opened over 1 year ago, and contributions dated over 1 year ago. */
     purge(now) {
       const limit = now.getTime() - LOG_RETENTION_MS;
@@ -122,8 +122,8 @@ export const createFileVault = (path: string, startedAt: Date): LegalVaultStore 
     );
   };
   return {
-    opened: async (entry: VaultOpening) => append(path, { kind: "open", ...entry }),
-    record: async (entry: VaultEntry) => append(path, { kind: "close", ...entry }),
+    opened: (entry: VaultOpening) => Promise.resolve(append(path, { kind: "open", ...entry })),
+    record: (entry: VaultEntry) => Promise.resolve(append(path, { kind: "close", ...entry })),
     // The hub calls this every tick; the transport runs `purge` at start-up and once a day instead (BR-084).
     purgeExpired: () => Promise.resolve(),
     purge,
