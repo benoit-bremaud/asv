@@ -70,6 +70,7 @@ Criteria: testable value 30, no throwaway work 25, risk for brick 9 25, effort 2
 
 - `src/server/crypto/` holds the field cipher, the keyed hash and the vault sealer, all on WebCrypto.
   The domain never sees ciphertext or keys.
+- Exception (ADR-0018): during the tester exposure the connection log file is plaintext until brick 9.
 - Development runs with generated throwaway keys when the variables are absent, with a warning.
   Production refuses to start without them.
 - Cloudflare's own at-rest encryption is still to be checked in the docs in brick 9 for the clear

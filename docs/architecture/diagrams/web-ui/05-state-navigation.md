@@ -2,6 +2,7 @@
 
 > **Feature**: web-ui
 > **Use cases**: UC1, UC2, UC3, UC6, UC7, UC10, UC12, UC13, UC16
+> **Related ADRs**: ADR-0018
 
 ## Context
 
@@ -19,6 +20,8 @@ stateDiagram-v2
   EntryScreen --> InChat: entered
   EntryScreen --> LegalPage: rules, legal notice or privacy link
   LegalPage --> EntryScreen: back
+  InChat --> LegalPage: privacy link in the account panel
+  LegalPage --> InChat: back
   state InChat {
     [*] --> RoomsScreen
     RoomsScreen --> RoomScreen: join or create a room

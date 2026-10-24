@@ -43,6 +43,15 @@ Links requirements to use cases and every use case to its realisations. All path
 | web-ui/04-class-client-state | Client reducer, connection manager, renderer, entry and rooms screens (BR-022, NF-004, NF-011, brick 7a) |
 | web-ui/05-state-navigation | Legal pages (ADR-0018); screens for UC1, UC2, UC3, UC6, UC7, UC10, UC12, UC13, UC16 |
 
+## Tester exposure (ADR-0018, issue #54)
+
+| Rule | Realised in | Issues |
+|---|---|---|
+| BR-084 file log and file vault | platform/04c, platform/07 | #54 |
+| BR-085 client IP behind the tunnel | platform/02, platform/07 | #54 |
+| BR-086 security headers, `Secure` cookie | platform/07, `security-and-rgpd.md` §4 | #48, #50 |
+| Legal pages | web-ui/05, `docs/product/legal-pages-draft.md` | #54 |
+
 ## Coverage check
 
 - Every functional requirement F-001 to F-024 maps to at least one use case.

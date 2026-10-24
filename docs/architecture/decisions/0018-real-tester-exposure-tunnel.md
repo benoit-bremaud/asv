@@ -34,14 +34,19 @@ leads only if faithfulness weighs more than 40. The owner chose A on 2026-10-24.
 - The connection log is appended to a local JSONL file outside the repository and purged after 1 year
   (BR-060, BR-084). It is not encrypted at application level: two known testers, a single owner machine
   and a short test. Encryption at rest arrives with storage in brick 9 (BR-083, ADR-0017). This
-  interpretation is to be confirmed in the brick 10 professional review.
+  interpretation is to be confirmed in the brick 10 professional review. BR-083 carries this exception.
+- Legal vault records (already sealed) are appended to a second local file, and a graceful stop writes a
+  closing record for every account still in memory, so decree 2021-1362 art. 2 is met (BR-084).
 - Behind the tunnel the socket peer is Cloudflare, so the client IP is read from `CF-Connecting-IP`, and
-  only when the transport is told it runs behind the tunnel (BR-085).
+  only when the transport runs with the tunnel flag and listens on loopback (BR-085). Without the flag
+  every tester would share Cloudflare's IP and the per-IP quotas (BR-072) would become global. The tunnel
+  host name joins the allowed Origins.
 - Security headers and a strict CSP are sent on every response (BR-086, #48). The device cookie is
-  `Secure` whenever the transport serves HTTPS to the browser (BR-073, #50).
+  `Secure` whenever the `secureCookie` option is on, which the tunnel run sets; HSTS follows the same
+  option (BR-073, BR-086, #50). Testers get the production build, never the Vite dev server.
 - Short provisional rules (CGU), legal notice and privacy pages are shown from the entry screen, and a
   GDPR art. 13 notice appears before the e-mail code is requested (`docs/product/legal-pages-draft.md`).
-- Accounts, vault and rooms stay in memory: testers are told data resets on restart.
+- Accounts and rooms stay in memory: testers are told they reset on restart.
 
 ## Consequences
 

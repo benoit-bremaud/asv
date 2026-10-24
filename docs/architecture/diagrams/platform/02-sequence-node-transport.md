@@ -2,8 +2,8 @@
 
 > **Feature**: platform (roadmap brick 7a)
 > **Use cases**: UC1, UC3, UC4, UC10, UC13
-> **Business rules**: BR-010, BR-011, BR-015, BR-060
-> **Related ADRs**: ADR-0002, ADR-0007, ADR-0011; brick 7a owner choices D1 to D5 (below)
+> **Business rules**: BR-010, BR-011, BR-015, BR-060, BR-085
+> **Related ADRs**: ADR-0002, ADR-0007, ADR-0011, ADR-0018; brick 7a owner choices D1 to D5 (below)
 
 ## Context
 

@@ -2,6 +2,7 @@
 
 > **Feature**: platform
 > **Requirements**: ASV-NF-003
+> **Business rules**: BR-084, BR-085, BR-086
 > **Related ADRs**: ADR-0001, ADR-0002, ADR-0007, ADR-0008, ADR-0010, ADR-0018
 
 ## Context
@@ -17,8 +18,8 @@ flowchart TB
     NodeProc["Node process: Hono + in-memory hub + no-AI triage"]
     Vite["Vite dev server: web client"]
     Vite -->|"proxy /ws, /mod"| NodeProc
-    LogFile[("connection-log.jsonl, outside the repo (BR-084)")]
-    NodeProc -->|"append, purge after 1 year"| LogFile
+    LogFile[("connection-log.jsonl and vault.jsonl, outside the repo (BR-084)")]
+    NodeProc -->|"append, purge per BR-060 and BR-081"| LogFile
   end
   subgraph Test ["tester exposure — temporary (ADR-0018)"]
     Tester["Tester browser"]
@@ -50,8 +51,9 @@ flowchart TB
 
 - A staging environment (separate Worker and Durable Object namespace) is added before public launch,
   following the owner's environments convention.
-- Tester exposure (ADR-0018): the tunnel runs only during test sessions. The Node process is told it is
-  behind the tunnel, so it trusts `CF-Connecting-IP` (BR-085) and sets the `Secure` cookie (BR-073).
+- Tester exposure (ADR-0018): the tunnel runs only during test sessions. The Node process serves the built
+  bundle on loopback with the tunnel flag, so it trusts `CF-Connecting-IP` (BR-085), and with
+  `secureCookie` on, so it sets the `Secure` cookie and HSTS (BR-073, BR-086).
   Mail goes from the Node process to Brevo with `BREVO_API_KEY` from the shell environment.
 - Exit door: the Node process can be containerised and run elsewhere (ADR-0002).
 - Secret names are proposals for brick 9. Values live in Wrangler secrets, never in the repo.

@@ -2,8 +2,8 @@
 
 > **Feature**: platform (roadmap brick 7a)
 > **Use cases**: UC1, UC2, UC3, UC4, UC5, UC10, UC13
-> **Business rules**: BR-001 to BR-034, BR-060
-> **Related ADRs**: ADR-0002, ADR-0007, ADR-0011, ADR-0015; brick 7a owner choices D2 (485/500), D3, D4, D5 (455/500)
+> **Business rules**: BR-001 to BR-034, BR-060, BR-084 to BR-086
+> **Related ADRs**: ADR-0002, ADR-0007, ADR-0011, ADR-0015, ADR-0018; brick 7a owner choices D2 (485/500), D3, D4, D5 (455/500)
 
 ## Context
 
@@ -90,11 +90,18 @@ classDiagram
   class FileConnectionLog {
     <<src/transports/node>>
     +String path
-    +purge(now) removes lines older than 1 year
+    +purge(now) void
   }
+  class FileVault {
+    <<src/transports/node>>
+    +String path
+    +closeOpenAccounts(now) void
+  }
+  FileVault ..|> LegalVaultStore
   class NodeServerOptions {
     <<src/transports/node>>
     +String logFile optional
+    +String vaultFile optional
     +Boolean behindTunnel
     +Boolean secureCookie
   }
