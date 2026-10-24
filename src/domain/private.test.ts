@@ -120,7 +120,7 @@ describe("sendPrivate (UC6)", () => {
     expect(sent.effects).toEqual([{ type: "privateRefused", sessionId: id(0), reason: "flood" }]);
   });
 
-  it("refuses an eleventh window but not a message in an open one, and not an incoming window (BR-043)", () => {
+  it("refuses an eleventh window on either side, but not a message in an open one (BR-043)", () => {
     const names = Array.from({ length: PRIVATE_LIMITS.maxWindows + 2 }, (_, i) => ({ pseudo: `Chat${i}` }));
     const { state: start, id, random } = hubWith({ pseudo: "Lola" }, ...names);
     let state = start;
@@ -134,9 +134,11 @@ describe("sendPrivate (UC6)", () => {
       .toEqual([{ type: "privateRefused", sessionId: id(0), reason: "tooManyWindows" }]);
     expect(typed(sendPrivate(state, { sessionId: id(0), targetPseudo: "Chat0", text: "again" }, now, random).effects, "privateMessage"))
       .toHaveLength(1);
-    const incoming = sendPrivate(state, { sessionId: id(PRIVATE_LIMITS.maxWindows + 1), targetPseudo: "Lola", text: "hey" }, now, random);
-    expect(typed(incoming.effects, "privateMessage")[0]?.recipients).toContain(id(0));
-    expect(windowsOf(incoming.state, id(0))).toHaveLength(PRIVATE_LIMITS.maxWindows + 1);
+    // BR-043, owner choice C: a newcomer cannot force an eleventh window open on Lola.
+    expect(sendPrivate(state, { sessionId: id(PRIVATE_LIMITS.maxWindows + 1), targetPseudo: "Lola", text: "hey" }, now, random).effects)
+      .toEqual([{ type: "privateRefused", sessionId: id(PRIVATE_LIMITS.maxWindows + 1), reason: "targetBusy" }]);
+    // A partner whose conversation is open still gets through.
+    expect(typed(sendPrivate(state, { sessionId: id(1), targetPseudo: "Lola", text: "re" }, now, random).effects, "privateMessage")).toHaveLength(1);
   });
 
   it("buffers for an away target and opens its side silently (BR-013)", () => {

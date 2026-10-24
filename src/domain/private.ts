@@ -29,7 +29,7 @@ export interface SendPrivateCommand {
 }
 
 /** `accountRequired` and `offline` map to the protocol `error`, the others to `warning`. */
-export type PrivateRefusal = "accountRequired" | "offline" | "self" | "empty" | "tooLong" | "flood" | "tooManyWindows";
+export type PrivateRefusal = "accountRequired" | "offline" | "self" | "empty" | "tooLong" | "flood" | "tooManyWindows" | "targetBusy";
 
 /** What the hub must send (`platform/04c`). */
 export type PrivateEffect =
@@ -100,6 +100,10 @@ export const sendPrivate = (state: HubState, command: SendPrivateCommand, now: D
   const existing = between(state, sender.id, target.id);
   const senderOpen = existing?.openFor.includes(sender.id) ?? false;
   if (!senderOpen && windowsOf(state, sender.id).length >= PRIVATE_LIMITS.maxWindows) return refuse("tooManyWindows");
+  // BR-043 (owner choice C): nobody can force windows open past the target's cap; checked before the ignore
+  // test so it reveals no block.
+  const targetOpen = existing?.openFor.includes(target.id) ?? false;
+  if (!targetOpen && windowsOf(state, target.id).length >= PRIVATE_LIMITS.maxWindows) return refuse("targetBusy");
 
   const id = existing?.id ?? random.id();
   const openFor = new Set(existing?.openFor);

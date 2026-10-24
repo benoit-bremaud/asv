@@ -50,7 +50,7 @@ Values are owned here. Rationale lives in the ADRs.
 | BR-040 | A chatter linked to an account can open a private window with any connected or away chatter also linked to an account (ADR-0012). |
 | BR-041 | If either chatter ignores the other, the sender's window opens and messages are silently dropped. |
 | BR-042 | Ignore lasts for the session and covers room messages and private messages both ways: neither chatter sees the other's messages. The ignored chatter is never told. |
-| BR-043 | A chatter can open at most 10 private windows at once. Closing a window frees a slot; the other side is not told, and a new message reopens it on both sides. A window opened by an incoming message does not count against the receiver's cap. |
+| BR-043 | A chatter can open at most 10 private windows at once. Closing a window frees a slot; the other side is not told, and a new message reopens it on both sides. A new conversation is refused with `targetBusy` when the receiver already has 10 open windows (brick 6 review, owner choice C, 370/500), so no group can force windows open on one chatter; the refusal says nothing about ignores. |
 | BR-044 | A chatter can ignore at most 100 chatters per session. |
 
 ## Moderation

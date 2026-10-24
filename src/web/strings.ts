@@ -107,6 +107,7 @@ export const STRINGS = {
     self: "Tu ne peux pas t'écrire à toi-même.",
     tooManyWindows: "Tu as déjà 10 fenêtres privées ouvertes.",
     offline: "Ce chatteur n'est plus là.",
+    targetBusy: "Ce chatteur a déjà 10 fenêtres privées ouvertes, réessaie plus tard.",
     accountRequired: "Les messages privés sont réservés aux membres, des deux côtés.",
     deviceNotSaved: "Appareil non retenu : tu restes membre pour cette visite seulement.",
   } as Record<string, string>,

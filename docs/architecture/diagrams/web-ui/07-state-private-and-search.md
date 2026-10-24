@@ -69,7 +69,7 @@ stateDiagram-v2
   characters (UC7 2a); results list pseudo (colour from gender), age, city, "(absent)", and the rooms they
   are in; click a result → pseudo menu. Results are not refreshed live; a new submit refreshes them.
   At most 50 results (server cap); "aucun chatteur trouvé" when empty.
-- **Strings** in `strings.ts`, French; notices for the new codes: `self`, `tooManyWindows`, `offline`,
+- **Strings** in `strings.ts`, French; notices for the new codes: `self`, `tooManyWindows`, `targetBusy`, `offline`,
   `accountRequired`.
 - **Accessibility** (NF-004): the pseudo menu is a `menu` with `menuitem`s, keyboard reachable from the
   pseudo button; each window is a `dialog` (non-modal) labelled by the other pseudo with an
