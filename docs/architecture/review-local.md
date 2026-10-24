@@ -1,20 +1,20 @@
 # Local review — asv (brick 6, private conversations, ignore and directory, issue #46)
 
 - Date: 2026-10-24
-- Commit: 2274842
+- Commit: 407940e
 - Scope: branch `feat/46-brick-6-private-directory`, diff `main...HEAD`
 - Checks run: design · docs · tests · security · correctness
 - Verdict: ship. Must 0 · Should 0 open (all fixed in d0dbf10) · Nice 4 open (filed as #49)
 
-## Pre-merge gate (head SHA 2274842)
+## Pre-merge gate (head SHA 407940e)
 | Step | Result |
 |---|---|
 | 1 Tests | ✅ 591 tests (`pnpm verify`): typecheck, lint, tests and build all green |
 | 2 Coverage | tests about 98.5 % stmts / 93.8 % branches (floor 80) |
-| 3 SonarQube | ⏳ to run with `pnpm sonar` on the head SHA after the push |
+| 3 SonarQube | ✅ PASSED on 407940e (new coverage 97 %, 0 duplication). The first scan on 0692488 failed on 7 new issues (cognitive complexity, nested ternary, `role="dialog"`, non-native key handler), fixed in 027c37c and 407940e |
 | 4 Secrets | ✅ gitleaks clean (`main..HEAD`) · no tracked .env · diff read: nothing sensitive |
 | 5 QA pass | ✅ full: two members (Lola, Max) on two tabs; search by city, pseudo menu, private message both ways, minimise with an unread counter, phone layout (375 px, no horizontal scroll). Console: WebSocket errors only from before the allowed-origins fix of the QA config. Network: no failed request apart from the dev-only StrictMode abort of `/api/stats`. Screenshots: `docs/architecture/qa/2026-10-24-brick6-*.jpg` |
-- Gate: **GREEN once SonarQube passes**
+- Gate: **GREEN — merge authorised**
 
 ## 🔴 Must Have
 _None._
