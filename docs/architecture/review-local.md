@@ -1,41 +1,51 @@
-# Local review — asv (branch docs/74-qa-test-plan)
+# Local review — asv (branch fix/65-private-windows-room-input)
 
 - Date: 2026-11-02
-- Commit: f9970ba + review fixes (same branch)
-- Scope: branch diff origin/main...HEAD, docs only (`qa/test-plan.md`, rule lines in `CLAUDE.md`,
-  `test-strategy.md`, `README.md`, `traceability-matrix.md`)
-- Checks run: docs and accuracy (doc-auditor) · QA smoke (qa-tester). Design, tests, security and correctness
-  agents not run: no code, test or config file in the diff.
-- Verdict: ship as-is · Must 0 · Should 0 (4 fixed) · Nice 1 open
+- Commit: d6171d4 (product code at 5669e7d)
+- Scope: branch diff origin/main...HEAD — `src/web/styles.css`, `src/web/screens/RoomScreen.tsx`,
+  `src/web/App.test.tsx`, studies `web-ui/04` and `web-ui/07`, `design-pack.md`, QA report and test plan
+- Checks run: design and docs (architecture-guardian, doc audit included) · tests · security (QA security
+  part, SEC-01…10) · correctness (own diff read) · QA product part, three runs
+- Verdict: ship as-is · Must 0 · Should 0 · Nice 2
 
-## Pre-merge gate (head SHA f9970ba, docs-only follow-up commit)
+## Pre-merge gate (head SHA d6171d4)
+
 | Step | Result |
 |---|---|
-| 1 Tests | ✅ `pnpm verify`: 19 files, 638 tests passed |
-| 2 Coverage | unchanged by a docs-only diff; enforced by the runner thresholds in `pnpm verify` |
-| 3 SonarQube | run with `pnpm sonar` after the last commit, on a clean tree |
-| 4 Secrets | ✅ gitleaks clean on origin/main..HEAD · no tracked `.env` · diff read: nothing sensitive (legal-page shots show "(à compléter)" placeholders only) |
-| 5 QA pass | ✅ smoke on f9970ba, production build on localhost:8799 · JRN-01, JRN-03, JRN-11 pass · SEC-01 ❌ known #69 · inspector clean apart from favicon #62 · report: docs/architecture/qa/2026-11-02-test-plan-smoke.md |
-- Gate: **GREEN — merge authorised on owner approval** (once step 3 reports PASSED)
+| 1 Tests | ✅ 641 unit/integration (Vitest), lint, typecheck, build (`pnpm verify`) |
+| 2 Coverage | tests 98.63 % stmts / 94.49 % branches / 98.08 % funcs / 99.4 % lines (floor 80) · docs: no new exported API |
+| 3 SonarQube | ✅ PASSED (local server, `pnpm sonar` on a clean tree); the GitHub commit status step fails until the branch is pushed |
+| 4 Secrets | ✅ gitleaks clean (main..HEAD) · no tracked .env · diff read: nothing sensitive (QA members are throw-away `qa-*@asv.test`) |
+| 5 QA pass | ✅ pass · product part on 5669e7d: 13 checks PASS, 0 findings · security part on debc8ce (no server, header or storage change since): SEC-02…10 ✅, SEC-01 ❌ known #69 · report: docs/architecture/qa/2026-11-02-65-private-dock.md |
+
+- Gate: **GREEN — merge authorised** once the owner approves (SEC-01 stays on the known #69).
 
 ## 🔴 Must Have
-_None._
+
+- `docs/architecture/diagrams/web-ui/07-state-private-and-search.md` `[design|docs]` · first fix (debc8ce)
+  only cleared the composer once scrolled to the bottom; also found by the QA security part · **resolved**:
+  owner choice B, room screen fits the viewport (ce90fc5).
 
 ## 🟡 Should Have
-- Fixed: `qa/test-plan.md` evidence cells cited 09f44e7 for checks only run on e774c8c (SEC, PRI, ROB, FON-09); now
-  e774c8c with a note.
-- Fixed: FON domain row overstated coverage; now cites FP and CS rows and marks FON-08b not covered.
-- Fixed: wrong issue numbers for A11Y (#64 is the missing `h1`, #65 the covered input).
-- Fixed: rate-limit evidence now cites FP SEC-07 and CS SEC-07 with their SHAs.
+
+- `src/web/styles.css` `[design]` · phone reset dropped the page bottom padding · **resolved** in ce90fc5.
+- #83 `[qa]` · short desktops: lines panel 24 px high · **resolved** in 5669e7d (layout only from 720 px high).
+- #84 `[qa]` · overlays under the dock · **resolved** in 5669e7d (`.overlay` z-index 16).
 
 ## 🔵 Nice to Have
-- `qa/test-plan.md` JRN-01 `[docs]` · the French `entryRefused` message (FP N3) is not a separate row · add one when
-  the entry journey next changes.
+
+- #85 part 2 `[qa]` · last member's pseudo menu clipped by the members panel (`.privates`/`.members`
+  overflow); predates this branch · stays open on #85.
+- `src/web/styles.css` `[design]` · `--dock-height` caps the window while `.private-lines` sets its real
+  height; safe today (lines shrink) · optional single source later.
 
 ## ⚪ Disagree / Intentional
-- Gaps table lists gaps "to file on owner approval" instead of issue numbers · skill `test-plan` step 5 files
-  issues only after the owner confirms the list.
+
+- `src/web/styles.css` `[tests]` · layout is not unit-tested: jsdom has no layout; QA `elementFromPoint`
+  evidence is the right level (test-strategy). The scroll-follow logic is unit-tested (3 tests).
 
 ## Per-dimension summary
-- Docs: links resolve, UC/BR mapping matches the traceability matrix, rule wording identical in three files ·
-  QA: smoke rows of the plan now carry f9970ba evidence.
+
+- Design: no over-engineering, one token, CSS plus one small effect · Docs: studies updated before each code
+  commit · Tests: +3 behaviour tests, coverage unchanged · Security: CSS and client scroll only, SEC
+  probes green except known #69 · Correctness: QA at 7 viewports, scrollY 0 included, no defect left.

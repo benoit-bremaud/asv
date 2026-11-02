@@ -96,7 +96,8 @@ ROOM (desktop)                                   ROOM (phone)
 
 - Clicking a pseudo opens a small menu: private message, ignore, report.
 - Ignore is two clicks away: pseudo, then "ignore". Report adds a reason pick.
-- Private windows are floating panels on desktop, a stacked tab bar on phones (ASV-NF-006).
+- Private windows are floating panels on desktop, a stacked tab bar on phones (ASV-NF-006); they never
+  cover the room composer (#65).
 - Smileys: a small palette button inserts codes. Rendering follows BR-022; whitelist and renderer in
   `web-ui/04`.
 - Away members: `-away` colour of the last gender the client saw, else unspecified, italics and "(absent)"
