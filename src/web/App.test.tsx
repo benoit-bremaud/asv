@@ -634,6 +634,38 @@ describe("room screen", () => {
     expect(within(line).getByRole("img").getAttribute("aria-label")).toBe(":)");
   });
 
+  // jsdom has no layout: give the lines panel a fixed box so its scroll position can be checked.
+  const scrollBox = (scrollTop: number) => {
+    const panel = screen.getByRole("log").parentElement as HTMLElement;
+    Object.defineProperty(panel, "scrollHeight", { configurable: true, value: 1000 });
+    Object.defineProperty(panel, "clientHeight", { configurable: true, value: 200 });
+    panel.scrollTop = scrollTop;
+    fireEvent.scroll(panel);
+    return panel;
+  };
+
+  it("follows a new line while the reader is at the bottom of the lines", async () => {
+    await setup();
+    await enterChat();
+    await joinRoom("r1");
+    const panel = scrollBox(800);
+
+    await fromServer(message("r1", "salut"));
+
+    expect(panel.scrollTop).toBe(1000);
+  });
+
+  it("keeps the scroll position while the reader reads older lines", async () => {
+    await setup();
+    await enterChat();
+    await joinRoom("r1");
+    const panel = scrollBox(100);
+
+    await fromServer(message("r1", "salut"));
+
+    expect(panel.scrollTop).toBe(100);
+  });
+
   it("posts the text on submit and clears the field", async () => {
     const user = await setup();
     await enterChat();

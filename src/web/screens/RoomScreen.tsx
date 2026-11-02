@@ -1,4 +1,4 @@
-import { useState, type SubmitEvent } from "react";
+import { useLayoutEffect, useRef, useState, type SubmitEvent, type UIEvent } from "react";
 import type { Gender, Member } from "../../shared/protocol";
 import { useChat } from "../chat-context";
 import { renderText, SMILEYS } from "../render";
@@ -9,6 +9,9 @@ import { Pseudo } from "./Pseudo";
 import { PseudoMenu } from "./PseudoMenu";
 import { SearchPanel } from "./SearchPanel";
 
+
+/** Distance from the bottom, in pixels, still counted as "at the bottom" (rounding, last line half shown). */
+const FOLLOW_SLACK_PX = 8;
 
 const MemberLine = ({ member, knownGender }: { member: Member; knownGender?: Gender }) =>
   member.away ? (
@@ -31,6 +34,19 @@ export const RoomScreen = () => {
   const text = drafts[roomId] ?? "";
   const setText = (value: string) => setDrafts((current) => ({ ...current, [roomId]: value }));
   const room = state.open[roomId];
+  // Desktop: the lines scroll in their panel and follow new messages while the reader is at the bottom (`web-ui/04`).
+  const lines = useRef<HTMLElement>(null);
+  const atBottom = useRef(true);
+  const lastLineId = room?.lines.at(-1)?.id;
+  useLayoutEffect(() => {
+    atBottom.current = true;
+  }, [roomId]);
+  useLayoutEffect(() => {
+    if (lines.current && atBottom.current) lines.current.scrollTop = lines.current.scrollHeight;
+  }, [roomId, lastLineId]);
+  const followBottom = ({ currentTarget: panel }: UIEvent<HTMLElement>) => {
+    atBottom.current = panel.scrollHeight - panel.scrollTop - panel.clientHeight < FOLLOW_SLACK_PX;
+  };
   const nameOf = (id: string) => state.roomList.find((summary) => summary.id === id)?.name ?? id;
   if (!room) return null;
 
@@ -60,7 +76,7 @@ export const RoomScreen = () => {
       </nav>
       {showSearch && <div className="overlay"><SearchPanel /></div>}
       <main className="room">
-        <section className="lines panel">
+        <section ref={lines} className="lines panel" onScroll={followBottom}>
           <h2># {nameOf(roomId)}</h2>
           <ol role="log" aria-live="polite">
             {/* BR-042: a line still held from an ignored chatter is hidden. */}
