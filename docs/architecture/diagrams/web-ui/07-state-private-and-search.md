@@ -61,9 +61,12 @@ stateDiagram-v2
 - **Desktop** (≥ 768 px): floating panels docked bottom right, side by side, the last opened in front.
   **Phone**: a stacked tab bar in the page flow after the room, one tab per window, full width
   (design pack, ASV-NF-006).
-- **Never cover the composer** (#65, owner choice C, 480/500): on desktop a window is at most
-  `--dock-height` tall and the page reserves that height at its bottom; on phones the dock is not fixed,
-  so the room composer and its "envoyer" button and smileys stay visible and reachable.
+- **Never cover the composer** (#65, owner choices C 480/500 then B 430/500): on desktop the room screen
+  fits the viewport and its lines scroll inside their panel (`web-ui/04` Room screen); while a private
+  window is open, a window is at most `--dock-height` tall and the room screen is shortened by that
+  height, so the dock never overlaps the composer at any scroll position. On phones the dock is not
+  fixed and follows the room in the page flow, so nothing overlays the composer (with 2+ open windows it
+  sits above the fold, reached by scrolling up).
 - **Resume**: `resumed.windows` rebuilds the windows (minimised), `resumed.buffered` appends the buffered
   messages to them and sets their unread counts (BR-013).
 - **Account unlinked** (`accountUnlinked`, ASV-F-024): every window closes locally; the server already
