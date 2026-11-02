@@ -3,7 +3,7 @@
  * reconnection with backoff (ASV-NF-011) and resume (UC13, BR-014). Outside React: it dispatches actions.
  */
 import { resumePayload, serverMessage, type ClientMessage, type ServerMessage } from "../shared/protocol";
-import type { Action } from "./store";
+import { ACCOUNT_WARNINGS, type Action } from "./store";
 
 /** The subset of the browser WebSocket the manager uses, so tests can pass a fake. */
 export interface SocketLike {
@@ -51,6 +51,8 @@ export interface Connection {
   signOutDevice(): Promise<void>;
   /** False when the socket is not open: nothing was sent. */
   send(command: Command): boolean;
+  /** "nouveau code": drops the saved code deadline (BR-087). */
+  forgetCode(): void;
   leave(): void;
   close(): void;
 }
@@ -64,7 +66,7 @@ export const BACKOFF_MS = [1_000, 2_000, 4_000, 8_000, 16_000, 30_000] as const;
 const KEY = "asv.session";
 /** BR-087: the pending code deadline, a number only, never the e-mail nor the code. */
 const CODE_KEY = "asv.codeUntil";
-/** A sign-in code is valid 10 minutes (BR-070). */
+/** A sign-in code is valid 10 minutes (BR-070); mirrors `ACCOUNT_LIMITS.codeTtlMs` in `src/domain/accounts.ts`. */
 export const CODE_TTL_MS = 10 * 60_000;
 const OPEN = 1;
 
@@ -117,10 +119,11 @@ export const createConnection = (deps: ConnectionDeps): Connection => {
   const save = (saved: Saved) => deps.storage.setItem(KEY, JSON.stringify(saved));
   const forget = () => {
     deps.storage.removeItem(KEY);
+    // A code belongs to the session it was asked in (BR-087).
     forgetCode();
   };
   const forgetCode = () => deps.storage.removeItem(CODE_KEY);
-  /** True while a code asked before this resume is still valid (BR-087). */
+  /** True while a code asked before this resume is still valid; drops a stale deadline (BR-087). */
   const codePending = (): boolean => {
     const until = Number(deps.storage.getItem(CODE_KEY));
     if (until > Date.now()) return true;
@@ -195,14 +198,19 @@ export const createConnection = (deps: ConnectionDeps): Connection => {
       onEntered(message);
       return;
     } else if (message.type === "codeSent") {
+      // Falls through to the reducer below.
       deps.storage.setItem(CODE_KEY, String(Date.now() + CODE_TTL_MS));
     } else if (message.type === "accountLinked") {
+      // Signed in: nothing left to restore.
       forgetCode();
       if (message.payload.deviceClaim) {
         deps.dispatch({ type: "server", message });
         void redeem(message.payload.deviceClaim);
         return;
       }
+    } else if (message.type === "warning" && ACCOUNT_WARNINGS[message.payload.code] === "askEmail") {
+      // The server dropped the code, or none was sent: a reload must not reopen a dead step.
+      forgetCode();
     } else if (message.type === "entryRefused") {
       pendingProfile = undefined;
       pendingCode = undefined;
@@ -215,7 +223,8 @@ export const createConnection = (deps: ConnectionDeps): Connection => {
       deps.dispatch({ type: "link", link: "online" });
       deps.dispatch({ type: "server", message });
       // BR-087: the server kept the code under this session id, so the code step comes back.
-      if (!message.payload.accountId && codePending()) deps.dispatch({ type: "codeStepRestored" });
+      if (message.payload.accountId) forgetCode();
+      else if (codePending()) deps.dispatch({ type: "codeStepRestored" });
       return;
     } else if (message.type === "resumeRefused" || message.type === "expelled") {
       resumeSeq = undefined;
@@ -265,6 +274,7 @@ export const createConnection = (deps: ConnectionDeps): Connection => {
       pendingCode = codeRequest;
       deps.dispatch({ type: "entering", pseudo: form.pseudo.normalize("NFC") });
     },
+    forgetCode,
     send(command) {
       return command.type === "requestCode" ? requestCode(command.payload) : write(command);
     },

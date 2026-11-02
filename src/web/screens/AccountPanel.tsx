@@ -56,12 +56,12 @@ const WaitingCode = () => {
     <form onSubmit={submit}>
       <label>
         {STRINGS.code}
-        <input inputMode="numeric" autoComplete="one-time-code" value={code} onChange={(e) => change(e.target.value)} />
+        <input inputMode="numeric" autoComplete="one-time-code" autoFocus value={code} onChange={(e) => change(e.target.value)} />
       </label>
       <p className="small">{STRINGS.codeHelp}</p>
       {triesLeft !== undefined && <p role="alert" className="error">{STRINGS.triesLeft(triesLeft)}</p>}
       <button type="submit" className="bevel primary" disabled={!canSend(code)}>{STRINGS.validate}</button>
-      <button type="button" className="link" onClick={() => commands.local({ type: "accountStep", step: "askEmail" })}>{STRINGS.newCode}</button>
+      <button type="button" className="link" onClick={commands.newCode}>{STRINGS.newCode}</button>
     </form>
   );
 };

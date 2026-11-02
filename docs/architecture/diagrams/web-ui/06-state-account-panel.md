@@ -21,8 +21,8 @@ stateDiagram-v2
   AskEmail --> AskEmail: warning (disposable domain, IP quota, invalid)
   WaitingCode --> WaitingCode: wrong code, tries left shown
   WaitingCode --> AskEmail: code expired or invalidated, "nouveau code"
-  WaitingCode --> WaitingCode: resumed without accountId before the code deadline (BR-087)
-  WaitingCode --> SignedOut: entered, resumeRefused or expelled (new session, code lost)
+  WaitingCode --> WaitingCode: resumed without accountId, panel kept open or closed (BR-087)
+  WaitingCode --> SignedOut: entered or resumeRefused (new session, code lost)
   SignedOut --> WaitingCode: page reloaded, resumed without accountId before the saved code deadline (BR-087)
   WaitingCode --> RedeemingDevice: accountLinked with deviceClaim
   WaitingCode --> SignedIn: accountLinked without deviceClaim
@@ -50,7 +50,9 @@ stateDiagram-v2
   après la fermeture du compte, uniquement pour la loi." (ADR-0014, GDPR art. 13).
 - `SignedIn` shows "connecté·e comme membre" (never the e-mail, since the client does not receive it) and
   the three actions. `entered.staleDevice` triggers `POST /account/sign-out` silently.
-- **Tab switch (BR-087)**: `codeSent` saves the code deadline in `sessionStorage`; a resume before it
-  reopens the panel on the code step, even after the mobile browser reloaded the tab.
+- **Tab switch (BR-087)**: `codeSent` saves the code deadline in `sessionStorage`. A resume keeps the
+  code step in memory; after a reload, a resume before the deadline reopens the panel on the code step
+  with the code field focused. A warning leading to `AskEmail`, "nouveau code" and `accountLinked` drop
+  the deadline.
 - `WaitingCode` accepts digits only, six characters, and sends `verifyCode` on the sixth digit or on
   "valider".

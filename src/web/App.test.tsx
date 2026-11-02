@@ -53,7 +53,7 @@ const joinRoom = (roomId: string, members: Member[] = [man("s2", "bob")]) =>
   fromServer(msg("roomJoined", { roomId, members }));
 
 beforeEach(() => {
-  connection = { enter: vi.fn(), signOutDevice: vi.fn(async () => undefined), send: vi.fn(() => true), leave: vi.fn(), close: vi.fn() };
+  connection = { enter: vi.fn(), signOutDevice: vi.fn(async () => undefined), send: vi.fn(() => true), forgetCode: vi.fn(), leave: vi.fn(), close: vi.fn() };
   connect = (d) => {
     dispatch = d;
     return connection;
@@ -832,6 +832,7 @@ describe("account panel", () => {
     expect(within(panel()).getByText(STRINGS.triesLeft(2))).toBeTruthy();
     await user.click(within(panel()).getByRole("button", { name: STRINGS.newCode }));
     expect(within(panel()).getByLabelText(STRINGS.email)).toBeTruthy();
+    expect(connection.forgetCode).toHaveBeenCalled();
   });
 
   it("offers the account actions once linked, and confirms before deleting", async () => {

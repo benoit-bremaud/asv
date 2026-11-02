@@ -9,7 +9,7 @@ import {
   type EnterForm,
   type SocketLike,
 } from "./connection";
-import type { Action } from "./store";
+import { chatReducer, initialState, type Action, type ChatState } from "./store";
 
 const KEY = "asv.session";
 const OPEN = 1;
@@ -597,6 +597,17 @@ describe("createConnection", () => {
       socket.receive(simple("codeSent"));
 
       expect(store.get(CODE_KEY)).toBe(String(Date.now() + CODE_TTL_MS));
+      expect(dispatch).toHaveBeenLastCalledWith({ type: "server", message: expect.objectContaining({ type: "codeSent" }) });
+    });
+
+    it("reaches the code step after a reload with the real reducer", () => {
+      let state: ChatState = initialState;
+      dispatch.mockImplementation((action) => void (state = chatReducer(state, action)));
+      store.set(CODE_KEY, String(Date.now() + 1_000));
+
+      resumeAfterReload(resumedAs());
+
+      expect(state.account).toMatchObject({ open: true, step: "waitingCode" });
     });
 
     it("reopens the code step on a resume before the deadline", () => {
@@ -604,7 +615,7 @@ describe("createConnection", () => {
 
       resumeAfterReload(resumedAs());
 
-      expect(dispatch).toHaveBeenLastCalledWith(restored);
+      expect(dispatch.mock.calls.map(([action]) => action.type).slice(-3)).toEqual(["link", "server", "codeStepRestored"]);
     });
 
     it("does not reopen the code step when the session is already linked", () => {
@@ -613,10 +624,14 @@ describe("createConnection", () => {
       resumeAfterReload(resumedAs("acc1"));
 
       expect(dispatch).not.toHaveBeenCalledWith(restored);
+      expect(store.has(CODE_KEY)).toBe(false);
     });
 
-    it("drops an expired deadline without reopening the code step", () => {
-      store.set(CODE_KEY, String(Date.now() - 1));
+    it.each([
+      ["passed", -1],
+      ["reached", 0],
+    ])("drops a deadline already %s without reopening the code step", (_case, offset) => {
+      store.set(CODE_KEY, String(Date.now() + offset));
 
       resumeAfterReload(resumedAs());
 
@@ -628,12 +643,38 @@ describe("createConnection", () => {
       ["accountLinked", simple("accountLinked", { accountId: "acc1" })],
       ["entered", entered()],
       ["resumeRefused", simple("resumeRefused")],
+      ["expelled", simple("expelled", { until: "2026-10-23T10:00:00.000Z" })],
+      ["codeExhausted", simple("warning", { code: "codeExhausted", message: "", replyTo: 1 })],
+      ["codeExpired", simple("warning", { code: "codeExpired", message: "", replyTo: 1 })],
+      ["codeMissing", simple("warning", { code: "codeMissing", message: "", replyTo: 1 })],
     ])("clears the deadline on %s", (_type, message) => {
       store.set(CODE_KEY, String(Date.now() + 1_000));
       const socket = start();
       socket.open();
 
       socket.receive(message);
+
+      expect(store.has(CODE_KEY)).toBe(false);
+    });
+  
+    it("keeps the deadline on a wrong code", () => {
+      store.set(CODE_KEY, "123");
+      const socket = start();
+      socket.open();
+
+      socket.receive(simple("warning", { code: "codeWrong", message: "", replyTo: 1, triesLeft: 2 }));
+
+      expect(store.get(CODE_KEY)).toBe("123");
+    });
+
+    it.each([
+      ["leave", () => connection.leave()],
+      ["forgetCode", () => connection.forgetCode()],
+    ])("drops the deadline on %s", (_case, act) => {
+      store.set(CODE_KEY, String(Date.now() + 1_000));
+      resumeAfterReload(resumed());
+
+      act();
 
       expect(store.has(CODE_KEY)).toBe(false);
     });
