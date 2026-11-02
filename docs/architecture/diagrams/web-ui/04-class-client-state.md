@@ -210,7 +210,7 @@ classDiagram
 - **Room screen**: tabs for the joined rooms, lines, members list with age and city (connected) or
   "(absent)" (away), message field with 500 code-point counter, send on Enter; over 500 the counter is flagged, sending is disabled and the text stays in the field (BR-020). Each room keeps its own draft, so a draft never follows a tab switch. Desktop (≥ 768 px wide and
   ≥ 720 px high): the room screen fits the viewport; the lines and the members list scroll inside their
-  panels, and the lines follow new messages while the reader is at the bottom, never while they read
+  panels, and the lines follow new messages, and stay at the bottom when their panel shrinks (a private window opens, the window is resized), while the reader is at the bottom, never while they read
   older ones; sending a message always brings the reader back to the bottom (#65, #85). Below either
   size the page scrolls as a whole (#83). Phone width (< 768 px): the members list is a toggled panel (NF-006). Leaving a tab sends `leaveRoom`.
 - **Strings**: every UI text lives in `src/web/strings.ts`, French (NF-012).
