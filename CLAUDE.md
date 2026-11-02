@@ -18,6 +18,8 @@ Brick 6 done: private conversations (members only, 3 windows), ignore both ways 
 
 ## Project invariants
 
+- **QA test plan**: every PR that adds or changes a user journey updates `docs/architecture/qa/test-plan.md` in the
+  same PR; `review-local` § 2c passes it to `qa-tester`, and an in-scope row with no evidence turns the QA step red.
 - **Dependency rule**: `src/domain/` never imports Node, `ws`, Cloudflare, Hono or React.
   Transports build and wire the Hono app, the server never imports a transport.
 - **Conception is the source of truth**: code follows `docs/architecture/`. When they diverge, fix

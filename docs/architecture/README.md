@@ -85,7 +85,7 @@ Coverage: [traceability matrix](traceability-matrix.md).
 
 - [Business rules](business-rules.md) · [Glossary](glossary.md)
 - [Security and GDPR](security-and-rgpd.md) · [Test strategy](test-strategy.md)
-- [Design pack](design-pack.md)
+- [Design pack](design-pack.md) · [Test plan and QA coverage matrix](qa/test-plan.md)
 
 ## 8. Decisions
 

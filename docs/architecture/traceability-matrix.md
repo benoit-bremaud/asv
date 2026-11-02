@@ -58,3 +58,4 @@ Links requirements to use cases and every use case to its realisations. All path
 - Every functional requirement F-001 to F-024 maps to at least one use case.
 - Every use case has a spec, and a sequence when it crosses components with branches.
 - Non-functional requirements map to platform, web-ui, `security-and-rgpd.md` and `test-strategy.md`.
+- Every user journey maps to use cases and business rules in [`qa/test-plan.md`](qa/test-plan.md), with the last QA evidence of each case.
