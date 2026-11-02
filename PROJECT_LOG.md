@@ -305,3 +305,12 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
 - No Codex review (quota), no Copilot review (request did not stick). Squash-merged as a0d6848.
 - Open: coverage gaps listed in the plan, not filed until the owner approves. Next: #65 (private windows cover the
   room input).
+
+## 2026-11-02 — Dead GitHub workflows removed (#79, PR #80)
+
+- Wave 0 bis of benoit-bremaud/agents-skills#259 (local-first CI). `gitleaks.yml` removed; gitleaks now runs on a
+  lefthook pre-push hook (`prepare: lefthook install`). Kept: `ci.yml`, CodeQL, dependency-review, Scorecard (public).
+- Owner MCDA 2026-11-02: option A (hook first, then remove the workflow), 435/500.
+- Ruleset "Protect main": `gitleaks` dropped from the required checks (now verify, codeql, sonarqube).
+- Adversarial review: CI diagram and security doc updated, hook shared across worktrees documented. Copilot: no
+  issues; Codex: quota. Squash-merged as 820ccab. Visibility: public, no derogation (ADR-0005).
