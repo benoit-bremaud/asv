@@ -6,7 +6,7 @@ coverage matrix that records the last QA evidence of every case, so each QA pass
 > Written with skill `test-plan`. Families, tools and owners refer to the owner's
 > `~/.claude/skills/testing-strategy/taxonomy.md` (not linked). Levels and checklist IDs (FON, DAT, UI,
 > A11Y, PERF, SEC, ROB, MOB, USA, PRI) refer to skill `qa-browser-check` and its `checklist.md`.
-> Last reviewed: 2026-11-02 · head fc7d87d
+> Last reviewed: 2026-11-02 · base fc7d87d
 
 ## Rule: the plan follows the product
 
@@ -41,11 +41,11 @@ coverage matrix that records the last QA evidence of every case, so each QA pass
 | RSK-05 | Ignore or directory search leaks or fails (UC7, UC8) | 2 | 4 | 8 medium | BR-042, BR-044 |
 | RSK-06 | Account takeover: e-mail code, device cookie, sign-out (UC17, UC18) | 3 | 5 | 15 high | auth surface; #72 defect found by QA |
 | RSK-07 | Account deletion leaves data or breaks the legal vault (UC19) | 2 | 5 | 10 medium | ADR-0014, BR-080…083; never run in the browser |
-| RSK-08 | Personal data persisted or logged beyond ADR rules | 2 | 5 | 10 medium | `security-and-rgpd.md` §1; estimate |
+| RSK-08 | Personal data persisted or logged beyond ADR rules | 2 | 5 | 10 medium | `security-and-rgpd.md` §1 rules; no defect seen yet (judgement) |
 | RSK-09 | Web attack: XSS, CSWSH, headers, input limits | 3 | 5 | 15 high | public chat input; SEC-01 open (#69) |
 | RSK-10 | Tunnel mode misconfigured: HSTS, `Secure` cookie, client IP (BR-084…086) | 2 | 5 | 10 medium | production config, never run by QA |
 | RSK-11 | Legal pages missing or wrong (ADR-0018) | 2 | 4 | 8 medium | legal duty before testers |
-| RSK-12 | Accessibility barriers (WCAG 2.2 AA) | 3 | 3 | 9 medium | F1–F3 of the full pass (#63, #65) |
+| RSK-12 | Accessibility barriers (WCAG 2.2 AA) | 3 | 3 | 9 medium | F1–F3 of the full pass (#63, #64, #65) |
 
 ## Family matrix
 
@@ -87,7 +87,8 @@ Moderation journeys (UC9, UC11, UC12, UC14…UC16) join this list with brick 8.
 ## Coverage matrix
 
 Reports: **FP** = `2026-10-24-full-pass.md` (head c470f1a) · **RS** = `2026-10-24-tester-runbook-smoke.md`
-(PR #61, head not recorded) · **CS** = `2026-11-02-code-step-resume.md` (e774c8c, re-check 09f44e7).
+(PR #61, head not recorded) · **CS** = `2026-11-02-code-step-resume.md` (first run e774c8c; re-check 09f44e7 re-ran
+FON-01a–d, F1, N1–N3, UI-01/02 only) · **TS** = `2026-11-02-test-plan-smoke.md` (head f9970ba).
 Screenshots are under `docs/architecture/qa/`; numbers refer to the report's own prefix.
 Level is the lowest QA level that must run the row: smoke ⊂ pass ⊂ full.
 
@@ -95,13 +96,13 @@ Level is the lowest QA level that must run the row: smoke ⊂ pass ⊂ full.
 
 | Case | Level | Last evidence (report · screenshot · head) | Status |
 |---|---|---|---|
-| JRN-01 entry, nominal | smoke | CS · `2026-11-02-01-rooms-375` · 09f44e7 | covered |
-| JRN-01 refused pseudo / age, rate limit | pass | FP · `full-02-entry-error` · c470f1a; rate limit CS SEC-07 · 09f44e7 | covered |
+| JRN-01 entry, nominal | smoke | TS · `2026-11-02-test-plan-smoke-01-entry-375`, `-02-rooms-375` · f9970ba | covered |
+| JRN-01 refused pseudo / age, rate limit | pass | FP · `full-02-entry-error` · c470f1a; rate limit FP SEC-07 · c470f1a and CS SEC-07 · e774c8c | covered |
 | JRN-02 away 5 min, peer away | pass | FP · `full-14-peer-away`, `full-15-peer-closed` · c470f1a | covered |
 | JRN-02 resume after a socket drop | pass | CS · `2026-11-02-09-recheck-after-drop-375` · 09f44e7 | covered |
 | JRN-02 server down and restart | pass | FP · `full-21-server-down`, `full-22-server-back` · c470f1a | covered |
 | JRN-02 leave | pass | FP FON-01 (no shot) · c470f1a | covered |
-| JRN-03 join and post | smoke | CS · `2026-11-02-06-room-xss-as-text-375` · 09f44e7 | covered |
+| JRN-03 join and post | smoke | TS · `2026-11-02-test-plan-smoke-03-room-post-375` · f9970ba | covered |
 | JRN-03 flood notice | pass | FP · `full-07-room-flood` · c470f1a | covered |
 | JRN-03 create a user room | pass | FP · `full-24-user-room-created` · c470f1a | covered |
 | JRN-04 private conversation, both sides | pass | FP · `full-09-private-receiver`, `full-10-private-sender` · c470f1a | covered |
@@ -112,47 +113,49 @@ Level is the lowest QA level that must run the row: smoke ⊂ pass ⊂ full.
 | JRN-07 request a code, right code | pass | CS · `2026-11-02-11-recheck-signed-in-375` · 09f44e7 | covered |
 | JRN-07 wrong code, exhausted | pass | CS · `2026-11-02-12-recheck-f1-no-dead-step-375` · 09f44e7 | covered |
 | JRN-07 IP quota 10 codes per hour | full | — | not covered |
-| JRN-08 code step after a drop and a reload | pass | CS · `2026-11-02-09…10-recheck-*-375` · 09f44e7 | covered |
-| JRN-09 device cookie flags | pass | CS SEC-02 (no shot) · 09f44e7 | covered |
+| JRN-08 code step after a drop and a reload | pass | CS · `2026-11-02-09-recheck-after-drop-375`, `2026-11-02-10-recheck-after-reload-focus-375` · 09f44e7 | covered |
+| JRN-09 device cookie flags | pass | CS SEC-02 (no shot) · e774c8c | covered |
 | JRN-09 sign out of this device, cookie replay refused | pass | FP SEC-12 (no shot) · c470f1a | covered |
 | JRN-09 sign out everywhere | pass | — | not covered |
 | JRN-09 remembered device hint in a new tab | pass | FP: INCONCLUSIVE · c470f1a | not covered |
 | JRN-10 delete my account | pass | — (FP PRI-04 NOT TESTED) | not covered |
-| JRN-11 legal pages | smoke | RS · `2026-10-24-tester-runbook-smoke-rules`, `-privacy` · PR #61; FP · `full-16`, `full-17` · c470f1a | covered |
-| JRN-12 HSTS in tunnel mode | full | RS header read (no shot) · PR #61 | covered |
+| JRN-11 legal pages | smoke | TS · `2026-11-02-test-plan-smoke-04-rules-375`, `-05-legal-375`, `-06-privacy-375` · f9970ba | covered |
+| JRN-12 HSTS in tunnel mode | full | RS header read on the live instance (no shot) · PR #61 | covered |
 | JRN-12 `Secure` cookie, client IP in tunnel mode | full | — (unit tests only) | not covered |
 
 ### qa-browser-check domains
 
 | Domain | Level | Last evidence (report · screenshot · head) | Status |
 |---|---|---|---|
-| FON Functional | smoke | CS FON-01…09 · 09f44e7 | covered |
+| FON Functional | smoke | FP FON-01/03/04/08/09/10 · c470f1a; CS FON-01a–d · 09f44e7, FON-09 · e774c8c | covered (FON-08b not covered) |
 | DAT Data and API | pass | FP DAT-01, DAT-03/06 · c470f1a | covered |
-| UI viewports, console, dark | pass | FP UI-01/02/04/05 · `full-18-entry-390`, `full-20-entry-dark` · c470f1a; CS UI-01/02 · 09f44e7 | covered (UI-08 open, #62) |
+| UI viewports, console, dark | pass | FP UI-01/02/04/05 · `full-18-entry-390`, `full-20-entry-dark` · c470f1a; TS inspector · f9970ba | covered (UI-08 open, #62) |
 | UI Firefox and WebKit | full | — | not covered |
-| A11Y keyboard, semantics, contrast, targets | pass | FP · `full-23-keyboard-guest-rooms` · c470f1a | covered (FAIL: #63, A11Y-02, #65) |
+| A11Y keyboard, semantics, contrast, targets | pass | FP · `full-23-keyboard-guest-rooms` · c470f1a | covered (FAIL: #63, #64, #65) |
 | A11Y axe-core, screen reader | full | — | not covered |
 | PERF lab budget | full | FP PERF-01 INCONCLUSIVE · c470f1a | not covered |
-| SEC probes | pass | CS SEC-01…10 · 09f44e7 | covered (SEC-01 FAIL, #69) |
-| ROB down, restart, two users | pass | FP ROB-01/02/05 · c470f1a; CS ROB-01 · 09f44e7 | covered |
+| SEC probes | pass | CS SEC-01…10 · e774c8c | covered (SEC-01 FAIL, #69) |
+| ROB down, restart, two users | pass | FP ROB-01/02/05 · c470f1a; CS ROB-01 · e774c8c | covered |
 | MOB native or real phone | full | — (CS MOB-03 NOT TESTED) | not covered |
 | USA messages, confirmations | pass | FP USA-03/04 · c470f1a | covered |
-| PRI storage, logs, third parties | pass | CS PRI-01 · 09f44e7; FP PRI-02/03 · c470f1a | covered |
+| PRI storage, logs, third parties | pass | CS PRI-01 · e774c8c; FP PRI-02/03 · c470f1a | covered |
 
 ### SEC-01…SEC-10
 
+CS SEC rows come from the first run (e774c8c); 09f44e7 changed no server code.
+
 | Case | Level | Last evidence (report · head) | Status |
 |---|---|---|---|
-| SEC-01 security headers | smoke | CS · 09f44e7 | covered (FAIL: no `Permissions-Policy`, #69) |
-| SEC-02 cookies | pass | CS · 09f44e7 | covered (`Secure` in tunnel: not covered) |
-| SEC-03 Origin, CORS, CSWSH | pass | CS · 09f44e7 | covered |
-| SEC-04 XSS | pass | CS · `2026-11-02-06-room-xss-as-text-375` · 09f44e7 | covered |
-| SEC-05 authn and authz | pass | CS · 09f44e7 | covered |
-| SEC-06 input limits | pass | CS · 09f44e7 | covered |
-| SEC-07 rate limits | pass | CS · 09f44e7 | covered |
-| SEC-08 error leaks | pass | CS · 09f44e7 | covered |
-| SEC-09 bundle | pass | CS · 09f44e7 | covered |
-| SEC-10 third parties | pass | CS · 09f44e7 | covered |
+| SEC-01 security headers | smoke | TS (`curl -I`) · f9970ba | covered (FAIL: no `Permissions-Policy`, #69) |
+| SEC-02 cookies | pass | CS · e774c8c | covered (`Secure` in tunnel: not covered) |
+| SEC-03 Origin, CORS, CSWSH | pass | CS · e774c8c | covered |
+| SEC-04 XSS | pass | CS · `2026-11-02-06-room-xss-as-text-375` · e774c8c | covered |
+| SEC-05 authn and authz | pass | CS · e774c8c | covered |
+| SEC-06 input limits | pass | CS · e774c8c | covered |
+| SEC-07 rate limits | pass | CS · e774c8c | covered |
+| SEC-08 error leaks | pass | CS · e774c8c | covered |
+| SEC-09 bundle | pass | CS · e774c8c | covered |
+| SEC-10 third parties | pass | CS · e774c8c | covered |
 
 ## Exit criteria
 
@@ -174,4 +177,5 @@ Level is the lowest QA level that must run the row: smoke ⊂ pass ⊂ full.
 
 ## Changelog
 
-- 2026-11-02 — created (#74): risks, families, 12 journeys, coverage back-filled from FP, RS and CS.
+- 2026-11-02 — created (#74): risks, families, 12 journeys, coverage back-filled from FP, RS and CS; smoke rows
+  run against the plan (TS).

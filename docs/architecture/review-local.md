@@ -1,59 +1,41 @@
-# Local review — asv (branch fix/72-keep-code-step-on-resume)
-
-Pre-push and pre-merge review of the fix for issue #72: the sign-in code step survives a tab switch, a resume and a tab reload.
+# Local review — asv (branch docs/74-qa-test-plan)
 
 - Date: 2026-11-02
-- Commit: d55c436 (first pass on e774c8c, fixes in 09f44e7, SonarQube fixes in d55c436)
-- Scope: branch diff origin/main...HEAD (BR-087, ADR-0011 amendment, web-ui/06, `src/web/connection.ts`, `src/web/store.ts`, account panel)
-- Checks run: design · docs · tests · security (Opus) · correctness · QA pass on mobile (Opus)
-- Verdict: ship — every Must and Should fixed in 09f44e7 · Must 0 · Should 0 · Nice 1
+- Commit: f9970ba + review fixes (same branch)
+- Scope: branch diff origin/main...HEAD, docs only (`qa/test-plan.md`, rule lines in `CLAUDE.md`,
+  `test-strategy.md`, `README.md`, `traceability-matrix.md`)
+- Checks run: docs and accuracy (doc-auditor) · QA smoke (qa-tester). Design, tests, security and correctness
+  agents not run: no code, test or config file in the diff.
+- Verdict: ship as-is · Must 0 · Should 0 (4 fixed) · Nice 1 open
 
-## Pre-merge gate (head SHA d55c436)
-
+## Pre-merge gate (head SHA f9970ba, docs-only follow-up commit)
 | Step | Result |
 |---|---|
-| 1 Tests | ✅ 638 unit and integration tests (`pnpm verify`: lint, typecheck, tests, build) |
-| 2 Coverage | tests 98.62 % stmts / 94.46 % branches / 98.07 % funcs / 99.40 % lines (floor 80) · docs: about 100 % on the new surface (doc-auditor estimate) |
-| 3 SonarQube | ✅ PASSED on d55c436 (first run on 09f44e7 failed: S3776 complexity of `handle()`, S9379 `autoFocus`; fixed by extracting `trackCode()` and focusing by ref) |
-| 4 Secrets | ✅ gitleaks clean (origin/main..HEAD) · no tracked .env · diff read: nothing sensitive (the stored deadline is a number only) |
-| 5 QA pass | ✅ pass on 09f44e7 · scenarios a–d, F1, N1–N3 pass at 375×812, dev and production build · SEC-01…10: 9 ✅, SEC-01 ❌ → #69 (known, outside the diff) · report: docs/architecture/qa/2026-11-02-code-step-resume.md |
-
-- Gate: **GREEN — merge authorised on owner approval** (QA ran on 09f44e7; d55c436 only refactors and keeps the focus, covered by the App test)
+| 1 Tests | ✅ `pnpm verify`: 19 files, 638 tests passed |
+| 2 Coverage | unchanged by a docs-only diff; enforced by the runner thresholds in `pnpm verify` |
+| 3 SonarQube | run with `pnpm sonar` after the last commit, on a clean tree |
+| 4 Secrets | ✅ gitleaks clean on origin/main..HEAD · no tracked `.env` · diff read: nothing sensitive (legal-page shots show "(à compléter)" placeholders only) |
+| 5 QA pass | ✅ smoke on f9970ba, production build on localhost:8799 · JRN-01, JRN-03, JRN-11 pass · SEC-01 ❌ known #69 · inspector clean apart from favicon #62 · report: docs/architecture/qa/2026-11-02-test-plan-smoke.md |
+- Gate: **GREEN — merge authorised on owner approval** (once step 3 reports PASSED)
 
 ## 🔴 Must Have
-
-All fixed in 09f44e7:
-
-- `src/web/connection.ts` `[correctness|design|tests|docs|qa]` · the deadline survived `codeExhausted`, `codeExpired`, `codeMissing` and "nouveau code", so a reload reopened a dead code step (QA F1) · cleared on every warning that `ACCOUNT_WARNINGS` maps to `askEmail`, on `forgetCode()` and on a resume with an account.
-- `docs/architecture/diagrams/web-ui/06-state-account-panel.md` `[docs]` · `expelled` drawn as leading to `SignedOut` · removed.
-- `docs/architecture/diagrams/web-ui/06-state-account-panel.md` `[docs]` · resume transitions incomplete · redrawn after owner choice A (470/500): an in-memory code step is kept as left.
+_None._
 
 ## 🟡 Should Have
-
-All fixed in 09f44e7:
-
-- `src/web/store.ts` `[correctness]` · `pendingVerify` stuck after a restore · reset by `resumedTo` and `codeStepRestored`.
-- `src/web/store.ts` `[correctness|qa]` · a resume reopened a panel the chatter had closed (QA N1) · owner choice A.
-- `src/web/connection.test.ts` `[tests]` · `expelled`, `leave`, action order, `codeSent` forwarding, deadline boundary, wiring with the real reducer · added.
-- `src/web/connection.ts` `[docs|design]` · hidden write in `codePending()` and `forget()` · documented.
-- `docs/architecture/decisions/0011-hub-state-and-hibernation.md` `[docs]` · no pointer to the matrix · issue #72 referenced.
+- Fixed: `qa/test-plan.md` evidence cells cited 09f44e7 for checks only run on e774c8c (SEC, PRI, ROB, FON-09); now
+  e774c8c with a note.
+- Fixed: FON domain row overstated coverage; now cites FP and CS rows and marks FON-08b not covered.
+- Fixed: wrong issue numbers for A11Y (#64 is the missing `h1`, #65 the covered input).
+- Fixed: rate-limit evidence now cites FP SEC-07 and CS SEC-07 with their SHAs.
 
 ## 🔵 Nice to Have
-
-- `src/web/connection.ts` `handle()` `[design]` · mixed early-return and fall-through styles · a `switch` refactor, out of scope for #72.
-- Fixed: traceability BR order, `CODE_TTL_MS` link to `ACCOUNT_LIMITS.codeTtlMs`, code field focus (QA N3), `test-strategy.md` line.
+- `qa/test-plan.md` JRN-01 `[docs]` · the French `entryRefused` message (FP N3) is not a separate row · add one when
+  the entry journey next changes.
 
 ## ⚪ Disagree / Intentional
-
-- `src/web/store.ts` `codeStepRestored` `[design]` · a dedicated action rather than `openAccount` + `accountStep` · one dispatch, one render.
-- `src/web/connection.ts` `[design]` · `Date.now()` not injected · Vitest fake timers fake `Date` (YAGNI).
-- `src/web/connection.ts` `[design]` · second `sessionStorage` key · ADR-0011 amendment, `resumePayload` stays the protocol schema.
-- `src/web/connection.ts` `[security]` · deadline computed client-side · UI only, the server checks expiry and tries itself.
+- Gaps table lists gaps "to file on owner approval" instead of issue numbers · skill `test-plan` step 5 files
+  issues only after the owner confirms the list.
 
 ## Per-dimension summary
-
-- Design: no over-engineering, single source for the code-ending warnings.
-- Docs: diagram, BR-087 and ADR amendment match the code.
-- Tests: unit level, no over-mocking, one wiring test with the real reducer.
-- Security: no finding; nothing server-side trusts the key.
-- Correctness: the resume and reload paths are traced and tested.
+- Docs: links resolve, UC/BR mapping matches the traceability matrix, rule wording identical in three files ·
+  QA: smoke rows of the plan now carry f9970ba evidence.
