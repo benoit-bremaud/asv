@@ -291,3 +291,17 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   status must be published on the head SHA, so re-run `pnpm sonar` after the last commit before merging.
 - Codex quota reached: no Codex review on #75; Copilot commented with no finding. Squash-merged as a8c2cf0.
 - Follow-up: #74, project QA test plan and coverage matrix (owner choice 445/500), next chat.
+
+## 2026-11-02 — Project test plan and QA coverage matrix (#74, PR #77)
+
+- `docs/architecture/qa/test-plan.md`: 12 risks, 12 test families, 12 `JRN-` journeys traced to UC and BR, and a
+  coverage matrix (case × level × last evidence: report, screenshot, head SHA) back-filled from the three QA
+  reports; cases never run are marked `not covered` (3-window cap, sign out everywhere, account deletion, code IP
+  quota, tunnel `Secure` cookie and client IP, Firefox / WebKit, axe, screen reader, performance, real phone).
+- Rule in the plan, `test-strategy.md` and `CLAUDE.md`: a PR that adds or changes a journey updates the plan in the
+  same PR; `review-local` § 2c passes it to `qa-tester`; an in-scope row with no evidence turns the QA step red.
+- Review caught evidence cited on the re-check SHA (09f44e7) for checks run only on e774c8c; fixed. First QA smoke
+  run against the plan on f9970ba: green, SEC-01 still #69.
+- No Codex review (quota), no Copilot review (request did not stick). Squash-merged as a0d6848.
+- Open: coverage gaps listed in the plan, not filed until the owner approves. Next: #65 (private windows cover the
+  room input).
