@@ -165,3 +165,56 @@ The acceptance of #65 itself (no window covers the room composer, at any scroll 
 Fixed 1 (room "envoyer" under the dock at scrollY 0, found by the security part); new 3 (#83, #84, #85); unchanged: phones, dark scheme, console.
 
 Screenshots (`2026-11-02-65-NN-*.png`): 22 sender 1 open 1440 scrollY 0 · 23 receiver 1 open 1440 · 24 sender 1 open + 1 min 1440 · 25 sender 2 open 1440 · 26 sender 3 open 1440 · 27 receiver 1 open + 1 min 1440 · 28 receiver 3 open 1440 · 29 lines follow, 3 open 1440 · 30 search overlay 1440 · 31 account overlay 1440 · 32 account overlay under the dock 1440 × 600 (#84, #83) · 33 members menu 1440 · 34 members menu 1440 × 600 · 35 members scrolled, menu clipped 1440 × 700 · 36 sender 3 open 390 · 37 sender 2 open + 1 min 390 · 38 sender 1 open + 2 min 390 · 39 receiver 390 · 40 receiver 0 windows 1440 · 41 dark 1440 · 42 dark 390. Note: shot 35 was taken with the viewport at 1440 × 700 on QaBeta's page.
+
+## Re-run on 5669e7d
+
+Product part, level `pass`, run by qa-tester · Sonnet 5.5 after the fixes for #83, #84 and #85 part 1 (5669e7d: `(min-width: 768px) and (min-height: 720px)` gate for the fit-to-viewport layout and the fixed dock, `.overlay` z-index 16, own post brings the lines back to the bottom). Study: `web-ui/04-class-client-state.md` (Room screen) and `07`. The security part is not re-run (CSS and client scroll code only; SEC rows stay on debc8ce / fd6cacc). Issues are not closed here: the owner or the developer decides.
+
+| Level | Head SHA | Environment | Targets | Agent / model |
+|---|---|---|---|---|
+| pass (product part) | 5669e7d | local: `asv-dev` (Vite `http://localhost:5173` + Node transport `127.0.0.1:8787`, dev mailer, in-memory store) | W | qa-tester · Sonnet 5.5 |
+
+Method. Playwright MCP (Chromium), four isolated contexts: QaAlpha, QaBeta, QaGamma, QaDelta (throw-away `qa-*@asv.test`, codes read from the dev mailer log, not written here). QaAlpha opened three private windows (QaBeta, QaGamma, QaDelta) and wrote to each. For 1440 × 900, 921 × 892, 1440 × 600 and 800 × 700: `elementFromPoint` at the centre of the room input, "envoyer", smileys summary (also open) and every private composer and "envoyer", must return the element and lie in the viewport, at scrollY 0 and after scrolling to the bottom; plus a sweep every 20 px of scroll over the whole page height (13 steps at 1440 × 600, 10 at 800 × 700) for the room composer and the private composers. The page geometry, the dock `position` and the `.lines` min-height are read at the same time.
+
+### QA matrix (re-run on 5669e7d)
+
+Gate ✅ (no Must) · 🔴 Must 0 · 🟡 Should 0 · 🔵 Nice 1 (#85 part 2, unchanged, not re-checked) — 13 checks: Pass 13 · Fail 0 · Mixed 0 · Not tested/N/A 0
+
+| ID | Domain | Check | Result | Verdict | Evidence | Issues | Shots |
+|---|---|---|---|---|---|---|---|
+| UI-83a | UI | #83: short desktop 1440 × 600, 3 windows | Pass | PASS | `.privates` is `position: static` after the screen (row, [175,530,1076,300]); lines panel 300 px (`min-height: 300px` = 50vh, was 24 px), members 300 px; page scrolls as a whole (842 for 600); room input, "envoyer", summary and smileys hit-tested OK at scrollY 0 and bottom; 13-step sweep: 0 covered target; the three private composers are below the fold at scrollY 0 (reachable by scrolling, OK at the bottom), no horizontal overflow | #83 | 45, 46 |
+| UI-83b | UI | #83: 800 × 700, 3 windows | Pass | PASS | dock static [12,580,761,300], lines 350 px (was 113 px); same hit-tests, 10-step sweep: 0 covered target | #83 | 47, 48 |
+| FON-65m2 | FON | Tall desktops 1440 × 900 and 921 × 892 at scrollY 0, 3 windows, smileys closed and open, and after scrolling | Pass | PASS | `position: fixed` dock [512,600,916,300] and [12,592,897,300]; room input, "envoyer", summary, both private composers and "envoyer" return themselves, page does not scroll (900/900, 892/892); lines 330 / 322 px | | 43, 44 |
+| FON-65n2 | FON | 0 windows, tab only, 1 open, 1 open + 1 minimised, 2 minimised + 1 open, 2 tabs only, receiver 1 open and 1 minimised, 1440 × 900 and 921 × 892 | Pass | PASS | dock sizes 705 × 300 (1 min + 2 open), 500 × 300, 192 × 33 (2 tabs), receiver 300 × 300 then 99 × 33; no page scroll, every target OK in each state (41 hit-tests, 0 bad); 0 windows already measured in the last pass, unchanged code path | | 53, 54, 55 |
+| UI-84a | UI | #84: account overlay above a 3-window dock | Pass | PASS | `.overlay` z-index 16 over dock 15; at 1440 × 600 scrolled so the dock sits at y 288 the overlay [1073,128,340,272] overlaps it and "me déconnecter…", "supprimer mon compte" and "fermer" all return themselves; a real click on "fermer" closes it. Same at 1440 × 720 / 900 and 800 × 700 | #84 | 49, 50 |
+| UI-84b | UI | #84: search overlay with results above the dock | Pass | PASS | overlay [1073,128,340,270] over dock [175,288,1076,300] (overlap), input, "rechercher", "annuler" and the three results hit OK; real click on "annuler" closes it. At 1440 × 720 the fixed dock (y 420) and the overlay (bottom 398) never overlap | #84 | 51, 50 |
+| UI-85a | UI | #85 part 1: own post brings the lines back to the bottom | Pass | PASS | 1440 × 900: lines scrolled to 0 (431 px of content), own post by "envoyer": scrollTop 126 + 326 = 452 (at the bottom); same by Enter (147 + 326 = 473); a post by another member while scrolled up leaves scrollTop at 0 (content 494) | #85 | 52 |
+| UI-65h3 | UI | Phones 390 × 844, no regression | Pass | PASS | 2 open windows: dock static after the room, all composers and "envoyer" OK after `scrollIntoView`, no horizontal scroll, lines min-height 422 px (50vh) and growing with content; receiver 1 window OK | | 56, 59 |
+| UI-65j2 | UI | Rooms list with windows open, 390 and 1440 × 900 | Pass | PASS | 390: dock static, no horizontal scroll; 1440 × 900: dock fixed [820,600,608,300], "créer" and "rechercher" return themselves, no page scroll | | 57, 58 |
+| FON-04b | FON | JRN-04 round trip | Pass | PASS | alpha → beta window, beta's reply `reponse` and alpha's `retour console` in the alpha window; minimise, restore from the tab (`ouvrir QaBeta`), close work | | 53, 54 |
+| UI-02b | UI | Console | Pass | PASS | listeners on QaAlpha and QaBeta during the account and search overlays, the private round trip and the resize: 0 error, 0 page error, 0 warning. The default tab shows only the dev-only React StrictMode warning "WebSocket is closed before the connection is established" and ERR_CONNECTION_REFUSED / `/api/stats` errors dated before this run (the dev server was down between runs); not product defects. Login steps were done without listeners | | |
+| A11Y-65b | A11Y | Overlay controls reachable by pointer above the dock | Pass | PASS | see UI-84a and UI-84b (every control returns itself, close works by click) | #84 | 49, 51 |
+| UI-83c | UI | Room screen at the threshold (1440 × 720 fixed layout, below 720 flow) | Pass | PASS | at 1440 × 720 the dock is fixed, at 1440 × 600 and 800 × 700 it is static; the switch happens at 720 px height | #83 | 50 |
+
+### Findings to act on (re-run on 5669e7d)
+
+None new. #83, #84 and #85 part 1 behave as the fix describes on this head. The verdicts above are the evidence for the owner or developer to close them.
+
+### Observations (no issue)
+
+- At 1440 × 600 and 800 × 700 the private composers sit below the fold at scrollY 0 (dock in the page flow, by design of #83); they are reachable by scrolling and never covered.
+- The search overlay has no close button until a search has run ("annuler" appears with the results); the tab "rechercher" toggles it. Not part of #84; the study decides if a permanent close is wanted.
+- #85 part 2 (pseudo menu clipped in the scrolled members panel) was not re-checked: no change in this diff.
+- The orange notice banner (#68) still takes about 110 px at the top; at 1440 × 600 the lines panel is 300 px nevertheless.
+- A stray page on `http://localhost:8799/` was already open in the Playwright browser before this run (earlier production-build run); not used.
+
+### Not tested (re-run on 5669e7d)
+
+- SEC-01…10 and ROB-11 on 5669e7d (security part not run; no server, header, cookie or input change).
+- #85 part 2, Firefox, WebKit, a real phone, the cap of 3 windows (a fifth member), screen reader, dark scheme (not re-run; no colour change in the diff).
+
+### Delta vs the ce90fc5 re-run
+
+Fixed 3 (UI-65m → #83, UI-65n → #84, UI-65o → #85 part 1); still failing 1 (UI-65p2, #85 part 2, not re-run); new 0.
+
+Screenshots (`2026-11-02-65-NN-*.png`): 43 sender 3 open 1440 × 900 · 44 921 × 892 · 45 1440 × 600 scrollY 0 · 46 1440 × 600 scrolled to bottom · 47 800 × 700 scrollY 0 · 48 800 × 700 bottom · 49 account overlay over the dock 1440 × 600 · 50 account overlay 1440 × 720, and search overlay (fixed dock) 1440 × 720 · 51 search overlay over the dock 1440 × 600 · 52 own post follows 1440 × 900 · 53 sender 1 min + 2 open · 54 sender tabs only · 55 receiver 1 open · 56 sender 2 open 390 · 57 rooms list 390 · 58 rooms list 1440 · 59 receiver 390.
