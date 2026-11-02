@@ -6,7 +6,7 @@ coverage matrix that records the last QA evidence of every case, so each QA pass
 > Written with skill `test-plan`. Families, tools and owners refer to the owner's
 > `~/.claude/skills/testing-strategy/taxonomy.md` (not linked). Levels and checklist IDs (FON, DAT, UI,
 > A11Y, PERF, SEC, ROB, MOB, USA, PRI) refer to skill `qa-browser-check` and its `checklist.md`.
-> Last reviewed: 2026-11-02 · base fc7d87d
+> Last reviewed: 2026-11-02 · base fc7d87d, JRN-04 rows updated for #65 on debc8ce
 
 ## Rule: the plan follows the product
 
@@ -37,7 +37,7 @@ coverage matrix that records the last QA evidence of every case, so each QA pass
 | RSK-01 | Entry refused or pseudo rules broken (UC1) | 2 | 4 | 8 medium | core funnel; BR-001…008 unit-tested |
 | RSK-02 | Session lost or duplicated on resume (UC13) | 3 | 4 | 12 medium | resume path changed in #72; ADR-0011 |
 | RSK-03 | Room posting broken or flood unbounded (UC2-5) | 2 | 4 | 8 medium | BR-020…022; flood checked in the full pass |
-| RSK-04 | Private message to the wrong person, or windows unusable (UC6) | 2 | 5 | 10 medium | #65 window covers the room input |
+| RSK-04 | Private message to the wrong person, or windows unusable (UC6) | 2 | 5 | 10 medium | #65 window covers the room input (fixed, checked on debc8ce) |
 | RSK-05 | Ignore or directory search leaks or fails (UC7, UC8) | 2 | 4 | 8 medium | BR-042, BR-044 |
 | RSK-06 | Account takeover: e-mail code, device cookie, sign-out (UC17, UC18) | 3 | 5 | 15 high | auth surface; #72 defect found by QA |
 | RSK-07 | Account deletion leaves data or breaks the legal vault (UC19) | 2 | 5 | 10 medium | ADR-0014, BR-080…083; never run in the browser |
@@ -88,7 +88,7 @@ Moderation journeys (UC9, UC11, UC12, UC14…UC16) join this list with brick 8.
 
 Reports: **FP** = `2026-10-24-full-pass.md` (head c470f1a) · **RS** = `2026-10-24-tester-runbook-smoke.md`
 (PR #61, head not recorded) · **CS** = `2026-11-02-code-step-resume.md` (first run e774c8c; re-check 09f44e7 re-ran
-FON-01a–d, F1, N1–N3, UI-01/02 only) · **TS** = `2026-11-02-test-plan-smoke.md` (head f9970ba).
+FON-01a–d, F1, N1–N3, UI-01/02 only) · **TS** = `2026-11-02-test-plan-smoke.md` (head f9970ba) · **PD** = `2026-11-02-65-private-dock.md` (head debc8ce, #65, product part only).
 Screenshots are under `docs/architecture/qa/`; numbers refer to the report's own prefix.
 Level is the lowest QA level that must run the row: smoke ⊂ pass ⊂ full.
 
@@ -105,8 +105,11 @@ Level is the lowest QA level that must run the row: smoke ⊂ pass ⊂ full.
 | JRN-03 join and post | smoke | TS · `2026-11-02-test-plan-smoke-03-room-post-375` · f9970ba | covered |
 | JRN-03 flood notice | pass | FP · `full-07-room-flood` · c470f1a | covered |
 | JRN-03 create a user room | pass | FP · `full-24-user-room-created` · c470f1a | covered |
-| JRN-04 private conversation, both sides | pass | FP · `full-09-private-receiver`, `full-10-private-sender` · c470f1a | covered |
-| JRN-04 minimised window, unread | pass | FP · `full-11-private-minimised-unread` · c470f1a | covered |
+| JRN-04 private conversation, both sides | pass | PD FON-04 · `2026-11-02-65-18-sender-minimised-unread-1440` · debc8ce (earlier: FP · `full-09-private-receiver`, `full-10-private-sender` · c470f1a) | covered |
+| JRN-04 minimised window, unread | pass | PD FON-04 · `2026-11-02-65-18-sender-minimised-unread-1440` · debc8ce | covered |
+| JRN-04 windows never cover the room composer, desktop 1 / 2 / 3 windows, 1 open + 1 minimised, sender and receiver | pass | PD FON-65a…e, UI-65f/g · `2026-11-02-65-01-sender-1-open-1440`, `-02-receiver-1-open-1440`, `-04-sender-1-open-1-min-1440`, `-06-receiver-1-open-1-min-1440` · debc8ce | covered |
+| JRN-04 windows never cover the room composer, phone 390 px, 1 / 2 / 3 windows, 1 open + 1 minimised | pass | PD UI-65h/i · `2026-11-02-65-07-sender-1-open-1-min-390`, `-10-sender-1-open-390`, `-12-sender-2-open-390-scrolled-to-composer` · debc8ce | covered (2+ windows on a phone: composer above the fold at the very bottom, reachable by scrolling) |
+| JRN-03 rooms list with private windows open, desktop and phone | pass | PD UI-65j · `2026-11-02-65-16-sender-rooms-list-2-open-1440`, `-17-sender-rooms-list-2-open-390` · debc8ce | covered |
 | JRN-04 cap of 3 windows | pass | — | not covered |
 | JRN-05 ignore | pass | FP · `full-12-ignore-receiver` · c470f1a | covered |
 | JRN-06 directory search | pass | FP · `full-13-search` · c470f1a | covered |
@@ -129,9 +132,9 @@ Level is the lowest QA level that must run the row: smoke ⊂ pass ⊂ full.
 |---|---|---|---|
 | FON Functional | smoke | FP FON-01/03/04/08/09/10 · c470f1a; CS FON-01a–d · 09f44e7, FON-09 · e774c8c | covered (FON-08b not covered) |
 | DAT Data and API | pass | FP DAT-01, DAT-03/06 · c470f1a | covered |
-| UI viewports, console, dark | pass | FP UI-01/02/04/05 · `full-18-entry-390`, `full-20-entry-dark` · c470f1a; TS inspector · f9970ba | covered (UI-08 open, #62) |
-| UI Firefox and WebKit | full | — | not covered |
-| A11Y keyboard, semantics, contrast, targets | pass | FP · `full-23-keyboard-guest-rooms` · c470f1a | covered (FAIL: #63, #64, #65) |
+| UI viewports, console, dark | pass | FP UI-01/02/04/05 · `full-18-entry-390`, `full-20-entry-dark` · c470f1a; TS inspector · f9970ba; PD UI-02, UI-65f…k · `2026-11-02-65-15-sender-2-open-dark-1440` · debc8ce | covered (UI-08 open, #62) |
+| UI Firefox and WebKit | full | — (PD: `:has()` dock rule not run on Firefox or WebKit) | not covered |
+| A11Y keyboard, semantics, contrast, targets | pass | FP · `full-23-keyboard-guest-rooms` · c470f1a; #65 re-checked in PD (target visibility and `elementFromPoint`) · debc8ce | covered (FAIL: #63, #64; #65 fixed on debc8ce) |
 | A11Y axe-core, screen reader | full | — | not covered |
 | PERF lab budget | full | FP PERF-01 INCONCLUSIVE · c470f1a | not covered |
 | SEC probes | pass | CS SEC-01…10 · e774c8c | covered (SEC-01 FAIL, #69) |
@@ -177,5 +180,6 @@ CS SEC rows come from the first run (e774c8c); 09f44e7 changed no server code.
 
 ## Changelog
 
+- 2026-11-02 — #65: JRN-04 coverage rows added for the composer never covered (desktop, phone, minimised), JRN-03 rooms list with windows, evidence PD · debc8ce; SEC rows not re-run (CSS-only diff, security part not run).
 - 2026-11-02 — created (#74): risks, families, 12 journeys, coverage back-filled from FP, RS and CS; smoke rows
   run against the plan (TS).
