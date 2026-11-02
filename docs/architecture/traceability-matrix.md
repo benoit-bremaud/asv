@@ -23,7 +23,7 @@ Links requirements to use cases and every use case to its realisations. All path
 | UC14 | Invite a moderator | F-015 | BR-056 | moderation/02b | moderation/04 | — | moderation/06 |
 | UC15 | Enroll as moderator | F-015 | BR-056 | moderation/02b | moderation/04 | — | moderation/06 |
 | UC16 | Sign in as moderator | F-016 | BR-054 | moderation/02c | moderation/04 | — | — |
-| UC17 | Sign in with an e-mail code | F-020, F-021 | BR-070 to BR-073, BR-077, BR-080, BR-081, BR-083 | accounts/02 | accounts/04, platform/04d | accounts/05, web-ui/06 | accounts/06 |
+| UC17 | Sign in with an e-mail code | F-020, F-021 | BR-070 to BR-073, BR-077, BR-087, BR-080, BR-081, BR-083 | accounts/02 | accounts/04, platform/04d | accounts/05, web-ui/06 | accounts/06 |
 | UC18 | Sign out of this device or everywhere | F-024 | BR-073 | Spec | accounts/04, platform/04d | web-ui/06 | accounts/06 |
 | UC19 | Delete my account | F-024 | BR-080 to BR-083 | Spec | accounts/04, platform/04d | accounts/05, web-ui/06 | accounts/06 |
 
@@ -50,6 +50,7 @@ Links requirements to use cases and every use case to its realisations. All path
 | BR-084 file log and file vault | platform/04c, platform/07 | #54 |
 | BR-085 client IP behind the tunnel | platform/02, platform/07 | #54 |
 | BR-086 security headers, `Secure` cookie | platform/07, `security-and-rgpd.md` §4 | #48, #50 |
+| BR-087 code step kept across a resume | web-ui/06, ADR-0011 amendment | #72 |
 | Legal pages | web-ui/05, `docs/product/legal-pages-draft.md` | #54 |
 
 ## Coverage check

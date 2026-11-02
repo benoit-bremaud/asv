@@ -99,6 +99,8 @@ export type Action =
   | { readonly type: "openAccount" }
   | { readonly type: "closeAccount" }
   | { readonly type: "accountStep"; readonly step: AccountStep }
+  /** BR-087: a resume before the code deadline reopens the code step. */
+  | { readonly type: "codeStepRestored" }
   | { readonly type: "requestingCode" }
   | { readonly type: "verifyingCode" }
   | { readonly type: "dismissNotice" }
@@ -390,6 +392,8 @@ export const chatReducer = (state: ChatState, action: Action): ChatState => {
       return { ...state, account: { ...state.account, open: false } };
     case "accountStep":
       return { ...state, account: action.step === "signedOut" ? signedOut(state.account) : { ...state.account, step: action.step } };
+    case "codeStepRestored":
+      return { ...state, account: { ...state.account, open: true, step: "waitingCode" } };
     case "verifyingCode":
       return { ...state, account: { ...state.account, pendingVerify: true } };
     case "requestingCode":

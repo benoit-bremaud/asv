@@ -412,6 +412,10 @@ describe("chatReducer: account (web-ui/06)", () => {
     expect(act(signedIn, { type: "accountStep", step: "signedOut" }).account.accountId).toBeUndefined();
     expect(act(signedIn, { type: "accountStep", step: "confirmDelete" }).account).toMatchObject({ step: "confirmDelete", accountId: "a1" });
   });
+
+  it("reopens the panel on the code step when a resume restores it (BR-087)", () => {
+    expect(act(initialState, { type: "codeStepRestored" }).account).toMatchObject({ open: true, step: "waitingCode" });
+  });
 });
 
 describe("private windows, ignore and search (web-ui/07)", () => {

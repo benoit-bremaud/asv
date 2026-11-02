@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   BACKOFF_MS,
+  CODE_TTL_MS,
   createConnection,
   HEARTBEAT_MS,
   PONG_TIMEOUT_MS,
@@ -574,6 +575,67 @@ describe("createConnection", () => {
 
       expect(posted()).toEqual([["/account/sign-out", "{}"]]);
       expect(dispatch).toHaveBeenCalledWith({ type: "accountStep", step: "signedOut" });
+    });
+  });
+
+  describe("pending code across a resume (BR-087)", () => {
+    const CODE_KEY = "asv.codeUntil";
+    const resumedAs = (accountId?: string) =>
+      JSON.stringify({ type: "resumed", seq: 0, payload: { sessionId: "s1", pseudo: "ana", resumeToken: "tok2", rooms: [], windows: [], buffered: [], accountId } });
+    const restored = { type: "codeStepRestored" };
+    const resumeAfterReload = (message: string) => {
+      store.set(KEY, JSON.stringify(saved));
+      const socket = start();
+      socket.open();
+      socket.receive(message);
+    };
+
+    it("saves the code deadline, never the e-mail nor the code, on codeSent", () => {
+      const socket = start();
+      socket.open();
+
+      socket.receive(simple("codeSent"));
+
+      expect(store.get(CODE_KEY)).toBe(String(Date.now() + CODE_TTL_MS));
+    });
+
+    it("reopens the code step on a resume before the deadline", () => {
+      store.set(CODE_KEY, String(Date.now() + 1_000));
+
+      resumeAfterReload(resumedAs());
+
+      expect(dispatch).toHaveBeenLastCalledWith(restored);
+    });
+
+    it("does not reopen the code step when the session is already linked", () => {
+      store.set(CODE_KEY, String(Date.now() + 1_000));
+
+      resumeAfterReload(resumedAs("acc1"));
+
+      expect(dispatch).not.toHaveBeenCalledWith(restored);
+    });
+
+    it("drops an expired deadline without reopening the code step", () => {
+      store.set(CODE_KEY, String(Date.now() - 1));
+
+      resumeAfterReload(resumedAs());
+
+      expect(dispatch).not.toHaveBeenCalledWith(restored);
+      expect(store.has(CODE_KEY)).toBe(false);
+    });
+
+    it.each([
+      ["accountLinked", simple("accountLinked", { accountId: "acc1" })],
+      ["entered", entered()],
+      ["resumeRefused", simple("resumeRefused")],
+    ])("clears the deadline on %s", (_type, message) => {
+      store.set(CODE_KEY, String(Date.now() + 1_000));
+      const socket = start();
+      socket.open();
+
+      socket.receive(message);
+
+      expect(store.has(CODE_KEY)).toBe(false);
     });
   });
 });

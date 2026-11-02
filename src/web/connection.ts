@@ -62,6 +62,10 @@ export const PONG_TIMEOUT_MS = 10_000;
 /** Reconnection delays, the last one repeats (`web-ui/04`). */
 export const BACKOFF_MS = [1_000, 2_000, 4_000, 8_000, 16_000, 30_000] as const;
 const KEY = "asv.session";
+/** BR-087: the pending code deadline, a number only, never the e-mail nor the code. */
+const CODE_KEY = "asv.codeUntil";
+/** A sign-in code is valid 10 minutes (BR-070). */
+export const CODE_TTL_MS = 10 * 60_000;
 const OPEN = 1;
 
 
@@ -111,7 +115,18 @@ export const createConnection = (deps: ConnectionDeps): Connection => {
     return undefined;
   };
   const save = (saved: Saved) => deps.storage.setItem(KEY, JSON.stringify(saved));
-  const forget = () => deps.storage.removeItem(KEY);
+  const forget = () => {
+    deps.storage.removeItem(KEY);
+    forgetCode();
+  };
+  const forgetCode = () => deps.storage.removeItem(CODE_KEY);
+  /** True while a code asked before this resume is still valid (BR-087). */
+  const codePending = (): boolean => {
+    const until = Number(deps.storage.getItem(CODE_KEY));
+    if (until > Date.now()) return true;
+    forgetCode();
+    return false;
+  };
 
   const write = (message: Outbound): boolean => {
     if (socket?.readyState !== OPEN) {
@@ -175,12 +190,19 @@ export const createConnection = (deps: ConnectionDeps): Connection => {
   /** Bookkeeping per message type, then the reducer sees every message once. */
   const handle = (message: ServerMessage) => {
     if (message.type === "entered") {
+      // A new session: a code asked by an older one is gone on the server.
+      forgetCode();
       onEntered(message);
       return;
-    } else if (message.type === "accountLinked" && message.payload.deviceClaim) {
-      deps.dispatch({ type: "server", message });
-      void redeem(message.payload.deviceClaim);
-      return;
+    } else if (message.type === "codeSent") {
+      deps.storage.setItem(CODE_KEY, String(Date.now() + CODE_TTL_MS));
+    } else if (message.type === "accountLinked") {
+      forgetCode();
+      if (message.payload.deviceClaim) {
+        deps.dispatch({ type: "server", message });
+        void redeem(message.payload.deviceClaim);
+        return;
+      }
     } else if (message.type === "entryRefused") {
       pendingProfile = undefined;
       pendingCode = undefined;
@@ -191,6 +213,10 @@ export const createConnection = (deps: ConnectionDeps): Connection => {
       const saved = load();
       if (saved) save({ ...saved, resumeToken: message.payload.resumeToken });
       deps.dispatch({ type: "link", link: "online" });
+      deps.dispatch({ type: "server", message });
+      // BR-087: the server kept the code under this session id, so the code step comes back.
+      if (!message.payload.accountId && codePending()) deps.dispatch({ type: "codeStepRestored" });
+      return;
     } else if (message.type === "resumeRefused" || message.type === "expelled") {
       resumeSeq = undefined;
       forget();
