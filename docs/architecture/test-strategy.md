@@ -18,6 +18,9 @@ TDD is not imposed on this project.
 
 ## Rules
 
+- The QA test plan [`qa/test-plan.md`](qa/test-plan.md) lists the critical journeys and the last QA evidence of
+  every case. Every PR that adds or changes a user journey updates it in the same PR; `review-local` § 2c passes it
+  to `qa-tester`, and an in-scope row with no evidence turns the QA step red.
 - Each business rule has at least one unit test named after its id (for example `BR-021 flood limit`).
 - Each use case has at least one integration or end-to-end test realising its main scenario.
 - The same integration suite must pass against the Cloudflare transport through Wrangler's local runtime
