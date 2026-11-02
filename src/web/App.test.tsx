@@ -666,6 +666,18 @@ describe("room screen", () => {
     expect(panel.scrollTop).toBe(100);
   });
 
+  it("brings the lines back to the bottom when the reader posts", async () => {
+    const user = await setup();
+    await enterChat();
+    await joinRoom("r1");
+    const panel = scrollBox(100);
+    await user.type(screen.getByLabelText(STRINGS.message), "coucou{Enter}");
+
+    await fromServer(message("r1", "coucou", "ana"));
+
+    expect(panel.scrollTop).toBe(1000);
+  });
+
   it("posts the text on submit and clears the field", async () => {
     const user = await setup();
     await enterChat();

@@ -56,7 +56,10 @@ export const RoomScreen = () => {
     event.preventDefault();
     if (text.trim() === "" || tooLong) return;
     // Offline: nothing left, so the draft stays (`write` shows the notice).
-    if (commands.post(roomId, text)) setText("");
+    if (!commands.post(roomId, text)) return;
+    setText("");
+    // The reader's own message always brings the lines back to the bottom (#85).
+    atBottom.current = true;
   };
 
   return (
