@@ -1,4 +1,4 @@
-import { useState, type SubmitEvent } from "react";
+import { useEffect, useRef, useState, type SubmitEvent } from "react";
 import { useChat } from "../chat-context";
 import { STRINGS } from "../strings";
 import { LegalPage } from "./LegalPage";
@@ -40,6 +40,9 @@ const AskEmail = () => {
 const WaitingCode = () => {
   const { state, commands } = useChat();
   const [code, setCode] = useState("");
+  const input = useRef<HTMLInputElement>(null);
+  // The code step opens after a request or a restore (BR-087): the field takes the focus, so a phone can paste at once.
+  useEffect(() => input.current?.focus(), []);
   const { triesLeft, pendingVerify } = state.account;
   // One `verifyCode` at a time: a second one would burn a try (`web-ui/06`).
   const canSend = (digits: string) => digits.length === CODE_LENGTH && !pendingVerify;
@@ -56,7 +59,7 @@ const WaitingCode = () => {
     <form onSubmit={submit}>
       <label>
         {STRINGS.code}
-        <input inputMode="numeric" autoComplete="one-time-code" autoFocus value={code} onChange={(e) => change(e.target.value)} />
+        <input inputMode="numeric" autoComplete="one-time-code" ref={input} value={code} onChange={(e) => change(e.target.value)} />
       </label>
       <p className="small">{STRINGS.codeHelp}</p>
       {triesLeft !== undefined && <p role="alert" className="error">{STRINGS.triesLeft(triesLeft)}</p>}

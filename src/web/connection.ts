@@ -190,27 +190,30 @@ export const createConnection = (deps: ConnectionDeps): Connection => {
     handle(parsed.data);
   };
 
+  /** BR-087: keeps the saved code deadline in step with what the server holds. */
+  const trackCode = (message: ServerMessage) => {
+    if (message.type === "codeSent") {
+      deps.storage.setItem(CODE_KEY, String(Date.now() + CODE_TTL_MS));
+    } else if (
+      // A new session (the code is gone), signed in (nothing to restore), or a warning that ends the code.
+      message.type === "entered" ||
+      message.type === "accountLinked" ||
+      (message.type === "warning" && ACCOUNT_WARNINGS[message.payload.code] === "askEmail")
+    ) {
+      forgetCode();
+    }
+  };
+
   /** Bookkeeping per message type, then the reducer sees every message once. */
   const handle = (message: ServerMessage) => {
+    trackCode(message);
     if (message.type === "entered") {
-      // A new session: a code asked by an older one is gone on the server.
-      forgetCode();
       onEntered(message);
       return;
-    } else if (message.type === "codeSent") {
-      // Falls through to the reducer below.
-      deps.storage.setItem(CODE_KEY, String(Date.now() + CODE_TTL_MS));
-    } else if (message.type === "accountLinked") {
-      // Signed in: nothing left to restore.
-      forgetCode();
-      if (message.payload.deviceClaim) {
-        deps.dispatch({ type: "server", message });
-        void redeem(message.payload.deviceClaim);
-        return;
-      }
-    } else if (message.type === "warning" && ACCOUNT_WARNINGS[message.payload.code] === "askEmail") {
-      // The server dropped the code, or none was sent: a reload must not reopen a dead step.
-      forgetCode();
+    } else if (message.type === "accountLinked" && message.payload.deviceClaim) {
+      deps.dispatch({ type: "server", message });
+      void redeem(message.payload.deviceClaim);
+      return;
     } else if (message.type === "entryRefused") {
       pendingProfile = undefined;
       pendingCode = undefined;

@@ -827,6 +827,7 @@ describe("account panel", () => {
   it("shows the tries left and goes back to the e-mail on 'nouveau code'", async () => {
     const user = await openPanel();
     await fromServer(msg("codeSent", {}));
+    expect(document.activeElement).toBe(within(panel()).getByLabelText(STRINGS.code));
     await fromServer(msg("warning", { code: "codeWrong", message: "codeWrong", triesLeft: 2 }));
 
     expect(within(panel()).getByText(STRINGS.triesLeft(2))).toBeTruthy();
