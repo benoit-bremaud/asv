@@ -666,6 +666,24 @@ describe("room screen", () => {
     expect(panel.scrollTop).toBe(100);
   });
 
+  it("keeps the bottom in view when the lines panel shrinks", async () => {
+    let resized = () => {};
+    vi.stubGlobal("ResizeObserver", class {
+      constructor(callback: () => void) { resized = callback; }
+      observe() {}
+      disconnect() {}
+    });
+    await setup();
+    await enterChat();
+    await joinRoom("r1");
+    const panel = scrollBox(800);
+    Object.defineProperty(panel, "scrollHeight", { configurable: true, value: 1300 });
+
+    act(() => resized());
+
+    expect(panel.scrollTop).toBe(1300);
+  });
+
   it("brings the lines back to the bottom when the reader posts", async () => {
     const user = await setup();
     await enterChat();

@@ -44,6 +44,17 @@ export const RoomScreen = () => {
   useLayoutEffect(() => {
     if (lines.current && atBottom.current) lines.current.scrollTop = lines.current.scrollHeight;
   }, [roomId, lastLineId]);
+  // A shrinking panel (first docked private window, resize) fires no scroll event: keep the bottom in view.
+  const hasRoom = room !== undefined;
+  useLayoutEffect(() => {
+    const panel = lines.current;
+    if (!panel || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => {
+      if (atBottom.current) panel.scrollTop = panel.scrollHeight;
+    });
+    observer.observe(panel);
+    return () => observer.disconnect();
+  }, [hasRoom]);
   const followBottom = ({ currentTarget: panel }: UIEvent<HTMLElement>) => {
     atBottom.current = panel.scrollHeight - panel.scrollTop - panel.clientHeight < FOLLOW_SLACK_PX;
   };
