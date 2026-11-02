@@ -3,22 +3,22 @@
 Pre-push and pre-merge review of the fix for issue #72: the sign-in code step survives a tab switch, a resume and a tab reload.
 
 - Date: 2026-11-02
-- Commit: 09f44e7 (first pass on e774c8c)
+- Commit: d55c436 (first pass on e774c8c, fixes in 09f44e7, SonarQube fixes in d55c436)
 - Scope: branch diff origin/main...HEAD (BR-087, ADR-0011 amendment, web-ui/06, `src/web/connection.ts`, `src/web/store.ts`, account panel)
 - Checks run: design · docs · tests · security (Opus) · correctness · QA pass on mobile (Opus)
 - Verdict: ship — every Must and Should fixed in 09f44e7 · Must 0 · Should 0 · Nice 1
 
-## Pre-merge gate (head SHA 09f44e7)
+## Pre-merge gate (head SHA d55c436)
 
 | Step | Result |
 |---|---|
 | 1 Tests | ✅ 638 unit and integration tests (`pnpm verify`: lint, typecheck, tests, build) |
 | 2 Coverage | tests 98.62 % stmts / 94.46 % branches / 98.07 % funcs / 99.40 % lines (floor 80) · docs: about 100 % on the new surface (doc-auditor estimate) |
-| 3 SonarQube | see the PR: run on the head SHA after this report is committed |
+| 3 SonarQube | ✅ PASSED on d55c436 (first run on 09f44e7 failed: S3776 complexity of `handle()`, S9379 `autoFocus`; fixed by extracting `trackCode()` and focusing by ref) |
 | 4 Secrets | ✅ gitleaks clean (origin/main..HEAD) · no tracked .env · diff read: nothing sensitive (the stored deadline is a number only) |
 | 5 QA pass | ✅ pass on 09f44e7 · scenarios a–d, F1, N1–N3 pass at 375×812, dev and production build · SEC-01…10: 9 ✅, SEC-01 ❌ → #69 (known, outside the diff) · report: docs/architecture/qa/2026-11-02-code-step-resume.md |
 
-- Gate: **GREEN once step 3 passes**
+- Gate: **GREEN — merge authorised on owner approval** (QA ran on 09f44e7; d55c436 only refactors and keeps the focus, covered by the App test)
 
 ## 🔴 Must Have
 
