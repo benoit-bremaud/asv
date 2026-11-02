@@ -15,6 +15,8 @@
   --bevel-dark: #8a8aa8;
   --on-brand: #ffffff;
   --gap: 12px;
+  /* Tallest docked private window (#65): the page keeps this much free space at the bottom. */
+  --dock-height: 340px;
   color-scheme: light dark;
 }
 
@@ -204,9 +206,11 @@ input { font: inherit; padding: 4px; min-height: 32px; }
 .pseudo-button { padding: 0; }
 .menu { position: absolute; z-index: 20; top: 100%; left: 0; display: flex; flex-direction: column; gap: 4px; padding: 6px var(--gap); white-space: nowrap; box-shadow: 4px 4px 0 var(--bevel-dark); }
 .menu [aria-disabled="true"] { opacity: 0.55; }
+/* #65: the page reserves the dock height, so a docked window never covers the room composer. */
+.app:has(.privates) { padding-bottom: calc(var(--dock-height) + var(--gap)); }
 .privates { position: fixed; right: var(--gap); bottom: 0; z-index: 15; display: flex; flex-direction: row-reverse; align-items: flex-end; gap: 8px; max-width: calc(100vw - 2 * var(--gap)); overflow-x: auto; }
 /* A non-modal <dialog open>: reset the user-agent position, margin and colours so it docks like a panel. */
-.private-window { position: static; margin: 0; color: inherit; width: 300px; display: flex; flex-direction: column; gap: 6px; box-shadow: 4px 4px 0 var(--bevel-dark); }
+.private-window { position: static; margin: 0; color: inherit; box-sizing: border-box; width: 300px; max-height: var(--dock-height); display: flex; flex-direction: column; gap: 6px; box-shadow: 4px 4px 0 var(--bevel-dark); }
 .private-title { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--brand); }
 .private-actions { display: flex; gap: 8px; }
 .private-lines { list-style: none; margin: 0; padding: 0; height: 200px; overflow-y: auto; }
@@ -224,7 +228,10 @@ input { font: inherit; padding: 4px; min-height: 32px; }
   .legal-table tr, .legal-table td { display: block; }
   .legal-table tr { margin-bottom: var(--gap); }
   .legal-table td::before { content: attr(data-label) " : "; font-weight: bold; }
-  .privates { left: var(--gap); flex-direction: column-reverse; align-items: stretch; }
+  /* Phones: the dock leaves the fixed layer and follows the room in the page flow (#65). */
+  .app:has(.privates) { padding-bottom: 0; }
+  .privates { position: static; max-width: none; margin-top: var(--gap); flex-direction: column-reverse; align-items: stretch; }
+  .private-window { max-height: none; }
   .private-window { width: auto; }
   .private-lines { height: 40vh; }
 }
