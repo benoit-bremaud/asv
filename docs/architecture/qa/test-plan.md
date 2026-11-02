@@ -88,7 +88,7 @@ Moderation journeys (UC9, UC11, UC12, UC14…UC16) join this list with brick 8.
 
 Reports: **FP** = `2026-10-24-full-pass.md` (head c470f1a) · **RS** = `2026-10-24-tester-runbook-smoke.md`
 (PR #61, head not recorded) · **CS** = `2026-11-02-code-step-resume.md` (first run e774c8c; re-check 09f44e7 re-ran
-FON-01a–d, F1, N1–N3, UI-01/02 only) · **TS** = `2026-11-02-test-plan-smoke.md` (head f9970ba) · **PD** = `2026-11-02-65-private-dock.md` (head debc8ce, #65, product part only).
+FON-01a–d, F1, N1–N3, UI-01/02 only) · **TS** = `2026-11-02-test-plan-smoke.md` (head f9970ba) · **PD** = `2026-11-02-65-private-dock.md` (head debc8ce, #65, product part and security part).
 Screenshots are under `docs/architecture/qa/`; numbers refer to the report's own prefix.
 Level is the lowest QA level that must run the row: smoke ⊂ pass ⊂ full.
 
@@ -97,7 +97,7 @@ Level is the lowest QA level that must run the row: smoke ⊂ pass ⊂ full.
 | Case | Level | Last evidence (report · screenshot · head) | Status |
 |---|---|---|---|
 | JRN-01 entry, nominal | smoke | TS · `2026-11-02-test-plan-smoke-01-entry-375`, `-02-rooms-375` · f9970ba | covered |
-| JRN-01 refused pseudo / age, rate limit | pass | FP · `full-02-entry-error` · c470f1a; rate limit FP SEC-07 · c470f1a and CS SEC-07 · e774c8c | covered |
+| JRN-01 refused pseudo / age, rate limit | pass | FP · `full-02-entry-error` · c470f1a; rate limit FP SEC-07 · c470f1a and PD SEC-07 · debc8ce | covered |
 | JRN-02 away 5 min, peer away | pass | FP · `full-14-peer-away`, `full-15-peer-closed` · c470f1a | covered |
 | JRN-02 resume after a socket drop | pass | CS · `2026-11-02-09-recheck-after-drop-375` · 09f44e7 | covered |
 | JRN-02 server down and restart | pass | FP · `full-21-server-down`, `full-22-server-back` · c470f1a | covered |
@@ -107,7 +107,7 @@ Level is the lowest QA level that must run the row: smoke ⊂ pass ⊂ full.
 | JRN-03 create a user room | pass | FP · `full-24-user-room-created` · c470f1a | covered |
 | JRN-04 private conversation, both sides | pass | PD FON-04 · `2026-11-02-65-18-sender-minimised-unread-1440` · debc8ce (earlier: FP · `full-09-private-receiver`, `full-10-private-sender` · c470f1a) | covered |
 | JRN-04 minimised window, unread | pass | PD FON-04 · `2026-11-02-65-18-sender-minimised-unread-1440` · debc8ce | covered |
-| JRN-04 windows never cover the room composer, desktop 1 / 2 / 3 windows, 1 open + 1 minimised, sender and receiver | pass | PD FON-65a…e, UI-65f/g · `2026-11-02-65-01-sender-1-open-1440`, `-02-receiver-1-open-1440`, `-04-sender-1-open-1-min-1440`, `-06-receiver-1-open-1-min-1440` · debc8ce | covered |
+| JRN-04 windows never cover the room composer, desktop 1 / 2 / 3 windows, 1 open + 1 minimised, sender and receiver | pass | PD FON-65a…e, UI-65f/g · `2026-11-02-65-01-sender-1-open-1440`, `-02-receiver-1-open-1440`, `-04-sender-1-open-1-min-1440`, `-06-receiver-1-open-1-min-1440` · debc8ce | covered at the bottom of the page; at the default scroll position the room "envoyer" is under the dock until the page is scrolled (PD security part, shot 21, 921 × 892) |
 | JRN-04 windows never cover the room composer, phone 390 px, 1 / 2 / 3 windows, 1 open + 1 minimised | pass | PD UI-65h/i · `2026-11-02-65-07-sender-1-open-1-min-390`, `-10-sender-1-open-390`, `-12-sender-2-open-390-scrolled-to-composer` · debc8ce | covered (2+ windows on a phone: composer above the fold at the very bottom, reachable by scrolling) |
 | JRN-03 rooms list with private windows open, desktop and phone | pass | PD UI-65j · `2026-11-02-65-16-sender-rooms-list-2-open-1440`, `-17-sender-rooms-list-2-open-390` · debc8ce | covered |
 | JRN-04 cap of 3 windows | pass | — | not covered |
@@ -117,7 +117,7 @@ Level is the lowest QA level that must run the row: smoke ⊂ pass ⊂ full.
 | JRN-07 wrong code, exhausted | pass | CS · `2026-11-02-12-recheck-f1-no-dead-step-375` · 09f44e7 | covered |
 | JRN-07 IP quota 10 codes per hour | full | — | not covered |
 | JRN-08 code step after a drop and a reload | pass | CS · `2026-11-02-09-recheck-after-drop-375`, `2026-11-02-10-recheck-after-reload-focus-375` · 09f44e7 | covered |
-| JRN-09 device cookie flags | pass | CS SEC-02 (no shot) · e774c8c | covered |
+| JRN-09 device cookie flags | pass | PD SEC-02 (no shot) · debc8ce | covered |
 | JRN-09 sign out of this device, cookie replay refused | pass | FP SEC-12 (no shot) · c470f1a | covered |
 | JRN-09 sign out everywhere | pass | — | not covered |
 | JRN-09 remembered device hint in a new tab | pass | FP: INCONCLUSIVE · c470f1a | not covered |
@@ -137,7 +137,7 @@ Level is the lowest QA level that must run the row: smoke ⊂ pass ⊂ full.
 | A11Y keyboard, semantics, contrast, targets | pass | FP · `full-23-keyboard-guest-rooms` · c470f1a; #65 re-checked in PD (target visibility and `elementFromPoint`) · debc8ce | covered (FAIL: #63, #64; #65 fixed on debc8ce) |
 | A11Y axe-core, screen reader | full | — | not covered |
 | PERF lab budget | full | FP PERF-01 INCONCLUSIVE · c470f1a | not covered |
-| SEC probes | pass | CS SEC-01…10 · e774c8c | covered (SEC-01 FAIL, #69) |
+| SEC probes | pass | PD SEC-01…10 · debc8ce | covered (SEC-01 FAIL, #69) |
 | ROB down, restart, two users | pass | FP ROB-01/02/05 · c470f1a; CS ROB-01 · e774c8c | covered |
 | MOB native or real phone | full | — (CS MOB-03 NOT TESTED) | not covered |
 | USA messages, confirmations | pass | FP USA-03/04 · c470f1a | covered |
@@ -145,20 +145,21 @@ Level is the lowest QA level that must run the row: smoke ⊂ pass ⊂ full.
 
 ### SEC-01…SEC-10
 
-CS SEC rows come from the first run (e774c8c); 09f44e7 changed no server code.
+PD SEC rows come from the security part of `2026-11-02-65-private-dock.md` on fd6cacc (product code debc8ce), local
+dev server and own production build.
 
 | Case | Level | Last evidence (report · head) | Status |
 |---|---|---|---|
-| SEC-01 security headers | smoke | TS (`curl -I`) · f9970ba | covered (FAIL: no `Permissions-Policy`, #69) |
-| SEC-02 cookies | pass | CS · e774c8c | covered (`Secure` in tunnel: not covered) |
-| SEC-03 Origin, CORS, CSWSH | pass | CS · e774c8c | covered |
-| SEC-04 XSS | pass | CS · `2026-11-02-06-room-xss-as-text-375` · e774c8c | covered |
-| SEC-05 authn and authz | pass | CS · e774c8c | covered |
-| SEC-06 input limits | pass | CS · e774c8c | covered |
-| SEC-07 rate limits | pass | CS · e774c8c | covered |
-| SEC-08 error leaks | pass | CS · e774c8c | covered |
-| SEC-09 bundle | pass | CS · e774c8c | covered |
-| SEC-10 third parties | pass | CS · e774c8c | covered |
+| SEC-01 security headers | smoke | PD SEC-01 (`curl -I` on the production build, no shot) · debc8ce | covered (FAIL: no `Permissions-Policy`, no `object-src 'none'`, #69) |
+| SEC-02 cookies | pass | PD SEC-02 (no shot) · debc8ce | covered (`Secure` in tunnel: not covered) |
+| SEC-03 Origin, CORS, CSWSH | pass | PD SEC-03 (no shot) · debc8ce | covered |
+| SEC-04 XSS | pass | PD SEC-04 · `2026-11-02-65-21-sec04-private-and-room-xss-as-text-921` · debc8ce | covered (room and private window) |
+| SEC-05 authn and authz | pass | PD SEC-05 (no shot) · debc8ce | covered |
+| SEC-06 input limits | pass | PD SEC-06 (no shot) · debc8ce | covered |
+| SEC-07 rate limits | pass | PD SEC-07 (no shot) · debc8ce | covered (private burst and other-user lockout: not covered) |
+| SEC-08 error leaks | pass | PD SEC-08 (no shot) · debc8ce | covered |
+| SEC-09 bundle | pass | PD SEC-09 (no shot) · debc8ce | covered |
+| SEC-10 third parties | pass | PD SEC-10 (no shot) · debc8ce | covered |
 
 ## Exit criteria
 
@@ -180,6 +181,7 @@ CS SEC rows come from the first run (e774c8c); 09f44e7 changed no server code.
 
 ## Changelog
 
+- 2026-11-02 — #65 security part: SEC-01…10 re-run on debc8ce (PD), evidence refreshed; SEC-01 still FAIL (#69), no new finding.
 - 2026-11-02 — #65: JRN-04 coverage rows added for the composer never covered (desktop, phone, minimised), JRN-03 rooms list with windows, evidence PD · debc8ce; SEC rows not re-run (CSS-only diff, security part not run).
 - 2026-11-02 — created (#74): risks, families, 12 journeys, coverage back-filled from FP, RS and CS; smoke rows
   run against the plan (TS).
