@@ -37,6 +37,9 @@ TDD is not imposed on this project.
   - non-2xx and network errors resolve without throwing and log no address or raw body;
   - no key: logs the code outside production, logs a failure in production;
   - `sendStatementOfReasons` resolves `true` only on 2xx.
+- Code step across a resume (BR-087, issue #72), web client: deadline saved on `codeSent` (a number only),
+  in-memory step kept on `resumed`, step reopened after a reload before the deadline, deadline dropped on
+  `accountLinked`, warnings leading to the e-mail step, "nouveau code", new session, expulsion and leave.
 - Sign-in planned cases (UC17, BR-070 to BR-073), brick 5: code format and expiry, fifth wrong try
   invalidates, silent `codeSent` for blocked e-mail, e-mail quota, cooldown and 20 wrong tries in 24 h, explicit refusal for a
   disposable domain and the IP quota, account created on first valid code, existing account linked,

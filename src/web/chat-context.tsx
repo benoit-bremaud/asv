@@ -11,6 +11,8 @@ export interface Commands {
   enter(form: EnterForm, codeRequest?: CodeRequest): void;
   requestCode(request: CodeRequest): void;
   verifyCode(code: string): void;
+  /** "nouveau code": back to the e-mail step, the saved code deadline dropped (BR-087). */
+  newCode(): void;
   signOutDevice(): void;
   signOutEverywhere(): void;
   deleteAccount(): void;
@@ -91,6 +93,10 @@ export const ChatProvider = ({ connect, children }: { connect: ConnectionFactory
         if (send({ type: "search", payload: { query } })) dispatch({ type: "searching", query });
       },
       leave: () => connection.current?.leave(),
+      newCode: () => {
+        connection.current?.forgetCode();
+        dispatch({ type: "accountStep", step: "askEmail" });
+      },
       local: dispatch,
     };
   }, []);

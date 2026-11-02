@@ -412,6 +412,20 @@ describe("chatReducer: account (web-ui/06)", () => {
     expect(act(signedIn, { type: "accountStep", step: "signedOut" }).account.accountId).toBeUndefined();
     expect(act(signedIn, { type: "accountStep", step: "confirmDelete" }).account).toMatchObject({ step: "confirmDelete", accountId: "a1" });
   });
+
+  it("reopens the panel on the code step when a resume restores it after a reload (BR-087)", () => {
+    const stuck = { ...initialState, account: { ...initialState.account, pendingVerify: true } };
+
+    expect(act(stuck, { type: "codeStepRestored" }).account).toMatchObject({ open: true, step: "waitingCode", pendingVerify: false });
+  });
+
+  it("keeps an in-memory code step as the chatter left it on a resume (BR-087)", () => {
+    const closed = { ...initialState, account: { ...initialState.account, open: false, step: "waitingCode" as const, pendingVerify: true } };
+    const resumedState = server(closed, { type: "resumed", seq: 0, payload: { sessionId: "s1", pseudo: "ana", resumeToken: "t", rooms: [], windows: [], buffered: [] } });
+
+    expect(resumedState.account).toMatchObject({ open: false, step: "waitingCode", pendingVerify: false });
+    expect(act(resumedState, { type: "codeStepRestored" }).account.open).toBe(false);
+  });
 });
 
 describe("private windows, ignore and search (web-ui/07)", () => {

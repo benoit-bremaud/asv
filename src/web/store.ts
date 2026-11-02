@@ -99,6 +99,8 @@ export type Action =
   | { readonly type: "openAccount" }
   | { readonly type: "closeAccount" }
   | { readonly type: "accountStep"; readonly step: AccountStep }
+  /** BR-087: a resume after a reload, before the code deadline, reopens the code step. */
+  | { readonly type: "codeStepRestored" }
   | { readonly type: "requestingCode" }
   | { readonly type: "verifyingCode" }
   | { readonly type: "dismissNotice" }
@@ -129,7 +131,7 @@ export const initialState: ChatState = {
 
 
 /** Warnings answering `requestCode` or `verifyCode` (`hub.ts`), and the step each one leads to. */
-const ACCOUNT_WARNINGS: Readonly<Record<string, AccountStep>> = {
+export const ACCOUNT_WARNINGS: Readonly<Record<string, AccountStep>> = {
   emailInvalid: "askEmail",
   disposable: "askEmail",
   rate: "askEmail",
@@ -142,6 +144,9 @@ const ACCOUNT_WARNINGS: Readonly<Record<string, AccountStep>> = {
 };
 
 const signedOut = (account: AccountView): AccountView => ({ ...account, step: "signedOut", accountId: undefined, triesLeft: undefined, pendingRequest: false });
+/** BR-087: a resume keeps a code step in memory, since the server keeps the code under the session id. */
+const resumedTo = (account: AccountView, accountId: string | undefined): AccountView =>
+  !accountId && account.step === "waitingCode" ? { ...account, pendingVerify: false } : linkedTo(account, accountId);
 const linkedTo = (account: AccountView, accountId: string | undefined): AccountView =>
   accountId ? { ...account, step: "signedIn", accountId, triesLeft: undefined } : signedOut(account);
 
@@ -243,7 +248,7 @@ const onResumed = (state: ChatState, payload: Extract<ServerMessage, { type: "re
   const active = state.active && open[state.active] ? state.active : Object.keys(open)[0];
   const screen = state.screen === "room" && active ? "room" : "rooms";
   const me = { sessionId: payload.sessionId, pseudo: payload.pseudo };
-  const next: ChatState = { ...state, me, open, known, active, screen, account: linkedTo(state.account, payload.accountId) };
+  const next: ChatState = { ...state, me, open, known, active, screen, account: resumedTo(state.account, payload.accountId) };
   return onResumedWindows(next, payload);
 };
 
@@ -390,6 +395,10 @@ export const chatReducer = (state: ChatState, action: Action): ChatState => {
       return { ...state, account: { ...state.account, open: false } };
     case "accountStep":
       return { ...state, account: action.step === "signedOut" ? signedOut(state.account) : { ...state.account, step: action.step } };
+    case "codeStepRestored":
+      // Only after a reload: an in-memory code step stays as the chatter left it.
+      if (state.account.step === "waitingCode") return state;
+      return { ...state, account: { ...state.account, open: true, step: "waitingCode", pendingVerify: false } };
     case "verifyingCode":
       return { ...state, account: { ...state.account, pendingVerify: true } };
     case "requestingCode":

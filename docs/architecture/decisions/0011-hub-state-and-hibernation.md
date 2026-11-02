@@ -64,3 +64,12 @@ Sensitivity (privacy 15, reliability 50, simplicity 20, load 15): A 405, B 395.
 - Buffered private messages are written to disk for at most 5 minutes. Documented in the privacy notice.
 - The heartbeat sweep wakes the hub once a minute while chatters are connected. Negligible cost.
 - The hub state model is in `diagrams/platform/04b-class-hub-state.md`.
+
+## Amendment 2026-11-02 — pending sign-in code (issue #72)
+
+On a phone, reading the code in the mail app suspends the tab: the socket drops, and the tab may even be
+reloaded. Besides the resume token and the profile, the client now keeps a second `sessionStorage` key with
+the deadline of the pending sign-in code, a number only (BR-087). No e-mail and no code are stored. The
+pending code itself stays on the server under the session id, which a resume keeps. Owner choice
+2026-11-02, 440/500, against keeping the step in memory only (430/500, lost on a reload); matrix in
+issue #72. A resume without a reload keeps the panel as it is (owner choice 2026-11-02, 470/500).
