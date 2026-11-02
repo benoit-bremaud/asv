@@ -43,6 +43,8 @@ screenshots. All green, or no merge.
   runs on GitHub as the `verify` check.
 - Pre-push hook (lefthook, installed by `pnpm install`): `gitleaks git` scans the history for
   secrets and blocks the push on a finding. Needs `gitleaks` on the `PATH`.
+  Git worktrees share the hook: run `pnpm install` again in the main checkout after removing a
+  worktree.
 - `pnpm sonar`, after pushing the branch: scans with the local SonarQube and posts the quality gate
   as the commit status `sonarqube`, required by the `main` ruleset (ADR-0016). Needs the global
   analysis token in `SONAR_TOKEN` and a SonarQube user token in `~/.config/sonarqube/token`.

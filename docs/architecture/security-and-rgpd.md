@@ -86,7 +86,7 @@ No analytics, no ads, no third-party trackers, no cookies other than strictly ne
   secrets, never in the repo. The owner keeps an offline backup of the keys and the vault private key
   for 5 years (ADR-0017).
 - Application-level encryption of personal data at rest (ADR-0017, BR-083).
-- Dependencies: Dependabot, CodeQL from brick 2, Gitleaks already active.
+- Dependencies: Dependabot, CodeQL from brick 2, Gitleaks on the local pre-push hook (lefthook).
 
 ## 5. Legal pack to produce before public launch (brick 10, after the brick 1 bis check)
 
