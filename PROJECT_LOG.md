@@ -314,3 +314,19 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
 - Ruleset "Protect main": `gitleaks` dropped from the required checks (now verify, codeql, sonarqube).
 - Adversarial review: CI diagram and security doc updated, hook shared across worktrees documented. Copilot: no
   issues; Codex: quota. Squash-merged as 820ccab. Visibility: public, no derogation (ADR-0005).
+
+## 2026-11-02 — Private windows no longer cover the room input (#65, PR #86)
+
+- Study first each time (`web-ui/04` Room screen, `web-ui/07` "Never cover the composer", design pack). Owner MCDA:
+  C 480/500 (reserve the dock height), then B 430/500 after the design review showed C only cleared the composer
+  once scrolled to the bottom: on desktops ≥ 768 × 720 px the room screen fits the viewport, lines and members
+  scroll in their panels, the dock stays fixed and the page reserves `--dock-height`. Phones and short desktops keep
+  the page flow with the dock after the screen.
+- QA found two regressions of B, filed and fixed in the same PR (owner 450/500): #83 (24 px lines on short
+  desktops) and #84 (overlays under the dock, now z-index 16); #85 part 1 too (own post scrolls to the bottom).
+  Local code review (Codex quota out) found one P3, fixed: lines stay at the bottom when their panel shrinks
+  (`ResizeObserver`, owner 440/500).
+- Evidence: `docs/architecture/qa/2026-11-02-65-private-dock.md`, three product runs (last 5669e7d: 13/13 at 7
+  viewports, scrollY 0 included), security part SEC-02…10 pass, SEC-01 still #69. 642 tests, coverage 98.63 %,
+  Sonar passed. No Codex or Copilot review. Squash-merged as 9e0c5bd.
+- Open: #85 part 2 (pseudo menu clipped in the members panel). Next: #64 and #63 (other P1 a11y Musts).
