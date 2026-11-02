@@ -18,7 +18,8 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "verify": "pnpm lint && pnpm typecheck && pnpm test:coverage && pnpm build",
-    "sonar": "test -z \"$(git status --porcelain)\" && pnpm test:coverage && { sonar-scanner; scripts/sonar-status.sh; }"
+    "sonar": "test -z \"$(git status --porcelain)\" && pnpm test:coverage && { sonar-scanner; scripts/sonar-status.sh; }",
+    "prepare": "lefthook install"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.5",
@@ -42,6 +43,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.13.0",
     "jsdom": "^30.1.3",
+    "lefthook": "^2.2.2",
     "tsx": "^4.23.15",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.72.0",
