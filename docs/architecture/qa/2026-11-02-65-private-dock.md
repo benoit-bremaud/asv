@@ -1,6 +1,6 @@
 # QA pass — private windows must not cover the room composer, issue #65 (2026-11-02)
 
-QA pass on the running product for branch `fix/65-private-windows-room-input`: on 1440 × 900 and 390 × 844, on the sender and the receiver side, with one open window and with one open plus one minimised, the room input, "envoyer" button and smileys are fully visible and clickable. No finding.
+QA pass on the running product for branch `fix/65-private-windows-room-input`: on 1440 × 900 and 390 × 844, on the sender and the receiver side, with one open window and with one open plus one minimised, the room input, "envoyer" button and smileys are fully visible and clickable. No finding on debc8ce; see the re-run on ce90fc5 at the end (fix B, 2 Should and 1 Nice open).
 
 | Level | Head SHA | Environment | Targets | Agent / model | Matrix page |
 |---|---|---|---|---|---|
@@ -106,3 +106,62 @@ No new security finding; nothing for a private advisory.
 `2026-11-02-code-step-resume.md` (e774c8c): fixed 0, still failing 1 (SEC-01, #69), new 0.
 
 Screenshot: 21 `2026-11-02-65-21-sec04-private-and-room-xss-as-text-921.png` (room and private window showing the payloads as text; also shows the covered room "envoyer").
+
+## Re-run on ce90fc5
+
+Product part, level `pass`, run by qa-tester · Sonnet 5.5 after fix B (ce90fc5, plus docs commit c42a17f on top). It closes the gap of the first pass, which measured only scrolled-to-bottom states: every check below starts at **scrollY 0**, with the smileys closed, then with them open, then after scrolling to the bottom. The security part is not re-run here: fix B touches `src/web/styles.css` and `RoomScreen.tsx` only (scroll code, no server, header, cookie or input path); the SEC rows above stay on debc8ce / fd6cacc.
+
+| Level | Head SHA | Environment | Targets | Agent / model |
+|---|---|---|---|---|
+| pass (product part) | ce90fc5 (branch head c42a17f, docs only on top) | local: `asv-dev` (Vite `http://localhost:5173` + Node transport `127.0.0.1:8787`, dev mailer, in-memory store) | W | qa-tester · Sonnet 5.5 |
+
+Method. Playwright MCP (Chromium), four isolated contexts: members QaAlpha, QaBeta, QaGamma, QaDelta (throw-away `qa-*@asv.test`, codes read from the dev mailer log and not written here) plus five guests QaGuest1…5 for the member list. For each viewport (1440 × 900, 921 × 892, 1440 × 600, 800 × 700), for sender (QaAlpha, opened the windows) and receiver (QaBeta, QaGamma, QaDelta got windows): `elementFromPoint` at the centre of the room input, room "envoyer", smileys summary, and (smileys open) first and last smiley, must return the element and the element must lie inside the viewport; the same for the composer and "envoyer" of every open private window; then the same after `scrollTo(bottom)`. Page scroll (`scrollHeight` vs `innerHeight`, `scrollWidth` vs `innerWidth`) and the lines and members panel geometry are read at the same time. States: 0 windows, 1 open, 1 minimised only, 1 open + 1 minimised, 2 open, 3 open. Phones: 390 × 844 viewport, `scrollIntoView` then `elementFromPoint`.
+
+### QA matrix (re-run)
+
+Gate ✅ (no Must) · 🔴 Must 0 · 🟡 Should 2 (#83, #84) · 🔵 Nice 1 (#85, two failing rows) — 16 checks: Pass 12 · Fail 4 · Mixed 0 · Not tested/N/A 0
+
+| ID | Domain | Check | Result | Verdict | Evidence | Issues | Shots |
+|---|---|---|---|---|---|---|---|
+| FON-65m | FON | scrollY 0, 1 open window, sender and receiver, 1440 × 900 / 921 × 892 / 1440 × 600 / 800 × 700 | Pass | PASS | room input, "envoyer", summary, first and last smiley (smileys open) all return themselves and lie in the viewport at scrollY 0 and after scrolling; dock [1128,600,300,300] at 1440 × 900, [609,592,…] at 921 × 892; private composer and "envoyer" reachable. The case that failed on debc8ce (921 × 892, "envoyer" under the dock at scrollY 0) is fixed | | 22, 23 |
+| FON-65n | FON | 0 windows, 1 minimised only, 1 open + 1 minimised (sender and receiver), 4 viewports | Pass | PASS | 0 windows: no dock, no reserve, lines 458 of 1124 px visible 653 px at 1440 × 900; tab only: dock 89 × 33; 1 open + 1 min: dock 397 / 407 × 300; every target OK in all four viewports at scrollY 0 and bottom | | 24, 27, 40 |
+| FON-65o | FON | 2 open and 3 open windows (sender and receiver), 4 viewports | Pass | PASS | dock 608 × 300 and 916 × 300 (897 / 776 wide at 921 / 800 px, `max-width` + horizontal scroll inside the dock, none on the page); all room targets and all private composers and "envoyer" OK | | 25, 26, 28 |
+| UI-65p | UI | The page has no vertical scroll on the room screen at desktop | Pass | PASS | `scrollHeight == innerHeight` and no horizontal overflow in every state and viewport above (900/900, 892/892, 600/600, 700/700), `scrollY` stays 0 | | 22…28 |
+| UI-65q | UI | Lines panel scrolls inside and follows new messages only at the bottom | Pass | PASS | 1440 × 900, 3 windows, QaGamma posted 10 long messages 2.2 s apart (flood limit respected): lines scrollTop + clientHeight == scrollHeight after each (462 + 326 = 788); scrolled to 0, two more messages arrived, scrollTop stayed 0 (788 → 893 px of content); scrolled back to the bottom, the next message followed (672 + 326 = 998); 5 px above the bottom still follows (777 + 326 = 1103) | | 29 |
+| UI-65r | UI | Tab switching keeps the layout | Pass | PASS | Blabla → Poésie → Blabla: Poésie panel 326/326 (empty), back in Blabla the panel is at the bottom (798 + 326 = 1124), page still no scroll, tab bar intact | | |
+| UI-65s | UI | Members panel scrolls inside with many members | Pass | PASS | 9 members at 1440 × 700: panel 126 px of 242, `scrollTop` reaches 116, the last member is hit by `elementFromPoint`, the page does not scroll; at 1440 × 600 the panel is 26 px of 195 (see #83) | | 35 |
+| UI-65t | UI | Search overlay and account overlay at 1440 × 900 and 800 × 700 | Pass | PASS | `.overlay` fixed top right [1088,128,340,162…272], every control returns itself, search "Qa" returns results, both close | | 30, 31 |
+| UI-65m | UI | Chat readable on short desktop windows with a docked window | Fail | FAIL | at 1440 × 600 the lines panel is **24 px** (content 53 px, less than one line) and the members panel 24 px with any dock, even one minimised tab (dock 89 × 33): the reserve is a fixed `--dock-height` + gap = 340 px; 1440 × 700 about 125 px, 800 × 700 113 px; with 0 windows the same 1440 × 600 gives 353 px. Regression compared with debc8ce (page scroll) on short desktops | #83 | 32, 34 |
+| UI-65n | UI | Overlays usable at 1440 × 600 with the dock | Fail | FAIL | `.overlay` z-index 10 under `.privates` 15: at 1440 × 600 with 3 windows (dock y 300) the account buttons "supprimer mon compte" and "fermer" and the lower search results are under the dock (`elementFromPoint` returns the window); click on "fermer" times out; keyboard focus + Enter closes it; Escape does not | #84 | 32 |
+| UI-65o | UI | Own message while the lines panel is scrolled up | Fail | FAIL | scrollTop stays 0 after the author posts (1124 px of content): the author does not see their own message | #85 | |
+| UI-65p2 | UI | Pseudo menu in the scrolled members panel | Fail | FAIL | the menu of the last visible member is clipped by the panel (`position: absolute` in `overflow-y: auto`): "message privé" and "ignorer" are not hit until the panel is scrolled a second time (scrollTop 116 then 174); at 1440 × 600 the second item is under the composer | #85 | 34, 35 |
+| UI-65h2 | UI | Phones 390 × 844, no regression | Pass | PASS | 3 open, 2 open + 1 min, 1 open + 2 min, receiver 2 open, 1 open + 1 min, 0 windows: `.privates` is `position: static` after the room, `padding-bottom` of `.app` 12 px, no horizontal scroll, input, "envoyer", summary and smileys OK after `scrollIntoView`, every private composer OK; lines panel in the page flow (`overflow: visible`, 2594 px for 10 long messages, no auto-follow: same as debc8ce) | | 36, 37, 38, 39 |
+| UI-65k2 | UI | Dark scheme glance | Pass | PASS | 1440 × 900 with 3 windows and 390 × 844: legible, all targets OK, overlays unaffected | | 41, 42 |
+| UI-02 | UI | Console | Pass | PASS | `consoleMessages` and `pageErrors` of the nine pages: no error, no page error; the only warning on each load is the dev-only React StrictMode "WebSocket is closed before the connection is established" on `/ws` (already noted in the first pass); the notice "Si l'adresse peut recevoir un code…" persists over the room (#68) | | |
+| FON-04 | FON | JRN-04 regression | Pass | PASS | alpha → beta, gamma, delta windows, replies and `beta to gamma` / `beta to delta` arrived, minimise and restore from the tab (`ouvrir QaBeta`) work on sender and receiver | | 24, 27 |
+
+### Findings to act on (re-run)
+
+1. 🟡 Should — UI-65m: chat lines and members panels shrink to about one line on short desktop windows while a dock is shown → #83. Suggested direction (not applied), in `src/web/styles.css`: keep the fit-to-viewport block under `@media (min-width: 768px) and (min-height: 720px)` and use the phone flow below that height (`.lines { min-height: 50vh; }`, `.privates { position: static; max-width: none; margin-top: var(--gap); }`). Alternative: reserve the real dock height instead of the fixed 300 px.
+2. 🟡 Should — UI-65n: account and search overlays under the dock at 1440 × 600 → #84. One-line fix (not applied): `.overlay { z-index: 16; }`.
+3. 🔵 Nice — UI-65o and UI-65p2: own message does not scroll the lines down when the reader scrolled up; pseudo menu clipped in the members panel → #85. Suggested for the first: `atBottom.current = true` in the send handler of `RoomScreen.tsx`.
+
+The acceptance of #65 itself (no window covers the room composer, at any scroll position) is met: 0 failing hit-tests over 4 viewports × sender and receiver × 0 / 1 / 1 min / 1+1 min / 2 / 3 windows, at scrollY 0 and after scrolling. Fix B trades it for #83 on short desktop windows, so the owner decides whether #83 holds the merge (suggested: fix before merge, it is a CSS block and the threshold test is quick).
+
+### Observations (no issue)
+
+- The reserve is the full 300 px + gap even when the dock holds only minimised tabs (33 px tall): part of #83.
+- The orange notice banner (#68) takes about 110 px at the top of every desktop screen and compounds #83 at short heights.
+- Phones: the lines panel grows with the room and does not auto-follow new messages (page flow); unchanged from debc8ce, not part of fix B.
+- Firefox and WebKit not run (`:has()` and `100dvh`): still `NOT TESTED`.
+
+### Not tested (re-run)
+
+- SEC-01…10 and ROB-11 on ce90fc5 (security part not run; the diff contains no server, header or storage change).
+- Firefox, WebKit, a real phone, the cap of 3 windows (a fifth member), screen reader.
+
+### Delta vs the first pass (debc8ce)
+
+Fixed 1 (room "envoyer" under the dock at scrollY 0, found by the security part); new 3 (#83, #84, #85); unchanged: phones, dark scheme, console.
+
+Screenshots (`2026-11-02-65-NN-*.png`): 22 sender 1 open 1440 scrollY 0 · 23 receiver 1 open 1440 · 24 sender 1 open + 1 min 1440 · 25 sender 2 open 1440 · 26 sender 3 open 1440 · 27 receiver 1 open + 1 min 1440 · 28 receiver 3 open 1440 · 29 lines follow, 3 open 1440 · 30 search overlay 1440 · 31 account overlay 1440 · 32 account overlay under the dock 1440 × 600 (#84, #83) · 33 members menu 1440 · 34 members menu 1440 × 600 · 35 members scrolled, menu clipped 1440 × 700 · 36 sender 3 open 390 · 37 sender 2 open + 1 min 390 · 38 sender 1 open + 2 min 390 · 39 receiver 390 · 40 receiver 0 windows 1440 · 41 dark 1440 · 42 dark 390. Note: shot 35 was taken with the viewport at 1440 × 700 on QaBeta's page.
