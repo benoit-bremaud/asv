@@ -1,0 +1,8 @@
+# Local git hooks (local-first CI, agents-skills#259): installed by `pnpm install` via the `prepare` script.
+pre-push:
+  commands:
+    gitleaks:
+      # Scans the full history for secrets; replaces the removed GitHub gitleaks workflow.
+      run: >-
+        command -v gitleaks >/dev/null || { echo "gitleaks not found, install it (mise use -g gitleaks)"; exit 1; };
+        gitleaks git --redact --no-banner .

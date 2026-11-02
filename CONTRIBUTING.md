@@ -9,7 +9,7 @@ validated. If the study is missing, write it first. See [CLAUDE.md](CLAUDE.md).
 
 - One issue, one branch from `main`: `<type>/<issue>-<slug>` (e.g. `chore/5-repo-compliance`).
 - [Conventional Commits](https://www.conventionalcommits.org/): `<type>(<scope>): <description>`.
-- `main` takes no direct commits: a ruleset requires a pull request, a green `gitleaks` check and
+- `main` takes no direct commits: a ruleset requires a pull request and
   blocks force-pushes and deletion. GitHub rulesets need a public repository on the Free plan:
   re-check protection when the repository goes private.
 
@@ -41,6 +41,10 @@ screenshots. All green, or no merge.
 
 - `pnpm verify`: lint (with the dependency rule), type check, tests with coverage, build. The same
   runs on GitHub as the `verify` check.
+- Pre-push hook (lefthook, installed by `pnpm install`): `gitleaks git` scans the history for
+  secrets and blocks the push on a finding. Needs `gitleaks` on the `PATH`.
+  Git worktrees share the hook: run `pnpm install` again in the main checkout after removing a
+  worktree.
 - `pnpm sonar`, after pushing the branch: scans with the local SonarQube and posts the quality gate
   as the commit status `sonarqube`, required by the `main` ruleset (ADR-0016). Needs the global
   analysis token in `SONAR_TOKEN` and a SonarQube user token in `~/.config/sonarqube/token`.

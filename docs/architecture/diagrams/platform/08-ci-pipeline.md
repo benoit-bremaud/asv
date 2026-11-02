@@ -19,11 +19,11 @@ flowchart LR
     Sonar["pnpm sonar: scanner with global token"]
     SQ["SonarQube Community Build, localhost:9000"]
     Status["scripts/sonar-status.sh"]
+    Gitleaks["pre-push hook (lefthook): gitleaks git"]
   end
   subgraph Hosted ["GitHub-hosted runners"]
     CI["ci: lint, typecheck, test, build"]
     CodeQL["codeql: javascript-typescript"]
-    Gitleaks["gitleaks"]
   end
   Ruleset["main ruleset: required checks"]
   Dev --> Verify --> Sonar --> SQ
@@ -31,14 +31,15 @@ flowchart LR
   Status -->|"commit status sonarqube"| Ruleset
   Dev -->|"push branch"| CI
   Dev -->|"push branch"| CodeQL
-  Dev -->|"push branch"| Gitleaks
+  Dev -->|"git push"| Gitleaks
   CI --> Ruleset
   CodeQL --> Ruleset
-  Gitleaks --> Ruleset
 ```
 
 ## Notes
 
+- Secrets are scanned locally before each push; a finding blocks the push. Bypassing the hook
+  (`--no-verify`) is an accepted risk: nothing re-checks on GitHub (agents-skills#259).
 - No self-hosted runner: no code from a pull request runs on the owner's machine unless the owner
   checks it out (ADR-0016).
 - The SonarQube token never leaves the machine. The status is posted with the owner's `gh` login.
