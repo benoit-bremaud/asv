@@ -278,3 +278,16 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   e-mail sealed in the vault.
 - Found: #60 (no hint when ENTRER is disabled, stale « Mauvais code. » banner). #58, #59, #60 on the kanban.
 - Runbook updated to the named tunnel. Next: tester session, then feedback synthesis on #54.
+
+## 2026-11-02 — Code step kept across a resume and a reload (#72, PR #75)
+
+- Bug from the owner on a phone: reading the sign-in code in the mail app suspended the tab, the resume reset the
+  account panel, and the member could not sign in from a phone.
+- Conception first: BR-087, ADR-0011 amendment (owner choice 440/500: keep the code deadline, a number only, in
+  `sessionStorage`; then 470/500: an in-memory resume keeps the panel as the chatter left it), `web-ui/06`.
+- Review and mobile QA found a dead code step after 5 wrong tries or « nouveau code » (fixed: the deadline is
+  dropped on warnings that end the code), a stuck « valider » after a drop, and no focus on the code field.
+- SonarQube first failed on new code (complexity of `handle()`, `autoFocus`); fixed. The required `sonarqube`
+  status must be published on the head SHA, so re-run `pnpm sonar` after the last commit before merging.
+- Codex quota reached: no Codex review on #75; Copilot commented with no finding. Squash-merged as a8c2cf0.
+- Follow-up: #74, project QA test plan and coverage matrix (owner choice 445/500), next chat.
