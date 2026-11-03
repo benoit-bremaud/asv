@@ -357,3 +357,8 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   talking, clock stepping back drained the bucket, `closeSocket` takes a reason only, tests cover every invalid
   branch). The close now waits one turn so the fifth `error invalid` reaches the client. 651 tests, coverage
   98.61 %, gitleaks and `pnpm audit` clean. Pending before merge: SonarQube and the QA pass (JRN-13).
+- Full QA pass (`docs/architecture/qa/2026-11-03-89-frame-limit-full.md`): JRN-13 a–f pass (200 frames → 40
+  answers then 1008; five invalid → 1008; resume after a policy close; other chatters at p95 7 ms during a
+  759-socket flood). Gate red only on pre-existing P0s #105, #64, #98: owner waiver, option A (450/500). Filed
+  #104 (owner: account panel overlaps create-room, "retro but elegant") and #105–#111; #112 fixed here (BR-088
+  ping clause). Sonar passed on b96ea98.

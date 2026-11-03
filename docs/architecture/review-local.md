@@ -11,10 +11,10 @@
 |---|---|
 | 1 Tests | ✅ `pnpm verify`: 651 passed (lint, typecheck, build green) |
 | 2 Coverage | tests 98.61 % stmts / 94.4 % branches / lines 99 %+ (floor 80) · docs ~85 % of the new surface before fixes, public API now documented |
-| 3 SonarQube | ⚠️ not run yet: runs after push on a clean tree (`pnpm sonar`) |
+| 3 SonarQube | ✅ PASSED on b96ea98 (local SonarQube, ADR-0016) |
 | 4 Secrets | ✅ gitleaks clean (origin/main..HEAD) · no tracked .env · `pnpm audit` clean · diff read: nothing sensitive |
-| 5 QA pass | ⚠️ pending: pre-merge step, JRN-13 probe |
-- Gate: **pre-push GREEN** · pre-merge pending steps 3 and 5
+| 5 QA pass | ❌ full pass, waived: JRN-13 a–f all pass, SEC 9/10 (SEC-01 #69, pre-existing); red only on pre-existing P0s #105, #64, #98 · issues #104–#111 filed · report: docs/architecture/qa/2026-11-03-89-frame-limit-full.md |
+- Gate: **GREEN under owner waiver (2026-11-03, MCDA 450/500)**: the three QA P0 failures (#105 tab close 16 px, #64 no `h1`, #98 LCP 2.6 s uncompressed locally) predate this PR, which does not touch them; each has its own issue.
 
 ## 🔴 Must Have
 _None._
