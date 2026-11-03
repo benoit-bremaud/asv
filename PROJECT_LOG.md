@@ -330,3 +330,15 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   viewports, scrollY 0 included), security part SEC-02…10 pass, SEC-01 still #69. 642 tests, coverage 98.63 %,
   Sonar passed. No Codex or Copilot review. Squash-merged as 9e0c5bd.
 - Open: #85 part 2 (pseudo menu clipped in the members panel). Next: #64 and #63 (other P1 a11y Musts).
+
+## 2026-11-03 — Full security audit (#88)
+
+- Owner MCDA on the scope: A, static review + tooling + dynamic pass on the local tier only (430/500); no probe
+  on asvchat.fr. Run at `aaf4f91` by three agents in parallel (code review on Opus, tooling, qa-tester `full`).
+- Tooling: gitleaks (full history), Semgrep, Trivy, SonarQube issues and hotspots all clean; `pnpm audit` and
+  osv-scanner found one dev-only advisory (minimatch via eslint).
+- No Must. Should: per-socket frame limit (#89), per-IP WebSocket cap (#90), control and bidi characters in
+  messages (#91). Nice: #92–#100, plus existing #69 (Permissions-Policy) and #62 (favicon). Each fix needs its
+  study updated first.
+- Report: `docs/architecture/qa/2026-11-03-security-audit.md`. Not tested: moderation (brick 8 stubbed), real
+  Brevo and HTTPS, ZAP and testssl.
