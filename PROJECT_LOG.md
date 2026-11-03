@@ -342,3 +342,5 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   study updated first.
 - Report: `docs/architecture/qa/2026-11-03-security-audit.md`. Not tested: moderation (brick 8 stubbed), real
   Brevo and HTTPS, ZAP and testssl.
+- Merged: PR #101 squash 1d1fcbb, gate green (642 tests, coverage 98.63 %, Sonar passed, gitleaks clean). No
+  Codex review (quota out). #99 overlaps #60 (stale "Mauvais code."). Next: Should fixes, #89 first.
