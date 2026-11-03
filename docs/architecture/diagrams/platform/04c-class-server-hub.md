@@ -2,7 +2,7 @@
 
 > **Feature**: platform (roadmap brick 7a)
 > **Use cases**: UC1, UC2, UC3, UC4, UC5, UC10, UC13
-> **Business rules**: BR-001 to BR-034, BR-060, BR-084 to BR-086
+> **Business rules**: BR-001 to BR-034, BR-060, BR-084 to BR-086, BR-088
 > **Related ADRs**: ADR-0002, ADR-0007, ADR-0011, ADR-0015, ADR-0018; brick 7a owner choices D2 (485/500), D3, D4, D5 (455/500)
 
 ## Context
@@ -32,7 +32,7 @@ classDiagram
     +ConnectionLogStore log
     +String protocols
     +onLogError(error) void
-    +closeSocket(socketKey) void
+    +closeSocket(socketKey, code?, reason?) void
     +AccountIo accounts
     +Mailer mailer
     +onStoreError(error) void
@@ -205,6 +205,9 @@ classDiagram
   partner whose window on it is open.
 - **leave**: `hub.leave`, `log.close` for the socket's connection id; the socket stays open without session,
   so the client can enter again.
+- **Invalid frames** (BR-088): each socket keeps a count of invalid frames in a row (not JSON, refused by
+  `clientMessage`, over `CAPS.frame`); any valid frame resets it. The fifth answers `error invalid`, then
+  `closeSocket(key, 1008, "invalidFrames")`. A resume's `closeSocket` keeps the default code.
 - **Socket closed** (`close`): a connected session goes through `socketLost`; `log.close`; `memberAway` to
   the other connected members of each of its rooms, and `memberAway` without `roomId` to each connected
   partner whose window on it is open. A socket without session is just forgotten.

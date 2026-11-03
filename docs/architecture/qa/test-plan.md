@@ -81,6 +81,7 @@ coverage matrix that records the last QA evidence of every case, so each QA pass
 | JRN-10 | Delete my account | UC19 | BR-080…083 | RSK-07 | QA pass | local |
 | JRN-11 | Read the legal pages (rules, legal notice, privacy) | — (ADR-0018) | — | RSK-11 | QA pass | local |
 | JRN-12 | Tunnel mode: HSTS, `Secure` cookie, client IP from `CF-Connecting-IP` | — (ADR-0018) | BR-084…086 | RSK-10 | unit tests; QA pass on a local `ASV_TUNNEL` instance | local |
+| JRN-13 | A chatter's page stays connected under normal use; a script flooding frames or sending invalid frames is cut with close 1008 | — (#89) | BR-088 | RSK-09 | unit and transport tests; QA probe (WebSocket frames) | local |
 
 Moderation journeys (UC9, UC11, UC12, UC14…UC16) join this list with brick 8.
 
