@@ -32,7 +32,7 @@ classDiagram
     +ConnectionLogStore log
     +String protocols
     +onLogError(error) void
-    +closeSocket(socketKey, code?, reason?) void
+    +closeSocket(socketKey, reason?) void
     +AccountIo accounts
     +Mailer mailer
     +onStoreError(error) void
@@ -207,7 +207,9 @@ classDiagram
   so the client can enter again.
 - **Invalid frames** (BR-088): each socket keeps a count of invalid frames in a row (not JSON, refused by
   `clientMessage`, over `CAPS.frame`); any valid frame resets it. The fifth answers `error invalid`, then
-  `closeSocket(key, 1008, "invalidFrames")`. A resume's `closeSocket` keeps the default code.
+  `closeSocket(key, "invalidFrames")`, which the transport sends as close 1008. A resume's `closeSocket`
+  passes no reason and keeps the default close. A `ping` never reaches the hub, so it neither counts nor
+  resets.
 - **Socket closed** (`close`): a connected session goes through `socketLost`; `log.close`; `memberAway` to
   the other connected members of each of its rooms, and `memberAway` without `roomId` to each connected
   partner whose window on it is open. A socket without session is just forgotten.

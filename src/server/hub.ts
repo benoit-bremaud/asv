@@ -30,7 +30,7 @@ import type { AccountIo } from "./account-io";
 import { createAccountHandlers, type Caller } from "./hub-accounts";
 import { createPrivateHandlers, type PrivateCaller } from "./hub-private";
 import { createOutgoing, sessionOf, type Outgoing } from "./outgoing";
-import { FRAME_LIMITS, POLICY_CLOSE, type PolicyReason } from "./frame-budget";
+import { FRAME_LIMITS, type PolicyReason } from "./frame-budget";
 import { CAPS, clientMessage, type ClientMessage } from "../shared/protocol";
 
 export type { Outgoing } from "./outgoing";
@@ -47,10 +47,10 @@ export interface HubDeps {
   /** Called on every failed log write; a failed open or contribution also refuses the command. */
   readonly onLogError: (error: unknown) => void;
   /**
-   * Asks the transport to close a socket whose session a resume took over, or with `1008` one that sent
-   * too many invalid frames (BR-088); its `close` then follows.
+   * Asks the transport to close a socket whose session a resume took over, or, given a reason, one that
+   * broke BR-088 (the transport closes it with 1008); its `close` then follows.
    */
-  readonly closeSocket: (socketKey: string, code?: number, reason?: PolicyReason) => void;
+  readonly closeSocket: (socketKey: string, reason?: PolicyReason) => void;
   /** Account and vault stores behind the crypto of ADR-0017 (`platform/04d`). */
   readonly accounts: AccountIo;
   readonly mailer: Mailer;
@@ -388,7 +388,7 @@ export const createHub = (deps: HubDeps): Hub => {
   /** Answers an invalid frame; the fifth in a row also closes the socket (BR-088). */
   const invalid = (socket: Socket, answer: Outgoing): Outgoing[] => {
     socket.invalid += 1;
-    if (socket.invalid === FRAME_LIMITS.invalidInRow) deps.closeSocket(socket.key, POLICY_CLOSE, "invalidFrames");
+    if (socket.invalid === FRAME_LIMITS.invalidInRow) deps.closeSocket(socket.key, "invalidFrames");
     return [answer];
   };
 

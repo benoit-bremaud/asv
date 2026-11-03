@@ -24,6 +24,19 @@ describe("frame budget (BR-088)", () => {
     expect(afterAnHour.filter(Boolean)).toHaveLength(FRAME_LIMITS.burst);
   });
 
+  it("refuses a frame worth half a token, and never drains on a clock stepping back", () => {
+    const budget = createFrameBudget(10_000);
+    takeMany(() => budget.take(10_000), FRAME_LIMITS.burst);
+
+    const halfToken = budget.take(10_025);
+    const back = budget.take(0);
+    const afterBack = budget.take(1000);
+
+    expect(halfToken).toBe(false);
+    expect(back).toBe(false);
+    expect(afterBack).toBe(true);
+  });
+
   it("never refuses a steady pace at the refill rate", () => {
     const budget = createFrameBudget(0);
     const step = 1000 / FRAME_LIMITS.perSecond;

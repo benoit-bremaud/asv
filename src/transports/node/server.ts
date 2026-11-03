@@ -15,7 +15,7 @@ import { createCrypto } from "../../server/crypto/cipher";
 import { cryptoKeysFromEnv, type CryptoEnv } from "../../server/crypto/keys";
 import { createHub, type Outgoing } from "../../server/hub";
 import { createBrevoMailer } from "../../server/mailer/brevo";
-import { createFrameBudget, POLICY_CLOSE } from "../../server/frame-budget";
+import { createFrameBudget, POLICY_CLOSE, type PolicyReason } from "../../server/frame-budget";
 import { OFFICIAL_ROOMS } from "../../server/official-rooms";
 import type { ConnectionLogStore, LegalVaultStore, Mailer } from "../../domain";
 import { CAPS } from "../../shared/protocol";
@@ -70,6 +70,14 @@ export const clientAddress = (request: IncomingMessage, behindTunnel: boolean): 
 };
 
 /** A running Node transport: its bound port, its in-memory stores (tests read them; unused when files are set) and a graceful stop. */
+/** One open socket of the transport. */
+interface SocketEntry {
+  readonly ws: WebSocket;
+  lastSeen: number;
+  /** Set once the socket is being closed (BR-088, resume takeover). */
+  refused: boolean;
+}
+
 export interface NodeServer {
   readonly port: number;
   readonly log: ReturnType<typeof createMemoryLog>;
@@ -134,7 +142,7 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
     log: hubLog,
     protocols: "HTTP/1.1 WebSocket",
     onLogError: (error) => console.error("connection log write failed", error),
-    closeSocket: (key, code, reason) => sockets.get(key)?.ws.close(code, reason),
+    closeSocket: (key, reason) => refuse(key, reason),
     accounts: createAccountIo({ store: accounts, vault: hubVault, crypto }),
     mailer,
     onStoreError: (error) => console.error("account store failed", error),
@@ -153,7 +161,18 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
   if (options.staticRoot !== undefined) app.use("*", serveStatic({ root: options.staticRoot }));
   const server = createAdaptorServer({ fetch: app.fetch, hostname: options.hostname });
   const wss = new WebSocketServer({ noServer: true, maxPayload: CAPS.frame });
-  const sockets = new Map<string, { ws: WebSocket; lastSeen: number }>();
+  const sockets = new Map<string, SocketEntry>();
+  /**
+   * Closes a socket with 1008 (BR-088), or with no code for a resume takeover; a closing socket's frames
+   * are ignored and no longer refresh `lastSeen`, so the silence sweep ends a peer that never answers.
+   */
+  const refuse = (key: string, reason?: PolicyReason) => {
+    const entry = sockets.get(key);
+    if (!entry) return;
+    entry.refused = true;
+    // Next turn: the hub asks from inside a task whose answer (the fifth `error invalid`) is sent first.
+    setImmediate(() => (reason ? entry.ws.close(POLICY_CLOSE, reason) : entry.ws.close()));
+  };
   let nextKey = 0;
 
   const deliver = (out: readonly Outgoing[]) => {
@@ -167,22 +186,20 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
 
   wss.on("connection", (ws: WebSocket, request: IncomingMessage) => {
     const key = String(nextKey++);
-    const entry = { ws, lastSeen: now().getTime() };
+    const entry: SocketEntry = { ws, lastSeen: now().getTime(), refused: false };
     const budget = createFrameBudget(entry.lastSeen);
-    let refused = false;
     sockets.set(key, entry);
     // Set on an open socket; empty only if it died before this line.
     const device = deviceCookie(request.headers.cookie);
     const { ip, port } = clientAddress(request, behindTunnel);
     hub.open(key, ip, port, device && random.hashToken(device));
     ws.on("message", (data, isBinary) => {
-      if (refused) return;
-      entry.lastSeen = now().getTime();
+      // A closing socket may still emit frames until the peer answers; they reach nothing (BR-088).
+      if (entry.refused) return;
+      const nowMs = now().getTime();
       // BR-088: before any parsing, so a flood never reaches the hub queue.
-      if (!budget.take(entry.lastSeen)) {
-        refused = true;
-        return ws.close(POLICY_CLOSE, "tooManyFrames");
-      }
+      if (!budget.take(nowMs)) return refuse(key, "tooManyFrames");
+      entry.lastSeen = nowMs;
       const text = toText(data);
       // Heartbeat answered here, like the Durable Object auto-response (ADR-0011).
       if (!isBinary && text === "ping") return ws.send("pong");

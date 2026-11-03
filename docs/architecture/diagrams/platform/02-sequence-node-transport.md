@@ -35,19 +35,22 @@ sequenceDiagram
   end
   loop Every frame
     W->>N: frame
-    N->>N: Record last seen
     alt Frame over 64 KiB
       N-->>W: close 1009, then as "socket closed"
+    else Socket already closing (BR-088)
+      N->>N: Ignore the frame
     else Frame budget empty (BR-088)
       N-->>W: close 1008 tooManyFrames, then as "socket closed"
     else Raw text "ping"
+      N->>N: Record last seen
       N-->>W: "pong"
     else JSON text
+      N->>N: Record last seen
       N->>H: receive(socketKey, text, now)
       H->>H: Length check, JSON.parse, clientMessage schema
       H->>LS: open / close / appendContribution, awaited when the command needs it
       opt Fifth invalid frame in a row (BR-088)
-        H->>N: closeSocket(socketKey, 1008, invalidFrames)
+        H->>N: closeSocket(socketKey, invalidFrames), sent as close 1008
       end
       H-->>N: Outgoing[] (socket keys + server message)
       N-->>W: send to each socket key
@@ -79,10 +82,13 @@ sequenceDiagram
   bucket (capacity 40, refill 20 per second, clock passed in), one per socket, created on `connection` and
   dropped on `close`. The transport takes a token for every frame before the `ping` shortcut and before
   `hub.receive`, so a flood never reaches the shared `serial()` queue; on refusal it calls
-  `ws.close(1008, "tooManyFrames")` and ignores the frames still in flight. The invalid-frame count lives
-  in the hub, which alone knows a frame is invalid: on the fifth invalid frame in a row it still answers
-  `error invalid`, then calls `closeSocket(key, 1008, "invalidFrames")`. Both are transport-neutral, so the
-  Cloudflare transport reuses them (brick 9).
+  `ws.close(1008, "tooManyFrames")`. The invalid-frame count lives in the hub, which alone knows a frame
+  is invalid: on the fifth invalid frame in a row it still answers `error invalid`, then calls
+  `closeSocket(key, "invalidFrames")`, sent as close 1008 on the next turn, after that answer. Once a socket is closing, for either reason or
+  a resume takeover, the transport ignores its frames and stops refreshing its last seen, so a peer that
+  never answers the close is terminated by the silence sweep. A clock stepping back never drains the
+  bucket. Both pieces are transport-neutral; the Cloudflare transport (brick 9) must take a token before
+  its `ping` auto-response too, or record why it cannot.
 - **Heartbeat** (ADR-0011): the transport answers the raw text `ping` with `pong` without calling the hub,
   like the Durable Object auto-response. The sweep every 15 s (a quarter of the silence limit) terminates sockets whose
   last frame is older than 60 s, so a dead socket goes within 75 s; termination then follows the "socket closed" path, so the session goes away (BR-011).
