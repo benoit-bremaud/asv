@@ -15,6 +15,7 @@ import { createCrypto } from "../../server/crypto/cipher";
 import { cryptoKeysFromEnv, type CryptoEnv } from "../../server/crypto/keys";
 import { createHub, type Outgoing } from "../../server/hub";
 import { createBrevoMailer } from "../../server/mailer/brevo";
+import { createFrameBudget, POLICY_CLOSE } from "../../server/frame-budget";
 import { OFFICIAL_ROOMS } from "../../server/official-rooms";
 import type { ConnectionLogStore, LegalVaultStore, Mailer } from "../../domain";
 import { CAPS } from "../../shared/protocol";
@@ -133,7 +134,7 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
     log: hubLog,
     protocols: "HTTP/1.1 WebSocket",
     onLogError: (error) => console.error("connection log write failed", error),
-    closeSocket: (key) => sockets.get(key)?.ws.close(),
+    closeSocket: (key, code, reason) => sockets.get(key)?.ws.close(code, reason),
     accounts: createAccountIo({ store: accounts, vault: hubVault, crypto }),
     mailer,
     onStoreError: (error) => console.error("account store failed", error),
@@ -167,13 +168,21 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
   wss.on("connection", (ws: WebSocket, request: IncomingMessage) => {
     const key = String(nextKey++);
     const entry = { ws, lastSeen: now().getTime() };
+    const budget = createFrameBudget(entry.lastSeen);
+    let refused = false;
     sockets.set(key, entry);
     // Set on an open socket; empty only if it died before this line.
     const device = deviceCookie(request.headers.cookie);
     const { ip, port } = clientAddress(request, behindTunnel);
     hub.open(key, ip, port, device && random.hashToken(device));
     ws.on("message", (data, isBinary) => {
+      if (refused) return;
       entry.lastSeen = now().getTime();
+      // BR-088: before any parsing, so a flood never reaches the hub queue.
+      if (!budget.take(entry.lastSeen)) {
+        refused = true;
+        return ws.close(POLICY_CLOSE, "tooManyFrames");
+      }
       const text = toText(data);
       // Heartbeat answered here, like the Durable Object auto-response (ADR-0011).
       if (!isBinary && text === "ping") return ws.send("pong");

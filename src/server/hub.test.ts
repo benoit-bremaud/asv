@@ -129,6 +129,21 @@ describe("hub entry (UC1)", () => {
     expect(only(invalid, "error").payload).toEqual({ code: "invalid", message: "invalid", replyTo: 4 });
   });
 
+  it("closes with 1008 on the fifth invalid frame in a row, a valid frame resetting the count (BR-088)", async () => {
+    const { hub, closeSocket, send } = setup();
+    hub.open("1", "ip", undefined);
+    const garbage = () => hub.receive("1", "not json", T0);
+
+    for (let i = 0; i < 4; i += 1) await garbage();
+    await send("1", "enter", { pseudo: "x", age: 30, adultConfirmed: true, termsAccepted: true });
+    for (let i = 0; i < 4; i += 1) await garbage();
+    expect(closeSocket).not.toHaveBeenCalled();
+    const fifth = await garbage();
+
+    expect(only(fifth, "error").payload).toMatchObject({ code: "invalid" });
+    expect(closeSocket).toHaveBeenCalledExactlyOnceWith("1", 1008, "invalidFrames");
+  });
+
   it("refuses the entry when the connection line cannot be written, and frees the pseudo", async () => {
     const { hub, log, onLogError, send, enterAs } = setup();
     log.fail.open = true;

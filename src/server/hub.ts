@@ -30,6 +30,7 @@ import type { AccountIo } from "./account-io";
 import { createAccountHandlers, type Caller } from "./hub-accounts";
 import { createPrivateHandlers, type PrivateCaller } from "./hub-private";
 import { createOutgoing, sessionOf, type Outgoing } from "./outgoing";
+import { FRAME_LIMITS, POLICY_CLOSE, type PolicyReason } from "./frame-budget";
 import { CAPS, clientMessage, type ClientMessage } from "../shared/protocol";
 
 export type { Outgoing } from "./outgoing";
@@ -45,8 +46,11 @@ export interface HubDeps {
   readonly protocols: string;
   /** Called on every failed log write; a failed open or contribution also refuses the command. */
   readonly onLogError: (error: unknown) => void;
-  /** Asks the transport to close a socket whose session a resume took over; its `close` then follows. */
-  readonly closeSocket: (socketKey: string) => void;
+  /**
+   * Asks the transport to close a socket whose session a resume took over, or with `1008` one that sent
+   * too many invalid frames (BR-088); its `close` then follows.
+   */
+  readonly closeSocket: (socketKey: string, code?: number, reason?: PolicyReason) => void;
   /** Account and vault stores behind the crypto of ADR-0017 (`platform/04d`). */
   readonly accounts: AccountIo;
   readonly mailer: Mailer;
@@ -89,6 +93,8 @@ interface Socket {
   readonly deviceTokenHash?: string;
   /** Set once the socket holds a session, with the id of its connection line (BR-060). */
   bound?: { readonly sessionId: string; readonly connectionId: string };
+  /** Invalid frames in a row (BR-088). */
+  invalid: number;
 }
 
 type Command<T extends ClientMessage["type"]> = Extract<ClientMessage, { type: T }>;
@@ -379,9 +385,16 @@ export const createHub = (deps: HubDeps): Hub => {
     return runBound(command.type, socket, bound, command, now);
   };
 
+  /** Answers an invalid frame; the fifth in a row also closes the socket (BR-088). */
+  const invalid = (socket: Socket, answer: Outgoing): Outgoing[] => {
+    socket.invalid += 1;
+    if (socket.invalid === FRAME_LIMITS.invalidInRow) deps.closeSocket(socket.key, POLICY_CLOSE, "invalidFrames");
+    return [answer];
+  };
+
   return {
     open(socketKey, ip, port, deviceTokenHash) {
-      sockets.set(socketKey, { key: socketKey, ip, port, deviceTokenHash });
+      sockets.set(socketKey, { key: socketKey, ip, port, deviceTokenHash, invalid: 0 });
     },
 
     receive: (socketKey, raw, now) =>
@@ -389,11 +402,12 @@ export const createHub = (deps: HubDeps): Hub => {
         const socket = sockets.get(socketKey);
         if (!socket) return [];
         // Same cap on every transport, whatever the platform lets through (`platform/04`).
-        if (raw.length > CAPS.frame) return [out.error(socket.key, "invalid", undefined, "frameTooLarge")];
+        if (raw.length > CAPS.frame) return invalid(socket, out.error(socket.key, "invalid", undefined, "frameTooLarge"));
         const json = parseJson(raw);
-        if (!json.ok) return [out.error(socket.key, "invalid")];
+        if (!json.ok) return invalid(socket, out.error(socket.key, "invalid"));
         const parsed = clientMessage.safeParse(json.data);
-        if (!parsed.success) return [out.error(socket.key, "invalid", seqOf(json.data))];
+        if (!parsed.success) return invalid(socket, out.error(socket.key, "invalid", seqOf(json.data)));
+        socket.invalid = 0;
         return dispatch(socket, parsed.data, now);
       }),
 

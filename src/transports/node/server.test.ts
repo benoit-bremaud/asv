@@ -99,6 +99,26 @@ describe("Node transport", () => {
     expect(await closed).toBe(1009);
   });
 
+  it("closes with 1008 a socket that floods frames, before the hub answers them all (BR-088)", async () => {
+    const { port } = await start();
+    const client = await connect(port);
+    const closed = new Promise<[number, string]>((resolve) => client.ws.once("close", (code, reason) => resolve([code, reason.toString()])));
+
+    for (let i = 0; i < 200; i += 1) client.ws.send("ping");
+
+    expect(await closed).toEqual([1008, "tooManyFrames"]);
+  });
+
+  it("closes with 1008 a socket after five invalid frames in a row (BR-088)", async () => {
+    const { port } = await start();
+    const client = await connect(port);
+    const closed = new Promise<[number, string]>((resolve) => client.ws.once("close", (code, reason) => resolve([code, reason.toString()])));
+
+    for (let i = 0; i < 5; i += 1) client.ws.send("{");
+
+    expect(await closed).toEqual([1008, "invalidFrames"]);
+  });
+
   it("marks a member away when its socket closes, and closes its line", async () => {
     const { port, log } = await start();
     const lola = await connect(port);
