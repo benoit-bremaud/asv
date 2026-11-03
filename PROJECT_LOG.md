@@ -344,3 +344,16 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   Brevo and HTTPS, ZAP and testssl.
 - Merged: PR #101 squash 1d1fcbb, gate green (642 tests, coverage 98.63 %, Sonar passed, gitleaks clean). No
   Codex review (quota out). #99 overlaps #60 (stale "Mauvais code."). Next: Should fixes, #89 first.
+
+## 2026-11-03 — Per-socket frame limit (#89), in review
+
+- Study first: BR-088 added, `platform/02` and `platform/04c` updated, traceability row and JRN-13 in the test
+  plan. Owner MCDA: thresholds A, 40-frame burst refilled at 20 per second (465/500); close A, 1008 on overflow
+  and after five invalid frames in a row (440/500).
+- Code: pure token bucket `src/server/frame-budget.ts` checked by the Node transport before `ping` and
+  `hub.receive`, so a flood never reaches the shared `serial()` queue; the hub counts invalid frames and asks the
+  transport to close. A closing socket's frames are ignored and no longer refresh its last seen.
+- Local review (Codex quota out, four agents): Must 0, 11 Should fixed in cf4eda2 (closing sockets kept
+  talking, clock stepping back drained the bucket, `closeSocket` takes a reason only, tests cover every invalid
+  branch). The close now waits one turn so the fifth `error invalid` reaches the client. 651 tests, coverage
+  98.61 %, gitleaks and `pnpm audit` clean. Pending before merge: SonarQube and the QA pass (JRN-13).
