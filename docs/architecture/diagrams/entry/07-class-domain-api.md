@@ -128,7 +128,7 @@ classDiagram
 - **BR-013**: `bufferPrivate` appends to an away session's buffer, keeping the newest 50.
 - **BR-014**: `resume` finds the away session whose stored hash equals `resumeTokenHash`; otherwise
   `resumeRefused`, as is a token whose deadline has passed though the alarm has not run yet. A profile
-  breaking BR-004 or BR-006 gives `invalid`. On success the profile is replaced by the one sent, a new token is drawn, the buffer is
+  breaking BR-004, BR-006 or BR-090 gives `invalid`. On success the profile is replaced by the one sent, a new token is drawn, the buffer is
   returned in `resumed` and emptied, the status becomes `connected`. If `accountStillExists` is false, the
   account link is removed and `resumed.accountUnlinked` is true.
 - **UC10**: `leave` removes the session (connected or away), frees the pseudo and emits `closed`.

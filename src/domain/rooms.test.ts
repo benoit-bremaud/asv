@@ -219,6 +219,15 @@ describe("BR-020 message length", () => {
     expect(refusal(postRoom(state, { sessionId: id, roomId: "blabla", text: "   " }, T0))).toBe("empty");
   });
 
+  it.each(["gpj.\u202Eexe", "a\u0000b", "a\u200Bb"])("refuses %j as invalidText (BR-090)", (text) => {
+    const { state, id } = posting();
+
+    const posted = postRoom(state, { sessionId: id, roomId: "blabla", text }, T0);
+
+    expect(refusal(posted)).toBe("invalidText");
+    expect(posted.effects).toHaveLength(1);
+  });
+
   it("accepts 500 characters and refuses 501, counted in code points", () => {
     const { state, id } = posting();
     const ok = postRoom(state, { sessionId: id, roomId: "blabla", text: "😀".repeat(500) }, T0);

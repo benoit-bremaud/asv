@@ -84,6 +84,7 @@ export const STRINGS = {
     tooManyRooms: "Tu es déjà dans 10 salons.",
     empty: "Message vide.",
     tooLong: "Message trop long (500 caractères).",
+    invalidText: "Message refusé : caractères invisibles ou de contrôle.",
     flood: "Doucement ! 5 messages par 10 secondes au plus.",
     nameInvalid: "Nom invalide : 3 à 30 caractères, sans mot réservé.",
     nameTaken: "Ce nom de salon est déjà pris.",
