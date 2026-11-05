@@ -236,6 +236,41 @@ describe("entry screen", () => {
   });
 });
 
+describe("headings (#64)", () => {
+  const expectOutline = (titles: string[]) => {
+    const h1 = screen.getAllByRole("heading", { level: 1 });
+    expect(h1.map((h) => h.textContent)).toEqual(["asv"]);
+    expect(screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent)).toEqual(titles);
+  };
+
+  it("has one h1, the logo, on the entry screen and with a legal page open", async () => {
+    const user = await setup();
+    expectOutline([STRINGS.guestTitle, STRINGS.membersTitle]);
+
+    await user.click(screen.getByRole("button", { name: STRINGS.legal.rules }));
+    expectOutline([STRINGS.guestTitle, STRINGS.membersTitle, STRINGS.legal.rules]);
+  });
+
+  it("has one h1 on the rooms screen, its titles at h2", async () => {
+    await setup();
+    await goOnline();
+    await enterChat();
+    expectOutline([STRINGS.officialRooms, STRINGS.userRooms, STRINGS.createRoom, STRINGS.searchTitle]);
+  });
+
+  it("has one h1 in a room, with the account panel and its privacy page open", async () => {
+    const user = await setup();
+    await goOnline();
+    await enterChat();
+    await joinRoom("r1");
+    expectOutline(["# Paris", `${STRINGS.members} (1)`]);
+
+    await user.click(screen.getByRole("button", { name: STRINGS.myAccount }));
+    await user.click(within(screen.getByRole("dialog", { name: STRINGS.accountTitle })).getByRole("button", { name: STRINGS.legal.privacy }));
+    expectOutline(["# Paris", `${STRINGS.members} (1)`, STRINGS.accountTitle, STRINGS.legal.privacy]);
+  });
+});
+
 describe("legal pages (ADR-0018)", () => {
   it("opens each page from the footer with the owner identity from /api/legal, and closes it", async () => {
     const fetchStub = stubStats({ ownerName: "Owner Name", contactEmail: "contact@example.org" });
