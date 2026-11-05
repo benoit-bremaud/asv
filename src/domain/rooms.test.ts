@@ -225,7 +225,7 @@ describe("BR-020 message length", () => {
     const posted = postRoom(state, { sessionId: id, roomId: "blabla", text }, T0);
 
     expect(refusal(posted)).toBe("invalidText");
-    expect(posted.effects).toHaveLength(1);
+    expect(posted.state).toBe(state);
   });
 
   it("accepts 500 characters and refuses 501, counted in code points", () => {

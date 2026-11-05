@@ -2,7 +2,7 @@
 
 > **Feature**: private-conversations (roadmap brick 6)
 > **Use cases**: UC6, UC8
-> **Business rules**: BR-013, BR-020, BR-021, BR-040 to BR-043, BR-060
+> **Business rules**: BR-013, BR-020, BR-021, BR-040 to BR-043, BR-060, BR-090
 > **Related ADRs**: ADR-0005, ADR-0009, ADR-0011, ADR-0012; brick 6 owner choice D1 (`closePrivate`, 450/500)
 
 ## Context

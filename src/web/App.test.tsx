@@ -87,6 +87,18 @@ describe("entry screen", () => {
     expect([...city.value]).toHaveLength(40);
   });
 
+  it("disables ENTRER and shows a notice for a city with an invisible character (BR-090)", async () => {
+    const user = await setup();
+    await goOnline();
+    await fill(user);
+    await user.click(screen.getByLabelText(STRINGS.city));
+
+    await user.paste("Paris\u200B");
+
+    expect(enterButton().disabled).toBe(true);
+    expect(screen.getByText(STRINGS.invisibleChars)).toBeTruthy();
+  });
+
   it("disables ENTRER while an entry is pending", async () => {
     const user = await setup();
     await goOnline();
@@ -764,6 +776,22 @@ describe("room screen", () => {
     expect((screen.getByRole("button", { name: STRINGS.send }) as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it("keeps a message with a bidi override in the field and does not send it (BR-090)", async () => {
+    const user = await setup();
+    await enterChat();
+    await joinRoom("r1");
+    const field = screen.getByLabelText(STRINGS.message) as HTMLInputElement;
+    await user.click(field);
+
+    await user.paste("gpj.\u202Eexe");
+    await user.keyboard("{Enter}");
+
+    expect(connection.send).not.toHaveBeenCalled();
+    expect(field.value).toBe("gpj.\u202Eexe");
+    expect((screen.getByRole("button", { name: STRINGS.send }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText(STRINGS.invisibleChars)).toBeTruthy();
+  });
+
   it("appends a smiley code from the palette", async () => {
     const user = await setup();
     await enterChat();
@@ -944,6 +972,23 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
   const member = (hasAccount: boolean): Member => ({ ...man("s2", "bob"), hasAccount });
   const openMenu = (user: ReturnType<typeof userEvent.setup>) => user.click(screen.getByRole("button", { name: STRINGS.pseudoMenu("bob") }));
   const sent = () => connection.send.mock.calls.map(([command]) => command);
+
+  it("keeps a private draft with a zero-width space and does not send it (BR-090)", async () => {
+    const user = await setup();
+    await signedIn();
+    await joinRoom("r1", [member(true)]);
+    await openMenu(user);
+    await user.click(screen.getByRole("menuitem", { name: STRINGS.privateMessage }));
+    const dialog = screen.getByRole("dialog", { name: STRINGS.privateWith("bob") });
+    const field = within(dialog).getByLabelText(STRINGS.message) as HTMLInputElement;
+
+    await user.paste("a\u200Bb");
+    await user.keyboard("{Enter}");
+
+    expect(sent().some((command) => command.type === "sendPrivate")).toBe(false);
+    expect(field.value).toBe("a\u200Bb");
+    expect(within(dialog).getByText(STRINGS.invisibleChars)).toBeTruthy();
+  });
 
   it("opens a pending window from the pseudo menu, then sends from it", async () => {
     const user = await setup();

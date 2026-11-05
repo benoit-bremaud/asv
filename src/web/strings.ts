@@ -77,6 +77,8 @@ export const STRINGS = {
     pseudoTaken: "Ce pseudo est déjà pris.",
     age: "Le chat est réservé aux 18 à 99 ans.",
   },
+  /** BR-090, shown under a field before sending, not a server notice. */
+  invisibleChars: "Caractères invisibles ou de contrôle : retire-les pour envoyer.",
   notices: {
     unknownRoom: "Ce salon n'existe plus.",
     notMember: "Tu n'es pas dans ce salon.",

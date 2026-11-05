@@ -67,6 +67,7 @@ No analytics, no ads, no third-party trackers, no cookies other than strictly ne
 | Threat | Example | Mitigation |
 |---|---|---|
 | Spoofing | Impersonating a moderator | Passkeys (ADR-0008), reserved words in pseudos (BR-003). |
+| Spoofing | Disguising displayed text with bidi overrides or invisible characters (`gpj.<RLO>exe`) | Free text refused when it holds control, bidi or zero-width characters (BR-090). |
 | Spoofing | Stealing a session | Resume token random 128 bits, rotated at each resume (BR-014), sessionStorage only. |
 | Tampering | Forged protocol messages | Server validates every message against the protocol schema, domain re-checks rules. |
 | Repudiation | Moderator denies an expel | Moderator name and time recorded (BR-055). |

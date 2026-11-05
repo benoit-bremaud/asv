@@ -11,7 +11,7 @@ Numbered rules enforced by the domain (`src/domain`). Values are V1 defaults, tu
 | BR-003 | Pseudos containing reserved words (`admin`, `modo`, `moderateur`, `asv`), ignoring case and accents, are refused. | Refused. |
 | BR-004 | The visitor must tick "I am 18 or older" and declare an age between 18 and 99. | Refused otherwise. |
 | BR-005 | Gender is optional: woman, man or unspecified (default). | — |
-| BR-006 | City is optional free text, 0 to 40 characters, trimmed. | Truncated input refused. |
+| BR-006 | City is optional free text, 0 to 40 characters, trimmed, following BR-090. | Truncated input refused. |
 | BR-007 | At most 5 entry attempts per IP in any 60 seconds. | Further attempts refused until one leaves the window. |
 | BR-008 | An IP or pseudo under an active ban cannot enter. | Refused with ban end time. |
 
@@ -33,7 +33,7 @@ Values are owned here. Rationale lives in the ADRs.
 | Rule | Description |
 |---|---|
 | BR-020 | A message has 1 to 500 characters after trimming. |
-| BR-090 | Free text (room and private messages, BR-020; city, BR-006) is refused when it holds an invisible or direction-changing character: controls `\p{Cc}` (C0, DEL, C1, tab and line breaks included), the Arabic letter mark U+061C, U+200B, the marks U+200E and U+200F, the line and paragraph separators U+2028 and U+2029, the embeddings and overrides U+202A–202E, U+2060–2064, the isolates U+2066–2069 and U+FEFF. The joiners U+200C and U+200D stay allowed (emoji sequences, Persian). A message gives the refusal `invalidText`, a city the entry `invalid`. Text is checked after trimming, never altered. Pseudos and room names already allow none of them (BR-001, BR-030). Issue #91, owner choice B+A (475/500, 460/500). |
+| BR-090 | Free text (room and private messages, BR-020; city, BR-006) is refused when it holds an invisible or direction-changing character: controls `\p{Cc}` (C0, DEL, C1, tab and line breaks included), the Arabic letter mark U+061C, U+200B, the marks U+200E and U+200F, the line and paragraph separators U+2028 and U+2029, the embeddings and overrides U+202A–202E, U+2060–2064, the isolates U+2066–2069, the deprecated format characters U+206A–206F, U+FEFF, the interlinear annotations U+FFF9–FFFB, and the characters that display as blanks or nothing: soft hyphen U+00AD, U+034F, the Hangul fillers U+115F, U+1160, U+3164 and U+FFA0, U+180E and the blank braille pattern U+2800. The joiners U+200C and U+200D stay allowed (emoji sequences, Persian). A message gives the refusal `invalidText`, a city the entry `invalid`. Text is checked after trimming, never altered. Pseudos and room names already allow none of them (BR-001, BR-030). The web client runs the same pure check before sending: the message composers and the entry form keep sending disabled with a notice and the text in the field. Issue #91, owner choices B+A (475/500, 460/500), then client check A (405/500) and widened set A (440/500). |
 | BR-021 | Flood limit: at most 5 accepted messages per 10 seconds per session, across rooms and DMs. Refused messages do not count. |
 | BR-022 | Smiley codes (for example `:)`, `:caramel:`) render from a fixed whitelist. Text is never rendered as HTML. |
 | BR-023 | A room holds at most 50 members, away members included. |

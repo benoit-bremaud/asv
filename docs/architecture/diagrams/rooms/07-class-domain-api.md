@@ -2,7 +2,7 @@
 
 > **Feature**: rooms (roadmap brick 4)
 > **Use cases**: UC2, UC3, UC4, UC5, UC10
-> **Business rules**: BR-020 to BR-034, BR-012, BR-015
+> **Business rules**: BR-020 to BR-034, BR-012, BR-015, BR-090
 > **Related ADRs**: ADR-0007, ADR-0011
 
 ## Context

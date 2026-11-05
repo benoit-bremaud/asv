@@ -2,7 +2,7 @@
 
 > **Feature**: web-ui (roadmap brick 7a)
 > **Use cases**: UC1, UC2, UC3, UC4, UC5, UC10, UC13
-> **Business rules**: BR-004, BR-006, BR-010, BR-014, BR-022
+> **Business rules**: BR-004, BR-006, BR-010, BR-014, BR-022, BR-090
 > **Requirements**: ASV-NF-004, NF-006, NF-011, NF-012
 > **Related ADRs**: ADR-0011; brick 7a owner choices D4, D6 (465/500), D7, D8
 
@@ -197,7 +197,7 @@ classDiagram
   Whitelist V1: `:)`, `:(`, `;)`, `:D`, `:P`, `:o`, `<3`, `:caramel:`. The smiley palette button inserts
   codes. Pixel-art smiley images replace the symbols later without changing the rule.
 - **Entry form** (`entry/07`, `web-ui/03`): pseudo (max 20), gender F / H / not said, age (18 to 99), city
-  (max 40), boxes "j'ai 18 ans ou plus" and "j'accepte les règles du chat"; ENTRER stays disabled until
+  (max 40, no BR-090 character: notice under the field), boxes "j'ai 18 ans ou plus" and "j'accepte les règles du chat"; ENTRER stays disabled until
   both boxes are ticked and pseudo and age are filled. The server still checks everything.
 - **Members panel** (D7, 430/500): shown as in the validated mockup, fields disabled, with "Bientôt : les
   comptes membres" until brick 5. Footer links without a target yet (moderator sign-in, rules, legal
@@ -208,7 +208,7 @@ classDiagram
 - **Rooms screen**: official rooms then user rooms with counts (UC2); click joins (UC3); a create field with
   the room name (UC5); "quitter" sends `leave` (UC10).
 - **Room screen**: tabs for the joined rooms, lines, members list with age and city (connected) or
-  "(absent)" (away), message field with 500 code-point counter, send on Enter; over 500 the counter is flagged, sending is disabled and the text stays in the field (BR-020). Each room keeps its own draft, so a draft never follows a tab switch. Desktop (≥ 768 px wide and
+  "(absent)" (away), message field with 500 code-point counter, send on Enter; over 500 the counter is flagged, sending is disabled and the text stays in the field (BR-020); a trimmed text holding a BR-090 character shows the `invisibleChars` notice, sending is disabled and the text stays in the field. Each room keeps its own draft, so a draft never follows a tab switch. Desktop (≥ 768 px wide and
   ≥ 720 px high): the room screen fits the viewport; the lines and the members list scroll inside their
   panels, and the lines follow new messages, and stay at the bottom when their panel shrinks (a private window opens, the window is resized), while the reader is at the bottom, never while they read
   older ones; sending a message always brings the reader back to the bottom (#65, #85). Below either

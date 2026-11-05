@@ -1,4 +1,5 @@
 import { useState, type SubmitEvent } from "react";
+import { hasForbiddenChar } from "../../domain/text";
 import { useChat } from "../chat-context";
 import { renderText } from "../render";
 import { MAX_TEXT, type PrivateView } from "../store";
@@ -16,12 +17,14 @@ const PrivateWindow = ({ windowKey, window, draft, setDraft }: Props) => {
   const fieldId = `private-${windowKey}`;
   // BR-020 counts code points; the text stays in the field until it fits.
   const tooLong = [...draft].length > MAX_TEXT;
+  // BR-090, checked on the trimmed text as the server does; the draft stays in the field.
+  const invisible = hasForbiddenChar(draft.trim());
   const gone = window.presence === "gone";
   // A pending window (keyed by the other session id) or a gone partner has nothing to close on the server.
   const close = () => commands.closePrivate(windowKey, windowKey !== other.sessionId && !gone);
   const submit = (event: SubmitEvent) => {
     event.preventDefault();
-    if (draft.trim() === "" || tooLong || gone) return;
+    if (draft.trim() === "" || tooLong || invisible || gone) return;
     if (commands.sendPrivate(other.pseudo, draft)) setDraft("");
   };
 
@@ -59,7 +62,8 @@ const PrivateWindow = ({ windowKey, window, draft, setDraft }: Props) => {
         <label className="sr-only" htmlFor={fieldId}>{STRINGS.message}</label>
         <input id={fieldId} value={draft} maxLength={2000} autoComplete="off" disabled={gone} autoFocus onChange={(e) => setDraft(e.target.value)} />
         <span className={`small${tooLong ? " too-long" : ""}`} aria-live="polite">{[...draft].length}/{MAX_TEXT}</span>
-        <button type="submit" className="bevel primary" disabled={tooLong || gone}>{STRINGS.send}</button>
+        {invisible && <span className="small too-long" role="status">{STRINGS.invisibleChars}</span>}
+        <button type="submit" className="bevel primary" disabled={tooLong || invisible || gone}>{STRINGS.send}</button>
       </form>
     </dialog>
   );

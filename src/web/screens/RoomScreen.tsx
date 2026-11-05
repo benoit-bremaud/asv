@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState, type SubmitEvent, type UIEvent } from "react";
 import type { Gender, Member } from "../../shared/protocol";
+import { hasForbiddenChar } from "../../domain/text";
 import { useChat } from "../chat-context";
 import { renderText, SMILEYS } from "../render";
 import { MAX_TEXT } from "../store";
@@ -63,9 +64,11 @@ export const RoomScreen = () => {
 
   // BR-020 counts code points; the text stays in the field until it fits.
   const tooLong = [...text].length > MAX_TEXT;
+  // BR-090, checked on the trimmed text as the server does; the text stays in the field.
+  const invisible = hasForbiddenChar(text.trim());
   const submit = (event: SubmitEvent) => {
     event.preventDefault();
-    if (text.trim() === "" || tooLong) return;
+    if (text.trim() === "" || tooLong || invisible) return;
     // Offline: nothing left, so the draft stays (`write` shows the notice).
     if (!commands.post(roomId, text)) return;
     setText("");
@@ -116,13 +119,14 @@ export const RoomScreen = () => {
           <label className="sr-only" htmlFor="message">{STRINGS.message}</label>
           <input id="message" value={text} maxLength={2000} autoComplete="off" onChange={(e) => setText(e.target.value)} />
           <span className={`small${tooLong ? " too-long" : ""}`} aria-live="polite">{[...text].length}/{MAX_TEXT}</span>
+          {invisible && <span className="small too-long" role="status">{STRINGS.invisibleChars}</span>}
           <details className="smileys">
             <summary>{STRINGS.smileys}</summary>
             {Object.entries(SMILEYS).map(([code, symbol]) => (
               <button key={code} type="button" className="link" aria-label={code} onClick={() => setText(`${text}${code}`)}>{symbol}</button>
             ))}
           </details>
-          <button type="submit" className="bevel primary" disabled={tooLong}>{STRINGS.send}</button>
+          <button type="submit" className="bevel primary" disabled={tooLong || invisible}>{STRINGS.send}</button>
         </form>
       </main>
     </>

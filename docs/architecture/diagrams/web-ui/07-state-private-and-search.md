@@ -2,7 +2,7 @@
 
 > **Feature**: web-ui (roadmap brick 6)
 > **Use cases**: UC6, UC7, UC8
-> **Business rules**: BR-013, BR-020, BR-040 to BR-044
+> **Business rules**: BR-013, BR-020, BR-040 to BR-044, BR-090
 > **Design**: `docs/architecture/design-pack.md` (pseudo menu, floating private windows, search box)
 
 ## Context
@@ -56,7 +56,7 @@ stateDiagram-v2
   the first message. A refusal (`warning` or `error` replying to that `sendPrivate`) shows the notice and
   keeps the draft. `accountRequired` also opens the account panel.
 - **Windows**: at most 3 open (BR-043; the server enforces it). Each window holds its last 200 lines in
-  memory only (BR-034), its own draft, the 500 code point counter of the room composer (BR-020) and an
+  memory only (BR-034), its own draft, the 500 code point counter and the BR-090 check of the room composer (BR-020, BR-090) and an
   unread count while minimised. Lines render through the same `Renderer` (smileys, never HTML).
 - **Desktop** (≥ 768 px): floating panels docked bottom right, side by side, the last opened in front.
   **Phone**: a stacked tab bar in the page flow after the room, one tab per window, full width
@@ -76,7 +76,7 @@ stateDiagram-v2
   are in; click a result → pseudo menu. Results are not refreshed live; a new submit refreshes them.
   At most 50 results (server cap); "aucun chatteur trouvé" when empty.
 - **Strings** in `strings.ts`, French; notices for the new codes: `self`, `tooManyWindows`, `targetBusy`, `offline`,
-  `accountRequired`.
+  `accountRequired`, and `invalidText` (BR-090, room and private).
 - **Accessibility** (NF-004): the pseudo menu is a `menu` with `menuitem`s, keyboard reachable from the
   pseudo button; each window is a `dialog` (non-modal) labelled by the other pseudo with an
   `aria-live="polite"` log; the search results are a list of buttons.

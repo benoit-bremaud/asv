@@ -19,7 +19,7 @@ Links requirements to use cases and every use case to its realisations. All path
 | UC10 | Leave the chat | F-017 | BR-015 | entry/02b (same closing steps) | entry/04, entry/07, rooms/07 | entry/05 | entry/06 |
 | UC11 | Expel a chatter | F-012, F-022, F-023 | BR-053 to BR-055, BR-076 to BR-078, BR-080, BR-081 | moderation/02a, moderation/02d | moderation/04, accounts/04 | entry/05, rooms/05, accounts/05 | moderation/06, accounts/06 |
 | UC12 | Review reports | F-013, F-019, F-022 | BR-054, BR-055, BR-057, BR-074, BR-075 | moderation/02a, moderation/02d | moderation/04, accounts/04 | moderation/05, accounts/05 | moderation/06 |
-| UC13 | Resume my session after a disconnection | F-014 | BR-010 to BR-015 | entry/02b | entry/04, entry/07, rooms/07 | entry/05 | entry/06 |
+| UC13 | Resume my session after a disconnection | F-014 | BR-010 to BR-015, BR-090 | entry/02b | entry/04, entry/07, rooms/07 | entry/05 | entry/06 |
 | UC14 | Invite a moderator | F-015 | BR-056 | moderation/02b | moderation/04 | — | moderation/06 |
 | UC15 | Enroll as moderator | F-015 | BR-056 | moderation/02b | moderation/04 | — | moderation/06 |
 | UC16 | Sign in as moderator | F-016 | BR-054 | moderation/02c | moderation/04 | — | — |

@@ -44,6 +44,7 @@ flowchart LR
   Hub --> Core
   Hub --> Ports
   Conn --> Shared
+  Web -->|"hasForbiddenChar only (BR-090), pure"| Core
   Routes --> Shared
   NodeMain -->|"builds and wires"| Routes
   WorkerEntry -->|"builds and wires"| Routes
@@ -68,7 +69,7 @@ flowchart LR
   WebCrypto, available on Node and Workers. Each transport wires them with its secrets. Stores stay in
   memory on Node until brick 9 (ADR-0017).
 
-- Every arrow into `src/domain` is inbound. The domain imports nothing from other folders (lint rule).
+- Every arrow into `src/domain` is inbound. The web imports one pure module, `src/domain/text.ts` (BR-090), so client and server apply the same character rule. The domain imports nothing from other folders (lint rule).
 - Lint rule (ESLint `no-restricted-imports`): files in `src/domain` import only relative modules of
   `src/domain`: no package, no Node built-in, no path into `src/server`, `src/web`, `src/transports`
   or `src/shared`. Files in `src/server` may not import `src/transports`. Files in

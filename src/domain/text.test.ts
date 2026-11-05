@@ -13,6 +13,7 @@ describe("hasForbiddenChar (BR-090)", () => {
     ["a zero-width space", "a\u200Bb"],
     ["a left-to-right mark", "a\u200Eb"],
     ["a right-to-left mark", "a\u200Fb"],
+    ["a line separator", "a\u2028b"],
     ["a paragraph separator", "a\u2029b"],
     ["a left-to-right embedding", "a\u202Ab"],
     ["a right-to-left override", "gpj.\u202Eexe"],
@@ -20,6 +21,11 @@ describe("hasForbiddenChar (BR-090)", () => {
     ["an invisible plus", "a\u2064b"],
     ["a left-to-right isolate", "a\u2066b"],
     ["a pop directional isolate", "a\u2069b"],
+    ["a soft hyphen", "a\u00ADb"],
+    ["a Hangul filler", "\u3164"],
+    ["a blank braille pattern", "\u2800"],
+    ["a deprecated format character", "a\u206Ab"],
+    ["an interlinear annotation", "a\uFFF9b"],
     ["a byte order mark", "\uFEFFab"],
   ])("finds %s", (_label, text) => {
     expect(hasForbiddenChar(text)).toBe(true);
@@ -30,7 +36,7 @@ describe("hasForbiddenChar (BR-090)", () => {
     ["an emoji sequence with joiners", "\u{1F468}\u200D\u{1F469}\u200D\u{1F467}"],
     ["a zero-width non-joiner", "می\u200Cخواهم"],
     ["Arabic text", "مرحبا"],
-    ["the characters around the ranges", "\u200D\u2027\u2065\u206A\uFEFE"],
+    ["the characters around the ranges", "\u200D\u2027\u2065\u202F\u2801\uFEFE"],
   ])("accepts %s", (_label, text) => {
     expect(hasForbiddenChar(text)).toBe(false);
   });
