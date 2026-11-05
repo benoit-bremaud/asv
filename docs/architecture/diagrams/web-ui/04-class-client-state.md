@@ -219,7 +219,8 @@ classDiagram
   Headings (#64, A11Y-02, option A 470/500): every screen renders `Header` (today entry, rooms, room), whose
   "asv" logo is the screen's only `h1`. It takes its name from its text (no `aria-label`) and `.logo` gets
   `margin: 0`, so the header looks as before. Below it, titles start at `h2`: the screen and section titles,
-  the search panel (a `section`, inline on rooms, floating on room), and the account and legal page `dialog`s,
+  the search panel (a `section`, inline on rooms, floating on room; it keeps its `h2` if #111 makes it a
+  `dialog`), and the account and legal page `dialog`s,
   the legal page keeping its `h2` when opened from the account panel. Private windows stay `dialog`s named by
   `aria-label`, with no heading (`web-ui/07`). Unit tests check, per screen and with the account and legal
   dialogs open, one `level: 1` heading named "asv" and the titles at `level: 2`.
