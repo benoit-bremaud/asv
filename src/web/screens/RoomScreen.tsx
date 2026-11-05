@@ -119,7 +119,7 @@ export const RoomScreen = () => {
           <label className="sr-only" htmlFor="message">{STRINGS.message}</label>
           <input id="message" value={text} maxLength={2000} autoComplete="off" onChange={(e) => setText(e.target.value)} />
           <span className={`small${tooLong ? " too-long" : ""}`} aria-live="polite">{[...text].length}/{MAX_TEXT}</span>
-          {invisible && <span className="small too-long" role="status">{STRINGS.invisibleChars}</span>}
+          {invisible && <output className="small too-long">{STRINGS.invisibleChars}</output>}
           <details className="smileys">
             <summary>{STRINGS.smileys}</summary>
             {Object.entries(SMILEYS).map(([code, symbol]) => (

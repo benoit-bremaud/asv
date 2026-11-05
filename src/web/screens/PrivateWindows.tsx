@@ -62,7 +62,7 @@ const PrivateWindow = ({ windowKey, window, draft, setDraft }: Props) => {
         <label className="sr-only" htmlFor={fieldId}>{STRINGS.message}</label>
         <input id={fieldId} value={draft} maxLength={2000} autoComplete="off" disabled={gone} autoFocus onChange={(e) => setDraft(e.target.value)} />
         <span className={`small${tooLong ? " too-long" : ""}`} aria-live="polite">{[...draft].length}/{MAX_TEXT}</span>
-        {invisible && <span className="small too-long" role="status">{STRINGS.invisibleChars}</span>}
+        {invisible && <output className="small too-long">{STRINGS.invisibleChars}</output>}
         <button type="submit" className="bevel primary" disabled={tooLong || invisible || gone}>{STRINGS.send}</button>
       </form>
     </dialog>

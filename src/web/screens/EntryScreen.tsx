@@ -104,7 +104,7 @@ export const EntryScreen = () => {
             <label>
               {STRINGS.city}
               <input value={city} onChange={(e) => setCity([...e.target.value].slice(0, MAX_CITY).join(""))} />
-              {cityInvisible && <span className="small too-long" role="status">{STRINGS.invisibleChars}</span>}
+              {cityInvisible && <output className="small too-long">{STRINGS.invisibleChars}</output>}
             </label>
           </div>
           <label className="inline">
