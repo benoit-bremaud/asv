@@ -216,3 +216,7 @@ classDiagram
 - **Strings**: every UI text lives in `src/web/strings.ts`, French (NF-012).
 - **Accessibility** (NF-004): native form controls with labels, the message list is an `aria-live="polite"`
   log, focus visible, colours from the design pack tokens only, both themes via `prefers-color-scheme`.
+  Headings (#64, A11Y-02, option A 470/500): every screen (entry, rooms, room) shows `Header`, whose "asv"
+  logo is the screen's only `h1`, styled as before (no visual change). Section and screen titles stay `h2`;
+  the panels opened over a screen (legal pages, account, search) are `dialog`s whose title is an `h2`, under
+  the screen's `h1`.
