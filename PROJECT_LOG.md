@@ -345,7 +345,7 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
 - Merged: PR #101 squash 1d1fcbb, gate green (642 tests, coverage 98.63 %, Sonar passed, gitleaks clean). No
   Codex review (quota out). #99 overlaps #60 (stale "Mauvais code."). Next: Should fixes, #89 first.
 
-## 2026-11-03 — Per-socket frame limit (#89), in review
+## 2026-11-03 — Per-socket frame limit (#89)
 
 - Study first: BR-088 added, `platform/02` and `platform/04c` updated, traceability row and JRN-13 in the test
   plan. Owner MCDA: thresholds A, 40-frame burst refilled at 20 per second (465/500); close A, 1008 on overflow
@@ -362,3 +362,6 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   759-socket flood). Gate red only on pre-existing P0s #105, #64, #98: owner waiver, option A (450/500). Filed
   #104 (owner: account panel overlaps create-room, "retro but elegant") and #105–#111; #112 fixed here (BR-088
   ping clause). Sonar passed on b96ea98.
+- Merged 2026-11-05: PR #103 squash b41c8e0 with owner approval; CI (verify, CodeQL, dependency review) and
+  SonarQube green on 2491521, QA P0s waived as above. No Codex review (quota out; bot comments answered).
+  Next: #23 per-IP WebSocket cap (same upgrade handler), then #91, #64, #63, #104.
