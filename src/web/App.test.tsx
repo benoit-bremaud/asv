@@ -255,8 +255,7 @@ describe("headings (#64)", () => {
     await setup();
     await goOnline();
     await enterChat();
-    expect(screen.getAllByRole("heading", { level: 1 }).map((h) => h.textContent)).toEqual(["asv"]);
-    expect(screen.getByRole("heading", { level: 2, name: STRINGS.officialRooms })).toBeTruthy();
+    expectOutline([STRINGS.officialRooms, STRINGS.userRooms, STRINGS.createRoom, STRINGS.searchTitle]);
   });
 
   it("has one h1 in a room, with the account panel and its privacy page open", async () => {
@@ -264,14 +263,11 @@ describe("headings (#64)", () => {
     await goOnline();
     await enterChat();
     await joinRoom("r1");
-    expect(screen.getAllByRole("heading", { level: 1 }).map((h) => h.textContent)).toEqual(["asv"]);
-    expect(screen.getByRole("heading", { level: 2, name: "# Paris" })).toBeTruthy();
+    expectOutline(["# Paris", `${STRINGS.members} (1)`]);
 
     await user.click(screen.getByRole("button", { name: STRINGS.myAccount }));
     await user.click(within(screen.getByRole("dialog", { name: STRINGS.accountTitle })).getByRole("button", { name: STRINGS.legal.privacy }));
-    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
-    expect(screen.getByRole("heading", { level: 2, name: STRINGS.accountTitle })).toBeTruthy();
-    expect(screen.getByRole("heading", { level: 2, name: STRINGS.legal.privacy })).toBeTruthy();
+    expectOutline(["# Paris", `${STRINGS.members} (1)`, STRINGS.accountTitle, STRINGS.legal.privacy]);
   });
 });
 
