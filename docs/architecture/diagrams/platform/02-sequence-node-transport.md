@@ -108,8 +108,8 @@ sequenceDiagram
   place back, once per admitted socket. `prune(nowMs)`, called on every tick, drops the buckets that are
   full again and have no open socket, so the map stays bounded by recent IPs. The token bucket is the
   same as BR-088's (`src/server/token-bucket.ts`). The refusal is written on the raw socket
-  (`HTTP/1.1 429` or `503`, `Retry-After: 10`, `Connection: close`) before `handleUpgrade`, then destroyed once flushed (the 403 too): after `upgrade` Node keeps no timeout on it and allows half-open sockets, so the hub and
-  the connection log never see it. The Hub Durable Object (brick 9) runs the same `admit` before
+  (`HTTP/1.1 429` or `503`, `Retry-After: 10`, `Connection: close`) before `handleUpgrade`, so the hub and
+  the connection log never see it. The socket is then destroyed once flushed (the 403 too): after `upgrade` Node keeps no timeout on it and allows half-open sockets. The Hub Durable Object (brick 9) runs the same `admit` before
   `acceptWebSocket` and the same `release` in `webSocketClose`.
 - **Unbound sockets** (BR-089): the hub alone knows whether a socket holds a session, so `tick` closes
   the sockets unbound for 10 minutes through `closeSocket(key, "unbound")` (`platform/04c`); the transport
