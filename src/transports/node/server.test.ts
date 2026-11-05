@@ -53,7 +53,7 @@ const connect = async (port: number, origin = ORIGIN, path = "/ws") => {
     }
   };
   const send = (type: string, payload: object, seq = 1) => ws.send(JSON.stringify({ type, seq, payload }));
-  return { ws, next, send };
+  return { ws, next, send, frames };
 };
 
 const ENTER = { gender: "woman", age: 30, adultConfirmed: true, termsAccepted: true };
@@ -97,6 +97,30 @@ describe("Node transport", () => {
     client.ws.send("x".repeat(65_537));
 
     expect(await closed).toBe(1009);
+  });
+
+  it("closes with 1008 a socket that floods frames and answers none past its budget (BR-088)", async () => {
+    const { port } = await start();
+    const client = await connect(port);
+    const closed = new Promise<[number, string]>((resolve) => client.ws.once("close", (code, reason) => resolve([code, reason.toString()])));
+
+    for (let i = 0; i < 200; i += 1) client.ws.send("ping");
+
+    expect(await closed).toEqual([1008, "tooManyFrames"]);
+    // 40 in the burst, at most one more refilled while the frames arrive.
+    expect(client.frames.filter((f) => f === "pong").length).toBeGreaterThanOrEqual(40);
+    expect(client.frames.filter((f) => f === "pong").length).toBeLessThanOrEqual(41);
+  });
+
+  it("closes with 1008 a socket after five invalid frames in a row (BR-088)", async () => {
+    const { port } = await start();
+    const client = await connect(port);
+    const closed = new Promise<[number, string]>((resolve) => client.ws.once("close", (code, reason) => resolve([code, reason.toString()])));
+
+    for (let i = 0; i < 5; i += 1) client.ws.send("{");
+
+    expect(await closed).toEqual([1008, "invalidFrames"]);
+    expect(client.frames).toHaveLength(5);
   });
 
   it("marks a member away when its socket closes, and closes its line", async () => {

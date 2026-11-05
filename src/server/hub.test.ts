@@ -3,7 +3,7 @@ import type { AccountStore, ConnectionLine, ContributionLine, ConnectionLogStore
 import { createAccountIo } from "./account-io";
 import { createCrypto } from "./crypto/cipher";
 import { cryptoKeysFromEnv } from "./crypto/keys";
-import type { ServerMessage } from "../shared/protocol";
+import { CAPS, type ServerMessage } from "../shared/protocol";
 import { createHub, type Outgoing } from "./hub";
 
 const T0 = new Date("2026-10-23T10:00:00Z");
@@ -127,6 +127,26 @@ describe("hub entry (UC1)", () => {
 
     expect(only(refused, "entryRefused").payload).toEqual({ reason: "pseudoInvalid" });
     expect(only(invalid, "error").payload).toEqual({ code: "invalid", message: "invalid", replyTo: 4 });
+  });
+
+  it.each([
+    ["not JSON", "not json"],
+    ["refused by the schema", '{"type":"nope"}'],
+    ["over the hub cap", "x".repeat(CAPS.frame + 1)],
+  ])("closes on the fifth invalid frame in a row, %s, a valid frame resetting the count (BR-088)", async (_, raw) => {
+    const { hub, closeSocket, send } = setup();
+    hub.open("1", "ip", undefined);
+    const garbage = () => hub.receive("1", raw, T0);
+
+    for (let i = 0; i < 4; i += 1) await garbage();
+    await send("1", "enter", { pseudo: "x", age: 30, adultConfirmed: true, termsAccepted: true });
+    for (let i = 0; i < 4; i += 1) await garbage();
+    expect(closeSocket).not.toHaveBeenCalled();
+    const fifth = await garbage();
+    await garbage();
+
+    expect(only(fifth, "error").payload).toMatchObject({ code: "invalid" });
+    expect(closeSocket).toHaveBeenCalledExactlyOnceWith("1", "invalidFrames");
   });
 
   it("refuses the entry when the connection line cannot be written, and frees the pseudo", async () => {

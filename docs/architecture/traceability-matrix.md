@@ -51,6 +51,7 @@ Links requirements to use cases and every use case to its realisations. All path
 | BR-085 client IP behind the tunnel | platform/02, platform/07 | #54 |
 | BR-086 security headers, `Secure` cookie | platform/07, `security-and-rgpd.md` §4 | #48, #50 |
 | BR-087 code step kept across a resume | web-ui/06, ADR-0011 amendment | #72 |
+| BR-088 frame budget and invalid-frame close per socket | platform/02, platform/04c | #89 |
 | Legal pages | web-ui/05, `docs/product/legal-pages-draft.md` | #54 |
 
 ## Coverage check

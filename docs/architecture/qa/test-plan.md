@@ -6,7 +6,7 @@ coverage matrix that records the last QA evidence of every case, so each QA pass
 > Written with skill `test-plan`. Families, tools and owners refer to the owner's
 > `~/.claude/skills/testing-strategy/taxonomy.md` (not linked). Levels and checklist IDs (FON, DAT, UI,
 > A11Y, PERF, SEC, ROB, MOB, USA, PRI) refer to skill `qa-browser-check` and its `checklist.md`.
-> Last reviewed: 2026-11-02 · base fc7d87d, JRN-04, JRN-03, UI and A11Y rows updated for #65, #83, #84, #85 on 5669e7d (PD re-run)
+> Last reviewed: 2026-11-03 · JRN-13 row added and journey, domain and SEC rows refreshed by the full pass of #89 on 9913901 (FL)
 
 ## Rule: the plan follows the product
 
@@ -81,6 +81,7 @@ coverage matrix that records the last QA evidence of every case, so each QA pass
 | JRN-10 | Delete my account | UC19 | BR-080…083 | RSK-07 | QA pass | local |
 | JRN-11 | Read the legal pages (rules, legal notice, privacy) | — (ADR-0018) | — | RSK-11 | QA pass | local |
 | JRN-12 | Tunnel mode: HSTS, `Secure` cookie, client IP from `CF-Connecting-IP` | — (ADR-0018) | BR-084…086 | RSK-10 | unit tests; QA pass on a local `ASV_TUNNEL` instance | local |
+| JRN-13 | A chatter's page stays connected under normal use; a script flooding frames or sending invalid frames is cut with close 1008 | — (#89) | BR-088 | RSK-09 | unit and transport tests; QA probe (WebSocket frames) | local |
 
 Moderation journeys (UC9, UC11, UC12, UC14…UC16) join this list with brick 8.
 
@@ -88,7 +89,7 @@ Moderation journeys (UC9, UC11, UC12, UC14…UC16) join this list with brick 8.
 
 Reports: **FP** = `2026-10-24-full-pass.md` (head c470f1a) · **RS** = `2026-10-24-tester-runbook-smoke.md`
 (PR #61, head not recorded) · **CS** = `2026-11-02-code-step-resume.md` (first run e774c8c; re-check 09f44e7 re-ran
-FON-01a–d, F1, N1–N3, UI-01/02 only) · **TS** = `2026-11-02-test-plan-smoke.md` (head f9970ba) · **PD** = `2026-11-02-65-private-dock.md` (#65: first pass debc8ce, product part and security part; re-run on ce90fc5 and 5669e7d, product part only).
+FON-01a–d, F1, N1–N3, UI-01/02 only) · **TS** = `2026-11-02-test-plan-smoke.md` (head f9970ba) · **PD** = `2026-11-02-65-private-dock.md` (#65: first pass debc8ce, product part and security part; re-run on ce90fc5 and 5669e7d, product part only) · **FL** = `2026-11-03-89-frame-limit-full.md` (#89, level full, head 9913901; shots `2026-11-03-89-<nn>-…`).
 Screenshots are under `docs/architecture/qa/`; numbers refer to the report's own prefix.
 Level is the lowest QA level that must run the row: smoke ⊂ pass ⊂ full.
 
@@ -111,21 +112,22 @@ Level is the lowest QA level that must run the row: smoke ⊂ pass ⊂ full.
 | JRN-04 windows never cover the room composer, phone 390 px, 3 / 2 + 1 min / 1 + 2 min, receiver 2 / 1 + 1 min / 0 | pass | PD UI-65h2 · `2026-11-02-65-36-sender-3-open-390`, `-37-sender-2-open-1-min-390`, `-38-sender-1-open-2-min-390`, `-39-receiver-open-390` · ce90fc5; PD UI-65h3 · `2026-11-02-65-56-sender-2-open-390`, `-59-receiver-390` · 5669e7d (earlier: debc8ce shots 07…13) | covered (dock static after the room, no regression; composer above the fold with 2+ windows, reachable by scrolling) |
 | JRN-03 rooms list with private windows open, desktop and phone | pass | PD UI-65j (first pass) · `2026-11-02-65-16-sender-rooms-list-2-open-1440`, `-17-sender-rooms-list-2-open-390` · debc8ce | covered; re-run on 5669e7d: PD UI-65j2 · `2026-11-02-65-57-rooms-list-2-open-390`, `-58-rooms-list-2-open-1440` |
 | JRN-03 search and account overlays with the dock, desktop | pass | PD UI-65t, UI-65n · `2026-11-02-65-30-sender-search-overlay-3-open-1440`, `-31-sender-account-overlay-3-open-1440`, `-32-account-overlay-covered-by-dock-3-open-1440x600` · ce90fc5; re-run PD UI-84a/b · `2026-11-02-65-49-account-overlay-over-dock-1440x600-scrolled`, `-51-search-overlay-over-dock-1440x600-scrolled` · 5669e7d | covered on 5669e7d (overlay z-index 16 over the dock, every control hit and "fermer" / "annuler" clicked; #84 verified; FAIL on ce90fc5 fixed) |
-| JRN-04 cap of 3 windows | pass | — | not covered |
+| JRN-04 cap of 3 windows | pass | FL JRN-04b · `2026-11-03-89-13-receiver-3-windows-cap-1440` · 9913901 | covered (`warning targetBusy`) |
 | JRN-05 ignore | pass | FP · `full-12-ignore-receiver` · c470f1a | covered |
 | JRN-06 directory search | pass | FP · `full-13-search` · c470f1a | covered |
 | JRN-07 request a code, right code | pass | CS · `2026-11-02-11-recheck-signed-in-375` · 09f44e7 | covered |
 | JRN-07 wrong code, exhausted | pass | CS · `2026-11-02-12-recheck-f1-no-dead-step-375` · 09f44e7 | covered |
-| JRN-07 IP quota 10 codes per hour | full | — | not covered |
+| JRN-07 IP quota 10 codes per hour | full | FL JRN-07b (no shot) · 9913901 | covered |
 | JRN-08 code step after a drop and a reload | pass | CS · `2026-11-02-09-recheck-after-drop-375`, `2026-11-02-10-recheck-after-reload-focus-375` · 09f44e7 | covered |
 | JRN-09 device cookie flags | pass | PD SEC-02 (no shot) · debc8ce | covered |
 | JRN-09 sign out of this device, cookie replay refused | pass | FP SEC-12 (no shot) · c470f1a | covered |
-| JRN-09 sign out everywhere | pass | — | not covered |
-| JRN-09 remembered device hint in a new tab | pass | FP: INCONCLUSIVE · c470f1a | not covered |
-| JRN-10 delete my account | pass | — (FP PRI-04 NOT TESTED) | not covered |
+| JRN-09 sign out everywhere | pass | FL JRN-09c · `2026-11-03-89-18-signed-out-everywhere-1440` · 9913901 | covered |
+| JRN-09 remembered device hint in a new tab | pass | FL JRN-09b · `2026-11-03-89-15-remembered-device-new-tab-1440`, `-15-remembered-device-signed-in-1440` · 9913901 | covered |
+| JRN-10 delete my account | pass | FL JRN-10a/b · `2026-11-03-89-16-delete-confirm-no-retention-notice-1440`, `-17-account-deleted-1440` · 9913901 | covered (FAIL: retention notice missing, #110) |
 | JRN-11 legal pages | smoke | TS · `2026-11-02-test-plan-smoke-04-rules-375`, `-05-legal-375`, `-06-privacy-375` · f9970ba | covered |
 | JRN-12 HSTS in tunnel mode | full | RS header read on the live instance (no shot) · PR #61 | covered |
-| JRN-12 `Secure` cookie, client IP in tunnel mode | full | — (unit tests only) | not covered |
+| JRN-12 `Secure` cookie, client IP in tunnel mode | full | — (unit tests only; FL NOT TESTED, needs the tester secrets) | not covered |
+| JRN-13 frame budget: (a) normal UI use and 75 s idle never closed; (b) 200 frames → 40 answers then 1008 `tooManyFrames`; (c) 5 invalid → 5 `error invalid` then 1008 `invalidFrames`; (d) 4 invalid + valid + 4 invalid stays open; (e) web client resumes after a policy close; (f) other chatters responsive during a flood | full | FL JRN-13a…f · `2026-11-03-89-04-after-policy-close-reconnecting-1440`, `-05-resumed-after-policy-close-1440` · 9913901 | covered (all PASS; `ping` and the invalid count #112; reconnect rate per IP #23) |
 
 ### qa-browser-check domains
 
@@ -134,11 +136,11 @@ Level is the lowest QA level that must run the row: smoke ⊂ pass ⊂ full.
 | FON Functional | smoke | FP FON-01/03/04/08/09/10 · c470f1a; CS FON-01a–d · 09f44e7, FON-09 · e774c8c | covered (FON-08b not covered) |
 | DAT Data and API | pass | FP DAT-01, DAT-03/06 · c470f1a | covered |
 | UI viewports, console, dark | pass | FP UI-01/02/04/05 · `full-18-entry-390`, `full-20-entry-dark` · c470f1a; TS inspector · f9970ba; PD UI-02, UI-65m…k2 · `2026-11-02-65-41-sender-3-open-dark-1440-scrolly0`, `-42-sender-3-open-dark-390`, `-40-receiver-0-windows-1440-scrolly0` · ce90fc5; PD UI-83a/b, UI-02b · `2026-11-02-65-45-sender-3-open-1440x600-scrolly0` · 5669e7d (dark not re-run) | covered (UI-08 open, #62; #83 short desktop windows verified on 5669e7d; Nice #85 part 2 open) |
-| UI Firefox and WebKit | full | — (PD: `:has()` dock rule not run on Firefox or WebKit) | not covered |
+| UI Firefox and WebKit | full | FL UI-03 · `2026-11-03-89-27-firefox-room-1440`, `-28-webkit-room-1440` (and `-390`) · 9913901 | covered (entry → room → post; private dock not run on these engines) |
 | A11Y keyboard, semantics, contrast, targets | pass | FP · `full-23-keyboard-guest-rooms` · c470f1a; #65 re-checked in PD at scrollY 0 and after scrolling (target visibility and `elementFromPoint`) · `2026-11-02-65-22-sender-1-open-1440-scrolly0` · ce90fc5; overlay controls PD A11Y-65b · `2026-11-02-65-49-account-overlay-over-dock-1440x600-scrolled` · 5669e7d | covered (FAIL: #63, #64; #84 overlay controls verified on 5669e7d; #65 fixed on ce90fc5) |
-| A11Y axe-core, screen reader | full | — | not covered |
-| PERF lab budget | full | FP PERF-01 INCONCLUSIVE · c470f1a | not covered |
-| SEC probes | pass | PD SEC-01…10 · debc8ce | covered (SEC-01 FAIL, #69) |
+| A11Y axe-core, screen reader | full | FL A11Y-11 axe-core 4.13 (no shot) · 9913901; screen reader NOT TESTED (Orca missing) | covered for axe (FAIL: #105, #64, #107); screen reader not covered |
+| PERF lab budget | full | FL PERF-01 Lighthouse 12.6.1 mobile, 3 runs (no shot) · 9913901 | covered (FAIL: LCP 2.6 s, #98) |
+| SEC probes | pass | FL SEC-01…10 · 9913901 (earlier PD · debc8ce) | covered (SEC-01 FAIL, #69) |
 | ROB down, restart, two users | pass | FP ROB-01/02/05 · c470f1a; CS ROB-01 · e774c8c | covered |
 | MOB native or real phone | full | — (CS MOB-03 NOT TESTED) | not covered |
 | USA messages, confirmations | pass | FP USA-03/04 · c470f1a | covered |
@@ -147,7 +149,7 @@ Level is the lowest QA level that must run the row: smoke ⊂ pass ⊂ full.
 ### SEC-01…SEC-10
 
 PD SEC rows come from the security part of `2026-11-02-65-private-dock.md` on fd6cacc (product code debc8ce), local
-dev server and own production build. Not re-run on ce90fc5 or 5669e7d (CSS and client scroll code only); the evidence below stays on debc8ce.
+dev server and own production build. Not re-run on ce90fc5 or 5669e7d (CSS and client scroll code only). All ten re-run by FL on 9913901 (local dev server and own production build), same verdicts; FL adds the BR-088 frame budget to SEC-07.
 
 | Case | Level | Last evidence (report · head) | Status |
 |---|---|---|---|
@@ -157,7 +159,7 @@ dev server and own production build. Not re-run on ce90fc5 or 5669e7d (CSS and c
 | SEC-04 XSS | pass | PD SEC-04 · `2026-11-02-65-21-sec04-private-and-room-xss-as-text-921` · debc8ce | covered (room and private window) |
 | SEC-05 authn and authz | pass | PD SEC-05 (no shot) · debc8ce | covered |
 | SEC-06 input limits | pass | PD SEC-06 (no shot) · debc8ce | covered |
-| SEC-07 rate limits | pass | PD SEC-07 (no shot) · debc8ce | covered (private burst and other-user lockout: not covered) |
+| SEC-07 rate limits | pass | FL SEC-07 and JRN-13 (no shot) · 9913901; PD SEC-07 · debc8ce | covered (other users not locked out by a frame flood; private burst not covered) |
 | SEC-08 error leaks | pass | PD SEC-08 (no shot) · debc8ce | covered |
 | SEC-09 bundle | pass | PD SEC-09 (no shot) · debc8ce | covered |
 | SEC-10 third parties | pass | PD SEC-10 (no shot) · debc8ce | covered |
@@ -174,14 +176,15 @@ dev server and own production build. Not re-run on ce90fc5 or 5669e7d (CSS and c
 
 | Family | Missing | Issue |
 |---|---|---|
-| Functional | Browser run of JRN-04 cap, JRN-09 sign out everywhere, JRN-10 deletion | to file on owner approval |
+| Functional | — (JRN-04 cap, JRN-09 sign out everywhere, JRN-10 deletion run by FL on 9913901) | — |
 | Functional E2E automated | Playwright suite (`later`) | to file on owner approval |
-| Compatibility | Firefox and WebKit run | to file on owner approval |
+| Compatibility | Firefox and WebKit run of the private dock (journey run by FL) | to file on owner approval |
 | Security | Tunnel-mode run of JRN-12 on a local instance | to file on owner approval |
-| UI and visual | axe-core and screen reader | to file on owner approval |
+| UI and visual | Screen reader (Orca); axe-core run by FL | to file on owner approval |
 
 ## Changelog
 
+- 2026-11-03 — #89 full pass on 9913901 (FL): JRN-13 coverage row added (a…f all PASS); JRN-04 cap, JRN-07 IP quota, JRN-09 sign out everywhere and remembered device, JRN-10 deletion, Firefox and WebKit, axe-core, PERF-01 now covered; SEC-01…10 re-run (SEC-01 still FAIL, #69). New findings #105…#112.
 - 2026-11-02 — #83, #84, #85 re-run on 5669e7d (PD, product part): short desktops (1440 × 600, 800 × 700) with 3 windows, tall desktops, overlays above the dock, own post follows, phones, rooms list; JRN-03, JRN-04, UI and A11Y rows moved to 5669e7d. Nothing new; #85 part 2 not re-checked; SEC rows left on debc8ce.
 - 2026-11-02 — #65 re-run on ce90fc5 (PD, product part): composer hit-tests at scrollY 0 and after scrolling, 0 / tab / 1 / 1+1 / 2 / 3 windows, 4 desktop viewports and 390 px; JRN-04, JRN-03, UI and A11Y rows moved to ce90fc5; the scrollY 0 caveat is removed (fixed). New findings #83, #84 (Should), #85 (Nice); SEC rows left on debc8ce.
 - 2026-11-02 — #65 security part: SEC-01…10 re-run on debc8ce (PD), evidence refreshed; SEC-01 still FAIL (#69), no new finding.
