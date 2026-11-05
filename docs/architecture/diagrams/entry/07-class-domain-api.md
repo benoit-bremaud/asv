@@ -105,7 +105,7 @@ classDiagram
   `helene` are the same pseudo, `Modérateur` contains `moderateur`). A reserved word refuses the pseudo
   when it appears anywhere in it (`MonModo` refused, `pseudoInvalid`). A taken pseudo gives `pseudoTaken`.
 - **BR-004**: `adultConfirmed` true and integer age 18 to 99, else `age`.
-- **Terms and BR-006**: `termsAccepted` false, or a city longer than 40 characters after trimming, gives the
+- **Terms and BR-006**: `termsAccepted` false, or a city longer than 40 characters after trimming or holding a BR-090 character, gives the
   `invalid` effect, mapped by the hub to the existing `error { code: "invalid" }`. An honest client never
   sends them: the entry form keeps "enter" disabled until the terms box is ticked and caps the city field at
   40 characters (`web-ui`, brick 7a). The protocol `entryRefusal` enum is unchanged. The stored city is the

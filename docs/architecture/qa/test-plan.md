@@ -83,6 +83,7 @@ coverage matrix that records the last QA evidence of every case, so each QA pass
 | JRN-12 | Tunnel mode: HSTS, `Secure` cookie, client IP from `CF-Connecting-IP` | — (ADR-0018) | BR-084…086 | RSK-10 | unit tests; QA pass on a local `ASV_TUNNEL` instance | local |
 | JRN-13 | A chatter's page stays connected under normal use; a script flooding frames or sending invalid frames is cut with close 1008 | — (#89) | BR-088 | RSK-09 | unit and transport tests; QA probe (WebSocket frames) | local |
 | JRN-14 | Several tabs and people behind one IP stay connected; a script opening sockets in a loop is refused with 429 before any socket exists; a page left on the entry screen 10 min is closed with 1008 `unbound` and reconnects | — (#23) | BR-089 | RSK-09 | unit and transport tests; QA probe (upgrade loop) | local |
+| JRN-15 | Posting a room or private message holding U+202E, U+200B or NUL is refused with a notice and nothing is delivered; an emoji with a joiner (👨‍👩‍👧) is delivered; a city with U+202E is refused at entry | UC1, UC4, UC6 | BR-090 | RSK-03 | unit tests; QA probe through the WebSocket frames | local |
 
 Moderation journeys (UC9, UC11, UC12, UC14…UC16) join this list with brick 8.
 
