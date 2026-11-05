@@ -82,6 +82,7 @@ coverage matrix that records the last QA evidence of every case, so each QA pass
 | JRN-11 | Read the legal pages (rules, legal notice, privacy) | — (ADR-0018) | — | RSK-11 | QA pass | local |
 | JRN-12 | Tunnel mode: HSTS, `Secure` cookie, client IP from `CF-Connecting-IP` | — (ADR-0018) | BR-084…086 | RSK-10 | unit tests; QA pass on a local `ASV_TUNNEL` instance | local |
 | JRN-13 | A chatter's page stays connected under normal use; a script flooding frames or sending invalid frames is cut with close 1008 | — (#89) | BR-088 | RSK-09 | unit and transport tests; QA probe (WebSocket frames) | local |
+| JRN-14 | Several tabs and people behind one IP stay connected; a script opening sockets in a loop is refused with 429 before any socket exists; a page left on the entry screen 10 min is closed with 1008 `unbound` and reconnects | — (#23) | BR-089 | RSK-09 | unit and transport tests; QA probe (upgrade loop) | local |
 
 Moderation journeys (UC9, UC11, UC12, UC14…UC16) join this list with brick 8.
 
@@ -128,6 +129,7 @@ Level is the lowest QA level that must run the row: smoke ⊂ pass ⊂ full.
 | JRN-12 HSTS in tunnel mode | full | RS header read on the live instance (no shot) · PR #61 | covered |
 | JRN-12 `Secure` cookie, client IP in tunnel mode | full | — (unit tests only; FL NOT TESTED, needs the tester secrets) | not covered |
 | JRN-13 frame budget: (a) normal UI use and 75 s idle never closed; (b) 200 frames → 40 answers then 1008 `tooManyFrames`; (c) 5 invalid → 5 `error invalid` then 1008 `invalidFrames`; (d) 4 invalid + valid + 4 invalid stays open; (e) web client resumes after a policy close; (f) other chatters responsive during a flood | full | FL JRN-13a…f · `2026-11-03-89-04-after-policy-close-reconnecting-1440`, `-05-resumed-after-policy-close-1440` · 9913901 | covered (all PASS; `ping` and the invalid count #112; reconnect rate per IP #23) |
+| JRN-14 upgrade limits: (a) 10 tabs from one IP all connect and chat; (b) a loop of 100 upgrades from one IP gets 20 sockets then 429 with `Retry-After`, no connection line for refused ones; (c) the 21st concurrent socket of one IP gets 429; (d) a closed socket frees its place; (e) an entry screen left 10 min gets 1008 `unbound` and the page reconnects; (f) other chatters responsive during the loop | full | not covered | not covered |
 
 ### qa-browser-check domains
 
