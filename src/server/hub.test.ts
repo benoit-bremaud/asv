@@ -659,3 +659,37 @@ describe("hub private conversations, ignore and search (UC6, UC7, UC8)", () => {
     ]);
   });
 });
+
+describe("hub unbound sockets (BR-089)", () => {
+  const TEN_MIN = 10 * 60_000;
+
+  it("closes a socket that never enters once, 10 minutes after the first tick that saw it", async () => {
+    const { hub, closeSocket } = setup();
+    hub.open("1", "ip");
+
+    await hub.tick(T0);
+    await hub.tick(later(TEN_MIN - 1));
+    expect(closeSocket).not.toHaveBeenCalled();
+
+    await hub.tick(later(TEN_MIN));
+    await hub.tick(later(TEN_MIN + 1000));
+    expect(closeSocket).toHaveBeenCalledExactlyOnceWith("1", "unbound");
+  });
+
+  it("never closes a bound socket, and restarts the count when it leaves", async () => {
+    const { hub, closeSocket, send, enterAs } = setup();
+    hub.open("2", "ip");
+    await hub.tick(T0);
+    await enterAs("1", "Lola");
+
+    await hub.tick(later(TEN_MIN));
+    expect(closeSocket).toHaveBeenCalledExactlyOnceWith("2", "unbound");
+
+    await send("1", "leave", {}, 2, later(2 * TEN_MIN));
+    await hub.tick(later(2 * TEN_MIN));
+    await hub.tick(later(3 * TEN_MIN - 1));
+    expect(closeSocket).toHaveBeenCalledTimes(1);
+    await hub.tick(later(3 * TEN_MIN));
+    expect(closeSocket).toHaveBeenLastCalledWith("1", "unbound");
+  });
+});

@@ -17,6 +17,7 @@ import { createHub, type Outgoing } from "../../server/hub";
 import { createBrevoMailer } from "../../server/mailer/brevo";
 import { createFrameBudget, POLICY_CLOSE, type PolicyReason } from "../../server/frame-budget";
 import { OFFICIAL_ROOMS } from "../../server/official-rooms";
+import { createUpgradeLimiter, UPGRADE_LIMITS, type UpgradeVerdict } from "../../server/upgrade-limit";
 import type { ConnectionLogStore, LegalVaultStore, Mailer } from "../../domain";
 import { CAPS } from "../../shared/protocol";
 import { createMemoryAccountStore, createMemoryVault } from "./memory-accounts";
@@ -71,6 +72,13 @@ export const clientAddress = (request: IncomingMessage, behindTunnel: boolean): 
 
 /** A running Node transport: its bound port, its in-memory stores (tests read them; unused when files are set) and a graceful stop. */
 /** One open socket of the transport. */
+/** BR-089 refusals, written on the raw socket before any WebSocket exists. */
+const REFUSAL_STATUS: Record<Exclude<UpgradeVerdict, "ok">, string> = {
+  perIp: "429 Too Many Requests",
+  rate: "429 Too Many Requests",
+  total: "503 Service Unavailable",
+};
+
 interface SocketEntry {
   readonly ws: WebSocket;
   lastSeen: number;
@@ -162,6 +170,7 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
   const server = createAdaptorServer({ fetch: app.fetch, hostname: options.hostname });
   const wss = new WebSocketServer({ noServer: true, maxPayload: CAPS.frame });
   const sockets = new Map<string, SocketEntry>();
+  const limiter = createUpgradeLimiter();
   /**
    * Closes a socket with 1008 (BR-088), or with no code for a resume takeover; a closing socket's frames
    * are ignored and no longer refresh `lastSeen`, so the silence sweep ends a peer that never answers.
@@ -220,10 +229,22 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
       socket.end("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n");
       return;
     }
+    const { ip } = clientAddress(request, behindTunnel);
+    const verdict = limiter.admit(ip, now().getTime());
+    if (verdict !== "ok") {
+      const retry = `Retry-After: ${UPGRADE_LIMITS.retryAfterSeconds}`;
+      socket.end(`HTTP/1.1 ${REFUSAL_STATUS[verdict]}\r\n${retry}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n`);
+      return;
+    }
+    // The raw socket closes whatever happens next (handshake refused by `ws`, or the WebSocket closing).
+    socket.once("close", () => limiter.release(ip));
     wss.handleUpgrade(request, socket, head, (ws) => wss.emit("connection", ws, request));
   });
 
-  const tick = setInterval(() => void run(hub.tick(now())), tickMs);
+  const tick = setInterval(() => {
+    limiter.prune(now().getTime());
+    void run(hub.tick(now()));
+  }, tickMs);
   const daily = setInterval(purgeFiles, DAY_MS);
   const sweep = setInterval(() => {
     const limit = now().getTime() - silenceMs;

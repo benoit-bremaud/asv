@@ -56,6 +56,30 @@ const connect = async (port: number, origin = ORIGIN, path = "/ws") => {
   return { ws, next, send, frames };
 };
 
+/** The status and `Retry-After` of a refused upgrade, or undefined when the socket opened (then closed). */
+const refusal = (port: number) =>
+  new Promise<{ status: number; retryAfter: string | undefined } | undefined>((resolve, reject) => {
+    const ws = new WebSocket(`ws://127.0.0.1:${port}/ws`, { origin: ORIGIN });
+    ws.once("unexpected-response", (_request, response) => {
+      resolve({ status: response.statusCode ?? 0, retryAfter: response.headers["retry-after"] });
+      ws.terminate();
+    });
+    ws.once("open", () => {
+      ws.close();
+      resolve(undefined);
+    });
+    ws.once("error", (error) => (error.message.includes("Unexpected server response") ? undefined : reject(error)));
+  });
+
+/** Polls `check` until it holds, for at most `FRAME_MS`. */
+const waitFor = async (check: () => Promise<boolean>) => {
+  const deadline = Date.now() + FRAME_MS;
+  while (!(await check())) {
+    if (Date.now() > deadline) throw new Error(`condition not met within ${FRAME_MS} ms`);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+};
+
 const ENTER = { gender: "woman", age: 30, adultConfirmed: true, termsAccepted: true };
 
 describe("Node transport", () => {
@@ -110,6 +134,32 @@ describe("Node transport", () => {
     // 40 in the burst, at most one more refilled while the frames arrive.
     expect(client.frames.filter((f) => f === "pong").length).toBeGreaterThanOrEqual(40);
     expect(client.frames.filter((f) => f === "pong").length).toBeLessThanOrEqual(41);
+  });
+
+  it("refuses a 21st socket of one IP with 429 before any connection line, and lets it in once one closes (BR-089)", async () => {
+    const { port, log } = await start();
+    const open = await Promise.all(Array.from({ length: 20 }, () => connect(port)));
+
+    const refused = await refusal(port);
+
+    expect(refused).toEqual({ status: 429, retryAfter: "10" });
+    expect(log.lines()).toEqual([]);
+    const closed = new Promise((resolve) => open[0]?.ws.once("close", resolve));
+    open[0]?.ws.close();
+    await closed;
+    await waitFor(async () => (await refusal(port)) === undefined);
+  });
+
+  it("refuses an upgrade loop with 429 once the per-IP budget is spent (BR-089)", async () => {
+    const { port } = await start();
+    for (let i = 0; i < 20; i += 1) {
+      const client = await connect(port);
+      const closed = new Promise((resolve) => client.ws.once("close", resolve));
+      client.ws.close();
+      await closed;
+    }
+
+    expect(await refusal(port)).toEqual({ status: 429, retryAfter: "10" });
   });
 
   it("closes with 1008 a socket after five invalid frames in a row (BR-088)", async () => {
