@@ -365,3 +365,21 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
 - Merged 2026-11-05: PR #103 squash b41c8e0 with owner approval; CI (verify, CodeQL, dependency review) and
   SonarQube green on 2491521, QA P0s waived as above. No Codex review (quota out; bot comments answered).
   Next: #23 per-IP WebSocket cap (same upgrade handler), then #91, #64, #63, #104.
+
+## 2026-11-05 — Socket caps per IP and unbound close (#23)
+
+- Study first: BR-089 added, `platform/02` (upgrade path) and `platform/04c` updated, traceability, STRIDE DoS
+  row and JRN-14 in the test plan. Owner MCDA: thresholds B, 20 sockets per IP, 500 in total, per-IP upgrade
+  budget of 20 refilled 1 per second, unbound close after 10 min (420/500); refusal A, 429/503 with
+  `Retry-After: 10` before `handleUpgrade`, unbound close 1008 (420/500). The entry screen opens its socket on
+  load, so a short unbound timeout was refused.
+- Code: shared pure `src/server/token-bucket.ts` (frame budget now uses it), `src/server/upgrade-limit.ts`
+  checked by the Node transport, place released on the raw socket `close`; `hub.tick` closes unbound sockets.
+- Adversarial review (Opus): one Must, refused upgrade sockets stayed half-open, fixed by destroying them once
+  flushed (403 too). Codex P2: enter and leave between two ticks kept the old deadline, fixed in 0cd0c55.
+  Follow-ups #114 (IPv6 /64 keying), #115 (token bucket double refill after a clock step back).
+- Full QA pass (`docs/architecture/qa/2026-11-05-23-socket-caps-full.md`): JRN-14 a–f pass (100 upgrades →
+  20 then 429; unbound close observed at 600.9 s with reconnect; other chatters 0–1 ms). Filed #117 (no message
+  for a 429 tab). Open question: BR-007 (5 entries per IP per minute) slows 10 people behind one box.
+- Merged 2026-11-05: PR #116 squash a5cfae4 with owner approval; `pnpm verify` and SonarQube green on 64afd41,
+  QA P0s #105, #64, #98 and the missing Copilot review waived. Next: #91, #64, #63, #104.
