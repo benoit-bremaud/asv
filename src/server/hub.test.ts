@@ -676,20 +676,20 @@ describe("hub unbound sockets (BR-089)", () => {
     expect(closeSocket).toHaveBeenCalledExactlyOnceWith("1", "unbound");
   });
 
-  it("never closes a bound socket, and restarts the count when it leaves", async () => {
-    const { hub, closeSocket, send, enterAs } = setup();
-    hub.open("2", "ip");
+  it("forgets the unbound time once a socket enters, and restarts it when it leaves", async () => {
+    const { hub, closeSocket, send } = setup();
+    hub.open("1", "10.0.0.1", 4000);
     await hub.tick(T0);
-    await enterAs("1", "Lola");
+    await hub.tick(later(9 * 60_000));
 
-    await hub.tick(later(TEN_MIN));
-    expect(closeSocket).toHaveBeenCalledExactlyOnceWith("2", "unbound");
+    await send("1", "enter", { pseudo: "Lola", gender: "woman", age: 30, adultConfirmed: true, termsAccepted: true }, 1, later(9 * 60_000));
+    await hub.tick(later(10 * 60_000));
+    await send("1", "leave", {}, 2, later(11 * 60_000));
+    await hub.tick(later(11 * 60_000));
+    await hub.tick(later(21 * 60_000 - 1));
+    expect(closeSocket).not.toHaveBeenCalled();
 
-    await send("1", "leave", {}, 2, later(2 * TEN_MIN));
-    await hub.tick(later(2 * TEN_MIN));
-    await hub.tick(later(3 * TEN_MIN - 1));
-    expect(closeSocket).toHaveBeenCalledTimes(1);
-    await hub.tick(later(3 * TEN_MIN));
-    expect(closeSocket).toHaveBeenLastCalledWith("1", "unbound");
+    await hub.tick(later(21 * 60_000));
+    expect(closeSocket).toHaveBeenCalledExactlyOnceWith("1", "unbound");
   });
 });

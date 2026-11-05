@@ -4,6 +4,7 @@ import { createMemoryLog } from "./memory-log";
 import { createNodeRandom } from "./random";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import type { IncomingMessage } from "node:http";
+import { createConnection } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { clientAddress, startNodeServer, type NodeServer } from "./server";
@@ -80,6 +81,20 @@ const waitFor = async (check: () => Promise<boolean>) => {
   }
 };
 
+/** A raw upgrade request to `/ws`, with or without a `Sec-WebSocket-Key`. */
+const UPGRADE_REQUEST = (key: string | undefined) =>
+  [
+    "GET /ws HTTP/1.1",
+    "Host: 127.0.0.1",
+    "Upgrade: websocket",
+    "Connection: Upgrade",
+    `Origin: ${ORIGIN}`,
+    "Sec-WebSocket-Version: 13",
+    ...(key ? [`Sec-WebSocket-Key: ${key}`] : []),
+    "",
+    "",
+  ].join("\r\n");
+
 const ENTER = { gender: "woman", age: 30, adultConfirmed: true, termsAccepted: true };
 
 describe("Node transport", () => {
@@ -136,22 +151,24 @@ describe("Node transport", () => {
     expect(client.frames.filter((f) => f === "pong").length).toBeLessThanOrEqual(41);
   });
 
-  it("refuses a 21st socket of one IP with 429 before any connection line, and lets it in once one closes (BR-089)", async () => {
-    const { port, log } = await start();
+  it("refuses a 21st socket of one IP with 429 while its budget is full, and lets it in once one closes (BR-089)", async () => {
+    let clock = Date.parse("2026-11-05T10:00:00Z");
+    const { port } = await start({ now: () => new Date(clock) });
     const open = await Promise.all(Array.from({ length: 20 }, () => connect(port)));
+    // A full budget again: only the per-IP cap can refuse.
+    clock += 60_000;
 
-    const refused = await refusal(port);
+    expect(await refusal(port)).toEqual({ status: 429, retryAfter: "10" });
 
-    expect(refused).toEqual({ status: 429, retryAfter: "10" });
-    expect(log.lines()).toEqual([]);
     const closed = new Promise((resolve) => open[0]?.ws.once("close", resolve));
     open[0]?.ws.close();
     await closed;
+    clock += 60_000;
     await waitFor(async () => (await refusal(port)) === undefined);
   });
 
   it("refuses an upgrade loop with 429 once the per-IP budget is spent (BR-089)", async () => {
-    const { port } = await start();
+    const { port } = await start({ now: () => new Date("2026-11-05T10:00:00Z") });
     for (let i = 0; i < 20; i += 1) {
       const client = await connect(port);
       const closed = new Promise((resolve) => client.ws.once("close", resolve));
@@ -160,6 +177,41 @@ describe("Node transport", () => {
     }
 
     expect(await refusal(port)).toEqual({ status: 429, retryAfter: "10" });
+  });
+
+  it("destroys a refused socket even when the peer never closes its side (BR-089)", async () => {
+    const { port } = await start({ now: () => new Date("2026-11-05T10:00:00Z") });
+    for (let i = 0; i < 20; i += 1) await refusal(port);
+
+    const raw = createConnection({ port, host: "127.0.0.1", allowHalfOpen: true });
+    let answer = "";
+    raw.on("data", (chunk) => (answer += chunk.toString()));
+    // Writing after the server's FIN: a destroyed server socket answers with a reset, so a later write fails.
+    const reset = new Promise<void>((resolve) => raw.once("error", () => resolve()));
+    raw.once("end", () => {
+      const poke = setInterval(() => raw.write("still here"), 20);
+      raw.once("close", () => clearInterval(poke));
+    });
+    raw.write(UPGRADE_REQUEST("dGhlIHNhbXBsZSBub25jZQ=="));
+
+    await reset;
+    expect(answer).toMatch(/^HTTP\/1\.1 429 Too Many Requests\r\nRetry-After: 10\r\n/);
+  });
+
+  it("gives the place back when ws refuses the handshake after the limiter admitted it (BR-089)", async () => {
+    let clock = Date.parse("2026-11-05T10:00:00Z");
+    const { port } = await start({ now: () => new Date(clock) });
+    for (let i = 0; i < 20; i += 1) {
+      const raw = createConnection({ port, host: "127.0.0.1" });
+      const closed = new Promise<void>((resolve) => raw.once("close", () => resolve()));
+      raw.on("data", () => undefined);
+      // No Sec-WebSocket-Key: `ws` answers 400 and destroys the socket.
+      raw.write(UPGRADE_REQUEST(undefined));
+      await closed;
+    }
+    clock += 60_000;
+
+    expect(await refusal(port)).toBeUndefined();
   });
 
   it("closes with 1008 a socket after five invalid frames in a row (BR-088)", async () => {

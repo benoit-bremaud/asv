@@ -74,7 +74,7 @@ No analytics, no ads, no third-party trackers, no cookies other than strictly ne
 | Information disclosure | XSS through messages or smileys | Text only rendering, smiley whitelist (BR-022), strict Content-Security-Policy. |
 | Information disclosure | Reversing banned IPs | HMAC with a server secret, not a plain hash. |
 | Information disclosure | Leak or misuse of the legal vault or the connection log | No read path from the domain, moderation tools or AI: only the `LegalVaultStore` write port, owner-only read call (BR-082). Vault sealed to the owner public key (ADR-0017). Purge at 1 and 5 years (BR-081). |
-| Denial of service | Flood, entry spam | Flood limit (BR-021), entry limit (BR-007), report limit (BR-052), message size (BR-020). |
+| Denial of service | Flood, entry spam | Flood limit (BR-021), entry limit (BR-007), report limit (BR-052), message size (BR-020), frame budget per socket (BR-088), socket caps and upgrade budget per IP, unbound socket close (BR-089). |
 | Elevation of privilege | Calling moderator actions as a chatter | Domain authorisation check on every moderation command (BR-054). |
 
 ## 4. Security controls checklist (ASVS level 1 targets)

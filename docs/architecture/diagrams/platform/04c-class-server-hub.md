@@ -64,6 +64,7 @@ classDiagram
     +Bound bound optional
     +Number invalid
     +Number unboundSince optional
+    +Boolean unboundClosed optional
   }
   class UpgradeLimiter {
     <<src/server/upgrade-limit.ts, used by the transport>>
@@ -130,7 +131,7 @@ classDiagram
 
 - `Socket.unboundSince` (BR-089): epoch milliseconds of the first `tick` that saw the socket without a
   session; a bound socket clears it, so `leave` restarts the count. When it is 10 minutes old, `tick` calls
-  `closeSocket(key, "unbound")` once. Setting it from `tick` keeps `open` unchanged and works the same on
+  `closeSocket(key, "unbound")` once; `unboundClosed` records that request so later ticks do not repeat it. Setting it from `tick` keeps `open` unchanged and works the same on
   the Durable Object alarm; the cost is an error of one tick at most.
 - `UpgradeLimiter` (BR-089) belongs to the transport side of the upgrade: the hub never sees a refused
   upgrade. `createFrameBudget` (BR-088) is a `TokenBucket` of 40 tokens at 20 per second.
