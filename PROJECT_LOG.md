@@ -403,3 +403,19 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   wording).
 - Merged 2026-11-05: PR #119 squash 067e9ed with owner approval; CI and SonarQube green on b02923d, QA #121,
   #105, #64, #98 waived. The three audit Should items (#89, #23, #91) are done. Next: #64, #63, #104.
+
+## 2026-11-05 — One h1 per screen (#64)
+
+- A11Y-02 of the 2026-10-24 full pass. Study first (`4f97959`, `92d570e`, `bc4d9d8`): web-ui/04 Headings rule
+  and JRN-16. Owner MCDA: the header logo "asv" is each screen's only `h1` (option A, 470/500, vs a visually
+  hidden per-screen `h1` 410/500 and promoted screen titles 255/500).
+- Code (`f3092e5`, `0d48cd1`): `Header` logo `span` → `<h1 className="logo">` without `aria-label`, `.logo`
+  `margin: 0`; tests check the full heading outline per screen and with the account and legal dialogs open.
+- Adversarial review (Opus): study round 1 had three Must (search is a `section`, not a `dialog`; Last
+  reviewed line; `not covered` status), fixed; code round 1 one Should (outline asserted in full), fixed.
+  Follow-up #124 (per-screen document title, WCAG 2.4.2).
+- QA pass (`docs/architecture/qa/2026-11-05-64-one-h1-pass.md`, `8d1af70`): JRN-16 a–e pass at 1440 and
+  390 px, light and dark; logo pixel-identical to main. Filed #126 (legal pages do not scroll on phones,
+  pre-existing).
+- Merged 2026-11-05: PR #125 squash f4a6ae2 with owner approval; CI and SonarQube green on 8d1af70, QA #126
+  waived. Next: #63, #121, #104.
