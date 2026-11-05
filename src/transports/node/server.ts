@@ -17,6 +17,7 @@ import { createHub, type Outgoing } from "../../server/hub";
 import { createBrevoMailer } from "../../server/mailer/brevo";
 import { createFrameBudget, POLICY_CLOSE, type PolicyReason } from "../../server/frame-budget";
 import { OFFICIAL_ROOMS } from "../../server/official-rooms";
+import { createUpgradeLimiter, UPGRADE_LIMITS, type UpgradeVerdict } from "../../server/upgrade-limit";
 import type { ConnectionLogStore, LegalVaultStore, Mailer } from "../../domain";
 import { CAPS } from "../../shared/protocol";
 import { createMemoryAccountStore, createMemoryVault } from "./memory-accounts";
@@ -69,7 +70,23 @@ export const clientAddress = (request: IncomingMessage, behindTunnel: boolean): 
   return { ip: request.socket.remoteAddress ?? "", port: request.socket.remotePort };
 };
 
-/** A running Node transport: its bound port, its in-memory stores (tests read them; unused when files are set) and a graceful stop. */
+/** BR-089 refusals, written on the raw socket before any WebSocket exists. */
+const REFUSAL_STATUS: Record<Exclude<UpgradeVerdict, "ok">, string> = {
+  perIp: "429 Too Many Requests",
+  rate: "429 Too Many Requests",
+  total: "503 Service Unavailable",
+};
+
+/**
+ * Answers an upgrade with an HTTP status and destroys the socket once the answer is flushed: after
+ * `upgrade` the socket has no parser timeout and the server allows half-open sockets, so `end` alone
+ * would leave it open for a peer that never closes its side (like `abortHandshake` in `ws`).
+ */
+const refuseUpgrade = (socket: Duplex, status: string, headers = "") => {
+  socket.once("finish", () => socket.destroy());
+  socket.end(`HTTP/1.1 ${status}\r\n${headers}Content-Length: 0\r\nConnection: close\r\n\r\n`);
+};
+
 /** One open socket of the transport. */
 interface SocketEntry {
   readonly ws: WebSocket;
@@ -78,6 +95,7 @@ interface SocketEntry {
   refused: boolean;
 }
 
+/** A running Node transport: its bound port, its in-memory stores (tests read them; unused when files are set) and a graceful stop. */
 export interface NodeServer {
   readonly port: number;
   readonly log: ReturnType<typeof createMemoryLog>;
@@ -162,6 +180,7 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
   const server = createAdaptorServer({ fetch: app.fetch, hostname: options.hostname });
   const wss = new WebSocketServer({ noServer: true, maxPayload: CAPS.frame });
   const sockets = new Map<string, SocketEntry>();
+  const limiter = createUpgradeLimiter();
   /**
    * Closes a socket with 1008 (BR-088), or with no code for a resume takeover; a closing socket's frames
    * are ignored and no longer refresh `lastSeen`, so the silence sweep ends a peer that never answers.
@@ -217,13 +236,24 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
   server.on("upgrade", (request: IncomingMessage, socket: Duplex, head: Buffer) => {
     const origin = request.headers.origin;
     if (request.url !== "/ws" || !origin || !options.allowedOrigins.includes(origin)) {
-      socket.end("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n");
+      refuseUpgrade(socket, "403 Forbidden");
       return;
     }
+    const { ip } = clientAddress(request, behindTunnel);
+    const verdict = limiter.admit(ip, now().getTime());
+    if (verdict !== "ok") {
+      refuseUpgrade(socket, REFUSAL_STATUS[verdict], `Retry-After: ${UPGRADE_LIMITS.retryAfterSeconds}\r\n`);
+      return;
+    }
+    // The raw socket closes whatever happens next (handshake refused by `ws`, or the WebSocket closing).
+    socket.once("close", () => limiter.release(ip));
     wss.handleUpgrade(request, socket, head, (ws) => wss.emit("connection", ws, request));
   });
 
-  const tick = setInterval(() => void run(hub.tick(now())), tickMs);
+  const tick = setInterval(() => {
+    void run(hub.tick(now()));
+    limiter.prune(now().getTime());
+  }, tickMs);
   const daily = setInterval(purgeFiles, DAY_MS);
   const sweep = setInterval(() => {
     const limit = now().getTime() - silenceMs;

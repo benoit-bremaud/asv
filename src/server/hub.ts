@@ -31,6 +31,7 @@ import { createAccountHandlers, type Caller } from "./hub-accounts";
 import { createPrivateHandlers, type PrivateCaller } from "./hub-private";
 import { createOutgoing, sessionOf, type Outgoing } from "./outgoing";
 import { FRAME_LIMITS, type PolicyReason } from "./frame-budget";
+import { UPGRADE_LIMITS } from "./upgrade-limit";
 import { CAPS, clientMessage, type ClientMessage } from "../shared/protocol";
 
 export type { Outgoing } from "./outgoing";
@@ -95,6 +96,10 @@ interface Socket {
   bound?: { readonly sessionId: string; readonly connectionId: string };
   /** Invalid frames in a row (BR-088). */
   invalid: number;
+  /** Epoch ms of the first tick that saw the socket without a session; cleared while bound (BR-089). */
+  unboundSince?: number;
+  /** Set once `tick` asked the transport to close it as unbound, so it asks once. */
+  unboundClosed?: true;
 }
 
 type Command<T extends ClientMessage["type"]> = Extract<ClientMessage, { type: T }>;
@@ -315,6 +320,8 @@ export const createHub = (deps: HubDeps): Hub => {
     state = result.state;
     socketOfSession.delete(bound.sessionId);
     socket.bound = undefined;
+    // BR-089: the unbound time starts again, even if no tick saw the socket bound.
+    socket.unboundSince = undefined;
     await closeLine(bound.connectionId, now);
     return out.roomOutgoing(result.effects);
   };
@@ -392,6 +399,20 @@ export const createHub = (deps: HubDeps): Hub => {
     return [answer];
   };
 
+  /** BR-089: a socket left without a session for `unboundMs` is closed with 1008 `unbound`. */
+  const closeUnbound = (nowMs: number) => {
+    for (const socket of sockets.values()) {
+      if (socket.bound) {
+        socket.unboundSince = undefined;
+      } else if (socket.unboundSince === undefined) {
+        socket.unboundSince = nowMs;
+      } else if (!socket.unboundClosed && nowMs - socket.unboundSince >= UPGRADE_LIMITS.unboundMs) {
+        socket.unboundClosed = true;
+        deps.closeSocket(socket.key, "unbound");
+      }
+    }
+  };
+
   return {
     open(socketKey, ip, port, deviceTokenHash) {
       sockets.set(socketKey, { key: socketKey, ip, port, deviceTokenHash, invalid: 0 });
@@ -428,6 +449,7 @@ export const createHub = (deps: HubDeps): Hub => {
       serial(async () => {
         const expired = expireAway(state, now);
         state = pruneDeviceClaims(pruneEntryAttempts(pruneFlood(expired.state, now), now), now);
+        closeUnbound(now.getTime());
         try {
           await deps.accounts.purgeExpired(now);
         } catch (cause) {

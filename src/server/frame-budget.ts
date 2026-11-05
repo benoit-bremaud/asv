@@ -1,3 +1,5 @@
+import { createTokenBucket, type TokenBucket } from "./token-bucket";
+
 /** Per-socket frame budget (BR-088, `platform/02`): a token bucket checked before any parsing. */
 
 /** BR-088 limits; shared by every transport. */
@@ -12,29 +14,12 @@ export const FRAME_LIMITS = {
 
 /** Close code and reasons sent when a socket breaks BR-088; the transport maps the reason to the code. */
 export const POLICY_CLOSE = 1008;
-export type PolicyReason = "tooManyFrames" | "invalidFrames";
+/** `unbound` is BR-089: a socket left without a session. */
+export type PolicyReason = "tooManyFrames" | "invalidFrames" | "unbound";
 
 /** One bucket per socket. */
-export interface FrameBudget {
-  /** Consumes one token; false, consuming nothing, when the bucket is empty (the socket must close). */
-  take(nowMs: number): boolean;
-}
+export type FrameBudget = Pick<TokenBucket, "take">;
 
-/**
- * A full bucket for one socket. `startMs` and every `nowMs` are epoch milliseconds from the caller's clock;
- * a clock stepping back refills nothing and never drains the bucket.
- */
-export const createFrameBudget = (startMs: number): FrameBudget => {
-  let tokens: number = FRAME_LIMITS.burst;
-  let last = startMs;
-  return {
-    take(nowMs) {
-      const elapsed = Math.max(0, nowMs - last);
-      tokens = Math.min(FRAME_LIMITS.burst, tokens + (elapsed / 1000) * FRAME_LIMITS.perSecond);
-      last = nowMs;
-      if (tokens < 1) return false;
-      tokens -= 1;
-      return true;
-    },
-  };
-};
+/** A full bucket for one socket, at `startMs` epoch milliseconds from the caller's clock. */
+export const createFrameBudget = (startMs: number): FrameBudget =>
+  createTokenBucket(FRAME_LIMITS.burst, FRAME_LIMITS.perSecond, startMs);

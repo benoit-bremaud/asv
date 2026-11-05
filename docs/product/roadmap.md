@@ -24,7 +24,7 @@ of the same priority.
 | 9 | Cloudflare transport (Hub Durable Object), deploy to asvchat.fr, switch the repository to private | `platform` | P1 | planned |
 | 10 | Legal pack: final terms, privacy notice, legal notice, professional review, public launch | `security-and-rgpd.md` | P2 | planned |
 
-Brick 7a follow-ups: #23 socket caps (brick 9), #24 connect timeout and reconnect edge cases, #25 hub refactor, #26 web lint boundary and test cleanups, #27 pixel smileys, #28 trust credit and earned privileges (sign-in stays on the ADR-0013 e-mail code, Brevo, 415/500), #29 restore input refused by the server, #30 resume token lost in flight (BR-014).
+Brick 7a follow-ups: #23 socket caps (Node transport done; the Durable Object applies the same rule in brick 9), #24 connect timeout and reconnect edge cases, #25 hub refactor, #26 web lint boundary and test cleanups, #27 pixel smileys, #28 trust credit and earned privileges (sign-in stays on the ADR-0013 e-mail code, Brevo, 415/500), #29 restore input refused by the server, #30 resume token lost in flight (BR-014).
 
 Brick 5 follow-ups: #34 fresh code before deletion, #35 owner vault key tool, #36 hub-accounts extraction, #37 shared warning-code union, #38 production flags and proxy IP quotas (brick 9), #39 sign-out-this-device without cookie, #40 claim after unlink, #41 vault seal AAD, #42 device hash on re-verify, #43 old cookie relinks previous account, #44 carry-over on partial deletion.
 

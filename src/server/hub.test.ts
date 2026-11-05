@@ -659,3 +659,52 @@ describe("hub private conversations, ignore and search (UC6, UC7, UC8)", () => {
     ]);
   });
 });
+
+describe("hub unbound sockets (BR-089)", () => {
+  const TEN_MIN = 10 * 60_000;
+
+  it("closes a socket that never enters once, 10 minutes after the first tick that saw it", async () => {
+    const { hub, closeSocket } = setup();
+    hub.open("1", "ip");
+
+    await hub.tick(T0);
+    await hub.tick(later(TEN_MIN - 1));
+    expect(closeSocket).not.toHaveBeenCalled();
+
+    await hub.tick(later(TEN_MIN));
+    await hub.tick(later(TEN_MIN + 1000));
+    expect(closeSocket).toHaveBeenCalledExactlyOnceWith("1", "unbound");
+  });
+
+  it("restarts the unbound time on leave even when no tick saw the socket bound", async () => {
+    const { hub, closeSocket, send } = setup();
+    hub.open("1", "10.0.0.1", 4000);
+    await hub.tick(T0);
+
+    await send("1", "enter", { pseudo: "Lola", gender: "woman", age: 30, adultConfirmed: true, termsAccepted: true }, 1, later(9 * 60_000));
+    await send("1", "leave", {}, 2, later(9 * 60_000));
+    await hub.tick(later(10 * 60_000));
+    await hub.tick(later(20 * 60_000 - 1));
+    expect(closeSocket).not.toHaveBeenCalled();
+
+    await hub.tick(later(20 * 60_000));
+    expect(closeSocket).toHaveBeenCalledExactlyOnceWith("1", "unbound");
+  });
+
+  it("forgets the unbound time once a socket enters, and restarts it when it leaves", async () => {
+    const { hub, closeSocket, send } = setup();
+    hub.open("1", "10.0.0.1", 4000);
+    await hub.tick(T0);
+    await hub.tick(later(9 * 60_000));
+
+    await send("1", "enter", { pseudo: "Lola", gender: "woman", age: 30, adultConfirmed: true, termsAccepted: true }, 1, later(9 * 60_000));
+    await hub.tick(later(10 * 60_000));
+    await send("1", "leave", {}, 2, later(11 * 60_000));
+    await hub.tick(later(11 * 60_000));
+    await hub.tick(later(21 * 60_000 - 1));
+    expect(closeSocket).not.toHaveBeenCalled();
+
+    await hub.tick(later(21 * 60_000));
+    expect(closeSocket).toHaveBeenCalledExactlyOnceWith("1", "unbound");
+  });
+});

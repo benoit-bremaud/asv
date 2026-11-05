@@ -2,7 +2,7 @@
 
 > **Feature**: platform (roadmap brick 7a)
 > **Use cases**: UC1, UC2, UC3, UC4, UC5, UC10, UC13
-> **Business rules**: BR-001 to BR-034, BR-060, BR-084 to BR-086, BR-088
+> **Business rules**: BR-001 to BR-034, BR-060, BR-084 to BR-086, BR-088, BR-089
 > **Related ADRs**: ADR-0002, ADR-0007, ADR-0011, ADR-0015, ADR-0018; brick 7a owner choices D2 (485/500), D3, D4, D5 (455/500)
 
 ## Context
@@ -62,7 +62,22 @@ classDiagram
     +String ip
     +Number port optional
     +Bound bound optional
+    +Number invalid
+    +Number unboundSince optional
+    +Boolean unboundClosed optional
   }
+  class UpgradeLimiter {
+    <<src/server/upgrade-limit.ts, used by the transport>>
+    +admit(ip, nowMs) ok | perIp | total | rate
+    +release(ip) void
+    +prune(nowMs) void
+  }
+  class TokenBucket {
+    <<src/server/token-bucket.ts>>
+    +take(nowMs) Boolean
+    +isFull(nowMs) Boolean
+  }
+  UpgradeLimiter *-- TokenBucket : one per IP
   class Bound {
     +String sessionId
     +String connectionId
@@ -111,6 +126,15 @@ classDiagram
   NodeServerOptions ..> FileConnectionLog : logFile set
   NodeServerOptions ..> MemoryConnectionLog : logFile absent
 ```
+
+## Notes
+
+- `Socket.unboundSince` (BR-089): epoch milliseconds of the first `tick` that saw the socket without a
+  session; a bound socket clears it, and `leave` clears it too (a session may enter and leave between two ticks), so the count restarts. When it is 10 minutes old, `tick` calls
+  `closeSocket(key, "unbound")` once; `unboundClosed` records that request so later ticks do not repeat it. Setting it from `tick` keeps `open` unchanged and works the same on
+  the Durable Object alarm; the cost is an error of one tick at most.
+- `UpgradeLimiter` (BR-089) belongs to the transport side of the upgrade: the hub never sees a refused
+  upgrade. `createFrameBudget` (BR-088) is a `TokenBucket` of 40 tokens at 20 per second.
 
 ## Modules (issues #25, #36)
 

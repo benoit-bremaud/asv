@@ -52,6 +52,7 @@ Links requirements to use cases and every use case to its realisations. All path
 | BR-086 security headers, `Secure` cookie | platform/07, `security-and-rgpd.md` §4 | #48, #50 |
 | BR-087 code step kept across a resume | web-ui/06, ADR-0011 amendment | #72 |
 | BR-088 frame budget and invalid-frame close per socket | platform/02, platform/04c | #89 |
+| BR-089 upgrade limits per IP and in total, unbound socket close | platform/02, platform/04c | #23 |
 | Legal pages | web-ui/05, `docs/product/legal-pages-draft.md` | #54 |
 
 ## Coverage check

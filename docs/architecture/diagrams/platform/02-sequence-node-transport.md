@@ -2,7 +2,7 @@
 
 > **Feature**: platform (roadmap brick 7a)
 > **Use cases**: UC1, UC3, UC4, UC10, UC13
-> **Business rules**: BR-010, BR-011, BR-015, BR-060, BR-085, BR-088
+> **Business rules**: BR-010, BR-011, BR-015, BR-060, BR-085, BR-088, BR-089
 > **Related ADRs**: ADR-0002, ADR-0007, ADR-0011, ADR-0018; brick 7a owner choices D1 to D5 (below)
 
 ## Context
@@ -25,13 +25,20 @@ sequenceDiagram
   alt Origin refused
     N-->>W: 403, socket destroyed
   else Origin allowed
-    N->>N: ws.handleUpgrade, maxPayload 64 KiB
     alt behind the tunnel (BR-085)
       N->>N: ip from CF-Connecting-IP, no port
     else direct
       N->>N: ip and port from the socket
     end
-    N->>H: open(socketKey, ip, port)
+    N->>N: UpgradeLimiter.admit(ip, now) (BR-089)
+    alt per-IP cap or upgrade budget empty
+      N-->>W: 429 with Retry-After, socket destroyed
+    else total cap reached
+      N-->>W: 503 with Retry-After, socket destroyed
+    else admitted
+      N->>N: ws.handleUpgrade, maxPayload 64 KiB
+      N->>H: open(socketKey, ip, port)
+    end
   end
   loop Every frame
     W->>N: frame
@@ -59,9 +66,14 @@ sequenceDiagram
   loop Every second
     N->>H: tick(now)
     H-->>N: Outgoing[] (expired away sessions, BR-015)
+    opt Socket without a session for 10 min (BR-089)
+      H->>N: closeSocket(socketKey, unbound), sent as close 1008
+    end
+    N->>N: UpgradeLimiter.prune(now)
     N->>N: Every 60 s: terminate sockets not seen for 60 s (BR-010)
   end
   W--xN: socket closed or terminated
+  N->>N: UpgradeLimiter.release(ip)
   N->>H: close(socketKey, now)
   H->>LS: close(connection id, now)
   H-->>N: Outgoing[] (memberAway to the other members)
@@ -89,6 +101,19 @@ sequenceDiagram
   never answers the close is terminated by the silence sweep. A clock stepping back never drains the
   bucket. Both pieces are transport-neutral; the Cloudflare transport (brick 9) must take a token before
   its `ping` auto-response too, or record why it cannot.
+- **Upgrade limits** (BR-089, issue #23): `UpgradeLimiter` in `src/server/upgrade-limit.ts` is pure and
+  transport-neutral (clock passed in). `admit(ip, nowMs)` returns `ok`, `perIp`, `total` or `rate`; it
+  takes an upgrade token from the IP's bucket first, so a client hammering a full cap still drains its
+  budget. On `ok` it counts the socket against the IP and the total; `release(ip)` on `close` gives the
+  place back, once per admitted socket. `prune(nowMs)`, called on every tick, drops the buckets that are
+  full again and have no open socket, so the map stays bounded by recent IPs. The token bucket is the
+  same as BR-088's (`src/server/token-bucket.ts`). The refusal is written on the raw socket
+  (`HTTP/1.1 429` or `503`, `Retry-After: 10`, `Connection: close`) before `handleUpgrade`, so the hub and
+  the connection log never see it. The socket is then destroyed once flushed (the 403 too): after `upgrade` Node keeps no timeout on it and allows half-open sockets. The Hub Durable Object (brick 9) runs the same `admit` before
+  `acceptWebSocket` and the same `release` in `webSocketClose`.
+- **Unbound sockets** (BR-089): the hub alone knows whether a socket holds a session, so `tick` closes
+  the sockets unbound for 10 minutes through `closeSocket(key, "unbound")` (`platform/04c`); the transport
+  sends it as close 1008 like BR-088. The web client then reconnects with its usual backoff.
 - **Heartbeat** (ADR-0011): the transport answers the raw text `ping` with `pong` without calling the hub,
   like the Durable Object auto-response. The sweep every 15 s (a quarter of the silence limit) terminates sockets whose
   last frame is older than 60 s, so a dead socket goes within 75 s; termination then follows the "socket closed" path, so the session goes away (BR-011).
