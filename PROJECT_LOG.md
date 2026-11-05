@@ -383,3 +383,23 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   for a 429 tab). Open question: BR-007 (5 entries per IP per minute) slows 10 people behind one box.
 - Merged 2026-11-05: PR #116 squash a5cfae4 with owner approval; `pnpm verify` and SonarQube green on 64afd41,
   QA P0s #105, #64, #98 and the missing Copilot review waived. Next: #91, #64, #63, #104.
+
+## 2026-11-05 — Invisible and bidi characters refused (#91)
+
+- Last Should of the 2026-11-03 security audit (#88). Study first (`3b2c77d`): BR-090, the rooms,
+  private-conversations, entry, web-ui and platform diagrams, a STRIDE spoofing row, traceability, JRN-15.
+- Owner MCDA: character set B, controls, bidi marks, embeddings, overrides and isolates, zero-width space, BOM,
+  joiners U+200C and U+200D kept for emoji and Persian (475/500); refused in the pure domain, never stripped
+  (460/500); after review, the client runs the same check and keeps the text (405/500), and the set adds
+  characters shown as blanks such as U+3164 and U+2800 (440/500).
+- Code: pure `src/domain/text.ts` `hasForbiddenChar`; room and private messages get `invalidText`, a city gets
+  `invalid` at entry and resume; the web composers and entry form disable sending with a notice. Pseudos and
+  room names were already whitelisted (BR-001, BR-030).
+- Adversarial review (Opus): two Must, BR-090 missing from the UC4 and UC6 specs and sequences and JRN-15
+  without a coverage row, fixed in `db44453`. SonarQube S6819 fixed with `<output>`. Follow-up #120 (review
+  Nice items).
+- QA pass (`docs/architecture/qa/2026-11-05-91-invisible-chars-pass.md`): JRN-15 a–e pass, emoji ZWJ delivered,
+  raw frames get `warning invalidText`. Filed #121 (no `aria-invalid`, pre-existing) and #122 (city notice
+  wording).
+- Merged 2026-11-05: PR #119 squash 067e9ed with owner approval; CI and SonarQube green on b02923d, QA #121,
+  #105, #64, #98 waived. The three audit Should items (#89, #23, #91) are done. Next: #64, #63, #104.
