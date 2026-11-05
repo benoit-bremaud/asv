@@ -320,6 +320,8 @@ export const createHub = (deps: HubDeps): Hub => {
     state = result.state;
     socketOfSession.delete(bound.sessionId);
     socket.bound = undefined;
+    // BR-089: the unbound time starts again, even if no tick saw the socket bound.
+    socket.unboundSince = undefined;
     await closeLine(bound.connectionId, now);
     return out.roomOutgoing(result.effects);
   };

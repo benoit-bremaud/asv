@@ -130,7 +130,7 @@ classDiagram
 ## Notes
 
 - `Socket.unboundSince` (BR-089): epoch milliseconds of the first `tick` that saw the socket without a
-  session; a bound socket clears it, so `leave` restarts the count. When it is 10 minutes old, `tick` calls
+  session; a bound socket clears it, and `leave` clears it too (a session may enter and leave between two ticks), so the count restarts. When it is 10 minutes old, `tick` calls
   `closeSocket(key, "unbound")` once; `unboundClosed` records that request so later ticks do not repeat it. Setting it from `tick` keeps `open` unchanged and works the same on
   the Durable Object alarm; the cost is an error of one tick at most.
 - `UpgradeLimiter` (BR-089) belongs to the transport side of the upgrade: the hub never sees a refused
