@@ -34,7 +34,7 @@ sequenceDiagram
   C->>W: Type a message
   W->>H: postRoom(roomId, text)
   H->>D: postRoom(state, sessionId, roomId, text, now)
-  alt Too long or flood
+  alt Too long, invalid text (BR-090) or flood
     D-->>H: Refused
     H-->>W: warning
   else Accepted

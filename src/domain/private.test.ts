@@ -91,6 +91,7 @@ describe("sendPrivate (UC6)", () => {
     ["the target has no account", [{ pseudo: "Lola" }, { pseudo: "Max", account: false }], "Max", "hi", "accountRequired"],
     ["the text is blank", [{ pseudo: "Lola" }, { pseudo: "Max" }], "Max", "   ", "empty"],
     ["the text is too long", [{ pseudo: "Lola" }, { pseudo: "Max" }], "Max", "é".repeat(ROOM_LIMITS.maxTextLength + 1), "tooLong"],
+    ["the text holds a bidi override", [{ pseudo: "Lola" }, { pseudo: "Max" }], "Max", "gpj.\u202Eexe", "invalidText"],
   ] as const)("refuses when %s", (_label, chatters, target, text, reason) => {
     const { state, id, random } = hubWith(...chatters);
 

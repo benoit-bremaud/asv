@@ -3,6 +3,7 @@
  * Every function is pure: `(state, command, now, random) → { state, effects }`.
  */
 import { canonicalPseudo, containsReservedWord, foldPseudo, hasValidPseudoFormat } from "./pseudo";
+import { hasForbiddenChar } from "./text";
 
 /** V1 values of BR-004, BR-006, BR-007, BR-011 and BR-013, tunable here only. */
 export const ENTRY_LIMITS = {
@@ -179,14 +180,16 @@ const recordAttempt = <S extends EntryState>(state: S, ip: string, now: Date): {
 const isAdultAge = (age: number): boolean =>
   Number.isInteger(age) && age >= ENTRY_LIMITS.minAge && age <= ENTRY_LIMITS.maxAge;
 
-/** BR-006, counted in characters (code points), not UTF-16 units. */
-const isCityTooLong = (city: string | undefined): boolean =>
-  [...(city ?? "").trim()].length > ENTRY_LIMITS.maxCityLength;
+/** BR-006, counted in characters (code points), not UTF-16 units, and BR-090. */
+const isCityInvalid = (city: string | undefined): boolean => {
+  const trimmed = (city ?? "").trim();
+  return [...trimmed].length > ENTRY_LIMITS.maxCityLength || hasForbiddenChar(trimmed);
+};
 
 /** Terms and BR-006 failures only come from a modified client (`entry/07`). */
 const formRefusal = (command: EnterCommand): EntryRefusal | "invalid" | undefined => {
   if (!command.adultConfirmed || !isAdultAge(command.age)) return "age";
-  if (!command.termsAccepted || isCityTooLong(command.city)) return "invalid";
+  if (!command.termsAccepted || isCityInvalid(command.city)) return "invalid";
   return undefined;
 };
 
@@ -274,7 +277,7 @@ export const resume = <S extends EntryState>(state: S, command: ResumeCommand, n
   if (!session || session.awayUntil.getTime() <= now.getTime()) {
     return result(state, { type: "resumeRefused" });
   }
-  if (!isAdultAge(command.age) || isCityTooLong(command.city)) return result(state, { type: "invalid" });
+  if (!isAdultAge(command.age) || isCityInvalid(command.city)) return result(state, { type: "invalid" });
   const token = random.token();
   const accountUnlinked = session.accountId !== undefined && !command.accountStillExists;
   const resumed: ConnectedSession = {

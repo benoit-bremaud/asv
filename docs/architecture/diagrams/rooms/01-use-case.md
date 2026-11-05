@@ -44,9 +44,9 @@ flowchart LR
 - A chatter may be in several rooms at once.
 
 **UC4 — Post a message in a room** (planned)
-- Main scenario: 1. Chatter types a message. 2. System checks length (BR-020) and flood (BR-021).
+- Main scenario: 1. Chatter types a message. 2. System checks length (BR-020), invisible or direction-changing characters (BR-090) and flood (BR-021).
   3. System broadcasts to members who do not ignore the author.
-- Extensions: 2a. Too long or flood → refused with a warning.
+- Extensions: 2a. Too long, invalid text or flood → refused with a warning.
 - Rule: smiley codes render from a whitelist, text never as HTML (BR-022).
 
 **UC5 — Create a room** (planned)

@@ -77,6 +77,8 @@ export const STRINGS = {
     pseudoTaken: "Ce pseudo est déjà pris.",
     age: "Le chat est réservé aux 18 à 99 ans.",
   },
+  /** BR-090, shown under a field before sending, not a server notice. */
+  invisibleChars: "Caractères invisibles ou de contrôle : retire-les pour envoyer.",
   notices: {
     unknownRoom: "Ce salon n'existe plus.",
     notMember: "Tu n'es pas dans ce salon.",
@@ -84,6 +86,7 @@ export const STRINGS = {
     tooManyRooms: "Tu es déjà dans 10 salons.",
     empty: "Message vide.",
     tooLong: "Message trop long (500 caractères).",
+    invalidText: "Message refusé : caractères invisibles ou de contrôle.",
     flood: "Doucement ! 5 messages par 10 secondes au plus.",
     nameInvalid: "Nom invalide : 3 à 30 caractères, sans mot réservé.",
     nameTaken: "Ce nom de salon est déjà pris.",

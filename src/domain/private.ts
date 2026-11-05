@@ -6,6 +6,7 @@ import { bufferPrivate, type Random, type Session } from "./entry";
 import { blocks } from "./ignore";
 import { foldPseudo } from "./pseudo";
 import { countMessage, ROOM_LIMITS, type HubState } from "./rooms";
+import { hasForbiddenChar } from "./text";
 
 /** V1 values of BR-043 and BR-044, tunable here only. */
 export const PRIVATE_LIMITS = {
@@ -29,7 +30,7 @@ export interface SendPrivateCommand {
 }
 
 /** `accountRequired` and `offline` map to the protocol `error`, the others to `warning`. */
-export type PrivateRefusal = "accountRequired" | "offline" | "self" | "empty" | "tooLong" | "flood" | "tooManyWindows" | "targetBusy";
+export type PrivateRefusal = "accountRequired" | "offline" | "self" | "empty" | "tooLong" | "invalidText" | "flood" | "tooManyWindows" | "targetBusy";
 
 /** What the hub must send (`platform/04c`). */
 export type PrivateEffect =
@@ -84,13 +85,17 @@ export const windowsOf = (state: HubState, sessionId: string): PrivateConversati
 const hasRoom = (state: HubState, existing: PrivateConversation | undefined, sessionId: string): boolean =>
   (existing?.openFor.includes(sessionId) ?? false) || windowsOf(state, sessionId).length < PRIVATE_LIMITS.maxWindows;
 
-/** BR-020: a trimmed text is refused when empty or too long, counted in characters (code points), not UTF-16 units. */
+/**
+ * BR-020: a trimmed text is refused when empty or too long, counted in characters (code points), not UTF-16 units.
+ * BR-090: or when it holds an invisible or direction-changing character.
+ */
 const textRefusal = (text: string): PrivateRefusal | undefined => {
   if (text.length === 0) return "empty";
-  return [...text].length > ROOM_LIMITS.maxTextLength ? "tooLong" : undefined;
+  if ([...text].length > ROOM_LIMITS.maxTextLength) return "tooLong";
+  return hasForbiddenChar(text) ? "invalidText" : undefined;
 };
 
-/** UC6, BR-013, BR-020, BR-021, BR-040 to BR-043. */
+/** UC6, BR-013, BR-020, BR-021, BR-090, BR-040 to BR-043. */
 export const sendPrivate = (state: HubState, command: SendPrivateCommand, now: Date, random: Random): PrivateResult => {
   const sender = state.sessions.get(command.sessionId);
   if (sender?.status !== "connected") return result(state);

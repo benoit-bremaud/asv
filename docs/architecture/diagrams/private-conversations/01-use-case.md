@@ -32,7 +32,7 @@ flowchart LR
   client starts UC17 first. A target without an account cannot receive private messages, and the
   "private message" entry is greyed on their pseudo.
 - Main scenario: 1. Chatter clicks a pseudo (room list or search result) and types a first message.
-  2. System checks length, flood and window limit (BR-020, BR-021, BR-043). 3. System opens a window on
+  2. System checks length, invisible or direction-changing characters, flood and window limit (BR-020, BR-090, BR-021, BR-043). 3. System opens a window on
   both sides with the message.
 - Extensions:
   - 2a. Limits exceeded → refused with a warning.

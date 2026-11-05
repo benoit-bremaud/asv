@@ -2,7 +2,7 @@
 
 > **Feature**: entry (roadmap brick 3)
 > **Use cases**: UC1, UC10, UC13
-> **Business rules**: BR-001 to BR-015
+> **Business rules**: BR-001 to BR-015, BR-090
 > **Related ADRs**: ADR-0002, ADR-0009, ADR-0011
 
 ## Context
@@ -105,9 +105,9 @@ classDiagram
   `helene` are the same pseudo, `Modérateur` contains `moderateur`). A reserved word refuses the pseudo
   when it appears anywhere in it (`MonModo` refused, `pseudoInvalid`). A taken pseudo gives `pseudoTaken`.
 - **BR-004**: `adultConfirmed` true and integer age 18 to 99, else `age`.
-- **Terms and BR-006**: `termsAccepted` false, or a city longer than 40 characters after trimming, gives the
+- **Terms and BR-006**: `termsAccepted` false, or a city longer than 40 characters after trimming or holding a BR-090 character, gives the
   `invalid` effect, mapped by the hub to the existing `error { code: "invalid" }`. An honest client never
-  sends them: the entry form keeps "enter" disabled until the terms box is ticked and caps the city field at
+  sends them (BR-090 included, checked by the form since #91): the entry form keeps "enter" disabled until the terms box is ticked and caps the city field at
   40 characters (`web-ui`, brick 7a). The protocol `entryRefusal` enum is unchanged. The stored city is the
   trimmed one, empty when blank.
 - **BR-007**: every `enter` from an IP, accepted or refused, is recorded with `now`. Attempts older than
@@ -128,7 +128,7 @@ classDiagram
 - **BR-013**: `bufferPrivate` appends to an away session's buffer, keeping the newest 50.
 - **BR-014**: `resume` finds the away session whose stored hash equals `resumeTokenHash`; otherwise
   `resumeRefused`, as is a token whose deadline has passed though the alarm has not run yet. A profile
-  breaking BR-004 or BR-006 gives `invalid`. On success the profile is replaced by the one sent, a new token is drawn, the buffer is
+  breaking BR-004, BR-006 or BR-090 gives `invalid`. On success the profile is replaced by the one sent, a new token is drawn, the buffer is
   returned in `resumed` and emptied, the status becomes `connected`. If `accountStillExists` is false, the
   account link is removed and `resumed.accountUnlinked` is true.
 - **UC10**: `leave` removes the session (connected or away), frees the pseudo and emits `closed`.

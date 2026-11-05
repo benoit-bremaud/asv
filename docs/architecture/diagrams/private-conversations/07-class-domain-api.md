@@ -2,7 +2,7 @@
 
 > **Feature**: private-conversations (roadmap brick 6)
 > **Use cases**: UC6, UC8
-> **Business rules**: BR-013, BR-020, BR-021, BR-040 to BR-043, BR-060
+> **Business rules**: BR-013, BR-020, BR-021, BR-040 to BR-043, BR-060, BR-090
 > **Related ADRs**: ADR-0005, ADR-0009, ADR-0011, ADR-0012; brick 6 owner choice D1 (`closePrivate`, 450/500)
 
 ## Context
@@ -57,6 +57,7 @@ classDiagram
     self
     empty
     tooLong
+    invalidText
     flood
     tooManyWindows
     targetBusy
@@ -74,7 +75,7 @@ classDiagram
   2. Sender without account → `accountRequired` (BR-040; the client then opens the account panel).
   3. Target pseudo unknown (folded like `pseudoIndex`) → `offline`. Target is the sender → `self`.
   4. Target without account → `accountRequired`.
-  5. Text trimmed empty → `empty`; over 500 code points → `tooLong` (BR-020).
+  5. Text trimmed empty → `empty`; over 500 code points → `tooLong` (BR-020); a BR-090 character → `invalidText`.
   6. Flood: the shared counter of `rooms` (BR-021, 5 per 10 s across rooms and private) → `flood`.
   7. The conversation is not open for the sender and the sender already has 3 open windows →
      `tooManyWindows` (BR-043).

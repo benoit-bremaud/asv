@@ -6,7 +6,7 @@ coverage matrix that records the last QA evidence of every case, so each QA pass
 > Written with skill `test-plan`. Families, tools and owners refer to the owner's
 > `~/.claude/skills/testing-strategy/taxonomy.md` (not linked). Levels and checklist IDs (FON, DAT, UI,
 > A11Y, PERF, SEC, ROB, MOB, USA, PRI) refer to skill `qa-browser-check` and its `checklist.md`.
-> Last reviewed: 2026-11-05 · JRN-14 evidence written by the full pass of #23 on 77d7c17 (SC)
+> Last reviewed: 2026-11-05 · JRN-15 evidence written by the pass of #91 on fea172c (BI); JRN-14 evidence written by the full pass of #23 on 77d7c17 (SC)
 
 ## Rule: the plan follows the product
 
@@ -83,6 +83,7 @@ coverage matrix that records the last QA evidence of every case, so each QA pass
 | JRN-12 | Tunnel mode: HSTS, `Secure` cookie, client IP from `CF-Connecting-IP` | — (ADR-0018) | BR-084…086 | RSK-10 | unit tests; QA pass on a local `ASV_TUNNEL` instance | local |
 | JRN-13 | A chatter's page stays connected under normal use; a script flooding frames or sending invalid frames is cut with close 1008 | — (#89) | BR-088 | RSK-09 | unit and transport tests; QA probe (WebSocket frames) | local |
 | JRN-14 | Several tabs and people behind one IP stay connected; a script opening sockets in a loop is refused with 429 before any socket exists; a page left on the entry screen 10 min is closed with 1008 `unbound` and reconnects | — (#23) | BR-089 | RSK-09 | unit and transport tests; QA probe (upgrade loop) | local |
+| JRN-15 | Posting a room or private message holding U+202E, U+200B or NUL is refused with a notice and nothing is delivered; an emoji with a joiner (👨‍👩‍👧) is delivered; a city with U+202E is refused at entry | UC1, UC4, UC6, UC13 | BR-090 | RSK-03, RSK-04, RSK-09 | unit tests; QA probe through the WebSocket frames | local |
 
 Moderation journeys (UC9, UC11, UC12, UC14…UC16) join this list with brick 8.
 
@@ -90,7 +91,7 @@ Moderation journeys (UC9, UC11, UC12, UC14…UC16) join this list with brick 8.
 
 Reports: **FP** = `2026-10-24-full-pass.md` (head c470f1a) · **RS** = `2026-10-24-tester-runbook-smoke.md`
 (PR #61, head not recorded) · **CS** = `2026-11-02-code-step-resume.md` (first run e774c8c; re-check 09f44e7 re-ran
-FON-01a–d, F1, N1–N3, UI-01/02 only) · **TS** = `2026-11-02-test-plan-smoke.md` (head f9970ba) · **PD** = `2026-11-02-65-private-dock.md` (#65: first pass debc8ce, product part and security part; re-run on ce90fc5 and 5669e7d, product part only) · **FL** = `2026-11-03-89-frame-limit-full.md` (#89, level full, head 9913901; shots `2026-11-03-89-<nn>-…`) · **SC** = `2026-11-05-23-socket-caps-full.md` (#23, level full, head 77d7c17, local production build; shots `2026-11-05-23-<nn>-…`).
+FON-01a–d, F1, N1–N3, UI-01/02 only) · **TS** = `2026-11-02-test-plan-smoke.md` (head f9970ba) · **PD** = `2026-11-02-65-private-dock.md` (#65: first pass debc8ce, product part and security part; re-run on ce90fc5 and 5669e7d, product part only) · **FL** = `2026-11-03-89-frame-limit-full.md` (#89, level full, head 9913901; shots `2026-11-03-89-<nn>-…`) · **SC** = `2026-11-05-23-socket-caps-full.md` (#23, level full, head 77d7c17, local production build; shots `2026-11-05-23-<nn>-…`) · **BI** = `2026-11-05-91-invisible-chars-pass.md` (#91, level pass, product part, head fea172c (client) on the server code of 9deefab, identical domain and server; local production build; shots `2026-11-05-91-<nn>-…`).
 Screenshots are under `docs/architecture/qa/`; numbers refer to the report's own prefix.
 Level is the lowest QA level that must run the row: smoke ⊂ pass ⊂ full.
 
@@ -130,6 +131,7 @@ Level is the lowest QA level that must run the row: smoke ⊂ pass ⊂ full.
 | JRN-12 `Secure` cookie, client IP in tunnel mode | full | — (unit tests only; FL NOT TESTED, needs the tester secrets) | not covered |
 | JRN-13 frame budget: (a) normal UI use and 75 s idle never closed; (b) 200 frames → 40 answers then 1008 `tooManyFrames`; (c) 5 invalid → 5 `error invalid` then 1008 `invalidFrames`; (d) 4 invalid + valid + 4 invalid stays open; (e) web client resumes after a policy close; (f) other chatters responsive during a flood | full | FL JRN-13a…f · `2026-11-03-89-04-after-policy-close-reconnecting-1440`, `-05-resumed-after-policy-close-1440` · 9913901 | covered (all PASS; `ping` and the invalid count #112; reconnect rate per IP #23) |
 | JRN-14 upgrade limits: (a) 10 tabs from one IP all connect and chat; (b) a loop of 100 upgrades from one IP gets 20 sockets then 429 with `Retry-After`, no connection line for refused ones; (c) the 21st concurrent socket of one IP gets 429; (d) a closed socket frees its place; (e) an entry screen left 10 min gets 1008 `unbound` and the page reconnects; (f) other chatters responsive during the loop | full | SC JRN-14a…j · `2026-11-05-23-02-ten-tabs-room-1440`, `-01-entry-left-open-1440`, `-04-entry-after-unbound-reconnect-1440`, `-05-entered-after-unbound-xss-as-text-1440`, `-06-new-tab-refused-429-1440`, `-07-new-tab-online-after-release-1440` · 77d7c17 | covered (a…f all PASS, (e) observed over 20 min; extra: refusal bytes and socket destroyed, foreign origin takes no token, failed handshakes release, total cap 503; refused-tab banner #117) |
+| JRN-15 BR-090: (a) room message with U+202E, U+200B or NUL refused with the notice, nothing delivered; (b) same in a private window; (c) an emoji ZWJ sequence delivered; (d) a city with U+202E refused at entry and at resume; (e) raw frame gets `warning invalidText`, nothing delivered | pass | BI JRN-15a…g · `2026-11-05-91-01-entry-city-rlo-refused-1440`, `-02-room-rlo-refused-sender-1440`, `-03-room-nothing-delivered-receiver-1440`, `-04-room-emoji-zwj-delivered-receiver-1440`, `-05-private-rlo-refused-sender-1440`, `-06-private-receiver-1440`, `-07-raw-frame-invalidtext-notice-1440`, `-08-room-rlo-refused-390`, `-08-room-rlo-refused-768`, `-09-room-zwsp-refused-dark-1440` · fea172c | covered (a…g all PASS; resume city and edges at protocol level; A11Y-03 `aria-invalid` #121, entry wording #122) |
 
 ### qa-browser-check domains
 
@@ -186,6 +188,7 @@ dev server and own production build. Not re-run on ce90fc5 or 5669e7d (CSS and c
 
 ## Changelog
 
+- 2026-11-05 — #91 pass on fea172c (BI, product part): JRN-15 a…e covered, all PASS, plus BR-090 edges (interior BOM, U+2028, U+034F, U+2800, C1, TAB; edge BOM trimmed) and no contribution line for refused messages; smoke JRN-01, JRN-03, JRN-04 PASS (rows left on their earlier evidence). New findings #121 (A11Y-03, Must, pre-existing pattern), #122 (Nice).
 - 2026-11-05 — #23 full pass on 77d7c17 (SC): JRN-14 a…f covered, all PASS, plus BR-089 edges (raw refusal, fd count, 403 and 400 paths, 500 total cap); JRN-13 b/c/d re-run, PASS. Other rows left on their earlier evidence (member journeys run at protocol level only). New finding #117 (Nice).
 - 2026-11-03 — #89 full pass on 9913901 (FL): JRN-13 coverage row added (a…f all PASS); JRN-04 cap, JRN-07 IP quota, JRN-09 sign out everywhere and remembered device, JRN-10 deletion, Firefox and WebKit, axe-core, PERF-01 now covered; SEC-01…10 re-run (SEC-01 still FAIL, #69). New findings #105…#112.
 - 2026-11-02 — #83, #84, #85 re-run on 5669e7d (PD, product part): short desktops (1440 × 600, 800 × 700) with 3 windows, tall desktops, overlays above the dock, own post follows, phones, rooms list; JRN-03, JRN-04, UI and A11Y rows moved to 5669e7d. Nothing new; #85 part 2 not re-checked; SEC rows left on debc8ce.

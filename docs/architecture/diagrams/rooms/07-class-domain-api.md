@@ -2,7 +2,7 @@
 
 > **Feature**: rooms (roadmap brick 4)
 > **Use cases**: UC2, UC3, UC4, UC5, UC10
-> **Business rules**: BR-020 to BR-034, BR-012, BR-015
+> **Business rules**: BR-020 to BR-034, BR-012, BR-015, BR-090
 > **Related ADRs**: ADR-0007, ADR-0011
 
 ## Context
@@ -77,6 +77,7 @@ classDiagram
     tooManyRooms
     empty
     tooLong
+    invalidText
     flood
     nameInvalid
     nameTaken
@@ -128,7 +129,7 @@ classDiagram
   room with `random.id()` and `ownerId` is created and joined: effects `roomCreated` (the hub writes the
   contribution line, BR-060), `roomJoined`, `memberJoined`.
 - **UC4, BR-020, BR-021** (D3, 440/500): `postRoom` needs a connected member, else `notMember`. The text is
-  trimmed; empty → `empty`, more than 500 characters (code points) → `tooLong`. If the session already has 5
+  trimmed; empty → `empty`, more than 500 characters (code points) → `tooLong`, a BR-090 character → `invalidText`. If the session already has 5
   accepted messages in the last 10 s → `flood`. Only accepted messages are counted, so a chatter who retries
   after a warning is not punished; a script still delivers 5 messages per 10 s at most. The counter is per
   session and will be shared with private messages (brick 6). An accepted post records `now` and emits

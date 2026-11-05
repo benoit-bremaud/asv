@@ -1,5 +1,6 @@
 import { useEffect, useState, type SubmitEvent } from "react";
 import { gender as genderSchema, type Gender } from "../../shared/protocol";
+import { hasForbiddenChar } from "../../domain/text";
 import { useChat } from "../chat-context";
 import { STRINGS } from "../strings";
 import { Header } from "./Header";
@@ -53,7 +54,9 @@ export const EntryScreen = () => {
   const [email, setEmail] = useState("");
   const [remember, setRemember] = useState(true);
   const [hint, setHint] = useState(false);
-  const ready = adult && terms && pseudo.trim() !== "" && age !== "" && state.link === "online" && state.pendingPseudo === undefined;
+  // BR-090, checked on the trimmed city as the server does.
+  const cityInvisible = hasForbiddenChar(city.trim());
+  const ready = !cityInvisible && adult && terms && pseudo.trim() !== "" && age !== "" && state.link === "online" && state.pendingPseudo === undefined;
 
   const form = () => ({
       pseudo: pseudo.trim(),
@@ -101,6 +104,7 @@ export const EntryScreen = () => {
             <label>
               {STRINGS.city}
               <input value={city} onChange={(e) => setCity([...e.target.value].slice(0, MAX_CITY).join(""))} />
+              {cityInvisible && <output className="small too-long">{STRINGS.invisibleChars}</output>}
             </label>
           </div>
           <label className="inline">

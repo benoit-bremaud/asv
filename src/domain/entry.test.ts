@@ -171,7 +171,7 @@ describe("BR-006 city and terms", () => {
     expect(enter(emptyEntryState(), form({ city }), T0, fakeRandom()).effects[0]?.type).toBe("entered");
   });
 
-  it.each([{ city: "x".repeat(41) }, { termsAccepted: false }])("refuses %o as invalid", (overrides) => {
+  it.each([{ city: "x".repeat(41) }, { city: "Paris\u202E" }, { termsAccepted: false }])("refuses %j as invalid", (overrides) => {
     const result = enter(emptyEntryState(), form(overrides), T0, fakeRandom());
 
     expect(result.effects).toEqual([{ type: "invalid" }]);
@@ -326,7 +326,7 @@ describe("BR-014 resume", () => {
     expect(resume(state, resumeWith("h(zz)"), T0, fakeRandom()).effects).toEqual([{ type: "resumeRefused" }]);
   });
 
-  it.each([{ age: 12 }, { age: 30, city: "x".repeat(41) }])("refuses a resumed profile %o as invalid", (profile) => {
+  it.each([{ age: 12 }, { age: 30, city: "x".repeat(41) }, { age: 30, city: "Paris\u202E" }])("refuses a resumed profile %j as invalid", (profile) => {
     const away = awaySession();
     const result = resume(away.state, resumeWith("h(t1)", profile), T0, rotatingRandom);
 

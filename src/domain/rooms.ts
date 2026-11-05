@@ -7,6 +7,7 @@ import type { ConnectedSession, EntryState, Gender, Random, Session } from "./en
 import { blocks, type IgnoreLists } from "./ignore";
 import type { PrivateConversation } from "./private";
 import { canonicalPseudo, containsReservedWord, foldPseudo, PSEUDO_CHARS } from "./pseudo";
+import { hasForbiddenChar } from "./text";
 
 /** V1 values of BR-020, BR-021, BR-023 and BR-024, tunable here only (BR-030 lengths live in the name pattern). */
 export const ROOM_LIMITS = {
@@ -69,6 +70,7 @@ export type RoomRefusal =
   | "tooManyRooms"
   | "empty"
   | "tooLong"
+  | "invalidText"
   | "flood"
   | "nameInvalid"
   | "nameTaken"
@@ -303,7 +305,7 @@ export const countMessage = (state: HubState, sessionId: string, now: Date): Hub
   return { ...state, flood: new Map(state.flood).set(sessionId, [...recent, now]) };
 };
 
-/** UC4, BR-020, BR-021. The text stays raw: smileys are rendered by `web-ui` (BR-022). */
+/** UC4, BR-020, BR-021, BR-090. The text stays raw: smileys are rendered by `web-ui` (BR-022). */
 export const postRoom = (state: HubState, command: PostRoomCommand, now: Date): RoomsResult => {
   const session = connectedSession(state, command.sessionId);
   if (!session) return result(state);
@@ -312,6 +314,7 @@ export const postRoom = (state: HubState, command: PostRoomCommand, now: Date): 
   if (text.length === 0) return refused(state, session.id, "empty");
   // BR-020 counts characters (code points), not UTF-16 units.
   if ([...text].length > ROOM_LIMITS.maxTextLength) return refused(state, session.id, "tooLong");
+  if (hasForbiddenChar(text)) return refused(state, session.id, "invalidText");
   const counted = countMessage(state, session.id, now);
   if (!counted) return refused(state, session.id, "flood");
   // BR-042: members who ignore the author, or whom the author ignores, do not get the line; the echo stays.
