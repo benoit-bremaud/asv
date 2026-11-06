@@ -837,6 +837,7 @@ describe("room screen", () => {
     expect((screen.getByRole("button", { name: STRINGS.send }) as HTMLButtonElement).disabled).toBe(true);
     expect(field.getAttribute("aria-invalid")).toBe("true");
     expect(field.getAttribute("aria-describedby")).toBe("message-count");
+    expect(document.getElementById("message-count")?.textContent).toBe("501/500");
   });
 
   it("keeps a message with a bidi override in the field and does not send it (BR-090)", async () => {
@@ -865,7 +866,10 @@ describe("room screen", () => {
     await user.click(field);
     await user.paste("\u202E" + "a".repeat(500));
 
+    expect(field.getAttribute("aria-invalid")).toBe("true");
     expect(field.getAttribute("aria-describedby")).toBe("message-count message-invisible");
+    expect(document.getElementById("message-count")).not.toBeNull();
+    expect(document.getElementById("message-invisible")).not.toBeNull();
 
     await user.clear(field);
     await user.type(field, "salut");
@@ -1128,6 +1132,12 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
     expect(within(dialog).getByText(STRINGS.invisibleChars)).toBeTruthy();
     expect(field.getAttribute("aria-invalid")).toBe("true");
     expect(document.getElementById(field.getAttribute("aria-describedby") ?? "")?.textContent).toBe(STRINGS.invisibleChars);
+
+    await user.clear(field);
+    await user.paste("a".repeat(501));
+
+    expect(field.getAttribute("aria-invalid")).toBe("true");
+    expect(document.getElementById(field.getAttribute("aria-describedby") ?? "")?.textContent).toBe("501/500");
 
     await user.clear(field);
     await user.type(field, "ab");
