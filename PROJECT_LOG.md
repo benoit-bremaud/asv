@@ -431,7 +431,7 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   `PseudoMenu` and "Mon compte" focus their button first so focus comes back (macOS, #130).
 - Adversarial review (Opus): round 1 one Must (Escape dead over the privacy page or a private window) and three
   Should (landscape "fermer", notice hidden from screen readers, focus lost from "message privé"), fixed;
-  rounds 2 and 3 open.
+  rounds 2 and 3 clean (push gate open, no Must or Should left).
 - QA pass (`docs/architecture/qa/2026-11-06-63-account-modal-pass.md`, `e4b4223`): JRN-17 a–i pass on
   Chromium, Firefox and WebKit at 1440, 1440 × 600, 390 and 844 × 390, light and dark; JRN-16 pass. Filed #131
   (private window close loses focus), #132 (two "fermer" buttons); #130 fixed but not run on a Mac; #104 looks
