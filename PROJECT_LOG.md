@@ -469,3 +469,21 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   dark, from the entry footer and the account panel (144 cases); JRN-16, JRN-17 and smoke pass; no new issue.
 - Merged 2026-11-06: PR #139 squash f0064e3 with owner approval; local verify, gitleaks and SonarQube green on
   d917d05, GitHub checks and Codex review clean. Next: #105, #131, #59.
+
+## 2026-11-06 — Target size of the glyph-only controls (#105)
+
+- Conception: `web-ui/04` rule "Small controls" (A11Y-05, option A 480/500 validated by the owner); test plan
+  JRN-20.
+- Code: new class `icon-button` beside `link` on the room tab "×", the private window "_" and "×" and the
+  smiley buttons: at least 24 × 24 CSS px (WCAG 2.2 SC 2.5.8), 44 px under `pointer: coarse`, where the tab's
+  room name is 44 px high too. Component tests on the rules, their order and the class on each control.
+- Adversarial review (Opus): round 1 no Must, three Should (smileys missed, touch "×" bigger than the room
+  name, touch sizes missing from JRN-20) and two Nice, all fixed (smileys in scope, owner option A 450/500);
+  round 2 clean, one Nice fixed in 3c3fdec.
+- QA pass (`docs/architecture/qa/2026-11-06-105-target-size-pass.md`, `3c3fdec`): JRN-20 pass on Chromium,
+  Firefox and WebKit, 24 × 25 px with a mouse and 44 × 44 px on touch, clicks and axe clean on every
+  `icon-button`; JRN-16…19 and smoke pass. Two pre-existing Must filed and waived by the owner (option A
+  410/500): #142 (smileys summary and member pseudos 21 px high), #143 (header overflow with a 20-character
+  pseudo at 390 px and below).
+- Merged 2026-11-06: PR #141 squash b08b83c with owner approval; local verify, gitleaks and SonarQube green on
+  10492d5, GitHub checks and Codex review clean. Next: #131, #59, then #142 and #143.
