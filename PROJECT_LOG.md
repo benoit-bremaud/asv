@@ -454,3 +454,18 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   filed #137 (Nice, "501/500" says not why).
 - Merged 2026-11-06: PR #135 squash 02b507d with owner approval; local verify, gitleaks and SonarQube green on
   6e0d6aa, GitHub checks green. Next: #126, #105, #131, #59.
+
+## 2026-11-06 — Legal pages scroll on phones (#126)
+
+- Conception: `web-ui/04` rule "Legal page scroll" (UI-01, option A 480/500 validated by the owner); test plan
+  JRN-19.
+- Code: `.legal-page` keeps the user-agent `fit-content` height and caps it with
+  `max-height: calc(100dvh - 2 * var(--gap))`, so a long page scrolls inside itself and "fermer" stays
+  reachable; short pages keep their text height. Component test on the rule and the three pages.
+- Adversarial review (Opus): round 1 no Must, one Should (the issue's `height: auto` stretched short pages),
+  dropped on owner choice (a); round 2 clean, decision recorded in the study.
+- QA pass (`docs/architecture/qa/2026-11-06-126-legal-scroll-pass.md`, `31c19ff`): JRN-19 pass on Chromium,
+  Firefox and WebKit at 320 × 568, 390 × 844, 768 × 1024, 844 × 390, 1440 × 600 and 1440 × 900, light and
+  dark, from the entry footer and the account panel (144 cases); JRN-16, JRN-17 and smoke pass; no new issue.
+- Merged 2026-11-06: PR #139 squash f0064e3 with owner approval; local verify, gitleaks and SonarQube green on
+  d917d05, GitHub checks and Codex review clean. Next: #105, #131, #59.
