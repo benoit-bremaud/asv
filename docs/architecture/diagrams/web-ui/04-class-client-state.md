@@ -231,7 +231,8 @@ classDiagram
   `closeAccount`; "fermer" does the same. Its height fits the viewport and it scrolls, so "fermer" stays
   reachable on a phone in landscape. While it is open the notice shows inside it, not in the inert page. On unmount the focus returns to the element
   that had it when the panel opened ("Mon compte", the pseudo whose "message privé" opened it, or the room
-  field when the server opened it); nothing gets it if that element left the page. The background being inert, no screen change can come from the user
+  field when the server opened it); "Mon compte" focuses itself on click, since Safari and Firefox on
+  macOS do not (#130); nothing gets it if that element left the page. The background being inert, no screen change can come from the user
   while the panel is open; leaving the chat (back to entry) unmounts it. The privacy page opened from the
   panel stays a non-modal `dialog` inside it, so it stays reachable. Unit tests stub `showModal` and `close`
   (jsdom has neither) and check the modal opening, Escape (also with the privacy page open),

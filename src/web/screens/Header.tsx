@@ -12,7 +12,11 @@ export const Header = ({ connected }: { connected?: number }) => {
         {state.me ? (
           <>
             <strong>{state.me.pseudo}</strong>
-            <button type="button" className="bevel" onClick={() => commands.local({ type: "openAccount" })}>{STRINGS.myAccount}</button>
+            <button type="button" className="bevel" onClick={(event) => {
+              // Safari and Firefox on macOS do not focus a clicked button: focus it, so the dialog gives it back (#130).
+              event.currentTarget.focus();
+              commands.local({ type: "openAccount" });
+            }}>{STRINGS.myAccount}</button>
             <button type="button" className="bevel" onClick={commands.leave}>{STRINGS.quit}</button>
           </>
         ) : (
