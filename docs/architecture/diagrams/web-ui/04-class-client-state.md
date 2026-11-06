@@ -224,3 +224,12 @@ classDiagram
   the legal page keeping its `h2` when opened from the account panel. Private windows stay `dialog`s named by
   `aria-label`, with no heading (`web-ui/07`). Unit tests check, per screen and with the account and legal
   dialogs open, one `level: 1` heading named "asv" and the titles at `level: 2`.
+  Account dialog (#63, A11Y-01, option A 435/500): the account panel is a modal `dialog` opened with
+  `showModal()` when it mounts and closed with `close()` when it unmounts, so the browser gives the focus
+  trap, the inert background and the top layer (above the private dock, #104). Escape fires `cancel`, which
+  the panel turns into `closeAccount`; "fermer" does the same. On unmount the focus returns to the element
+  that had it when the panel opened (the "Mon compte" button, or the room field when the server opened the
+  panel), if it is still in the page. The background being inert, no screen change can come from the user
+  while the panel is open; leaving the chat (back to entry) unmounts it. The privacy page opened from the
+  panel stays a non-modal `dialog` inside it, so it stays reachable. Unit tests stub `showModal` and `close`
+  (jsdom has neither) and check the modal opening, Escape, "fermer" and the focus return.

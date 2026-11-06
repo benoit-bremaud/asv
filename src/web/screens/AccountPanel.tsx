@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type SubmitEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type SubmitEvent, type SyntheticEvent } from "react";
 import { useChat } from "../chat-context";
 import { STRINGS } from "../strings";
 import { LegalPage } from "./LegalPage";
@@ -93,20 +93,38 @@ const ConfirmDelete = () => {
   );
 };
 
-/** Account overlay in the chat (`web-ui/06`); closing keeps the step. */
-export const AccountPanel = () => {
+/** Modal account dialog in the chat (`web-ui/06`, `web-ui/04` Accessibility, #63); closing keeps the step. */
+const AccountDialog = () => {
   const { state, commands } = useChat();
-  if (!state.account.open) return null;
+  const dialog = useRef<HTMLDialogElement>(null);
+  // Layout effect: its cleanup runs while the dialog is still in the page, so `close()` and the focus return happen.
+  useLayoutEffect(() => {
+    const opener = document.activeElement;
+    const element = dialog.current;
+    element?.showModal();
+    return () => {
+      element?.close();
+      if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
+    };
+  }, []);
+  const close = () => commands.local({ type: "closeAccount" });
+  // Escape: the state closes the dialog, not the browser.
+  const cancel = (event: SyntheticEvent) => {
+    event.preventDefault();
+    close();
+  };
   const { step } = state.account;
   return (
-    <dialog open className="panel overlay" aria-labelledby="account-title">
+    <dialog ref={dialog} className="panel overlay" aria-labelledby="account-title" onCancel={cancel}>
       <h2 id="account-title">{STRINGS.accountTitle}</h2>
       {(step === "askEmail" || step === "signedOut") && <AskEmail />}
       {step === "waitingCode" && <WaitingCode />}
       {step === "redeemingDevice" && <p>{STRINGS.savingDevice}</p>}
       {step === "signedIn" && <SignedIn />}
       {step === "confirmDelete" && <ConfirmDelete />}
-      <button type="button" className="link" onClick={() => commands.local({ type: "closeAccount" })}>{STRINGS.close}</button>
+      <button type="button" className="link" onClick={close}>{STRINGS.close}</button>
     </dialog>
   );
 };
+
+export const AccountPanel = () => (useChat().state.account.open ? <AccountDialog /> : null);
