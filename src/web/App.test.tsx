@@ -7,6 +7,7 @@ import { App } from "./App";
 import { browserConnection, ChatProvider, useChat, type ConnectionFactory } from "./chat-context";
 import type { Connection } from "./connection";
 import { STATS_MS } from "./screens/EntryScreen";
+import { SMILEYS } from "./render";
 import { RoomScreen } from "./screens/RoomScreen";
 import type { Action } from "./store";
 import { STRINGS } from "./strings";
@@ -931,7 +932,10 @@ describe("room screen", () => {
     await enterChat();
     await joinRoom("r1");
 
-    for (const button of within(screen.getByText(STRINGS.smileys).closest("details") as HTMLElement).getAllByRole("button", { hidden: true })) {
+    const buttons = within(screen.getByText(STRINGS.smileys).closest("details") as HTMLElement).getAllByRole("button", { hidden: true });
+
+    expect(buttons).toHaveLength(Object.keys(SMILEYS).length);
+    for (const button of buttons) {
       expect(button.classList).toContain("icon-button");
     }
   });
