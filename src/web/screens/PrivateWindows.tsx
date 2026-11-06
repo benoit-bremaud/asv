@@ -19,6 +19,8 @@ const PrivateWindow = ({ windowKey, window, draft, setDraft }: Props) => {
   const tooLong = [...draft].length > MAX_TEXT;
   // BR-090, checked on the trimmed text as the server does; the draft stays in the field.
   const invisible = hasForbiddenChar(draft.trim());
+  // A11Y-03 (#121): the field names what refuses it.
+  const describedBy = [tooLong && `${fieldId}-count`, invisible && `${fieldId}-invisible`].filter(Boolean).join(" ") || undefined;
   const gone = window.presence === "gone";
   // A pending window (keyed by the other session id) or a gone partner has nothing to close on the server.
   const close = () => commands.closePrivate(windowKey, windowKey !== other.sessionId && !gone);
@@ -60,9 +62,9 @@ const PrivateWindow = ({ windowKey, window, draft, setDraft }: Props) => {
       </ol>
       <form className="composer" onSubmit={submit}>
         <label className="sr-only" htmlFor={fieldId}>{STRINGS.message}</label>
-        <input id={fieldId} value={draft} maxLength={2000} autoComplete="off" disabled={gone} autoFocus onChange={(e) => setDraft(e.target.value)} />
-        <span className={`small${tooLong ? " too-long" : ""}`} aria-live="polite">{[...draft].length}/{MAX_TEXT}</span>
-        {invisible && <output className="small too-long">{STRINGS.invisibleChars}</output>}
+        <input id={fieldId} value={draft} aria-invalid={describedBy ? true : undefined} aria-describedby={describedBy} maxLength={2000} autoComplete="off" disabled={gone} autoFocus onChange={(e) => setDraft(e.target.value)} />
+        <span id={`${fieldId}-count`} className={`small${tooLong ? " too-long" : ""}`} aria-live="polite">{[...draft].length}/{MAX_TEXT}</span>
+        {invisible && <output id={`${fieldId}-invisible`} className="small too-long">{STRINGS.invisibleChars}</output>}
         <button type="submit" className="bevel primary" disabled={tooLong || invisible || gone}>{STRINGS.send}</button>
       </form>
     </dialog>

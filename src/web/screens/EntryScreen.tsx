@@ -103,7 +103,7 @@ export const EntryScreen = () => {
             </label>
             <label>
               {STRINGS.city}
-              <input value={city} onChange={(e) => setCity([...e.target.value].slice(0, MAX_CITY).join(""))} />
+              <input value={city} aria-invalid={cityInvisible || undefined} onChange={(e) => setCity([...e.target.value].slice(0, MAX_CITY).join(""))} />
               {cityInvisible && <output className="small too-long">{STRINGS.invisibleChars}</output>}
             </label>
           </div>

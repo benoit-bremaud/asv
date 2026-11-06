@@ -224,6 +224,13 @@ classDiagram
   the legal page keeping its `h2` when opened from the account panel. Private windows stay `dialog`s named by
   `aria-label`, with no heading (`web-ui/07`). Unit tests check, per screen and with the account and legal
   dialogs open, one `level: 1` heading named "asv" and the titles at `level: 2`.
+  Refused fields (#121, A11Y-03, option A 450/500): while a refusal holds, the field says so itself. The room field
+  `#message` and the private window field get `aria-invalid="true"` while their text is over 500 code points
+  (BR-020) or holds a BR-090 character, and `aria-describedby` with the ids of what explains it: the counter
+  (`<id>-count`) when too long, the `invisibleChars` notice (`<id>-invisible`) when it shows, both when both hold.
+  The entry city field gets `aria-invalid="true"` while its trimmed text holds a BR-090 character; its link to
+  the notice is #120. Once the text fits, the attributes are removed (not set to `false`). Unit tests check
+  both attributes on the two composers and `aria-invalid` on the city field, set then removed.
   Account dialog (#63, A11Y-01, option A 435/500): the account panel is a modal `dialog` opened with
   `showModal()` when it mounts and closed with `close()` when it unmounts, so the browser gives the focus
   trap, the inert background and the top layer (above the private dock, #84). Escape (a key handler on the

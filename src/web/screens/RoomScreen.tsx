@@ -66,6 +66,8 @@ export const RoomScreen = () => {
   const tooLong = [...text].length > MAX_TEXT;
   // BR-090, checked on the trimmed text as the server does; the text stays in the field.
   const invisible = hasForbiddenChar(text.trim());
+  // A11Y-03 (#121): the field names what refuses it.
+  const describedBy = [tooLong && "message-count", invisible && "message-invisible"].filter(Boolean).join(" ") || undefined;
   const submit = (event: SubmitEvent) => {
     event.preventDefault();
     if (text.trim() === "" || tooLong || invisible) return;
@@ -117,9 +119,9 @@ export const RoomScreen = () => {
         </button>
         <form className="composer" onSubmit={submit}>
           <label className="sr-only" htmlFor="message">{STRINGS.message}</label>
-          <input id="message" value={text} maxLength={2000} autoComplete="off" onChange={(e) => setText(e.target.value)} />
-          <span className={`small${tooLong ? " too-long" : ""}`} aria-live="polite">{[...text].length}/{MAX_TEXT}</span>
-          {invisible && <output className="small too-long">{STRINGS.invisibleChars}</output>}
+          <input id="message" value={text} aria-invalid={describedBy ? true : undefined} aria-describedby={describedBy} maxLength={2000} autoComplete="off" onChange={(e) => setText(e.target.value)} />
+          <span id="message-count" className={`small${tooLong ? " too-long" : ""}`} aria-live="polite">{[...text].length}/{MAX_TEXT}</span>
+          {invisible && <output id="message-invisible" className="small too-long">{STRINGS.invisibleChars}</output>}
           <details className="smileys">
             <summary>{STRINGS.smileys}</summary>
             {Object.entries(SMILEYS).map(([code, symbol]) => (

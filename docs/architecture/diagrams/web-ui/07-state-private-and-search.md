@@ -56,7 +56,7 @@ stateDiagram-v2
   the first message. A refusal (`warning` or `error` replying to that `sendPrivate`) shows the notice and
   keeps the draft. `accountRequired` also opens the account panel.
 - **Windows**: at most 3 open (BR-043; the server enforces it). Each window holds its last 200 lines in
-  memory only (BR-034), its own draft, the 500 code point counter and the BR-090 check of the room composer (BR-020, BR-090) and an
+  memory only (BR-034), its own draft, the 500 code point counter and the BR-090 check of the room composer (BR-020, BR-090), with its refused-field marking (`web-ui/04`, #121), and an
   unread count while minimised. Lines render through the same `Renderer` (smileys, never HTML).
 - **Desktop** (≥ 768 px): floating panels docked bottom right, side by side, the last opened in front.
   **Phone**: a stacked tab bar in the page flow after the room, one tab per window, full width
