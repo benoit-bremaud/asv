@@ -109,6 +109,20 @@ describe("entry screen", () => {
 
     expect(enterButton().disabled).toBe(true);
     expect(screen.getByText(STRINGS.invisibleChars)).toBeTruthy();
+    expect(screen.getByLabelText(STRINGS.city).getAttribute("aria-invalid")).toBe("true");
+  });
+
+  it("removes aria-invalid from the city once its invisible character is gone (#121)", async () => {
+    const user = await setup();
+    await goOnline();
+    await fill(user);
+    const city = screen.getByLabelText(STRINGS.city);
+    await user.click(city);
+    await user.paste("Paris\u200B");
+
+    await user.keyboard("{Backspace}");
+
+    expect(city.hasAttribute("aria-invalid")).toBe(false);
   });
 
   it("disables ENTRER while an entry is pending", async () => {
@@ -821,6 +835,8 @@ describe("room screen", () => {
     expect(connection.send).not.toHaveBeenCalled();
     expect(field.value).toHaveLength(501);
     expect((screen.getByRole("button", { name: STRINGS.send }) as HTMLButtonElement).disabled).toBe(true);
+    expect(field.getAttribute("aria-invalid")).toBe("true");
+    expect(field.getAttribute("aria-describedby")).toBe("message-count");
   });
 
   it("keeps a message with a bidi override in the field and does not send it (BR-090)", async () => {
@@ -837,6 +853,25 @@ describe("room screen", () => {
     expect(field.value).toBe("gpj.\u202Eexe");
     expect((screen.getByRole("button", { name: STRINGS.send }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByText(STRINGS.invisibleChars)).toBeTruthy();
+    expect(field.getAttribute("aria-invalid")).toBe("true");
+    expect(document.getElementById(field.getAttribute("aria-describedby") ?? "")?.textContent).toBe(STRINGS.invisibleChars);
+  });
+
+  it("names both refusals, then clears the field's error state once the text is fixed (#121)", async () => {
+    const user = await setup();
+    await enterChat();
+    await joinRoom("r1");
+    const field = screen.getByLabelText(STRINGS.message) as HTMLInputElement;
+    await user.click(field);
+    await user.paste("\u202E" + "a".repeat(500));
+
+    expect(field.getAttribute("aria-describedby")).toBe("message-count message-invisible");
+
+    await user.clear(field);
+    await user.type(field, "salut");
+
+    expect(field.hasAttribute("aria-invalid")).toBe(false);
+    expect(field.hasAttribute("aria-describedby")).toBe(false);
   });
 
   it("appends a smiley code from the palette", async () => {
@@ -1091,6 +1126,14 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
     expect(sent().some((command) => command.type === "sendPrivate")).toBe(false);
     expect(field.value).toBe("a\u200Bb");
     expect(within(dialog).getByText(STRINGS.invisibleChars)).toBeTruthy();
+    expect(field.getAttribute("aria-invalid")).toBe("true");
+    expect(document.getElementById(field.getAttribute("aria-describedby") ?? "")?.textContent).toBe(STRINGS.invisibleChars);
+
+    await user.clear(field);
+    await user.type(field, "ab");
+
+    expect(field.hasAttribute("aria-invalid")).toBe(false);
+    expect(field.hasAttribute("aria-describedby")).toBe(false);
   });
 
   it("opens a pending window from the pseudo menu, then sends from it", async () => {
