@@ -125,6 +125,11 @@ input { font: inherit; padding: 4px; min-height: 32px; }
   text-decoration: underline;
   cursor: pointer;
 }
+/* Glyph-only controls (#105): WCAG 2.2 target size, house touch floor on coarse pointers. */
+.icon-button { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; min-height: 24px; }
+@media (pointer: coarse) {
+  .icon-button { min-width: 44px; min-height: 44px; }
+}
 
 .entry, .rooms {
   display: grid;

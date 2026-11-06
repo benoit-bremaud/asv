@@ -619,6 +619,21 @@ describe("room screen", () => {
     expect(screen.getByRole("heading", { name: "# Paris" })).toBeTruthy();
   });
 
+  it("gives each tab close button a 24 px target, 44 px on touch (#105)", async () => {
+    // jsdom computes no layout: check the rule, then that each close button uses it.
+    const css = readFileSync("src/web/styles.css", "utf8");
+    expect(css.match(/^\.icon-button \{[^}]*\}/m)?.[0]).toContain("min-width: 24px; min-height: 24px;");
+    expect(css).toMatch(/@media \(pointer: coarse\) \{\s*\.icon-button \{ min-width: 44px; min-height: 44px; \}/);
+    await setup();
+    await enterChat();
+    await joinRoom("r1");
+    await joinRoom("r2");
+
+    for (const name of ["Paris", "Cinéma"]) {
+      expect(screen.getByRole("button", { name: STRINGS.closeTab(name) }).classList).toContain("icon-button");
+    }
+  });
+
   it("closing a tab sends leaveRoom and falls back to another room", async () => {
     const user = await setup();
     await enterChat();
@@ -1226,6 +1241,17 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
     await openMenu(user);
     await user.click(screen.getByRole("menuitem", { name: STRINGS.unignore }));
     expect(sent()).toContainEqual({ type: "unignore", payload: { targetSessionId: "s2" } });
+  });
+
+  it("gives the private window minimise and close buttons a 24 px target (#105)", async () => {
+    await setup();
+    await signedIn();
+    await fromServer(msg("privateWindow", { conversationId: "c1", other: { sessionId: "s2", pseudo: "bob", hasAccount: true, away: false, gender: "man" } }));
+
+    const dialog = within(screen.getByRole("dialog"));
+    for (const name of [STRINGS.minimise, STRINGS.close]) {
+      expect(dialog.getByRole("button", { name }).classList).toContain("icon-button");
+    }
   });
 
   it("shows incoming messages, minimises with an unread count and closes with closePrivate", async () => {

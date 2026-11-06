@@ -89,7 +89,7 @@ export const RoomScreen = () => {
             <button type="button" className="link" aria-current={id === roomId} onClick={() => commands.local({ type: "showRoom", roomId: id })}>
               # {nameOf(id)}
             </button>
-            <button type="button" className="link" aria-label={STRINGS.closeTab(nameOf(id))} onClick={() => commands.leaveRoom(id)}>×</button>
+            <button type="button" className="link icon-button" aria-label={STRINGS.closeTab(nameOf(id))} onClick={() => commands.leaveRoom(id)}>×</button>
           </span>
         ))}
       </nav>
