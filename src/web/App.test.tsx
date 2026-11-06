@@ -52,7 +52,19 @@ const enterChat = async (pseudo = "ana") => {
 const joinRoom = (roomId: string, members: Member[] = [man("s2", "bob")]) =>
   fromServer(msg("roomJoined", { roomId, members }));
 
+// jsdom has no `showModal` / `close` (`web-ui/04` Accessibility, #63): stub them with the `open` attribute.
+const showModal = vi.fn(function (this: HTMLDialogElement) {
+  this.setAttribute("open", "");
+});
+const closeDialog = vi.fn(function (this: HTMLDialogElement) {
+  this.removeAttribute("open");
+});
+
 beforeEach(() => {
+  showModal.mockClear();
+  closeDialog.mockClear();
+  HTMLDialogElement.prototype.showModal = showModal;
+  HTMLDialogElement.prototype.close = closeDialog;
   connection = { enter: vi.fn(), signOutDevice: vi.fn(async () => undefined), send: vi.fn(() => true), forgetCode: vi.fn(), leave: vi.fn(), close: vi.fn() };
   connect = (d) => {
     dispatch = d;
@@ -914,6 +926,54 @@ describe("account panel", () => {
   };
   const panel = () => screen.getByRole("dialog", { name: STRINGS.accountTitle });
 
+  it("opens as a modal dialog (#63)", async () => {
+    await openPanel();
+
+    expect(showModal).toHaveBeenCalledTimes(1);
+    expect(showModal.mock.contexts[0]).toBe(panel());
+  });
+
+  it("closes on Escape and gives the focus back to the opener (#63)", async () => {
+    const user = await openPanel();
+    const opener = screen.getByRole("button", { name: STRINGS.myAccount });
+
+    fireEvent(panel(), new Event("cancel", { cancelable: true }));
+
+    expect(screen.queryByRole("dialog", { name: STRINGS.accountTitle })).toBeNull();
+    expect(closeDialog).toHaveBeenCalledTimes(1);
+    expect(document.activeElement).toBe(opener);
+    await user.click(opener);
+    expect(panel()).toBeTruthy();
+  });
+
+  it("closes on Escape with the privacy page open inside it (#63)", async () => {
+    const user = await openPanel();
+    await user.click(within(panel()).getByRole("button", { name: STRINGS.legal.privacy }));
+
+    fireEvent.keyDown(screen.getByRole("dialog", { name: STRINGS.legal.privacy }), { key: "Escape" });
+
+    expect(screen.queryByRole("dialog", { name: STRINGS.accountTitle })).toBeNull();
+    expect(screen.queryByRole("dialog", { name: STRINGS.legal.privacy })).toBeNull();
+  });
+
+  it("closes on \"fermer\" and gives the focus back to the opener (#63)", async () => {
+    const user = await openPanel();
+
+    await user.click(within(panel()).getByRole("button", { name: STRINGS.close }));
+
+    expect(screen.queryByRole("dialog", { name: STRINGS.accountTitle })).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: STRINGS.myAccount }));
+  });
+
+  it("closes without stealing the focus when its opener left the page (#63)", async () => {
+    await openPanel();
+
+    await fromServer(msg("resumeRefused", {}));
+
+    expect(screen.queryByRole("dialog", { name: STRINGS.accountTitle })).toBeNull();
+    expect(document.activeElement).toBe(document.body);
+  });
+
   it("is not shown on the entry screen", async () => {
     await setup();
     await fire({ type: "openAccount" });
@@ -947,6 +1007,14 @@ describe("account panel", () => {
 
     expect(connection.send).toHaveBeenCalledWith({ type: "verifyCode", payload: { code: "123456" } });
     expect(screen.getByRole("alert").textContent).toContain(STRINGS.notices.codeSent);
+  });
+
+  it("shows the notice inside the modal dialog, not in the inert page (#63)", async () => {
+    await openPanel();
+    await fromServer(msg("codeSent", {}));
+
+    expect(within(panel()).getByRole("alert").textContent).toContain(STRINGS.notices.codeSent);
+    expect(screen.getAllByRole("alert").every((alert) => panel().contains(alert))).toBe(true);
   });
 
   it("shows the tries left and goes back to the e-mail on 'nouveau code'", async () => {
@@ -1066,6 +1134,8 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
     await user.click(screen.getByRole("menuitem", { name: STRINGS.privateMessage }));
     expect(screen.queryByRole("dialog", { name: STRINGS.privateWith("bob") })).toBeNull();
     expect(screen.getByRole("heading", { name: STRINGS.accountTitle })).toBeTruthy();
+    await user.click(within(screen.getByRole("dialog", { name: STRINGS.accountTitle })).getByRole("button", { name: STRINGS.close }));
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: STRINGS.pseudoMenu("bob") }));
   });
 
   it("ignores and unignores from the menu, and hides the ignored chatter's lines", async () => {
