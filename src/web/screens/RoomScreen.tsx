@@ -125,7 +125,7 @@ export const RoomScreen = () => {
           <details className="smileys">
             <summary>{STRINGS.smileys}</summary>
             {Object.entries(SMILEYS).map(([code, symbol]) => (
-              <button key={code} type="button" className="link" aria-label={code} onClick={() => setText(`${text}${code}`)}>{symbol}</button>
+              <button key={code} type="button" className="link icon-button" aria-label={code} onClick={() => setText(`${text}${code}`)}>{symbol}</button>
             ))}
           </details>
           <button type="submit" className="bevel primary" disabled={tooLong || invisible}>{STRINGS.send}</button>

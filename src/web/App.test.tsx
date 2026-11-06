@@ -623,7 +623,9 @@ describe("room screen", () => {
     // jsdom computes no layout: check the rule, then that each close button uses it.
     const css = readFileSync("src/web/styles.css", "utf8");
     expect(css.match(/^\.icon-button \{[^}]*\}/m)?.[0]).toContain("min-width: 24px; min-height: 24px;");
-    expect(css).toMatch(/@media \(pointer: coarse\) \{\s*\.icon-button \{ min-width: 44px; min-height: 44px; \}/);
+    expect(css).toMatch(/@media \(pointer: coarse\) \{\s*\.icon-button \{ min-width: 44px; min-height: 44px; \}\s*\/\*[^*]*\*\/\s*\.tab \.link \{ min-height: 44px; \}/);
+    // Same specificity: the touch block must come after the base rule to win.
+    expect(css.indexOf("@media (pointer: coarse) {\n  .icon-button")).toBeGreaterThan(css.indexOf(".icon-button {"));
     await setup();
     await enterChat();
     await joinRoom("r1");
@@ -922,6 +924,16 @@ describe("room screen", () => {
     await user.click(screen.getByLabelText(":caramel:"));
 
     expect(field.value).toBe("hi :caramel:");
+  });
+
+  it("gives each smiley button the 24 px target class (#105)", async () => {
+    await setup();
+    await enterChat();
+    await joinRoom("r1");
+
+    for (const button of within(screen.getByText(STRINGS.smileys).closest("details") as HTMLElement).getAllByRole("button", { hidden: true })) {
+      expect(button.classList).toContain("icon-button");
+    }
   });
 
   it("counts characters, not UTF-16 units", async () => {

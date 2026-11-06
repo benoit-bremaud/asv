@@ -253,9 +253,11 @@ classDiagram
   panel stays a non-modal `dialog` inside it, so it stays reachable. Unit tests stub `showModal` and `close`
   (jsdom has neither) and check the modal opening, Escape (also with the privacy page open),
   "fermer", the notice inside the dialog and the focus return.
-  Small controls (#105, A11Y-05, option A 480/500): the glyph-only buttons that close a room tab ("×") and
-  minimise or close a private window ("_", "×") carry the class `icon-button` next to `link`. It gives them
-  `min-width` and `min-height` of 24 CSS px (WCAG 2.2 SC 2.5.8 AA) and centres the glyph, and 44 px under
-  `@media (pointer: coarse)` (house touch floor). Text links keep `.link` alone and do not grow. jsdom computes
-  no layout: unit tests check the rule in `styles.css` and the class on the four controls; the QA pass
-  measures each box on the production build.
+  Small controls (#105, A11Y-05, option A 480/500; smileys added after review round 1, option A 450/500): the
+  glyph-only buttons that close a room tab ("×"), minimise or close a private window ("_", "×") and insert a
+  smiley in the room composer carry the class `icon-button` next to `link`. It gives them `min-width` and
+  `min-height` of 24 CSS px (WCAG 2.2 SC 2.5.8 AA) and centres the glyph, and 44 px under
+  `@media (pointer: coarse)` (house touch floor), where the room name button of a tab gets the same 44 px
+  height so leaving a room is never the bigger target. Text links keep `.link` alone and do not grow. jsdom
+  computes no layout: unit tests check the rules in `styles.css` and the class on each of these controls; the
+  QA pass measures each box on the production build.
