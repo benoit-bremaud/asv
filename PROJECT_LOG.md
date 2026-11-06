@@ -419,3 +419,22 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   pre-existing).
 - Merged 2026-11-05: PR #125 squash f4a6ae2 with owner approval; CI and SonarQube green on 8d1af70, QA #126
   waived. Next: #63, #121, #104.
+
+## 2026-11-06 — Account dialog made modal (#63)
+
+- A11Y-01 of the 2026-10-24 full pass. Owner MCDA: native `showModal()` (option A, 435/500, vs non-modal with
+  Escape 335/500 and a hand-made ARIA modal 295/500). Study: web-ui/04 Accessibility (account dialog), web-ui/06,
+  JRN-17.
+- Code: `AccountPanel` opens with `showModal()` and closes with `close()`, giving the focus back to its opener;
+  Escape through a key handler on the dialog (a nested non-modal dialog takes the browser close request) and
+  `cancel`; new `Notice` shown inside the dialog while the page is inert; `.overlay` fits the viewport height;
+  `PseudoMenu` and "Mon compte" focus their button first so focus comes back (macOS, #130).
+- Adversarial review (Opus): round 1 one Must (Escape dead over the privacy page or a private window) and three
+  Should (landscape "fermer", notice hidden from screen readers, focus lost from "message privé"), fixed;
+  rounds 2 and 3 open.
+- QA pass (`docs/architecture/qa/2026-11-06-63-account-modal-pass.md`, `e4b4223`): JRN-17 a–i pass on
+  Chromium, Firefox and WebKit at 1440, 1440 × 600, 390 and 844 × 390, light and dark; JRN-16 pass. Filed #131
+  (private window close loses focus), #132 (two "fermer" buttons); #130 fixed but not run on a Mac; #104 looks
+  solved by the top layer (owner to close).
+- Merged 2026-11-06: PR #129 squash 619b918 with owner approval; verify and SonarQube green on 489db96, QA Must
+  (#131, #59, pre-existing) waived. Next: #121, #126, #105.
