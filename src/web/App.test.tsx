@@ -1,5 +1,6 @@
 import { act, cleanup, fireEvent, render, renderHook, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Member, ServerMessage } from "../shared/protocol";
 import { App } from "./App";
@@ -333,6 +334,24 @@ describe("legal pages (ADR-0018)", () => {
     await user.click(screen.getByRole("button", { name: STRINGS.legal.privacy }));
 
     expect(screen.getByRole("dialog", { name: STRINGS.legal.privacy })).toBeTruthy();
+  });
+
+  it("keeps each page within the viewport so it scrolls and its fermer stays reachable (#126)", async () => {
+    // jsdom computes no layout: check the rule that bounds the page, then that each page uses it.
+    const rule = readFileSync("src/web/styles.css", "utf8").match(/^\.legal-page \{[^}]*\}/m)?.[0] ?? "";
+    expect(rule).not.toMatch(/[ {;]height:/);
+    expect(rule).toContain("max-height: calc(100dvh - 2 * var(--gap));");
+    expect(rule).toContain("overflow: auto;");
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("{}", { status: 200 })));
+    const user = await setup();
+
+    for (const topic of ["rules", "notice", "privacy"] as const) {
+      await user.click(screen.getByRole("button", { name: STRINGS.legal[topic] }));
+      const page = screen.getByRole("dialog", { name: STRINGS.legal[topic] });
+      expect(page.classList.contains("legal-page")).toBe(true);
+      await user.click(within(page).getByRole("button", { name: STRINGS.close }));
+      expect(screen.queryByRole("dialog", { name: STRINGS.legal[topic] })).toBeNull();
+    }
   });
 });
 
