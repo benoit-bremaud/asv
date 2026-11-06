@@ -122,12 +122,13 @@ const AccountDialog = () => {
   return (
     <dialog ref={dialog} className="panel overlay" aria-labelledby="account-title" onCancel={cancel} onKeyDown={keyDown}>
       <h2 id="account-title">{STRINGS.accountTitle}</h2>
-      <Notice />
       {(step === "askEmail" || step === "signedOut") && <AskEmail />}
       {step === "waitingCode" && <WaitingCode />}
       {step === "redeemingDevice" && <p>{STRINGS.savingDevice}</p>}
       {step === "signedIn" && <SignedIn />}
       {step === "confirmDelete" && <ConfirmDelete />}
+      {/* After the step, so `showModal()` focuses the step's first control, not the dismiss button. */}
+      <Notice />
       <button type="button" className="link" onClick={close}>{STRINGS.close}</button>
     </dialog>
   );
