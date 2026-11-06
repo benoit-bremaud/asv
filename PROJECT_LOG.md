@@ -438,3 +438,19 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   solved by the top layer (owner to close).
 - Merged 2026-11-06: PR #129 squash 619b918 with owner approval; verify and SonarQube green on 489db96, QA Must
   (#131, #59, pre-existing) waived. Next: #121, #126, #105.
+
+## 2026-11-06 — Refused fields marked with aria-invalid (#121)
+
+- Conception: `web-ui/04` rule "Refused fields" (A11Y-03, option A 450/500 validated by the owner), pointer in
+  `web-ui/07`; test plan JRN-18.
+- Code: the room field `#message` and each private window field get `aria-invalid="true"` while over 500 code
+  points (BR-020) or holding a BR-090 character, with `aria-describedby` to the counter (`<id>-count`), the
+  notice (`<id>-invisible`) or both; the entry city gets `aria-invalid` only (its notice link is #120). The
+  attributes are removed once the text is fixed.
+- Adversarial review (Opus): round 1 no Must, three Should (private too-long path untested, counter id not
+  resolved in tests, JRN-18 level missing), fixed in 79bbd89; round 2 clean.
+- QA pass (`docs/architecture/qa/2026-11-06-121-aria-invalid-pass.md`, `79bbd89`): JRN-18 a–f pass at 1440 and
+  390 px, smoke JRN-01 and JRN-15 pass. Must #120 (city notice not linked, pre-existing) waived by the owner;
+  filed #137 (Nice, "501/500" says not why).
+- Merged 2026-11-06: PR #135 squash 02b507d with owner approval; local verify, gitleaks and SonarQube green on
+  6e0d6aa, GitHub checks green. Next: #126, #105, #131, #59.
