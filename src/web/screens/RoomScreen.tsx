@@ -89,7 +89,7 @@ export const RoomScreen = () => {
             <button type="button" className="link" aria-current={id === roomId} onClick={() => commands.local({ type: "showRoom", roomId: id })}>
               # {nameOf(id)}
             </button>
-            <button type="button" className="link" aria-label={STRINGS.closeTab(nameOf(id))} onClick={() => commands.leaveRoom(id)}>×</button>
+            <button type="button" className="link icon-button" aria-label={STRINGS.closeTab(nameOf(id))} onClick={() => commands.leaveRoom(id)}>×</button>
           </span>
         ))}
       </nav>
@@ -125,7 +125,7 @@ export const RoomScreen = () => {
           <details className="smileys">
             <summary>{STRINGS.smileys}</summary>
             {Object.entries(SMILEYS).map(([code, symbol]) => (
-              <button key={code} type="button" className="link" aria-label={code} onClick={() => setText(`${text}${code}`)}>{symbol}</button>
+              <button key={code} type="button" className="link icon-button" aria-label={code} onClick={() => setText(`${text}${code}`)}>{symbol}</button>
             ))}
           </details>
           <button type="submit" className="bevel primary" disabled={tooLong || invisible}>{STRINGS.send}</button>

@@ -46,9 +46,9 @@ const PrivateWindow = ({ windowKey, window, draft, setDraft }: Props) => {
         <PseudoMenu target={{ ...other, away: window.presence !== "here" }} />
         <span className="private-actions">
           {windowKey !== other.sessionId && (
-            <button type="button" className="link" aria-label={STRINGS.minimise} onClick={() => commands.local({ type: "togglePrivate", conversationId: windowKey })}>_</button>
+            <button type="button" className="link icon-button" aria-label={STRINGS.minimise} onClick={() => commands.local({ type: "togglePrivate", conversationId: windowKey })}>_</button>
           )}
-          <button type="button" className="link" aria-label={STRINGS.close} onClick={close}>×</button>
+          <button type="button" className="link icon-button" aria-label={STRINGS.close} onClick={close}>×</button>
         </span>
       </header>
       <ol role="log" aria-live="polite" className="private-lines">

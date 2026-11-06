@@ -7,6 +7,7 @@ import { App } from "./App";
 import { browserConnection, ChatProvider, useChat, type ConnectionFactory } from "./chat-context";
 import type { Connection } from "./connection";
 import { STATS_MS } from "./screens/EntryScreen";
+import { SMILEYS } from "./render";
 import { RoomScreen } from "./screens/RoomScreen";
 import type { Action } from "./store";
 import { STRINGS } from "./strings";
@@ -619,6 +620,23 @@ describe("room screen", () => {
     expect(screen.getByRole("heading", { name: "# Paris" })).toBeTruthy();
   });
 
+  it("gives each tab close button a 24 px target, 44 px on touch (#105)", async () => {
+    // jsdom computes no layout: check the rule, then that each close button uses it.
+    const css = readFileSync("src/web/styles.css", "utf8");
+    expect(css.match(/^\.icon-button \{[^}]*\}/m)?.[0]).toContain("min-width: 24px; min-height: 24px;");
+    expect(css).toMatch(/@media \(pointer: coarse\) \{\s*\.icon-button \{ min-width: 44px; min-height: 44px; \}\s*\/\*[^*]*\*\/\s*\.tab \.link \{ min-height: 44px; \}/);
+    // Same specificity: the touch block must come after the base rule to win.
+    expect(css.indexOf("@media (pointer: coarse) {\n  .icon-button")).toBeGreaterThan(css.indexOf(".icon-button {"));
+    await setup();
+    await enterChat();
+    await joinRoom("r1");
+    await joinRoom("r2");
+
+    for (const name of ["Paris", "Cinéma"]) {
+      expect(screen.getByRole("button", { name: STRINGS.closeTab(name) }).classList).toContain("icon-button");
+    }
+  });
+
   it("closing a tab sends leaveRoom and falls back to another room", async () => {
     const user = await setup();
     await enterChat();
@@ -907,6 +925,19 @@ describe("room screen", () => {
     await user.click(screen.getByLabelText(":caramel:"));
 
     expect(field.value).toBe("hi :caramel:");
+  });
+
+  it("gives each smiley button the 24 px target class (#105)", async () => {
+    await setup();
+    await enterChat();
+    await joinRoom("r1");
+
+    const buttons = within(screen.getByText(STRINGS.smileys).closest("details") as HTMLElement).getAllByRole("button", { hidden: true });
+
+    expect(buttons).toHaveLength(Object.keys(SMILEYS).length);
+    for (const button of buttons) {
+      expect(button.classList).toContain("icon-button");
+    }
   });
 
   it("counts characters, not UTF-16 units", async () => {
@@ -1226,6 +1257,17 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
     await openMenu(user);
     await user.click(screen.getByRole("menuitem", { name: STRINGS.unignore }));
     expect(sent()).toContainEqual({ type: "unignore", payload: { targetSessionId: "s2" } });
+  });
+
+  it("gives the private window minimise and close buttons a 24 px target (#105)", async () => {
+    await setup();
+    await signedIn();
+    await fromServer(msg("privateWindow", { conversationId: "c1", other: { sessionId: "s2", pseudo: "bob", hasAccount: true, away: false, gender: "man" } }));
+
+    const dialog = within(screen.getByRole("dialog"));
+    for (const name of [STRINGS.minimise, STRINGS.close]) {
+      expect(dialog.getByRole("button", { name }).classList).toContain("icon-button");
+    }
   });
 
   it("shows incoming messages, minimises with an unread count and closes with closePrivate", async () => {
