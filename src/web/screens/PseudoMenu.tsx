@@ -23,6 +23,7 @@ export const PseudoMenu = ({ target }: { target: MenuTarget }) => {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLSpanElement>(null);
   const first = useRef<HTMLButtonElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
   const gender = target.gender ?? state.known[target.sessionId];
 
   useEffect(() => {
@@ -46,7 +47,10 @@ export const PseudoMenu = ({ target }: { target: MenuTarget }) => {
 
   const signedIn = state.account.accountId !== undefined;
   const ignored = state.ignored.includes(target.sessionId);
+  // The focused item leaves with the menu: the focus goes back to the pseudo first, so a dialog opened by the
+  // action (the account panel, #63) returns it there.
   const pick = (action: () => void) => () => {
+    trigger.current?.focus();
     setOpen(false);
     action();
   };
@@ -63,6 +67,7 @@ export const PseudoMenu = ({ target }: { target: MenuTarget }) => {
   return (
     <span className="pseudo-menu" ref={root}>
       <button
+        ref={trigger}
         type="button"
         className="link pseudo-button"
         aria-haspopup="menu"

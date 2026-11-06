@@ -946,6 +946,16 @@ describe("account panel", () => {
     expect(panel()).toBeTruthy();
   });
 
+  it("closes on Escape with the privacy page open inside it (#63)", async () => {
+    const user = await openPanel();
+    await user.click(within(panel()).getByRole("button", { name: STRINGS.legal.privacy }));
+
+    fireEvent.keyDown(screen.getByRole("dialog", { name: STRINGS.legal.privacy }), { key: "Escape" });
+
+    expect(screen.queryByRole("dialog", { name: STRINGS.accountTitle })).toBeNull();
+    expect(screen.queryByRole("dialog", { name: STRINGS.legal.privacy })).toBeNull();
+  });
+
   it("closes on \"fermer\" and gives the focus back to the opener (#63)", async () => {
     const user = await openPanel();
 
@@ -997,6 +1007,14 @@ describe("account panel", () => {
 
     expect(connection.send).toHaveBeenCalledWith({ type: "verifyCode", payload: { code: "123456" } });
     expect(screen.getByRole("alert").textContent).toContain(STRINGS.notices.codeSent);
+  });
+
+  it("shows the notice inside the modal dialog, not in the inert page (#63)", async () => {
+    await openPanel();
+    await fromServer(msg("codeSent", {}));
+
+    expect(within(panel()).getByRole("alert").textContent).toContain(STRINGS.notices.codeSent);
+    expect(screen.getAllByRole("alert").every((alert) => panel().contains(alert))).toBe(true);
   });
 
   it("shows the tries left and goes back to the e-mail on 'nouveau code'", async () => {
@@ -1116,6 +1134,8 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
     await user.click(screen.getByRole("menuitem", { name: STRINGS.privateMessage }));
     expect(screen.queryByRole("dialog", { name: STRINGS.privateWith("bob") })).toBeNull();
     expect(screen.getByRole("heading", { name: STRINGS.accountTitle })).toBeTruthy();
+    await user.click(within(screen.getByRole("dialog", { name: STRINGS.accountTitle })).getByRole("button", { name: STRINGS.close }));
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: STRINGS.pseudoMenu("bob") }));
   });
 
   it("ignores and unignores from the menu, and hides the ignored chatter's lines", async () => {

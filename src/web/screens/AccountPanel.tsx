@@ -1,7 +1,8 @@
-import { useEffect, useLayoutEffect, useRef, useState, type SubmitEvent, type SyntheticEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type SubmitEvent, type SyntheticEvent } from "react";
 import { useChat } from "../chat-context";
 import { STRINGS } from "../strings";
 import { LegalPage } from "./LegalPage";
+import { Notice } from "./Notice";
 
 const CODE_LENGTH = 6;
 
@@ -104,19 +105,24 @@ const AccountDialog = () => {
     element?.showModal();
     return () => {
       element?.close();
-      if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
+      if (opener instanceof HTMLElement) opener.focus();
     };
   }, []);
   const close = () => commands.local({ type: "closeAccount" });
-  // Escape: the state closes the dialog, not the browser.
+  // The state closes the dialog, not the browser: `cancel` covers close requests (Android back), the key handler
+  // covers Escape when a nested non-modal dialog (privacy page, private window) has taken the close request.
   const cancel = (event: SyntheticEvent) => {
     event.preventDefault();
     close();
   };
+  const keyDown = (event: KeyboardEvent) => {
+    if (event.key === "Escape") cancel(event);
+  };
   const { step } = state.account;
   return (
-    <dialog ref={dialog} className="panel overlay" aria-labelledby="account-title" onCancel={cancel}>
+    <dialog ref={dialog} className="panel overlay" aria-labelledby="account-title" onCancel={cancel} onKeyDown={keyDown}>
       <h2 id="account-title">{STRINGS.accountTitle}</h2>
+      <Notice />
       {(step === "askEmail" || step === "signedOut") && <AskEmail />}
       {step === "waitingCode" && <WaitingCode />}
       {step === "redeemingDevice" && <p>{STRINGS.savingDevice}</p>}
