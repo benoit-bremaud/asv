@@ -218,7 +218,7 @@ input { font: inherit; padding: 4px; min-height: 32px; }
 .private-window .composer input { flex: 1; min-width: 0; }
 .unread { color: var(--brand); font-weight: bold; }
 /* Legal pages (ADR-0018): a fixed, scrollable non-modal dialog over the current screen. */
-.legal-page { position: fixed; inset: var(--gap); z-index: 30; box-sizing: border-box; width: auto; height: auto; max-height: calc(100dvh - 2 * var(--gap)); max-width: min(720px, calc(100vw - 2 * var(--gap))); margin: 0 auto; overflow: auto; color: inherit; box-shadow: 4px 4px 0 var(--bevel-dark); }
+.legal-page { position: fixed; inset: var(--gap); z-index: 30; box-sizing: border-box; width: auto; max-height: calc(100dvh - 2 * var(--gap)); max-width: min(720px, calc(100vw - 2 * var(--gap))); margin: 0 auto; overflow: auto; color: inherit; box-shadow: 4px 4px 0 var(--bevel-dark); }
 .legal-table { width: 100%; border-collapse: collapse; font-size: 13px; overflow-wrap: break-word; hyphens: auto; }
 .legal-table th, .legal-table td { border: 1px solid var(--bevel-dark); padding: 4px; text-align: left; vertical-align: top; }
 .search form { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }

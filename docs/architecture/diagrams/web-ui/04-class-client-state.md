@@ -232,9 +232,9 @@ classDiagram
   the notice is #120. Once the text fits, the attributes are removed (not set to `false`). Unit tests check
   both attributes on the two composers and `aria-invalid` on the city field, set then removed.
   Legal page scroll (#126, UI-01, option A 480/500): a legal page `dialog` (rules, notice, privacy; from the
-  entry footer or the account panel) never grows past the viewport. `.legal-page` sets `height: auto` (the
-  user-agent `dialog` rule `height: fit-content` would otherwise beat `inset`) and
-  `max-height: calc(100dvh - 2 * var(--gap))`, so its text scrolls inside it and "fermer", at the end, stays
+  entry footer or the account panel) never grows past the viewport. `.legal-page` keeps the user-agent `dialog`
+  height `fit-content` (a short page stays as tall as its text; it beats `inset`, which is why the page used to
+  overflow) and caps it with `max-height: calc(100dvh - 2 * var(--gap))`, so a long text scrolls inside it and "fermer", at the end, stays
   reachable at 320, 390 and 768 px wide and at 1440 × 600. It stays non-modal (Escape and focus return are #59,
   layering #111). jsdom computes no layout: unit tests check the rule in `styles.css` and that each page still
   renders with its "fermer"; the QA pass measures the scroll on the production build.

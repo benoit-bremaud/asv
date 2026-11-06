@@ -339,7 +339,7 @@ describe("legal pages (ADR-0018)", () => {
   it("keeps each page within the viewport so it scrolls and its fermer stays reachable (#126)", async () => {
     // jsdom computes no layout: check the rule that bounds the page, then that each page uses it.
     const rule = readFileSync("src/web/styles.css", "utf8").match(/^\.legal-page \{[^}]*\}/m)?.[0] ?? "";
-    expect(rule).toContain("height: auto;");
+    expect(rule).not.toMatch(/[ {;]height:/);
     expect(rule).toContain("max-height: calc(100dvh - 2 * var(--gap));");
     expect(rule).toContain("overflow: auto;");
     vi.stubGlobal("fetch", vi.fn(async () => new Response("{}", { status: 200 })));
