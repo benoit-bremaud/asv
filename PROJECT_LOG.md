@@ -550,3 +550,16 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
 - Adversarial review: 3 rounds (Must 2, Should 5 fixed); Codex review: no finding.
 - Merged 2026-11-12: PR #159 squash f9e472c; verify, gitleaks, audit and SonarQube green on de428aa.
   Next: #151.
+
+## 2026-11-12 — Refused draft given back (#151)
+
+- A room name or a private message refused by the server comes back in its field: `send` returns the `seq`,
+  the store keeps `refusedSeq` from `replyTo`, and each field restores its last sent text when that seq is
+  refused and the field is still empty (owner option B, 460/500). The Opening window stays open after
+  `tooManyWindows` (option A, 470/500). Studies `web-ui/04` and `web-ui/07` first.
+- QA DR on the local prod build with 4 `ws` member bots: refused `admin` room name kept, 4th private window
+  kept with its draft, resend after closing a window delivered (FON-10a…d PASS); closes CQ-B03 and CQ-B12.
+- Adversarial review: 2 rounds (Must 1, Should 4 fixed; `refusedSeq` kept across a reply without `replyTo`).
+- Merged 2026-11-12: PR #161 squash 91d57b7; verify, gitleaks, audit and SonarQube green on fb97503. Codex
+  review was still running at merge. Follow-ups seen in review: `web-ui/07` "error offline → OtherGone" not
+  implemented; a `sendPrivate` from a sender not connected gets no reply. Next: #59, #142, #143.
