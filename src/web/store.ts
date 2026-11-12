@@ -290,6 +290,7 @@ const onServer = (state: ChatState, message: ServerMessage): ChatState => {
         me: { sessionId: message.payload.sessionId, pseudo: state.pendingPseudo ?? "" },
         pendingPseudo: undefined,
         entryError: undefined,
+        refusedPseudo: undefined,
         roomList: message.payload.roomList,
         account: linkedTo(state.account, message.payload.accountId),
       };

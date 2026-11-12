@@ -28,6 +28,7 @@ classDiagram
     +Record~SessionId, Gender~ known
     +Code notice
     +Code entryError
+    +String refusedPseudo
     +AccountView account
     +Record~ConversationId, PrivateView~ windows
     +SessionId[] ignored
@@ -170,7 +171,7 @@ classDiagram
   connection manager lives outside React; it dispatches actions and screens call its commands. Screens
   never touch the socket (`web-ui/03`). Screens call `Commands`; their only local actions are `showRooms`,
   `showRoom` and `dismissNotice` (`LocalAction`), never `server` or `link`.
-- **Reducer**: `entered` → screen `rooms`, `me` set; `entryRefused` → `entryError` (the reason code);
+- **Reducer**: `entered` → screen `rooms`, `me` set; `entryRefused` → `entryError` (the reason code) and `refusedPseudo` (from `pendingPseudo`), `entering` and `entered` clear both;
   `roomList` → list; `roomJoined` → room opened with its members and active, screen `room`; `memberJoined`,
   `memberLeft`, `memberAway`, `memberBack` → member list of that room updated; `roomMessage` → line
   appended, at most the last 200 lines per room in memory (BR-034: never stored); `warning`, `error` →
