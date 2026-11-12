@@ -537,3 +537,16 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
 - Adversarial review: 2 rounds, 3 Should fixed (private-window test, label-in-name invariant, evidence SHA).
 - Merged 2026-11-12: PR #157 squash 1c20596; verify, gitleaks, audit and SonarQube green on 7e6a323.
   Next: #154, #151.
+
+## 2026-11-12 — Refused pseudo field marked invalid (#154)
+
+- A pseudo refused by the server (`pseudoTaken`, `pseudoInvalid`) marks the entry pseudo field with
+  `aria-invalid` and `aria-describedby` to the alert while the field holds the refused pseudo (owner option A,
+  480/500); `pseudoTaken` now says how to fix it (accents and case do not count, BR-002). Study `web-ui/04` first.
+- The store keeps `refusedPseudo` (from `pendingPseudo`), so a pseudo whose sending failed is never marked
+  (adversarial review round 1).
+- QA PI on the local prod build, two chatters (`LÉA_6` while `Léa_6` is connected, `admin_6`): attributes and
+  accessibility tree as expected, Lighthouse accessibility 100; closes the CQ A11Y-03 FAIL row.
+- Adversarial review: 3 rounds (Must 2, Should 5 fixed); Codex review: no finding.
+- Merged 2026-11-12: PR #159 squash f9e472c; verify, gitleaks, audit and SonarQube green on de428aa.
+  Next: #151.
