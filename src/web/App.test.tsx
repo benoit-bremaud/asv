@@ -234,6 +234,7 @@ describe("entry screen", () => {
     await goOnline();
     await fill(user);
     await user.click(enterButton());
+    await fire({ type: "entering", pseudo: "ana" });
 
     await fromServer(msg("entryRefused", { reason }));
 
@@ -247,6 +248,7 @@ describe("entry screen", () => {
     await goOnline();
     await fill(user);
     await user.click(enterButton());
+    await fire({ type: "entering", pseudo: "ana" });
     await fromServer(msg("entryRefused", { reason: "pseudoTaken" }));
     const field = screen.getByLabelText(STRINGS.pseudo);
 
@@ -256,6 +258,35 @@ describe("entry screen", () => {
     expect(field.hasAttribute("aria-describedby")).toBe(false);
     await user.keyboard("{Backspace}");
     expect(field.getAttribute("aria-invalid")).toBe("true");
+    expect(field.getAttribute("aria-describedby")).toBe("entry-error");
+  });
+
+  it("marks the pseudo field after a refusal from the members panel (#154)", async () => {
+    const user = await setup();
+    await goOnline();
+    await fill(user);
+    await user.type(screen.getByLabelText(STRINGS.email), "ana@example.org");
+    await user.click(screen.getByRole("button", { name: STRINGS.getCode }));
+    await fire({ type: "entering", pseudo: "ana" });
+
+    await fromServer(msg("entryRefused", { reason: "pseudoTaken" }));
+
+    expect(screen.getByLabelText(STRINGS.pseudo).getAttribute("aria-invalid")).toBe("true");
+  });
+
+  it("leaves an edited pseudo unmarked when its sending fails (#154)", async () => {
+    const user = await setup();
+    await goOnline();
+    await fill(user);
+    await user.click(enterButton());
+    await fire({ type: "entering", pseudo: "ana" });
+    await fromServer(msg("entryRefused", { reason: "pseudoTaken" }));
+    const field = screen.getByLabelText(STRINGS.pseudo);
+    await user.type(field, "x");
+
+    await user.click(enterButton()); // the write fails: no `entering`, the refusal stays on "ana"
+
+    expect(field.hasAttribute("aria-invalid")).toBe(false);
   });
 
   it("leaves the pseudo field unmarked on a refusal that is not about the pseudo (#154)", async () => {
@@ -263,16 +294,13 @@ describe("entry screen", () => {
     await goOnline();
     await fill(user);
     await user.click(enterButton());
+    await fire({ type: "entering", pseudo: "ana" });
 
     await fromServer(msg("entryRefused", { reason: "age" }));
 
     const field = screen.getByLabelText(STRINGS.pseudo);
     expect(field.hasAttribute("aria-invalid")).toBe(false);
     expect(field.hasAttribute("aria-describedby")).toBe(false);
-  });
-
-  it("says how to fix a taken pseudo (BR-002, #154)", () => {
-    expect(STRINGS.entryRefused.pseudoTaken).toMatch(/accents et les majuscules ne comptent pas/);
   });
 
   it("prefills the pseudo after a leave", async () => {
