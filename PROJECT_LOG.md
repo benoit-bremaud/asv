@@ -602,3 +602,16 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
 - Merged 2026-11-12: PR #172 squash 97f3d34; verify, gitleaks, audit and SonarQube green on 4bc3709.
   Follow-ups: #170 (header buttons 33 px on touch), #171 (mobile-first stylesheet, NF-006 at 320 px).
   Next: #168, #170, #104 dark, #136, #171.
+
+## 2026-11-12 — Pseudo menu items get the 44 px touch floor (#168)
+
+- `.menu .link { min-height: 44px; }` joins the #142 `pointer: coarse` block (owner option A, 480/500): "message
+  privé" and "ignorer" go from 25 to 44 px on touch; 25 px with a mouse (≥ 24 px). Study `web-ui/04` "Text
+  targets" first; JRN-20 case e.
+- QA PM on the local prod build in Chrome DevTools MCP: 320 and 1440 mouse, 390 × 844 (light, dark), 844 × 390
+  and 1024 × 768 touch, members list, search results and private window title; axe-core 4.14 `target-size` clean
+  with the menu open. Chromium only. At 1024 × 768 the taller menu is clipped 5 px in the members panel (#85).
+- Adversarial review: 2 rounds (Should 2 fixed: a screenshot taken with the account panel open, re-run as e8;
+  1024 × 768 added). Codex review: no findings.
+- Merged 2026-11-12: PR #174 squash 8989ae8; verify, gitleaks, audit and SonarQube green on ced8d06.
+  Next: #170, #104 dark, #136, #171.
