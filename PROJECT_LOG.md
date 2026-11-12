@@ -563,3 +563,15 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
 - Merged 2026-11-12: PR #161 squash 91d57b7; verify, gitleaks, audit and SonarQube green on fb97503. Codex
   review was still running at merge. Follow-ups seen in review: `web-ui/07` "error offline → OtherGone" not
   implemented; a `sendPrivate` from a sender not connected gets no reply. Next: #59, #142, #143.
+
+## 2026-11-12 — Legal page modal dialog (#59)
+
+- Legal pages (rules, notice, privacy) are modal dialogs (owner option A, 460/500): `showModal()`, focus on the
+  dialog, Escape, `cancel` and "fermer" give the focus back to the opening link (which focuses itself on click,
+  #130); from the account panel Escape closes the page first, then the panel (JRN-17 changed). Backdrop 0.25,
+  the layering part of #111. Studies `web-ui/04` and `web-ui/05` first; new journey JRN-23.
+- QA LM on the local prod build in Chrome: 1440 × 900 light and 390 × 844 dark, all PASS; Safari macOS not run.
+- Adversarial review: 2 rounds (Must 2: stale "non-modal" wording, QA shots mislabelled 1440 light; Should 4
+  fixed).
+- Merged 2026-11-12: PR #165 squash e38ad0e; verify, gitleaks, audit and SonarQube green on df805fb. Out of
+  scope: the account panel's own Escape handler may be redundant next to `onCancel`. Next: #142, #143.
