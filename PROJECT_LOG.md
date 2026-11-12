@@ -487,3 +487,25 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   pseudo at 390 px and below).
 - Merged 2026-11-06: PR #141 squash b08b83c with owner approval; local verify, gitleaks and SonarQube green on
   10492d5, GitHub checks and Codex review clean. Next: #131, #59, then #142 and #143.
+
+## 2026-11-12 — Focus kept when a private window closes or minimises (#131)
+
+- Study first: `web-ui/07` gains the focus rule (owner option A 420/500): closing a window focuses the window
+  after it in Tab order, else the one before it (title pseudo, or tab when minimised), else the room message
+  field, else the document; a refused close keeps the window and the focus; minimising focuses the new tab
+  (owner: minimise in the same PR). JRN-21 added to the test plan.
+- Code: `closePrivate` returns whether the close was applied; the dock refocuses after the store applied it;
+  `MESSAGE_FIELD_ID` exported by `RoomScreen`. 10 unit tests, each failing without the change (mutation checked).
+- Adversarial review (Opus): round 1 no Must, three Should (refused-close test proved nothing, "next window"
+  ambiguous with `row-reverse`, JRN-21 cases incomplete), all fixed; round 2 one Should (doc comment detached)
+  and two Nice, fixed. Pre-existing study mismatch filed as #145.
+- QA pass (`docs/architecture/qa/2026-11-12-131-private-focus-pass.md`, Chrome DevTools MCP, local production
+  build): JRN-21 (a)…(g) pass at 1440 × 900, (a), (b), (d) at 320 px without reflow; Lighthouse accessibility
+  96. Owner option C (390/500): SEC, Firefox/WebKit, dark, ROB-02 waived to campaign #147. Filed #148 (form
+  fields without id or name); `listitem` noted on #107.
+- New living QA ledger `docs/architecture/qa/checklist.md` (owner rule 2026-11-12): every QA step of every pass,
+  seeded from all earlier reports. Owner also asked for a crowd campaign: #147 (P1).
+- Governance (#149, owner option B 435/500): the main ruleset now requires only the local `sonarqube` status;
+  `verify` and `codeql` were GitHub Actions checks that no longer run since the 2026-11-07 local-only rule.
+- Merged 2026-11-12: PR #146 squash 5493121; local verify (726 tests, 98.67 % statements), gitleaks, audit and
+  SonarQube green on 98e9a03; Codex review clean. Next: #147, then #59, #142, #143.
