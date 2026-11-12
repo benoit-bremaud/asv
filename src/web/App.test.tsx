@@ -839,7 +839,7 @@ describe("room screen", () => {
     const css = readFileSync("src/web/styles.css", "utf8");
     expect(css.match(/^\.smileys summary \{[^}]*\}/m)?.[0]).toContain("line-height: 24px;");
     expect(css.match(/^\.pseudo-button \{[^}]*\}/m)?.[0]).toContain("min-height: 24px;");
-    const touch = /@media \(pointer: coarse\) \{\s*\.smileys summary \{ line-height: 44px; \}\s*\.pseudo-button \{ min-height: 44px; \}\s*(?:\/\*[^*]*\*\/\s*)?\.menu \.link \{ min-height: 44px; \}\s*\}/;
+    const touch = /@media \(pointer: coarse\) \{\s*\.smileys summary \{ line-height: 44px; \}\s*\.pseudo-button \{ min-height: 44px; \}\s*(?:\/\*[^*]*\*\/\s*)?\.menu \.link \{ min-height: 44px; \}\s*(?:\/\*[^*]*\*\/\s*)?\.overlay \.link \{ min-height: 44px; \}\s*\}/;
     expect(css).toMatch(touch);
     // Same specificity: the touch block must come after both base rules to win.
     const touchAt = css.search(touch);
@@ -1831,13 +1831,151 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
     expect(screen.queryByText(STRINGS.noResult)).toBeNull();
   });
 
-  it("opens the search overlay from a room", async () => {
+  const openSearch = async (enter: () => Promise<void> = signedIn) => {
     const user = await setup();
+    await enter();
+    await joinRoom("r1");
+    const opener = screen.getByRole("button", { name: STRINGS.search });
+    await user.click(opener);
+    return { user, opener, dialog: () => screen.getByRole("dialog", { name: STRINGS.searchTitle }) };
+  };
+  const searchClosed = () => screen.queryByRole("dialog", { name: STRINGS.searchTitle }) === null;
+
+  it("opens the search of a room as a modal dialog (#111)", async () => {
+    const { dialog } = await openSearch();
+
+    expect(showModal.mock.contexts.at(-1)).toBe(dialog());
+    expect(within(dialog()).getByLabelText(STRINGS.searchLabel)).toBeTruthy();
+  });
+
+  it("closes the search dialog with its button and gives the focus back (#111)", async () => {
+    const { user, opener, dialog } = await openSearch();
+
+    await user.click(within(dialog()).getByRole("button", { name: STRINGS.close }));
+
+    expect(searchClosed()).toBe(true);
+    expect(closeDialog).toHaveBeenCalled();
+    expect(document.activeElement).toBe(opener);
+  });
+
+  it("gives the focus back to \"rechercher\" when the click did not focus it (#111, #130)", async () => {
+    await setup();
     await signedIn();
     await joinRoom("r1");
+    const opener = screen.getByRole("button", { name: STRINGS.search });
 
-    await user.click(screen.getByRole("button", { name: STRINGS.search }));
+    fireEvent.click(opener);
+    fireEvent.keyDown(screen.getByRole("dialog", { name: STRINGS.searchTitle }), { key: "Escape" });
 
-    expect(screen.getByRole("heading", { name: STRINGS.searchTitle })).toBeTruthy();
+    expect(document.activeElement).toBe(opener);
+  });
+
+  it("raises the dialogs on a short screen and draws one frame around the search (#111)", () => {
+    // jsdom computes no layout: check the rules, after the base `.overlay` rule so they win.
+    const css = readFileSync("src/web/styles.css", "utf8");
+    const short = /^@media \(max-height: 500px\) \{ \.overlay \{ top: var\(--gap\); max-height: calc\(100dvh - 2 \* var\(--gap\)\); \} \}/m;
+
+    expect(css).toMatch(short);
+    expect(css.search(short)).toBeGreaterThan(css.search(/^\.overlay \{/m));
+    expect(css.match(/^\.overlay > \.search \{[^}]*\}/m)?.[0]).toContain("border: 0;");
+  });
+
+  it("closes only the pseudo menu on Escape inside the search dialog (#111)", async () => {
+    const { user, dialog } = await openSearch();
+    await user.type(within(dialog()).getByLabelText(STRINGS.searchLabel), "zo{Enter}");
+    await fromServer(msg("searchResults", { results: [{ sessionId: "s3", pseudo: "zoe", hasAccount: true, away: false, gender: "woman", age: 30, city: "Lyon", rooms: [] }] }));
+    const pseudo = within(dialog()).getByRole("button", { name: STRINGS.pseudoButton("zoe") });
+    await user.click(pseudo);
+
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(searchClosed()).toBe(false);
+    expect(document.activeElement).toBe(pseudo);
+  });
+
+  it.each([["Escape", (dialog: HTMLElement) => fireEvent.keyDown(dialog, { key: "Escape" })], ["a close request", (dialog: HTMLElement) => fireEvent(dialog, new Event("cancel", { cancelable: true }))]])(
+    "closes the open menu first, then the search dialog, on %s with the focus on the pseudo (#111)",
+    async (_name, press) => {
+      const { user, dialog } = await openSearch();
+      await user.type(within(dialog()).getByLabelText(STRINGS.searchLabel), "zo{Enter}");
+      await fromServer(msg("searchResults", { results: [{ sessionId: "s3", pseudo: "zoe", hasAccount: false, away: false, gender: "woman", age: 30, city: "Lyon", rooms: [] }] }));
+      await user.click(within(dialog()).getByRole("button", { name: STRINGS.pseudoButton("zoe") }));
+
+      press(dialog());
+
+      expect(screen.queryByRole("menu")).toBeNull();
+      expect(searchClosed()).toBe(false);
+      expect(document.activeElement).toBe(within(dialog()).getByRole("button", { name: STRINGS.pseudoButton("zoe") }));
+      press(dialog());
+      expect(searchClosed()).toBe(true);
+    },
+  );
+
+  it("opens the account dialog over the search dialog when \"message privé\" needs an account (#111)", async () => {
+    const { user, dialog } = await openSearch(async () => { await enterChat(); });
+    await user.type(within(dialog()).getByLabelText(STRINGS.searchLabel), "zo{Enter}");
+    await fromServer(msg("searchResults", { results: [{ sessionId: "s3", pseudo: "zoe", hasAccount: true, away: false, gender: "woman", age: 30, city: "Lyon", rooms: [] }] }));
+    const pseudo = within(dialog()).getByRole("button", { name: STRINGS.pseudoButton("zoe") });
+    await user.click(pseudo);
+
+    await user.click(screen.getByRole("menuitem", { name: STRINGS.privateMessage }));
+    const account = screen.getByRole("dialog", { name: STRINGS.accountTitle });
+    fireEvent.keyDown(account, { key: "Escape" });
+
+    expect(screen.queryByRole("dialog", { name: STRINGS.accountTitle })).toBeNull();
+    expect(searchClosed()).toBe(false);
+    expect(document.activeElement).toBe(pseudo);
+  });
+
+  it("shows a notice raised meanwhile inside the search dialog (#111)", async () => {
+    const { dialog } = await openSearch();
+
+    await fromServer(msg("error", { code: "invalid", message: "m" }));
+
+    expect(within(dialog()).getByRole("alert")).toBeTruthy();
+  });
+
+  it("closes the search dialog on Escape and on a close request (#111)", async () => {
+    const { user, opener, dialog } = await openSearch();
+
+    expect(fireEvent.keyDown(dialog(), { key: "Escape" })).toBe(false);
+    expect(searchClosed()).toBe(true);
+
+    await user.click(opener);
+    expect(fireEvent(dialog(), new Event("cancel", { cancelable: true }))).toBe(false);
+    expect(searchClosed()).toBe(true);
+  });
+
+  it("keeps the search dialog open on other keys (#111)", async () => {
+    const { dialog } = await openSearch();
+
+    expect(fireEvent.keyDown(dialog(), { key: "Enter" })).toBe(true);
+
+    expect(searchClosed()).toBe(false);
+  });
+
+  it("keeps the query and results when the search dialog reopens (#111)", async () => {
+    const { user, opener, dialog } = await openSearch();
+    await user.type(within(dialog()).getByLabelText(STRINGS.searchLabel), "bo{Enter}");
+    await fromServer(msg("searchResults", { results: [{ sessionId: "s3", pseudo: "zoe", hasAccount: true, away: false, gender: "woman", age: 30, city: "Lyon", rooms: [] }] }));
+
+    await user.click(within(dialog()).getByRole("button", { name: STRINGS.close }));
+    await user.click(opener);
+
+    expect((within(dialog()).getByLabelText(STRINGS.searchLabel) as HTMLInputElement).value).toBe("bo");
+    expect(within(dialog()).getByRole("button", { name: STRINGS.pseudoButton("zoe") })).toBeTruthy();
+  });
+
+  it("closes the search dialog when \"message privé\" opens a window from a result (#111)", async () => {
+    const { user, dialog } = await openSearch();
+    await user.type(within(dialog()).getByLabelText(STRINGS.searchLabel), "zo{Enter}");
+    await fromServer(msg("searchResults", { results: [{ sessionId: "s3", pseudo: "zoe", hasAccount: true, away: false, gender: "woman", age: 30, city: "Lyon", rooms: [] }] }));
+
+    await user.click(within(dialog()).getByRole("button", { name: STRINGS.pseudoButton("zoe") }));
+    await user.click(screen.getByRole("menuitem", { name: STRINGS.privateMessage }));
+
+    expect(searchClosed()).toBe(true);
+    expect(screen.getByRole("dialog", { name: STRINGS.privateWith("zoe") })).toBeTruthy();
   });
 });

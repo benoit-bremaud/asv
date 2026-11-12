@@ -18,7 +18,7 @@ export interface MenuTarget {
  * "message privé" is greyed when either side has no account (BR-040); while the chatter has none, it opens
  * the account panel instead.
  */
-export const PseudoMenu = ({ target }: { target: MenuTarget }) => {
+export const PseudoMenu = ({ target, onPrivate }: { target: MenuTarget; onPrivate?: () => void }) => {
   const { state, commands } = useChat();
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLSpanElement>(null);
@@ -56,13 +56,15 @@ export const PseudoMenu = ({ target }: { target: MenuTarget }) => {
   };
   const privateMessage = () => {
     if (!signedIn) commands.local({ type: "openAccount" });
-    else
+    else {
+      onPrivate?.();
       commands.local({
         type: "openPrivate",
         other: target.away
           ? { sessionId: target.sessionId, pseudo: target.pseudo, hasAccount: target.hasAccount, away: true }
           : { sessionId: target.sessionId, pseudo: target.pseudo, hasAccount: target.hasAccount, away: false, gender: gender ?? "unspecified" },
       });
+    }
   };
   return (
     <span className="pseudo-menu" ref={root}>
@@ -79,7 +81,14 @@ export const PseudoMenu = ({ target }: { target: MenuTarget }) => {
         {ignored && <> <span className="small">{STRINGS.ignoredMark}</span></>}
       </button>
       {open && (
-        <span role="menu" className="menu panel" aria-label={STRINGS.pseudoMenu(target.pseudo)}>
+        <span role="menu" tabIndex={-1} className="menu panel" aria-label={STRINGS.pseudoMenu(target.pseudo)} onKeyDown={(event) => {
+          // Escape closes the menu only, never the dialog around it (search dialog, #111): focus back on the pseudo.
+          if (event.key !== "Escape") return;
+          event.preventDefault();
+          event.stopPropagation();
+          setOpen(false);
+          trigger.current?.focus();
+        }}>
           <button
             ref={first}
             type="button"

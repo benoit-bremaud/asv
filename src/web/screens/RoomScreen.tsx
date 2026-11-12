@@ -8,7 +8,7 @@ import { STRINGS } from "../strings";
 import { Header } from "./Header";
 import { Pseudo } from "./Pseudo";
 import { PseudoMenu } from "./PseudoMenu";
-import { SearchPanel } from "./SearchPanel";
+import { SearchDialog } from "./SearchPanel";
 
 
 /** Distance from the bottom, in pixels, still counted as "at the bottom" (rounding, last line half shown). */
@@ -86,7 +86,11 @@ export const RoomScreen = () => {
       <Header />
       <nav className="tabs" aria-label="salons">
         <button type="button" className="bevel" onClick={() => commands.local({ type: "showRooms" })}>{STRINGS.backToRooms}</button>
-        <button type="button" className="bevel" aria-expanded={showSearch} onClick={() => setShowSearch(!showSearch)}>{STRINGS.search}</button>
+        <button type="button" className="bevel" aria-haspopup="dialog" onClick={(event) => {
+          // Safari and Firefox on macOS do not focus a clicked button: focus it, so the dialog gives it back (#130).
+          event.currentTarget.focus();
+          setShowSearch(true);
+        }}>{STRINGS.search}</button>
         {Object.keys(state.open).map((id) => (
           <span key={id} className={`tab${id === roomId ? " tab-active" : ""}`}>
             <button type="button" className="link" aria-current={id === roomId} onClick={() => commands.local({ type: "showRoom", roomId: id })}>
@@ -96,7 +100,7 @@ export const RoomScreen = () => {
           </span>
         ))}
       </nav>
-      {showSearch && <div className="overlay"><SearchPanel /></div>}
+      {showSearch && <SearchDialog onClose={() => setShowSearch(false)} />}
       <main className="room">
         <section ref={lines} className="lines panel" onScroll={followBottom}>
           <h2># {nameOf(roomId)}</h2>

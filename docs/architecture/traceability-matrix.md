@@ -42,6 +42,8 @@ Links requirements to use cases and every use case to its realisations. All path
 | web-ui/03-component | Front-end modules (NF-004 to NF-006, NF-011, NF-012) |
 | web-ui/04-class-client-state | Client reducer, connection manager, renderer, entry and rooms screens (BR-022, NF-004, NF-011, brick 7a) |
 | web-ui/05-state-navigation | Legal pages (ADR-0018); screens for UC1, UC2, UC3, UC6, UC7, UC10, UC12, UC13, UC16 |
+| web-ui/06-state-account-panel | Account dialog, modal (UC17 to UC19, #63) |
+| web-ui/07-state-private-and-search | Pseudo menu, private windows and the search dialog of a room, modal (UC6 to UC8, BR-040 to BR-044, #111) |
 
 ## Tester exposure (ADR-0018, issue #54)
 
