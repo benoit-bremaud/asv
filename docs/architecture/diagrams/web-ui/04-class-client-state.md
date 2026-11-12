@@ -279,10 +279,15 @@ classDiagram
   smiley in the room composer carry the class `icon-button` next to `link`. It gives them `min-width` and
   `min-height` of 24 CSS px (WCAG 2.2 SC 2.5.8 AA) and centres the glyph, and 44 px under
   `@media (pointer: coarse)` (house touch floor), where the room name button of a tab gets the same 44 px
-  height so leaving a room is never the bigger target, and so do the two header buttons "Mon compte" and "quitter"
-  (`.header-end button`, #170, option A 465/500; 33 px before, they already pass the 24 px floor with a mouse); the other `.bevel` buttons keep their 33 px box on touch for now, tracked by #176. Other text links (`.link` alone) do not grow, except the text targets below, which get a height floor. jsdom
-  computes no layout: unit tests check the rules in `styles.css` and the class on each of these controls; the
-  QA pass measures each box on the production build.
+  height so leaving a room is never the bigger target, and so does every bevelled button (`.bevel`, #176, option A
+  460/500: the header buttons "Mon compte" and "quitter" of #170, the "salons" button, the minimised private window
+  tabs (`.private-tab`), "créer", "rechercher", "envoyer", "Membres (n)", the entry, account, privacy and private
+  window buttons); one class rule covers future buttons and replaces the #170 `.header-end button` rule. With a
+  mouse they keep their box of at least 33 px (`.bevel.big`: 45 px), already above the 24 px floor; text inputs
+  keep theirs. Every button that is not `.bevel` is a `.link`; the glyph, pseudo and menu links get the floors
+  above and below, plain text links do not. Other text links (`.link` alone) do not grow, except the text targets below, which get a height floor. jsdom
+  computes no layout: unit tests check the rules in `styles.css`, the class on the header and room-screen
+  bevelled buttons, and that every button rendered on the room screen is `.link` or `.bevel`; the QA pass measures the boxes on the production build.
   Text targets (#142, option C 470/500): the "smileys" toggle (`details.smileys > summary`) and each pseudo
   button (`.pseudo-button`: members list, private window title, search results) are text controls with a 21 px line box. They get the same floors without a
   new class: `min-height: 24px` on `.pseudo-button` (a button centres its text) and `line-height: 24px` on
