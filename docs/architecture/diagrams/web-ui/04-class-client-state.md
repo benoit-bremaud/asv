@@ -279,6 +279,11 @@ classDiagram
   smiley in the room composer carry the class `icon-button` next to `link`. It gives them `min-width` and
   `min-height` of 24 CSS px (WCAG 2.2 SC 2.5.8 AA) and centres the glyph, and 44 px under
   `@media (pointer: coarse)` (house touch floor), where the room name button of a tab gets the same 44 px
-  height so leaving a room is never the bigger target. Text links keep `.link` alone and do not grow. jsdom
+  height so leaving a room is never the bigger target. Other text links (`.link` alone) do not grow; the text targets below get a height floor. jsdom
   computes no layout: unit tests check the rules in `styles.css` and the class on each of these controls; the
   QA pass measures each box on the production build.
+  Text targets (#142, option C 470/500): the "smileys" toggle (`details.smileys > summary`) and each pseudo
+  button (`.pseudo-button`: members list, private window title, search results) are text controls with a 21 px line box. They get the same floors without a
+  new class: `min-height: 24px` on `.pseudo-button` (a button centres its text) and `line-height: 24px` on
+  `.smileys summary`, which stays `display: list-item` so its disclosure marker is kept (`inline-flex` would
+  drop it); both 44 px under `@media (pointer: coarse)`, in a block placed after the base rules.
