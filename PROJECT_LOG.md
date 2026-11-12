@@ -509,3 +509,19 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   `verify` and `codeql` were GitHub Actions checks that no longer run since the 2026-11-07 local-only rule.
 - Merged 2026-11-12: PR #146 squash 5493121; local verify (726 tests, 98.67 % statements), gitleaks, audit and
   SonarQube green on 98e9a03; Codex review clean. Next: #147, then #59, #142, #143.
+
+## 2026-11-12 — Crowd QA campaign (#147)
+
+- Exploratory multi-user campaign (`docs/architecture/qa/2026-11-12-147-crowd-campaign.md`) on the local
+  production build: scratchpad crowd driver (owner option A, 435/500; source annexed), up to 520 sockets from
+  distinct loopback IPs, 40 ambient chatters, Chrome DevTools MCP, Playwright Firefox and WebKit.
+- Driver CQ-01…27: 26 PASS, 1 INFO; room cap, user-room limits, search cap, 3-window cap, ignore, flood,
+  away/resume, BR-007, BR-088, BR-089 and the 500-socket global cap all held; no server error in any run.
+- Browser: 8 PASS, 3 FAIL, 3 MIXED. Closes the #131 waiver (SEC-01…10, UI-01/03/04, ROB-02, A11Y-02/03).
+- Gate ❌ on the product: Must #153 and #154 (P0 accessibility items, raised to P1), Should #151 (draft lost
+  when the server refuses a private message or room name); #152 closed as duplicate of #70 N2; evidence
+  added to #24 and #68.
+- Adversarial review: 3 rounds (severity rule, ledger detail, journeys and sections), gate open; Codex: 2 P2
+  (320 px room and 390 px engine private step not really run), re-graded to MIXED.
+- Merged 2026-11-12: PR #155 squash f8554f9; verify, gitleaks, audit and SonarQube green on 0f5654a.
+  Next: #153, #154, #151, then #59, #142, #143.
