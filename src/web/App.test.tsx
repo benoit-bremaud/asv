@@ -811,17 +811,20 @@ describe("room screen", () => {
     }
   });
 
-  it("gives the header buttons the 44 px touch floor (#170)", async () => {
-    // jsdom computes no layout: check the rule sits in the #105 touch block, then that both buttons match it.
+  it("gives every bevelled button the 44 px touch floor (#170, #176)", async () => {
+    // jsdom computes no layout: check the rule sits in the #105 touch block, then that the buttons carry the class.
     const css = readFileSync("src/web/styles.css", "utf8");
-    expect(css).toMatch(/@media \(pointer: coarse\) \{\s*\.icon-button \{[^}]*\}\s*\/\*[^*]*\*\/\s*\.tab \.link \{ min-height: 44px; \}\s*(?:\/\*[^*]*\*\/\s*)?\.header-end button \{ min-height: 44px; \}\s*\}/);
-    // One rule only, so no later rule of the same specificity can undo the fix unnoticed.
-    expect(css.match(/\.header-end button \{/g)).toHaveLength(1);
+    expect(css).toMatch(/@media \(pointer: coarse\) \{\s*\.icon-button \{[^}]*\}\s*\/\*[^*]*\*\/\s*\.tab \.link \{ min-height: 44px; \}\s*(?:\/\*[^*]*\*\/\s*)?\.bevel \{ min-height: 44px; \}\s*\}/);
+    // Same specificity: the touch block must come after the base rule to win.
+    expect(css.indexOf("  .bevel { min-height: 44px; }")).toBeGreaterThan(css.indexOf(".bevel {\n"));
+    // The #170 per-button rule is gone: one class rule covers every bevelled button.
+    expect(css).not.toContain(".header-end button {");
     await setup();
     await enterChat();
+    await joinRoom("r1");
 
-    for (const name of [STRINGS.myAccount, STRINGS.quit]) {
-      expect(screen.getByRole("button", { name }).matches(".header-end button")).toBe(true);
+    for (const name of [STRINGS.myAccount, STRINGS.quit, STRINGS.backToRooms, STRINGS.search, STRINGS.send]) {
+      expect(screen.getByRole("button", { name }).classList).toContain("bevel");
     }
   });
 
