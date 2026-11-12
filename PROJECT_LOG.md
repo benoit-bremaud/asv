@@ -525,3 +525,15 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   (320 px room and 390 px engine private step not really run), re-graded to MIXED.
 - Merged 2026-11-12: PR #155 squash f8554f9; verify, gitleaks, audit and SonarQube green on 0f5654a.
   Next: #153, #154, #151, then #59, #142, #143.
+
+## 2026-11-12 — Member button accessible name (#153)
+
+- Pseudo button named "<pseudo>[ (absent)][ (ignoré)], actions" (WCAG 2.5.3, owner option A 500/500); the
+  open menu keeps "actions pour <pseudo>". Study `web-ui/07` updated first.
+- Root cause found in the browser: axe 4.12 (Lighthouse 13) drops a space that opens an element's text, so an
+  exact label still failed; the separating space is now a text node outside the suffix `<span>`.
+- QA PL on the local prod build: Blabla 9 members, 5 away, `label-content-name-mismatch` gone; `target-size`
+  left (#142). Orphan DevTools Chrome closed (owner option A, 440/500).
+- Adversarial review: 2 rounds, 3 Should fixed (private-window test, label-in-name invariant, evidence SHA).
+- Merged 2026-11-12: PR #157 squash 1c20596; verify, gitleaks, audit and SonarQube green on 7e6a323.
+  Next: #154, #151.
