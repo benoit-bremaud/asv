@@ -61,6 +61,12 @@ stateDiagram-v2
 - **Opening**: "message privé" opens a window in `Opening` with the composer focused; nothing is sent until
   the first message. A refusal (`warning` or `error` replying to that `sendPrivate`) shows the notice and
   keeps the draft: the field clears on send and gets the sent text back when the refusal arrives (`web-ui/04`, #151). The window stays in `Opening` (option A 470/500), so after `tooManyWindows` the chatter can close another window and send again. `accountRequired` also opens the account panel.
+- **Incoming window** (#67, WCAG 3.2.2 / 2.4.3, owner choice A 480/500): a window opened by the other
+  chatter's first message shows as usual but never takes the focus; the chatter keeps typing where they were
+  and the window's `aria-live` log announces the line. Only the chatter's own actions focus the composer:
+  "message privé" (Opening) and restoring a minimised tab. The store marks each window `focusOnOpen`
+  (true from `openPrivate` and the restore of `togglePrivate`, false from `privateWindow` with no pending window), and the composer
+  takes `autoFocus` from it.
 - **Windows**: at most 3 open (BR-043; the server enforces it). Each window holds its last 200 lines in
   memory only (BR-034), its own draft, the 500 code point counter and the BR-090 check of the room composer (BR-020, BR-090), with its refused-field marking (`web-ui/04`, #121), and an
   unread count while minimised. Lines render through the same `Renderer` (smileys, never HTML).
@@ -95,7 +101,7 @@ stateDiagram-v2
   pseudo button; the pseudo button's accessible name starts with its visible text, "<pseudo>[ (absent)][ (ignoré)], actions"
   (WCAG 2.5.3 Label in Name, #153; the space before each suffix is a text node outside its `<span>`, as axe 4.12 in
   Lighthouse 13 drops a space that opens an element's text), while the open `menu` stays labelled "actions pour <pseudo>"; each window is a `dialog` (non-modal) labelled by the other pseudo with an
-  `aria-live="polite"` log; the search results are a list of buttons.
+  `aria-live="polite"` log; its composer is named "message privé à <pseudo>", so no two fields on the page share the room composer's name "message" (#106, WCAG 4.1.2 / 2.4.6); the search results are a list of buttons.
 - **Focus after close or minimise** (#131, WCAG 2.4.3, owner choice A 420/500): closing a window moves the
   focus to the window after it in Tab order (opened after it; shown to its left on desktop, above it on
   phones), else the one before it, on its first control (the title pseudo, or

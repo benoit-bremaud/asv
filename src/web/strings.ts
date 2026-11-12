@@ -59,6 +59,7 @@ export const STRINGS = {
   unignore: "ne plus ignorer",
   ignoredMark: "(ignoré)",
   privateWith: (pseudo: string) => `privé avec ${pseudo}`,
+  privateMessageTo: (pseudo: string) => `message privé à ${pseudo}`,
   privateWindows: "messages privés",
   minimise: "réduire",
   restore: (pseudo: string) => `ouvrir ${pseudo}`,
