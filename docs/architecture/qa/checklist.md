@@ -8,14 +8,14 @@ latest evidence are in [test-plan.md](test-plan.md)).
 > **Rule: every QA pass appends all its steps here**, in the same PR as its report: each manipulation (server
 > start, accounts, e-mail codes, toggles such as offline), each case with its exact keys, viewport and tool, each
 > console and network read, each issue filed. Never edit or drop an earlier row; a later pass that supersedes a
-> row adds its own. Last updated: 2026-11-12 (campaign CQ, #147).
+> row adds its own. Last updated: 2026-11-12 (PL, #153).
 
 Report codes: **FP** `2026-10-24-full-pass` · **RS** `2026-10-24-tester-runbook-smoke` · **PD** `2026-11-02-65-private-dock`
 · **CS** `2026-11-02-code-step-resume` · **TS** `2026-11-02-test-plan-smoke` · **FL** `2026-11-03-89-frame-limit-full`
 · **SA** `2026-11-03-security-audit` (static review, findings only) · **SC** `2026-11-05-23-socket-caps-full` · **OH**
 `2026-11-05-64-one-h1-pass` · **BI** `2026-11-05-91-invisible-chars-pass` · **SZ** `2026-11-06-105-target-size-pass`
 · **AR** `2026-11-06-121-aria-invalid-pass` · **LS** `2026-11-06-126-legal-scroll-pass` · **AM**
-`2026-11-06-63-account-modal-pass` · **PF** `2026-11-12-131-private-focus-pass` · **CQ** `2026-11-12-147-crowd-campaign`.
+`2026-11-06-63-account-modal-pass` · **PF** `2026-11-12-131-private-focus-pass` · **CQ** `2026-11-12-147-crowd-campaign` · **PL** #153 label-in-name check (rows only).
 
 Seeding note: rows dated before 2026-11-12 are compressed from the reports' own result tables (action = the check
 column, observed = the evidence column cut at about 400 characters, evidence = screenshots, issues and head SHA);
@@ -728,3 +728,7 @@ from PF on, the owner's rule (2026-11-12) is Chrome DevTools MCP for every check
 | 2026-11-12 | CQ | CQ-B14 | Detail: UI-03: Firefox and WebKit (Playwright), entry, Paris with 30+ members, XSS post, guest "message privé", 1440 light and 390 dark | as the check names it | no overflow, own post shown as text, 0 injected nodes, guest gets the account dialog; WebKit "Refused to apply a stylesheet" = Playwright screenshot caret (known, reports SC/AM) | PASS | report § Browser checks  09 |
 | 2026-11-12 | CQ | CQ-B10 | Re-graded after Codex review on PR #155 (supersedes the CQ-B10 rows) | busy room checked at every viewport | 320×568: emulation reload left the room, only the rooms list checked | MIXED | shot 05 |
 | 2026-11-12 | CQ | CQ-B14 | Re-graded after Codex review on PR #155: guest private step at 390 px | account dialog in Firefox and WebKit | member list collapsed, locator timed out in a `try`, step not run; 1440 PASS | MIXED | driver annex `engines.cjs` |
+| 2026-11-12 | PL | SETUP-1 | `pnpm build` of fix/153-member-accessible-name, server `ASV_PORT=8788 ASV_STATIC_ROOT=dist` on 127.0.0.1; scratchpad driver (`ws`, loopback IPs 127.0.1.2–9) enters Rafale_0…7, joins Blabla, cuts 5 sockets | Blabla with 8 members, 5 away | Blabla (8), Rafale_0…4 "(absent)" | PASS | working tree on 7c688b5 |
+| 2026-11-12 | PL | A11Y-02a | Before the DOM fix (label only): Lighthouse 13 snapshot, Chrome DevTools MCP, Blabla as Alba | no `label-content-name-mismatch` | still 5 nodes; an exact `aria-label` also failed. In-page probes: the rule passes once the separating space sits outside the suffix `<span>` (axe 4.12 drops a space that opens an element's text), for "(absent)" and "(ignoré)" alike | FAIL then root cause | report `scratchpad/lh` (not kept) |
+| 2026-11-12 | PL | A11Y-02b | After the fix (space as a text node, name "<pseudo>[ (absent)][ (ignoré)], actions"): rebuild, fresh server, same crowd, Lighthouse 13 snapshot | no `label-content-name-mismatch` | rule passes; accessibility 96, only `target-size` on the member buttons left (known, #142); names read back "Rafale_0 (absent), actions" … "Rafale_7, actions" | PASS | `2026-11-12-153-01-away-members-blabla` |
+| 2026-11-12 | PL | SETUP-2 | Evidence SHA for SETUP-1, A11Y-02a and A11Y-02b (adversarial review round 1): the A11Y-02b build was the uncommitted tree committed as 5ed13ec with no `src/` change in between; the follow-up commit touches only tests and docs (`git diff 5ed13ec HEAD -- src ':!*.test.*'` empty). Blabla showed 9 members with Alba | evidence tied to a SHA | product code of A11Y-02b = 5ed13ec | PASS | 5ed13ec |

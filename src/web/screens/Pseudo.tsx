@@ -5,6 +5,6 @@ import { STRINGS } from "../strings";
 export const Pseudo = ({ pseudo, gender, away = false }: { pseudo: string; gender?: Gender; away?: boolean }) => (
   <span className={`pseudo pseudo-${gender ?? "unspecified"}${away ? " pseudo-away" : ""}`}>
     {pseudo}
-    {away && <span className="away-mark"> {STRINGS.away}</span>}
+    {away && <> <span className="away-mark">{STRINGS.away}</span></>}
   </span>
 );

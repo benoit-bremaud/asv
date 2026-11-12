@@ -72,11 +72,11 @@ export const PseudoMenu = ({ target }: { target: MenuTarget }) => {
         className="link pseudo-button"
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={STRINGS.pseudoMenu(target.pseudo)}
+        aria-label={STRINGS.pseudoButton(target.pseudo, target.away, ignored)}
         onClick={() => setOpen(!open)}
       >
         <Pseudo pseudo={target.pseudo} gender={gender} away={target.away} />
-        {ignored && <span className="small"> {STRINGS.ignoredMark}</span>}
+        {ignored && <> <span className="small">{STRINGS.ignoredMark}</span></>}
       </button>
       {open && (
         <span role="menu" className="menu panel" aria-label={STRINGS.pseudoMenu(target.pseudo)}>

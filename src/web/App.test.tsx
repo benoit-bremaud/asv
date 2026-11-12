@@ -82,6 +82,12 @@ afterEach(() => {
   sessionStorage.clear();
 });
 
+/** WCAG 2.5.3: every pseudo button's name starts with its visible text (#153). */
+const expectLabelInName = () => {
+  const buttons = [...document.querySelectorAll("button.pseudo-button")];
+  expect(buttons.length).toBeGreaterThan(0);
+  for (const button of buttons) expect(button.getAttribute("aria-label")?.startsWith(button.textContent ?? "")).toBe(true);
+};
 describe("entry screen", () => {
   const fill = async (user: ReturnType<typeof userEvent.setup>, { age = "30", pseudo = "  ana  " } = {}) => {
     await user.type(screen.getByLabelText(STRINGS.pseudo), pseudo);
@@ -720,6 +726,12 @@ describe("room screen", () => {
     expect(pseudo.className).toContain("pseudo-man");
     expect(pseudo.className).toContain("pseudo-away");
     expect(pseudo.textContent).toContain(STRINGS.away);
+    expect(screen.getByRole("button", { name: "bob (absent), actions" })).toBeTruthy();
+    // axe 4.12 drops a space that opens an element's text, so it stays a text node (#153).
+    const mark = pseudo.querySelector(".away-mark");
+    expect(mark?.textContent).toBe(STRINGS.away);
+    expect(mark?.previousSibling?.textContent).toBe(" ");
+    expectLabelInName();
   });
 
   it("uses the neutral class for an away member whose gender was never seen", async () => {
@@ -1162,7 +1174,7 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
     await fromServer(msg("entered", { sessionId: "me", resumeToken: "t", roomList: rooms, isModerator: false, accountId: "a1" }));
   };
   const member = (hasAccount: boolean): Member => ({ ...man("s2", "bob"), hasAccount });
-  const openMenu = (user: ReturnType<typeof userEvent.setup>) => user.click(screen.getByRole("button", { name: STRINGS.pseudoMenu("bob") }));
+  const openMenu = (user: ReturnType<typeof userEvent.setup>) => user.click(screen.getByRole("button", { name: STRINGS.pseudoButton("bob") }));
   const sent = () => connection.send.mock.calls.map(([command]) => command);
 
   it("keeps a private draft with a zero-width space and does not send it (BR-090)", async () => {
@@ -1219,7 +1231,7 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
     await user.keyboard("{Escape}");
 
     expect(screen.queryByRole("menu")).toBeNull();
-    expect(screen.queryByRole("button", { name: STRINGS.pseudoMenu("ana") })).toBeNull();
+    expect(screen.queryByRole("button", { name: STRINGS.pseudoButton("ana") })).toBeNull();
   });
 
   it("greys message privé for a chatter without account, and opens the account panel when I have none", async () => {
@@ -1238,7 +1250,7 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
     expect(screen.queryByRole("dialog", { name: STRINGS.privateWith("bob") })).toBeNull();
     expect(screen.getByRole("heading", { name: STRINGS.accountTitle })).toBeTruthy();
     await user.click(within(screen.getByRole("dialog", { name: STRINGS.accountTitle })).getByRole("button", { name: STRINGS.close }));
-    expect(document.activeElement).toBe(screen.getByRole("button", { name: STRINGS.pseudoMenu("bob") }));
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: STRINGS.pseudoButton("bob") }));
   });
 
   it("ignores and unignores from the menu, and hides the ignored chatter's lines", async () => {
@@ -1254,7 +1266,9 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
 
     expect(screen.queryByText("spam")).toBeNull();
     expect(screen.getByText(STRINGS.ignoredMark)).toBeTruthy();
-    await openMenu(user);
+    expect(screen.getByText(STRINGS.ignoredMark).previousSibling?.textContent).toBe(" ");
+    expectLabelInName();
+    await user.click(screen.getByRole("button", { name: "bob (ignoré), actions" }));
     await user.click(screen.getByRole("menuitem", { name: STRINGS.unignore }));
     expect(sent()).toContainEqual({ type: "unignore", payload: { targetSessionId: "s2" } });
   });
@@ -1319,6 +1333,8 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByText(STRINGS.otherGone)).toBeTruthy();
     expect(within(dialog).getByLabelText(STRINGS.message)).toHaveProperty("disabled", true);
+    expect(within(dialog).getByRole("button", { name: "bob (absent), actions" })).toBeTruthy();
+    expectLabelInName();
     await user.click(within(dialog).getByRole("button", { name: STRINGS.close }));
     expect(sent().filter((command) => command.type === "closePrivate")).toEqual([]);
   });
@@ -1329,7 +1345,7 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
     const closeOf = (pseudo: string) =>
       within(screen.getByRole("dialog", { name: STRINGS.privateWith(pseudo) })).getByRole("button", { name: STRINGS.close });
     const titleOf = (pseudo: string) =>
-      within(screen.getByRole("dialog", { name: STRINGS.privateWith(pseudo) })).getByRole("button", { name: STRINGS.pseudoMenu(pseudo) });
+      within(screen.getByRole("dialog", { name: STRINGS.privateWith(pseudo) })).getByRole("button", { name: STRINGS.pseudoButton(pseudo) });
     const threeWindows = async () => {
       await open("c1", "s2", "bob");
       await open("c2", "s3", "cid");
@@ -1463,7 +1479,7 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
     expect(sent()).toContainEqual({ type: "search", payload: { query: "bo" } });
 
     await fromServer(msg("searchResults", { results: [{ sessionId: "s2", pseudo: "bob", hasAccount: true, away: false, gender: "man", age: 30, city: "Lyon", rooms: ["r1"] }] }));
-    expect(screen.getByRole("button", { name: STRINGS.pseudoMenu("bob") })).toBeTruthy();
+    expect(screen.getByRole("button", { name: STRINGS.pseudoButton("bob") })).toBeTruthy();
     expect(screen.getByText(`— ${STRINGS.inRooms("Paris")}`)).toBeTruthy();
 
     await fromServer(msg("searchResults", { results: [] }));
