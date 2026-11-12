@@ -811,6 +811,18 @@ describe("room screen", () => {
     }
   });
 
+  it("gives the header buttons the 44 px touch floor (#170)", async () => {
+    // jsdom computes no layout: check the rule sits in the #105 touch block, then that both buttons match it.
+    const css = readFileSync("src/web/styles.css", "utf8");
+    expect(css).toMatch(/@media \(pointer: coarse\) \{\s*\.icon-button \{[^}]*\}\s*\/\*[^*]*\*\/\s*\.tab \.link \{ min-height: 44px; \}\s*\.header-end button \{ min-height: 44px; \}\s*\}/);
+    await setup();
+    await enterChat();
+
+    for (const name of [STRINGS.myAccount, STRINGS.quit]) {
+      expect(screen.getByRole("button", { name }).matches(".header-end button")).toBe(true);
+    }
+  });
+
   it("gives the smileys toggle and the member pseudo buttons a 24 px target, 44 px on touch, and the menu items 44 px on touch (#142, #168)", async () => {
     // jsdom computes no layout: check the rules, then that the controls carry the selectors.
     const css = readFileSync("src/web/styles.css", "utf8");
