@@ -147,6 +147,14 @@ export const ACCOUNT_WARNINGS: Readonly<Record<string, AccountStep>> = {
   gone: "askEmail",
 };
 
+/** Notices about the member account, shown inside the account dialog while it is open (#136); others stay in the page. */
+export const ACCOUNT_NOTICES: ReadonlySet<string> = new Set([
+  ...Object.keys(ACCOUNT_WARNINGS), "codeSent", "accountUnlinked", "accountRequired", "deviceNotSaved", "notSignedIn",
+  // Feedback on the dialog's own actions: a store failure (`hub-accounts.ts`) or a click while offline (`connection.ts`).
+  "unavailable", "notConnected",
+]);
+export const isAccountNotice = (code: string | undefined): boolean => code !== undefined && ACCOUNT_NOTICES.has(code);
+
 const signedOut = (account: AccountView): AccountView => ({ ...account, step: "signedOut", accountId: undefined, triesLeft: undefined, pendingRequest: false });
 /** BR-087: a resume keeps a code step in memory, since the server keeps the code under the session id. */
 const resumedTo = (account: AccountView, accountId: string | undefined): AccountView =>
@@ -356,7 +364,8 @@ const onServer = (state: ChatState, message: ServerMessage): ChatState => {
       return { ...state, notice: "codeSent", account: { ...state.account, open: true, step: "waitingCode", triesLeft: undefined, pendingRequest: false } };
     case "accountLinked": {
       const { accountId, deviceClaim } = message.payload;
-      return { ...state, account: { ...state.account, step: deviceClaim ? "redeemingDevice" : "signedIn", accountId, triesLeft: undefined, pendingVerify: false } };
+      const notice = isAccountNotice(state.notice) ? undefined : state.notice;
+      return { ...state, notice, account: { ...state.account, step: deviceClaim ? "redeemingDevice" : "signedIn", accountId, triesLeft: undefined, pendingVerify: false } };
     }
     case "accountUnlinked":
       // ASV-F-024: the server already closed every conversation.

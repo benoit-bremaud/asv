@@ -54,6 +54,6 @@ stateDiagram-v2
 - **Tab switch (BR-087)**: `codeSent` saves the code deadline in `sessionStorage`. A resume keeps the
   code step in memory; after a reload, a resume before the deadline reopens the panel on the code step
   with the code field focused. A warning leading to `AskEmail`, "nouveau code" and `accountLinked` drop
-  the deadline.
+  the deadline; `accountLinked` also clears an account notice such as "code envoyé" (#136).
 - `WaitingCode` accepts digits only, six characters, and sends `verifyCode` on the sixth digit or on
   "valider".

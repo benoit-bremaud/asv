@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Member, ServerMessage } from "../shared/protocol";
-import { chatReducer, initialState, MAX_LINES, type Action, type ChatState, type OtherChatter } from "./store";
+import { chatReducer, initialState, isAccountNotice, MAX_LINES, type Action, type ChatState, type OtherChatter } from "./store";
 
 const server = (state: ChatState, message: ServerMessage) => chatReducer(state, { type: "server", message });
 const act = (state: ChatState, action: Action) => chatReducer(state, action);
@@ -410,6 +410,16 @@ describe("chatReducer: account (web-ui/06)", () => {
     expect(linked.account).toMatchObject({ step: "signedIn", accountId: "a1" });
     const remembered = server(waiting, { type: "accountLinked", seq: 0, payload: { accountId: "a1", deviceClaim: "c" } });
     expect(remembered.account.step).toBe("redeemingDevice");
+    expect(linked.notice).toBeUndefined();
+    const other = server({ ...waiting, notice: "flood" }, { type: "accountLinked", seq: 0, payload: { accountId: "a1" } });
+    expect(other.notice).toBe("flood");
+  });
+
+  it("tells account notices from the others (#136)", () => {
+    for (const code of ["codeSent", "codeWrong", "emailInvalid", "accountUnlinked", "accountRequired", "deviceNotSaved", "notSignedIn", "unavailable", "notConnected"]) {
+      expect(isAccountNotice(code)).toBe(true);
+    }
+    for (const code of ["nameInvalid", "flood", "logUnavailable", undefined]) expect(isAccountNotice(code)).toBe(false);
   });
 
   it.each([

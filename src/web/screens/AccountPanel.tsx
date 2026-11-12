@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type SubmitEvent, type SyntheticEvent } from "react";
 import { useChat } from "../chat-context";
+import { isAccountNotice } from "../store";
 import { STRINGS } from "../strings";
 import { LegalPage } from "./LegalPage";
 import { Notice } from "./Notice";
@@ -132,7 +133,7 @@ const AccountDialog = () => {
       {step === "signedIn" && <SignedIn />}
       {step === "confirmDelete" && <ConfirmDelete />}
       {/* After the step, so `showModal()` focuses the step's first control, not the dismiss button. */}
-      <Notice />
+      <Notice show={isAccountNotice} />
       <button type="button" className="link" onClick={close}>{STRINGS.close}</button>
     </dialog>
   );

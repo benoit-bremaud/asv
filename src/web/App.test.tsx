@@ -1402,6 +1402,32 @@ describe("account panel", () => {
     expect(screen.getAllByRole("alert").every((alert) => panel().contains(alert))).toBe(true);
   });
 
+  it("leaves a notice unrelated to the account in the page while the dialog is open (#136)", async () => {
+    await openPanel();
+    await fromServer(msg("warning", { code: "nameInvalid", message: "nameInvalid" }));
+
+    expect(within(panel()).queryByRole("alert")).toBeNull();
+    const alert = screen.getByRole("alert", { hidden: true });
+    expect(panel().contains(alert)).toBe(false);
+    expect(alert.textContent).toContain(STRINGS.notices.nameInvalid);
+  });
+
+  it("clears 'code envoyé' once the account is linked (#136)", async () => {
+    await openPanel();
+    await fromServer(msg("codeSent", {}));
+    await fromServer(msg("accountLinked", { accountId: "a1" }));
+
+    expect(screen.queryByRole("alert", { hidden: true })).toBeNull();
+  });
+
+  it("lines the dialogs up with the page column's right edge (#136)", () => {
+    // jsdom computes no layout: this only guards the rule's presence; JRN-27 a…e measure the boxes.
+    const css = readFileSync("src/web/styles.css", "utf8");
+
+    expect(css).toMatch(/^\.app \{ max-width: 1100px;/m);
+    expect(css.match(/^\.overlay \{[^}]*\}/m)?.[0]).toContain("right: max(var(--gap), calc((100% - 1100px) / 2 + var(--gap)));");
+  });
+
   it("shows the tries left and goes back to the e-mail on 'nouveau code'", async () => {
     const user = await openPanel();
     await fromServer(msg("codeSent", {}));

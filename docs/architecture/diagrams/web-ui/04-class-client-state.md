@@ -154,7 +154,7 @@ classDiagram
 ## Rules the code applies
 
 - **Account** (brick 5, `web-ui/06`): `codeSent` → `waitingCode`; `accountLinked` → `redeemingDevice` when
-  it carries a `deviceClaim`, else `signedIn`; `entered`/`resumed` with `accountId` → `signedIn`;
+  it carries a `deviceClaim`, else `signedIn`, and clears an account notice (#136); `entered`/`resumed` with `accountId` → `signedIn`;
   `accountUnlinked` → `signedOut`; a `warning` replying to `verifyCode` keeps `waitingCode` with the tries
   left. The connection manager gains `requestCode`, `verifyCode`, `signOutEverywhere`, `deleteAccount`,
   and two `fetch` calls to `/account/device` and `/account/sign-out` (`credentials: "same-origin"`).
@@ -271,19 +271,19 @@ classDiagram
   trap, the inert background and the top layer (above the private dock, #84). Escape (a key handler on the
   dialog) and `cancel` (Android back) dispatch
   `closeAccount`; "fermer" does the same. Its height fits the viewport and it scrolls, so "fermer" stays
-  reachable on a phone in landscape. While it is open the notice shows inside it, not in the inert page. On unmount the focus returns to the element
+  reachable on a phone in landscape. Its right edge lines up with the page column's (`right: max(var(--gap), calc((100% - 1100px) / 2 + var(--gap)))`, where `100%` is the viewport without its scrollbar, #136), so on a wide screen it sits under "quitter", not against the window edge; the search dialog shares the rule. Only account notices show inside it (#136, option A 445/500): the codes of `ACCOUNT_NOTICES` in `store.ts` (the `ACCOUNT_WARNINGS` codes plus `codeSent`, `accountUnlinked`, `accountRequired`, `deviceNotSaved`, `notSignedIn`, and `unavailable` and `notConnected`, the feedback on its own actions); any other notice stays in the page, so it does not move the header on open or close. `accountLinked` clears an account notice ("code envoyé" no longer outlives the sign-in). On unmount the focus returns to the element
   that had it when the panel opened ("Mon compte", the pseudo whose "message privé" opened it, or the room
   field when the server opened it); "Mon compte" focuses itself on click, since Safari and Firefox on
   macOS do not (#130); nothing gets it if that element left the page. The background being inert, no screen change can come from the user
   while the panel is open; leaving the chat (back to entry) unmounts it. The privacy page opened from the
   panel is a modal `dialog` stacked above it (Legal page dialog, #59); Escape closes it alone. Unit tests stub `showModal` and `close`
   (jsdom has neither) and check the modal opening, Escape (with the privacy page open: the page only, then the panel),
-  "fermer", the notice inside the dialog and the focus return. On a screen at most 500 px high it starts at
+  "fermer", an account notice inside the dialog, another notice left in the page, the notice cleared on sign-in, the alignment rule and the focus return. On a screen at most 500 px high it starts at
   the top of the viewport (`@media (max-height: 500px)`, #111), so "fermer" stays in view.
   Search dialog (#111, option A 460/500): in a room the search panel is a modal `dialog` built like the
   account dialog (`.overlay`, `showModal()` on mount, `close()` and focus return on unmount, Escape and
   `cancel` close it, "fermer"); "rechercher" focuses itself on click (#130). Escape on an open pseudo menu
-  inside it closes the menu only. The notice shows inside it too. Rules in `web-ui/07`.
+  inside it closes the menu only. Every notice raised while it is open shows inside it (unlike the account dialog, which keeps only account notices, #136). Rules in `web-ui/07`.
   Small controls (#105, A11Y-05, option A 480/500; smileys added after review round 1, option A 450/500): the
   glyph-only buttons that close a room tab ("×"), minimise or close a private window ("_", "×") and insert a
   smiley in the room composer carry the class `icon-button` next to `link`. It gives them `min-width` and
