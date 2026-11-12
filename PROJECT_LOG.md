@@ -644,3 +644,21 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   `.members-toggle` height rule). Codex review: no findings.
 - Merged 2026-11-12: PR #179 squash 07b3b9e; verify, gitleaks, audit and SonarQube green on the head.
   Next: #111 (raise to Must), #104 dark, #136, #171.
+
+## 2026-11-12 — Room search panel as a modal dialog (#111)
+
+- #111 raised to P1 (Must) by the owner: at 390 × 844 with a 20-character pseudo the room search panel covered
+  its own toggle and the tab bar and could not be closed by touch or Escape. The legal pages part was already
+  done by #59.
+- Owner option A (460/500, modal `dialog` with "fermer", Escape and close request, the #59/#63 pattern) over an
+  anchored panel (425) and a non-modal fixed dialog (270). Study `web-ui/07` and `web-ui/04` first; traceability
+  matrix gains the missing `web-ui/06` and `web-ui/07` rows. "message privé" in a result closes the dialog;
+  an open pseudo menu closes first on Escape or a close request; the notice shows inside the dialog.
+- QA SD (JRN-25) on the local prod build in Chrome DevTools MCP: 320 and 1440 mouse, 390 × 844 (light, dark),
+  844 × 390 and 1024 × 768 touch; found and fixed a 25 px "fermer" on touch (`.overlay .link` 44 px) and
+  "fermer" below the fold at 844 × 390 (dialogs at the top when ≤ 500 px high). Both rules also reach the
+  account dialog; JRN-17 and JRN-20 f11 not re-run. Review fixes covered by unit tests only.
+- Adversarial review: 2 rounds (Must 4, Should 3 fixed). Codex: 2 rounds, one P2 each (Escape with the focus
+  on the pseudo trigger; Android back with a menu open), both fixed.
+- Merged 2026-11-12: PR #181 squash 747c1c1; verify, gitleaks, audit and SonarQube green on the head.
+  Next: #104 dark, #136, #171.
