@@ -8,14 +8,14 @@ latest evidence are in [test-plan.md](test-plan.md)).
 > **Rule: every QA pass appends all its steps here**, in the same PR as its report: each manipulation (server
 > start, accounts, e-mail codes, toggles such as offline), each case with its exact keys, viewport and tool, each
 > console and network read, each issue filed. Never edit or drop an earlier row; a later pass that supersedes a
-> row adds its own. Last updated: 2026-11-12 (pass PF, #131).
+> row adds its own. Last updated: 2026-11-12 (campaign CQ, #147).
 
 Report codes: **FP** `2026-10-24-full-pass` · **RS** `2026-10-24-tester-runbook-smoke` · **PD** `2026-11-02-65-private-dock`
 · **CS** `2026-11-02-code-step-resume` · **TS** `2026-11-02-test-plan-smoke` · **FL** `2026-11-03-89-frame-limit-full`
 · **SA** `2026-11-03-security-audit` (static review, findings only) · **SC** `2026-11-05-23-socket-caps-full` · **OH**
 `2026-11-05-64-one-h1-pass` · **BI** `2026-11-05-91-invisible-chars-pass` · **SZ** `2026-11-06-105-target-size-pass`
 · **AR** `2026-11-06-121-aria-invalid-pass` · **LS** `2026-11-06-126-legal-scroll-pass` · **AM**
-`2026-11-06-63-account-modal-pass` · **PF** `2026-11-12-131-private-focus-pass`.
+`2026-11-06-63-account-modal-pass` · **PF** `2026-11-12-131-private-focus-pass` · **CQ** `2026-11-12-147-crowd-campaign`.
 
 Seeding note: rows dated before 2026-11-12 are compressed from the reports' own result tables (action = the check
 column, observed = the evidence column cut at about 400 characters, evidence = screenshots, issues and head SHA);
@@ -630,3 +630,101 @@ from PF on, the owner's rule (2026-11-12) is Chrome DevTools MCP for every check
 | 2026-11-12 | PF | UI-01/UI-03/UI-04/ROB-02/A11Y-02/A11Y-03/SEC-01…SEC-10 | Waiver: owner decision 2026-11-12 (option C, 390/500): "Waive to campaign #147 ..." | items recorded as waived, not passed | NOT TESTED, waived to #147 | NOT TESTED | report § Waiver |
 | 2026-11-12 | PF | OBS-01 | Observation: `.privates` is `row-reverse` (desktop) and `column-reverse` (phone) while Tab order is DOM order | no defect if the rule is stated in Tab order | not filed; dock design | PASS | styles.css 219, 239 |
 | 2026-11-12 | PF | SETUP-15 | Stop server on 8788, close DevTools pages 6 to 9, `gitleaks dir docs/architecture/qa` | nothing left running; no secret | see cleanup below | PASS | d783b18 |
+| 2026-11-12 | CQ | SETUP-01 | Build prod bundle, start `tsx src/transports/node/main.ts` on 127.0.0.1:8788 (`ASV_STATIC_ROOT=dist`, logs in scratchpad) | server up, `/api/stats` 200 | up, bundle `index-AsKiY00-.js` | PASS | report header |
+| 2026-11-12 | CQ | SETUP-02 | Close orphan DevTools Chrome holding the MCP profile (owner decision A, 410/500) | MCP can open pages | pages opened in contexts alba, clara | PASS | report § Rules |
+| 2026-11-12 | CQ | SETUP-03 | Driver runs 1 and 2 (driver bugs, stale server) | none: superseded | not product results | INFO | report § Crowd driver |
+| 2026-11-12 | CQ | CQ-01 | 60 chatters enter at once from 60 loopback IPs | 60 entered | 60 entered, refusals [] | PASS | report § Crowd driver |
+| 2026-11-12 | CQ | CQ-02 | room list on entry | official rooms listed | Blabla(themed,0), Poésie(themed,0), Ciné(themed,0), Musique(themed,0), Paris(regional,0), Lyon(regional,0) | PASS | report § Crowd driver |
+| 2026-11-12 | CQ | CQ-03 | 20 crowd chatters sign in with an e-mail code | 20 accountLinked | 20 linked | PASS | report § Crowd driver |
+| 2026-11-12 | CQ | CQ-04 | 60 chatters join one official room (BR-023 cap 50) | 50 joined, 10 refused with a notice | 50 joined, refusals ["warning:full"], no answer 0 | PASS | report § Crowd driver |
+| 2026-11-12 | CQ | CQ-05 | member lists on join | member count grows 1..50, no duplicates | max list 50, dup-free true | PASS | report § Crowd driver |
+| 2026-11-12 | CQ | CQ-06 | 10 posts in a 50-member room | each member receives 10 roomMessage | received min 10 max 10 | PASS | report § Crowd driver |
+| 2026-11-12 | CQ | CQ-07 | 12 chatters each create a user room | 12 created | 12 created | PASS | report § Crowd driver |
+| 2026-11-12 | CQ | CQ-08 | a room owner creates a second room (BR-031) | refused with a notice | warning:alreadyOwner alreadyOwner | PASS | report § Crowd driver |
+| 2026-11-12 | CQ | CQ-09 | one chatter joins rooms until BR-024 (10 rooms) | 10 accepted, 11th refused with a notice | in 10 rooms, refusal warning:tooManyRooms tooManyRooms | PASS | report § Crowd driver |
+| 2026-11-12 | CQ | CQ-10 | directory search by city fragment | counts match the crowd profiles (pseudo or city match) | {"Paris":5,"paris":5,"Lyon":6,"Saint":0,"saint-etienne":5,"AIX-EN-PROVENCE":5,"Brest":5} vs exact-city-or-pseudo {"Paris":5,"paris":5,"Lyon":6,"Saint":0,"saint-etienne":5,"AIX-EN-PROVENCE":5,"Brest":5} | PASS | report § Crowd driver |
+| 2026-11-12 | CQ | CQ-11 | 4 members open a private window to the same member (BR-043 cap 3) | receiver holds at most 3 windows; 4th sender told | receiver windows 3, messages 3; senders ["privateWindow\|privateMessage","privateWindow\|privateMessage","privateWindow\|privateMessage","warning:targetBusy"] | PASS | report § Crowd driver |
+| 2026-11-12 | CQ | CQ-12 | a member opens 4 private windows (BR-043) | 3 opened, 4th refused with a notice | A got privateWindow\|privateMessage\|privateWindow\|privateMessage\|privateWindow\|privateMessage\|warning:tooManyWindows | PASS | report § Crowd driver |
+| 2026-11-12 | CQ | CQ-13 | ignore in a 50-member room | neither sees the other's message (BR-042) | X saw Y: 0, Y saw X: 0 | PASS | report § Crowd driver |
+| 2026-11-12 | CQ | CQ-14 | 7 posts in under 1 s (BR-021 5 per 10 s) | 5 delivered, 2 refused with a notice | delivered 5, notices ["flood","flood"] | PASS | report § Crowd driver |
+| 2026-11-12 | CQ | CQ-15 | 10 sockets cut then resumed with the token | 10 memberAway then 10 memberBack seen by a watcher, 10 resumed | away 10, resumed 10, back 10 | PASS | report § Crowd driver |
+| 2026-11-12 | CQ | CQ-16 | resume with a bogus token | resumeRefused | resumeRefused | PASS | report § Crowd driver |
+| 2026-11-12 | CQ | CQ-17 | wave: 20 leave then 20 new chatters enter | 20 entered; blabla count = 40 | entered 20, room count 40 | PASS | report § Crowd driver |
+| 2026-11-12 | CQ | CQ-18 | 6 entry attempts from one IP in 60 s (BR-007) | 5 entered, 6th refused `rate` | ["entered","entered","entered","entered","entered","rate"] | PASS | report § Crowd driver |
+| 2026-11-12 | CQ | CQ-19 | 21 sockets from one IP (BR-089 cap 20) | 20 open, 21st 429 Retry-After 10 | opened 20, 21st 429 RA=10 | PASS | report § Crowd driver |
+| 2026-11-12 | CQ | CQ-20 | 25 rapid upgrades from one IP (budget 20, +1/s) | about 20-21 accepted then 429 | 20 ok, then 429 | PASS | report § Crowd driver |
+| 2026-11-12 | CQ | CQ-21 | 60 frames in a burst (BR-088 bucket 40) | socket closed 1008 tooManyFrames | {"code":1008,"reason":"tooManyFrames"} | PASS | report § Crowd driver |
+| 2026-11-12 | CQ | CQ-22 | 5 invalid frames in a row (BR-088) | socket closed 1008 invalidFrames | {"code":1008,"reason":"invalidFrames"} | PASS | report § Crowd driver |
+| 2026-11-12 | CQ | CQ-23 | 4 invalid, 1 valid, 4 invalid (count resets) | socket stays open | null | PASS | report § Crowd driver |
+| 2026-11-12 | CQ | CQ-24 | 70 kB frame (cap 64 KiB) | socket closed 1009 | {"code":1009,"reason":""} | PASS | report § Crowd driver |
+| 2026-11-12 | CQ | CQ-25 | open 440 more sockets to pass 500 total | 503 Retry-After 10 once the total is 500 | 503 x22, other {}, sample RA 10 | PASS | report § Crowd driver |
+| 2026-11-12 | CQ | CQ-26 | a newcomer while at the total cap | refused 503 (not a crash) | entered false http 503 | INFO | report § Crowd driver |
+| 2026-11-12 | CQ | CQ-27 | a newcomer after the crowd releases sockets | entered | entered true | PASS | report § Crowd driver |
+| 2026-11-12 | CQ | CQ-B01 | Member sign-in by code while 40 chatters connected | as the check names it | see report | PASS | report § Browser checks #68 |
+| 2026-11-12 | CQ | CQ-B02 | Join busy Blabla (41 members) | as the check names it | see report | PASS | report § Browser checks |
+| 2026-11-12 | CQ | CQ-B03 | Private cap: 4th window | as the check names it | see report | FAIL | report § Browser checks #151 |
+| 2026-11-12 | CQ | CQ-B04 | Directory search across cities | as the check names it | see report | PASS | report § Browser checks |
+| 2026-11-12 | CQ | CQ-B05 | Search with 1 character | as the check names it | see report | FAIL | report § Browser checks #152 |
+| 2026-11-12 | CQ | CQ-B06 | Ignore in busy room | as the check names it | see report | PASS | report § Browser checks |
+| 2026-11-12 | CQ | CQ-B07 | Offline 84 s, then online | as the check names it | see report | MIXED | report § Browser checks #24 |
+| 2026-11-12 | CQ | CQ-B08 | ROB-02 server down and back | as the check names it | see report | PASS | report § Browser checks |
+| 2026-11-12 | CQ | CQ-B09 | 20-char pseudo, long city | as the check names it | see report | PASS | report § Browser checks |
+| 2026-11-12 | CQ | CQ-B10 | UI-01/UI-04 viewports and dark | as the check names it | see report | PASS | report § Browser checks |
+| 2026-11-12 | CQ | CQ-B11 | SEC-04 XSS payloads | as the check names it | see report | PASS | report § Browser checks |
+| 2026-11-12 | CQ | CQ-B12 | Room name refused clears field | as the check names it | see report | FAIL | report § Browser checks #151 |
+| 2026-11-12 | CQ | CQ-B13 | Performance trace in burst | as the check names it | see report | PASS | report § Browser checks |
+| 2026-11-12 | CQ | CQ-B14 | UI-03 Firefox and WebKit | as the check names it | see report | PASS | report § Browser checks |
+| 2026-11-12 | CQ | SEC-01 | Closes the #131 waiver (PF) | checklist pass-when | see report § Items waived | PASS | report § Items waived |
+| 2026-11-12 | CQ | SEC-02 | Closes the #131 waiver (PF) | checklist pass-when | see report § Items waived | PASS | report § Items waived |
+| 2026-11-12 | CQ | SEC-03 | Closes the #131 waiver (PF) | checklist pass-when | see report § Items waived | PASS | report § Items waived |
+| 2026-11-12 | CQ | SEC-04 | Closes the #131 waiver (PF) | checklist pass-when | see report § Items waived | PASS | report § Items waived |
+| 2026-11-12 | CQ | SEC-05 | Closes the #131 waiver (PF) | checklist pass-when | see report § Items waived | PASS | report § Items waived |
+| 2026-11-12 | CQ | SEC-06 | Closes the #131 waiver (PF) | checklist pass-when | see report § Items waived | PASS | report § Items waived |
+| 2026-11-12 | CQ | SEC-07 | Closes the #131 waiver (PF) | checklist pass-when | see report § Items waived | PASS | report § Items waived |
+| 2026-11-12 | CQ | SEC-08 | Closes the #131 waiver (PF) | checklist pass-when | see report § Items waived | PASS | report § Items waived |
+| 2026-11-12 | CQ | SEC-09 | Closes the #131 waiver (PF) | checklist pass-when | see report § Items waived | PASS | report § Items waived |
+| 2026-11-12 | CQ | SEC-10 | Closes the #131 waiver (PF) | checklist pass-when | see report § Items waived | PASS | report § Items waived |
+| 2026-11-12 | CQ | UI-01 | Closes the #131 waiver (PF) | checklist pass-when | see report § Items waived | PASS | report § Items waived |
+| 2026-11-12 | CQ | UI-03 | Closes the #131 waiver (PF) | checklist pass-when | see report § Items waived | PASS | report § Items waived |
+| 2026-11-12 | CQ | UI-04 | Closes the #131 waiver (PF) | checklist pass-when | see report § Items waived | PASS | report § Items waived |
+| 2026-11-12 | CQ | ROB-02 | Closes the #131 waiver (PF) | checklist pass-when | see report § Items waived | PASS | report § Items waived |
+| 2026-11-12 | CQ | A11Y-02 | Closes the #131 waiver: Lighthouse entry and busy room | no semantic violation | entry 100, room 91 (#107, #142, #153) | FAIL | #153 |
+| 2026-11-12 | CQ | A11Y-03 | Closes the #131 waiver: refused pseudo announced | error announced, field marked, fix stated | `role=alert` but no `aria-invalid`, no how-to-fix | MIXED | #154 |
+| 2026-11-12 | CQ | SETUP-04 | Stop ambient crowd and server, close DevTools pages, `gitleaks dir docs/architecture/qa` | nothing running; no secret | stopped; see commit | PASS | report § Cleanup |
+| 2026-11-12 | CQ | SETUP-05 | Start `ambient.mjs` (40 chatters from 127.2.0.x, 6 request codes `ambient0…5@example.test`, posts every 2.5 s, waves of 5 every minute, 90 min) | crowd stays connected | "ambient crowd ready"; ambient.out 0 errors | PASS | driver annex `ambient.mjs` |
+| 2026-11-12 | CQ | SETUP-06 | Server restarts before driver runs 2 and 3 and before the browser session (`stop.sh`, `start.sh`) | fresh in-memory state | each start `/api/stats` 200 | PASS | report § Rules |
+| 2026-11-12 | CQ | SETUP-07 | Chrome DevTools MCP `new_page` in isolated contexts alba and clara, window 956 × 905 | two independent sessions | pages 2 and 3 | PASS | report § Tools |
+| 2026-11-12 | CQ | CQ-B01a | alba: fill pseudo Alba, F, 34, Paris, enter; Mon compte, e-mail `alba@example.test`, request code; read `devOnlySecret` line in server stdout; type code | signed in | "Connecté·e comme membre." | PASS | shot 01 |
+| 2026-11-12 | CQ | CQ-B01b | clara: same with Clara, `clara@example.test` | signed in | signed in | PASS |  |
+| 2026-11-12 | CQ | CQ-B07a | alba: `emulate` networkConditions Offline 84 s; clara: search `Paris` | server away, client banner | `away:true` in clara's result; no banner in alba | MIXED | #24 comment |
+| 2026-11-12 | CQ | CQ-B07b | alba: `emulate` networkConditions No emulation | resume, windows back | resumed, windows back as tabs, `away:false` | PASS |  |
+| 2026-11-12 | CQ | SEC-RUN | `sec.mjs` (protocol probes) and `curl -sI` / `curl -X POST -H Origin:` probes on 127.0.0.1:8788 | as SEC-03, 05, 06, 08 | see report § Items waived | PASS | driver annex `sec.mjs` |
+| 2026-11-12 | CQ | PERF-RUN | `performance_start_trace` reload off, `burst.mjs` (8 chatters, 120 posts / 30 s), `performance_stop_trace` | CLS < 0.1, log follows | CLS 0.00, 685 nodes, 4 MB | PASS | CQ-B13 |
+| 2026-11-12 | CQ | LH-RUN | `lighthouse_audit` (Lighthouse 13.4.1, desktop, navigation) on the room screen and the entry screen | no P0 accessibility fault | room 91 (listitem #107, target-size #142, label-content-name-mismatch #153); entry 100 (favicon 404 #62, meta description) | FAIL | #153 |
+| 2026-11-12 | CQ | ENG-RUN | `engines.cjs` with Playwright 1.64.1 Firefox and WebKit, 1440 light and 390 dark | same behaviour as Chrome | same; WebKit caret stylesheet artefact | PASS | shots 09 |
+| 2026-11-12 | CQ | NET-01 | `list_network_requests` after reload (alba) | only the local origin | 4 requests, all 127.0.0.1:8788 | PASS | SEC-10 |
+| 2026-11-12 | CQ | CON-01 | `list_console_messages` after the CQ-B11 payloads | no CSP violation, no error | none | PASS | CQ-B11 |
+| 2026-11-12 | CQ | UI-02 | Per-case console and WebSocket-frame reads | recorded per case | not recorded for the other cases | INCONCLUSIVE | report § Not tested |
+| 2026-11-12 | CQ | ROB-13 | `grep -ci 'error\\|exception'` on server stdout of runs 1–3 and the ambient crowd output | 0 | 0 in each file; connection log 2138 lines | PASS | report gate line |
+| 2026-11-12 | CQ | BACKLOG-151 | File #151 keep draft on refused private message or room name, project board | issue open on board | open, P2 | PASS | #151 |
+| 2026-11-12 | CQ | BACKLOG-152 | File #152 short search query; closed as duplicate of #70 N2 after review | no duplicate left open | closed not planned | PASS | #70 |
+| 2026-11-12 | CQ | BACKLOG-153 | File #153 accessible name of away member; raised to P1 (P0 item A11Y-02) | open on board, P1 | open, P1 | PASS | #153 |
+| 2026-11-12 | CQ | BACKLOG-154 | File #154 `aria-invalid` and how-to-fix on refused pseudo; raised to P1 (P0 item A11Y-03) | open on board, P1 | open, P1 | PASS | #154 |
+| 2026-11-12 | CQ | BACKLOG-24 | Comment #24: 84 s offline without banner | comment posted | posted | PASS | #24 |
+| 2026-11-12 | CQ | BACKLOG-68 | Comment #68 (edited after review to cite CQ-B01 and CQ-B08) | comment posted | posted | PASS | #68 |
+| 2026-11-12 | CQ | SETUP-08 | Rename shots 01–04 from `-1440` to `-956x905` (real window size) | names match viewport | renamed | PASS | report |
+| 2026-11-12 | CQ | SEC-01 | Re-graded after review (supersedes the SEC-01 CQ row) | no missing header | Permissions-Policy missing | FAIL (known #69) | report § Items waived |
+| 2026-11-12 | CQ | UI-01 | Re-graded after review (supersedes the UI-01 CQ row) | all viewports and 200 % zoom | viewports PASS; 200 % zoom not run | MIXED | report § Items waived |
+| 2026-11-12 | CQ | UI-04 | Re-graded after review (supersedes the UI-04 CQ row) | dark, reduced-motion, forced-colors | dark PASS; reduced-motion, forced-colors not run | MIXED | report § Items waived |
+| 2026-11-12 | CQ | A11Y-03 | Re-graded after review, P0 (supersedes the A11Y-03 CQ row) | field marked invalid, fix stated | no `aria-invalid`, no how-to-fix | FAIL | #154 |
+| 2026-11-12 | CQ | CQ-B08 | Detail: `stop.sh` with alba in a room, wait banner, `start.sh`, wait reconnect (956 × 905) | banner, then entry screen | banner; entry after about 17 s | PASS | shots 03, 04 |
+| 2026-11-12 | CQ | CQ-B10 | Detail: `emulate` viewport 320x568 light, 390x844 dark, 844x390 light, 768x1024 light, 1024x768 dark; `evaluate_script` scrollWidth vs clientWidth | no overflow | equal at each | PASS | shots 05-08 |
+| 2026-11-12 | CQ | CQ-B11 | Detail: room message and search `<img src=x onerror=window.__x=1>`, `"><svg onload=window.__x=1>`; room name `<b>x</b> onerror` | text only | `window.__x` 0; name refused | PASS | CON-01 |
+| 2026-11-12 | CQ | CQ-B02 | Detail: Join Blabla with 40 members while the crowd posts every 2.5 s | as the check names it | "Membres (41)", ages and cities shown, lines arrive, `<script>alert(1)</script>` from a bot shown as text | PASS | report § Browser checks |
+| 2026-11-12 | CQ | CQ-B04 | Detail: Directory search across cities: `lyon`, `SAINT-ETIENNE`, `Nice`, `Pa`, `Lyo`, `zz` | as the check names it | Lyon 5, Nice 5 (accent and case folded), exact city match only (`Pa`, `Lyo` give 0, as ASV-F-009 says), searcher excluded | PASS | report § Browser checks |
+| 2026-11-12 | CQ | CQ-B06 | Detail: Ignore Théo_13 in the busy room for 20 s | as the check names it | his past and new lines hidden (0 before, 0 after), list shows "Théo_13 (ignoré)" | PASS | report § Browser checks |
+| 2026-11-12 | CQ | CQ-B09 | Detail: Guest with a 20-character pseudo `Bérénice-Ü.20car_xyz`, F, 99, city `Saint-Étienne-du-Rouvray` enters | as the check names it | entered; pseudo fits the header from 320 px up | PASS | report § Browser checks |
+| 2026-11-12 | CQ | CQ-B12 | Detail: Room name refused by the server | as the check names it | "Nom invalide : 3 à 30 caractères, sans mot réservé." and the field is emptied | FAIL | report § Browser checks #151 |
+| 2026-11-12 | CQ | CQ-B14 | Detail: UI-03: Firefox and WebKit (Playwright), entry, Paris with 30+ members, XSS post, guest "message privé", 1440 light and 390 dark | as the check names it | no overflow, own post shown as text, 0 injected nodes, guest gets the account dialog; WebKit "Refused to apply a stylesheet" = Playwright screenshot caret (known, reports SC/AM) | PASS | report § Browser checks  09 |
+| 2026-11-12 | CQ | CQ-B10 | Re-graded after Codex review on PR #155 (supersedes the CQ-B10 rows) | busy room checked at every viewport | 320×568: emulation reload left the room, only the rooms list checked | MIXED | shot 05 |
+| 2026-11-12 | CQ | CQ-B14 | Re-graded after Codex review on PR #155: guest private step at 390 px | account dialog in Firefox and WebKit | member list collapsed, locator timed out in a `try`, step not run; 1440 PASS | MIXED | driver annex `engines.cjs` |
