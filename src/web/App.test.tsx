@@ -896,6 +896,7 @@ describe("room screen", () => {
     expect(base(".entry, .rooms")).toContain("grid-template-columns: 1fr;");
     expect(base(".room")).toContain('grid-template-areas: "toggle" "lines" "composer";');
     expect(base(".members")).toContain("display: none;");
+    expect(base(".members.members-open")).toContain("display: block; grid-area: lines; z-index: 1;");
     expect(base(".members-toggle")).toContain("display: inline-block;");
     expect(base(".row")).toContain("flex-direction: column;");
     expect(base(".privates")).toContain("flex-direction: column-reverse;");
@@ -907,13 +908,28 @@ describe("room screen", () => {
     expect(wide[0]).toBeGreaterThan(css.search(/^\.row \{/m));
     expect(wide[1]).toBeGreaterThan(css.search(/^\.legal-table td::before \{/m));
     expect(wide[1]).toBeGreaterThan(css.search(/^\.private-lines \{/m));
-    const first = css.slice(wide[0]).match(/^@media[^{]*\{[\s\S]*?^\}/m)?.[0] ?? "";
-    expect(first).toContain('grid-template-areas: "lines members" "composer composer";');
-    expect(first).toContain(".members, .members.members-open { display: block; grid-area: members;");
-    expect(first).toContain(".members-toggle { display: none; }");
-    const second = css.slice(wide[1]).match(/^@media[^{]*\{[\s\S]*?^\}/m)?.[0] ?? "";
-    expect(second).toContain(".legal-table td::before { content: none; }");
-    expect(second).toContain(".private-window { width: 300px; }");
+    const block = (at: number | undefined) => css.slice(at).match(/^@media[^{]*\{[\s\S]*?^\}/m)?.[0] ?? "";
+    // Whole blocks: every desktop reset is guarded, so dropping one turns the test red.
+    expect(block(wide[0])).toBe(
+      "@media (min-width: 768px) {\n" +
+        "  .entry, .rooms { grid-template-columns: 1fr 1fr; }\n" +
+        '  .room { grid-template-columns: 1fr 240px; grid-template-areas: "lines members" "composer composer"; }\n' +
+        "  .members, .members.members-open { display: block; grid-area: members; z-index: auto; }\n" +
+        "  .members-toggle { display: none; }\n" +
+        "  .row { flex-direction: row; gap: var(--gap); }\n" +
+        "}",
+    );
+    expect(block(wide[1])).toBe(
+      "@media (min-width: 768px) {\n" +
+        "  .legal-table thead { display: table-header-group; }\n" +
+        "  .legal-table tr { display: table-row; margin-bottom: 0; }\n" +
+        "  .legal-table td { display: table-cell; }\n" +
+        "  .legal-table td::before { content: none; }\n" +
+        "  .privates { flex-direction: row-reverse; align-items: flex-end; }\n" +
+        "  .private-window { width: 300px; }\n" +
+        "  .private-lines { height: 200px; }\n" +
+        "}",
+    );
   });
 
   it("lets the header end wrap and the pseudo break, so a long pseudo never widens the page (#143)", async () => {

@@ -214,7 +214,7 @@ input { font: inherit; padding: 4px; min-height: 32px; }
 .pseudo-away.pseudo-unspecified { color: var(--pseudo-unspecified-away); }
 .smiley { font-style: normal; }
 
-/* Mobile first (ASV-NF-006, #171): the rules above are the phone layout, one column with the members
+/* Mobile first (ASV-NF-006, #171): the base rules are the phone layout, one column with the members
    behind a toggle; from 768 px wide, two columns and the members list always shown. */
 @media (min-width: 768px) {
   .entry, .rooms { grid-template-columns: 1fr 1fr; }
