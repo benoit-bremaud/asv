@@ -830,7 +830,7 @@ describe("room screen", () => {
     for (const name of [STRINGS.myAccount, STRINGS.quit, STRINGS.backToRooms, STRINGS.search, STRINGS.send]) {
       expect(screen.getByRole("button", { name }).classList).toContain("bevel");
     }
-    // Every other button is a text link, which has its own floors (#105, #142, #168).
+    // Every other button on the room screen is a `.link` (glyph, pseudo and menu links have their own floors).
     expect(document.querySelectorAll("button:not(.link):not(.bevel)")).toHaveLength(0);
   });
 
