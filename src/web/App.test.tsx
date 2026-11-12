@@ -816,7 +816,11 @@ describe("room screen", () => {
     const css = readFileSync("src/web/styles.css", "utf8");
     expect(css).toMatch(/@media \(pointer: coarse\) \{\s*\.icon-button \{[^}]*\}\s*\/\*[^*]*\*\/\s*\.tab \.link \{ min-height: 44px; \}\s*(?:\/\*[^*]*\*\/\s*)?\.bevel \{ min-height: 44px; \}\s*\}/);
     // Same specificity: the touch block must come after the base rule to win.
-    expect(css.indexOf("  .bevel { min-height: 44px; }")).toBeGreaterThan(css.indexOf(".bevel {\n"));
+    const base = css.search(/^\.bevel \{/m);
+    expect(base).toBeGreaterThanOrEqual(0);
+    expect(css.indexOf("  .bevel { min-height: 44px; }")).toBeGreaterThan(base);
+    // Base rule and touch rule only: no later or more specific .bevel rule may change the height.
+    expect(css.match(/\.bevel[^{}]*\{[^}]*\b(?:min|max)-height/g)).toHaveLength(2);
     // The #170 per-button rule is gone: one class rule covers every bevelled button.
     expect(css).not.toContain(".header-end button {");
     await setup();
@@ -826,6 +830,8 @@ describe("room screen", () => {
     for (const name of [STRINGS.myAccount, STRINGS.quit, STRINGS.backToRooms, STRINGS.search, STRINGS.send]) {
       expect(screen.getByRole("button", { name }).classList).toContain("bevel");
     }
+    // Every other button is a text link, which has its own floors (#105, #142, #168).
+    expect(document.querySelectorAll("button:not(.link):not(.bevel)")).toHaveLength(0);
   });
 
   it("gives the smileys toggle and the member pseudo buttons a 24 px target, 44 px on touch, and the menu items 44 px on touch (#142, #168)", async () => {
