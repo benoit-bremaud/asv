@@ -589,3 +589,16 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   Should 4 fixed).
 - Merged 2026-11-12: PR #167 squash 061fab0; verify, gitleaks, audit and SonarQube green on cbd7106. Follow-up:
   #168 (pseudo menu items 25 px on touch). Next: #143.
+
+## 2026-11-12 — Header wraps with a 20-character pseudo (#143)
+
+- `.header-end` (pseudo, "Mon compte", "quitter") wraps and the pseudo breaks anywhere (owner option A, 480/500:
+  `flex-wrap` and `min-width: 0`, `overflow-wrap: anywhere`, no ellipsis), so a long pseudo no longer widens the
+  page (UI-01, WCAG 2.2 SC 1.4.10). Study `web-ui/04` "Header reflow" first; new journey JRN-24.
+- QA HW on the local prod build in Chrome DevTools MCP: guest then member `Abcdefghijklmnopqrst`, rooms list and
+  room, 320 and 1440 mouse, 390 × 844 and 844 × 390 touch, light and dark: `scrollWidth` equals the viewport
+  (was 402 px), both buttons visible and hit; `W` × 20 breaks on two lines at 320. Firefox and WebKit not re-run.
+- Adversarial review: 2 rounds (Must 1: ledger header and legend; Should 4 fixed, case ids aligned after round 2).
+- Merged 2026-11-12: PR #172 squash 97f3d34; verify, gitleaks, audit and SonarQube green on 4bc3709.
+  Follow-ups: #170 (header buttons 33 px on touch), #171 (mobile-first stylesheet, NF-006 at 320 px).
+  Next: #168, #170, #104 dark, #136, #171.
