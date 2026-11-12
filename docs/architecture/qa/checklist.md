@@ -8,7 +8,7 @@ latest evidence are in [test-plan.md](test-plan.md)).
 > **Rule: every QA pass appends all its steps here**, in the same PR as its report: each manipulation (server
 > start, accounts, e-mail codes, toggles such as offline), each case with its exact keys, viewport and tool, each
 > console and network read, each issue filed. Never edit or drop an earlier row; a later pass that supersedes a
-> row adds its own. Last updated: 2026-11-12 (PI, #154).
+> row adds its own. Last updated: 2026-11-12 (TT, #142).
 
 Report codes: **FP** `2026-10-24-full-pass` · **RS** `2026-10-24-tester-runbook-smoke` · **PD** `2026-11-02-65-private-dock`
 · **CS** `2026-11-02-code-step-resume` · **TS** `2026-11-02-test-plan-smoke` · **FL** `2026-11-03-89-frame-limit-full`
@@ -759,3 +759,11 @@ from PF on, the owner's rule (2026-11-12) is Chrome DevTools MCP for every check
 | 2026-11-12 | TT | A11Y-05c | Same at 390 × 844 with touch emulation (`pointer: coarse` true), members list opened, light | each ≥ 44 px high; axe clean | summary 352 × 44; pseudo buttons × 44; 0 violations, 26 nodes pass | PASS | `2026-11-12-142-03-room-smileys-private-390x844-light-touch` · 4f3144d |
 | 2026-11-12 | TT | A11Y-05d | Same at 390 × 844 with touch emulation, dark | same | same boxes, 0 violations | PASS | `2026-11-12-142-04-room-smileys-private-390x844-dark-touch` · 4f3144d |
 | 2026-11-12 | TT | A11Y-05e | Click "smileys" twice, click the first member pseudo button | toggle closes and reopens, disclosure marker kept; pseudo menu opens | closed then open, `::marker` rendered (▾ on the shots); menu "message privé / ignorer" visible | PASS | 4f3144d |
+| 2026-11-12 | TT | SETUP-2 | Re-run on Chrome DevTools MCP (house rule since PF; rows SETUP-1 and A11Y-05a…e used Playwright because the DevTools profile was held by another session): members Qa_142e and Qa_142f (dev mailer code), guests Qa_142g and Qa_142h in isolated contexts, all in Blabla, plus Qa_142a…d listed away (5-minute away records); Qa_142e opens a private window with Qa_142f and opens "smileys"; axe-core 4.14.0 injected with `evaluate_script` | 8 members listed, 1 private window, smileys open | 8 pseudo buttons visible (7 members + private title), 1 private window, `details.smileys` open | PASS | 4f3144d |
+| 2026-11-12 | TT | A11Y-05f | Measure the summary and every visible `.pseudo-button`, axe `target-size`, 1440 × 900 mouse, light | ≥ 24 px high; axe clean | summary 192 × 24 `list-item`; pseudo buttons all 24 high (members and private title); 0 violations, 26 pass | PASS | `2026-11-12-142-05-cdt-room-1440x900-light-mouse` · 4f3144d |
+| 2026-11-12 | TT | A11Y-05g | Same, 1440 × 900 mouse, dark | same | same, 0 violations | PASS | `2026-11-12-142-06-cdt-room-1440x900-dark-mouse` · 4f3144d |
+| 2026-11-12 | TT | A11Y-05h | Same, 320 × 568 mouse, light | same | summary 192 × 24; pseudo buttons 24; 0 violations, 27 pass | PASS | `2026-11-12-142-07-cdt-room-320x568-light-mouse` · 4f3144d |
+| 2026-11-12 | TT | A11Y-05i | Same, 390 × 844 touch emulation (`pointer: coarse` true), members list open, light | ≥ 44 px high; axe clean | summary 352 × 44; pseudo buttons 44; 0 violations, 26 pass | PASS | `2026-11-12-142-08-cdt-room-390x844-light-touch` · 4f3144d |
+| 2026-11-12 | TT | A11Y-05j | Same, 390 × 844 touch, dark | same | same, 0 violations | PASS | `2026-11-12-142-09-cdt-room-390x844-dark-touch` · 4f3144d |
+| 2026-11-12 | TT | A11Y-05k | Same, 844 × 390 touch, light | same | summary 352 × 44; pseudo buttons 44; 0 violations, 25 pass | PASS | `2026-11-12-142-10-cdt-room-844x390-light-touch` · 4f3144d |
+| 2026-11-12 | TT | A11Y-05l | Same, 1024 × 768 touch, light; then click "smileys" twice and the first member pseudo button | ≥ 44 px; axe clean; toggle closes and reopens; menu opens | summary 352 × 44; pseudo buttons 44; 0 violations; closed then open; menu "message privé / ignorer" | PASS | `2026-11-12-142-11-cdt-room-1024x768-light-touch` · 4f3144d |
