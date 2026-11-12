@@ -816,7 +816,7 @@ describe("room screen", () => {
     const css = readFileSync("src/web/styles.css", "utf8");
     expect(css.match(/^\.smileys summary \{[^}]*\}/m)?.[0]).toContain("line-height: 24px;");
     expect(css.match(/^\.pseudo-button \{[^}]*\}/m)?.[0]).toContain("min-height: 24px;");
-    const touch = /@media \(pointer: coarse\) \{\s*\.smileys summary \{ line-height: 44px; \}\s*\.pseudo-button \{ min-height: 44px; \}\s*\}/;
+    const touch = /@media \(pointer: coarse\) \{\s*\.smileys summary \{ line-height: 44px; \}\s*\.pseudo-button \{ min-height: 44px; \}\s*\/\*[^*]*\*\/\s*\.menu \.link \{ min-height: 44px; \}\s*\}/;
     expect(css).toMatch(touch);
     // Same specificity: the touch block must come after both base rules to win.
     const touchAt = css.search(touch);
@@ -828,6 +828,18 @@ describe("room screen", () => {
 
     expect(screen.getByText(STRINGS.smileys).matches(".smileys summary")).toBe(true);
     expect(document.querySelectorAll(".members button.pseudo-button").length).toBeGreaterThan(0);
+  });
+
+  it("gives the pseudo menu items the 44 px touch floor (#168)", async () => {
+    // jsdom computes no layout: the touch rule is checked with the #142 block above; here, the items match it.
+    await setup();
+    await enterChat();
+    await joinRoom("r1");
+    await userEvent.click(document.querySelector<HTMLButtonElement>(".members button.pseudo-button")!);
+
+    const items = screen.getAllByRole("menuitem");
+    expect(items).toHaveLength(2);
+    for (const item of items) expect(item.matches(".menu .link")).toBe(true);
   });
 
   it("lets the header end wrap and the pseudo break, so a long pseudo never widens the page (#143)", async () => {

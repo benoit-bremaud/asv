@@ -220,6 +220,8 @@ input { font: inherit; padding: 4px; min-height: 32px; }
 @media (pointer: coarse) {
   .smileys summary { line-height: 44px; }
   .pseudo-button { min-height: 44px; }
+  /* The pseudo menu items (#168): 25 px with a mouse, already above 24 px. */
+  .menu .link { min-height: 44px; }
 }
 .menu { position: absolute; z-index: 20; top: 100%; left: 0; display: flex; flex-direction: column; gap: 4px; padding: 6px var(--gap); white-space: nowrap; box-shadow: 4px 4px 0 var(--bevel-dark); }
 .menu [aria-disabled="true"] { opacity: 0.55; }
