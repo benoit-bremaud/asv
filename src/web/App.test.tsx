@@ -1397,6 +1397,7 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
       await joinRoom("r1", [member(true)]);
       connection.send.mockReturnValue(0);
       const { field } = await openAndSend(user, "salut");
+      expect(field.value).toBe("");
 
       await fromServer(msg("warning", { code: "tooManyWindows", message: "m", replyTo: 0 }));
 
