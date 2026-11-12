@@ -811,12 +811,12 @@ describe("room screen", () => {
     }
   });
 
-  it("gives the smileys toggle and the member pseudo buttons a 24 px target, 44 px on touch (#142)", async () => {
+  it("gives the smileys toggle and the member pseudo buttons a 24 px target, 44 px on touch, and the menu items 44 px on touch (#142, #168)", async () => {
     // jsdom computes no layout: check the rules, then that the controls carry the selectors.
     const css = readFileSync("src/web/styles.css", "utf8");
     expect(css.match(/^\.smileys summary \{[^}]*\}/m)?.[0]).toContain("line-height: 24px;");
     expect(css.match(/^\.pseudo-button \{[^}]*\}/m)?.[0]).toContain("min-height: 24px;");
-    const touch = /@media \(pointer: coarse\) \{\s*\.smileys summary \{ line-height: 44px; \}\s*\.pseudo-button \{ min-height: 44px; \}\s*\/\*[^*]*\*\/\s*\.menu \.link \{ min-height: 44px; \}\s*\}/;
+    const touch = /@media \(pointer: coarse\) \{\s*\.smileys summary \{ line-height: 44px; \}\s*\.pseudo-button \{ min-height: 44px; \}\s*(?:\/\*[^*]*\*\/\s*)?\.menu \.link \{ min-height: 44px; \}\s*\}/;
     expect(css).toMatch(touch);
     // Same specificity: the touch block must come after both base rules to win.
     const touchAt = css.search(touch);
