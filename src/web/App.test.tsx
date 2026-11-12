@@ -1323,6 +1323,97 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
     expect(sent().filter((command) => command.type === "closePrivate")).toEqual([]);
   });
 
+  describe("focus after close or minimise (#131)", () => {
+    const open = (conversationId: string, sessionId: string, pseudo: string) =>
+      fromServer(msg("privateWindow", { conversationId, other: { sessionId, pseudo, hasAccount: true, away: false, gender: "man" } }));
+    const closeOf = (pseudo: string) =>
+      within(screen.getByRole("dialog", { name: STRINGS.privateWith(pseudo) })).getByRole("button", { name: STRINGS.close });
+    const titleOf = (pseudo: string) =>
+      within(screen.getByRole("dialog", { name: STRINGS.privateWith(pseudo) })).getByRole("button", { name: STRINGS.pseudoMenu(pseudo) });
+    const threeWindows = async () => {
+      await open("c1", "s2", "bob");
+      await open("c2", "s3", "cid");
+      await open("c3", "s4", "dan");
+    };
+
+    it("moves the focus to the next window's title when one in the middle closes", async () => {
+      const user = await setup();
+      await signedIn();
+      await threeWindows();
+
+      await user.click(closeOf("cid"));
+
+      expect(document.activeElement).toBe(titleOf("dan"));
+    });
+
+    it("moves the focus to the previous window when the last one closes, from the keyboard", async () => {
+      const user = await setup();
+      await signedIn();
+      await threeWindows();
+
+      closeOf("dan").focus();
+      await user.keyboard("{Enter}");
+
+      expect(document.activeElement).toBe(titleOf("cid"));
+    });
+
+    it("moves the focus to a minimised neighbour's tab", async () => {
+      const user = await setup();
+      await signedIn();
+      await open("c1", "s2", "bob");
+      await open("c2", "s3", "cid");
+      await user.click(within(screen.getByRole("dialog", { name: STRINGS.privateWith("cid") })).getByRole("button", { name: STRINGS.minimise }));
+
+      await user.click(closeOf("bob"));
+
+      expect(document.activeElement).toBe(screen.getByRole("button", { name: new RegExp(STRINGS.restore("cid")) }));
+    });
+
+    it("moves the focus to the room message field when the only window closes", async () => {
+      const user = await setup();
+      await signedIn();
+      await joinRoom("r1", [member(true)]);
+      await open("c1", "s2", "bob");
+
+      await user.click(closeOf("bob"));
+
+      expect(document.activeElement).toBe(screen.getByLabelText(STRINGS.message));
+    });
+
+    it("leaves the focus on the document with no window and no room screen", async () => {
+      const user = await setup();
+      await signedIn();
+      await open("c1", "s2", "bob");
+
+      await user.click(closeOf("bob"));
+
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(document.activeElement).toBe(document.body);
+    });
+
+    it("keeps the window and the focus when the close cannot be sent", async () => {
+      const user = await setup();
+      await signedIn();
+      await open("c1", "s2", "bob");
+      await open("c2", "s3", "cid");
+      connection.send.mockReturnValue(false);
+
+      await user.click(closeOf("bob"));
+
+      expect(document.activeElement).toBe(closeOf("bob"));
+    });
+
+    it("moves the focus to the new tab when a window is minimised", async () => {
+      const user = await setup();
+      await signedIn();
+      await open("c1", "s2", "bob");
+
+      await user.click(screen.getByRole("button", { name: STRINGS.minimise }));
+
+      expect(document.activeElement).toBe(screen.getByRole("button", { name: new RegExp(STRINGS.restore("bob")) }));
+    });
+  });
+
   it("searches from 2 characters and lists the results with their rooms", async () => {
     const user = await setup();
     await signedIn();
