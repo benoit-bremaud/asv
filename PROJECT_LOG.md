@@ -575,3 +575,17 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   fixed).
 - Merged 2026-11-12: PR #165 squash e38ad0e; verify, gitleaks, audit and SonarQube green on df805fb. Out of
   scope: the account panel's own Escape handler may be redundant next to `onCancel`. Next: #142, #143.
+
+## 2026-11-12 — Text target size (#142)
+
+- The "smileys" toggle and every pseudo button (members list, private window title, search results) get the
+  WCAG 2.2 SC 2.5.8 floor: 24 px high with a mouse, 44 px under `pointer: coarse` (owner option C, 470/500):
+  `line-height` on the summary so it keeps its disclosure marker, `min-height` on the button. Study `web-ui/04`
+  "Small controls" extended to text targets first; JRN-20 case (d).
+- QA TT on the local prod build in Chrome DevTools MCP: 320 and 1440 mouse, 390 × 844, 844 × 390 and
+  1024 × 768 touch, light and dark, 8 members and a private window open; axe-core 4.14 `target-size` clean.
+  Firefox, WebKit and search-result buttons not measured.
+- Adversarial review: 2 rounds (Must 1: first QA run on Playwright instead of Chrome DevTools MCP, re-run;
+  Should 4 fixed).
+- Merged 2026-11-12: PR #167 squash 061fab0; verify, gitleaks, audit and SonarQube green on cbd7106. Follow-up:
+  #168 (pseudo menu items 25 px on touch). Next: #143.
