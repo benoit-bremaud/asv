@@ -18,12 +18,12 @@ export interface Commands {
   deleteAccount(): void;
   joinRoom(roomId: string): void;
   leaveRoom(roomId: string): void;
-  /** False when nothing was sent (offline), so the screen keeps the name. */
-  createRoom(name: string): boolean;
+  /** The `seq` sent, or `undefined` offline, so the screen keeps the name; a refusal names it in `refusedSeq`. */
+  createRoom(name: string): number | undefined;
   /** False when nothing was sent (offline), so the screen keeps the draft. */
   post(roomId: string, text: string): boolean;
-  /** False when nothing was sent (offline), so the window keeps the draft. */
-  sendPrivate(targetPseudo: string, text: string): boolean;
+  /** The `seq` sent, or `undefined` offline, so the window keeps the draft; a refusal names it in `refusedSeq`. */
+  sendPrivate(targetPseudo: string, text: string): number | undefined;
   /** `notify`: the window has a conversation on the server (not pending, partner not gone). */
   /** Closes the window locally; false when the server could not be told, and the window stays. */
   closePrivate(windowKey: string, notify: boolean): boolean;
@@ -65,12 +65,13 @@ export const ChatProvider = ({ connect, children }: { connect: ConnectionFactory
   }, [connect]);
 
   const commands = useMemo<Commands>(() => {
-    const send: Connection["send"] = (command) => connection.current?.send(command) ?? false;
+    const send: Connection["send"] = (command) => connection.current?.send(command);
+    const sent = (command: Parameters<Connection["send"]>[0]): boolean => send(command) !== undefined;
     return {
       enter: (form, codeRequest) => connection.current?.enter(form, codeRequest),
       requestCode: (request) => send({ type: "requestCode", payload: request }),
       verifyCode: (code) => {
-        if (send({ type: "verifyCode", payload: { code } })) dispatch({ type: "verifyingCode" });
+        if (sent({ type: "verifyCode", payload: { code } })) dispatch({ type: "verifyingCode" });
       },
       signOutDevice: () => void connection.current?.signOutDevice(),
       signOutEverywhere: () => send({ type: "signOutEverywhere", payload: {} }),
@@ -78,21 +79,21 @@ export const ChatProvider = ({ connect, children }: { connect: ConnectionFactory
       joinRoom: (roomId) => send({ type: "joinRoom", payload: { roomId } }),
       leaveRoom: (roomId) => {
         // Offline: the server keeps the membership, so the tab stays.
-        if (send({ type: "leaveRoom", payload: { roomId } })) dispatch({ type: "closeRoom", roomId });
+        if (sent({ type: "leaveRoom", payload: { roomId } })) dispatch({ type: "closeRoom", roomId });
       },
       createRoom: (name) => send({ type: "createRoom", payload: { name } }),
-      post: (roomId, text) => send({ type: "postRoom", payload: { roomId, text } }),
+      post: (roomId, text) => sent({ type: "postRoom", payload: { roomId, text } }),
       sendPrivate: (targetPseudo, text) => send({ type: "sendPrivate", payload: { targetPseudo, text } }),
       closePrivate: (windowKey, notify) => {
         // Offline: the server keeps the window open (BR-043 slot), so it stays here too, like `leaveRoom`.
-        if (notify && !send({ type: "closePrivate", payload: { conversationId: windowKey } })) return false;
+        if (notify && !sent({ type: "closePrivate", payload: { conversationId: windowKey } })) return false;
         dispatch({ type: "closePrivate", conversationId: windowKey });
         return true;
       },
       ignore: (sessionId) => send({ type: "ignore", payload: { targetSessionId: sessionId } }),
       unignore: (sessionId) => send({ type: "unignore", payload: { targetSessionId: sessionId } }),
       search: (query) => {
-        if (send({ type: "search", payload: { query } })) dispatch({ type: "searching", query });
+        if (sent({ type: "search", payload: { query } })) dispatch({ type: "searching", query });
       },
       leave: () => connection.current?.leave(),
       newCode: () => {

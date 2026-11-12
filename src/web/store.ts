@@ -79,6 +79,8 @@ export interface ChatState {
   readonly entryError?: string;
   /** Pseudo the server refused with `entryError` (NFC, trimmed), so the entry field can be marked (#154). */
   readonly refusedPseudo?: string;
+  /** `replyTo` of the last `warning` or `error` that had one, so the field that sent that `seq` gets its text back (#151). */
+  readonly refusedSeq?: number;
   readonly account: AccountView;
   /** Keyed by conversation id; a window opened before its first message is keyed by the other session id. */
   readonly windows: Readonly<Record<string, PrivateView>>;
@@ -360,9 +362,9 @@ const onServer = (state: ChatState, message: ServerMessage): ChatState => {
       // ASV-F-024: the server already closed every conversation.
       return { ...state, notice: "accountUnlinked", account: signedOut(state.account), windows: {} };
     case "warning":
-      return onWarning(state, message.payload.code, message.payload.triesLeft);
+      return { ...onWarning(state, message.payload.code, message.payload.triesLeft), refusedSeq: message.payload.replyTo ?? state.refusedSeq };
     case "error":
-      return onError(state, message.payload.code);
+      return { ...onError(state, message.payload.code), refusedSeq: message.payload.replyTo ?? state.refusedSeq };
     default:
       return state;
   }

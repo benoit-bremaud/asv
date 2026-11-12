@@ -267,6 +267,24 @@ describe("chatReducer: server messages", () => {
   });
 });
 
+describe("chatReducer: refused seq (#151)", () => {
+  const server = (state: ChatState, message: ServerMessage) => chatReducer(state, { type: "server", message });
+
+  it("keeps the last replyTo when a later warning or error has none", () => {
+    const refused = server(initialState, { type: "warning", seq: 1, payload: { code: "tooManyWindows", message: "m", replyTo: 4 } });
+
+    const after = server(refused, { type: "error", seq: 2, payload: { code: "invalid", message: "m" } });
+
+    expect(after.refusedSeq).toBe(4);
+  });
+
+  it("takes a newer replyTo, 0 included", () => {
+    const refused = server(initialState, { type: "warning", seq: 1, payload: { code: "full", message: "m", replyTo: 4 } });
+
+    expect(server(refused, { type: "error", seq: 2, payload: { code: "invalid", message: "m", replyTo: 0 } }).refusedSeq).toBe(0);
+  });
+});
+
 describe("chatReducer: local actions", () => {
   it("link sets the link", () => {
     expect(act(initialState, { type: "link", link: "online" }).link).toBe("online");
