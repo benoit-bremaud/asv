@@ -18,7 +18,7 @@ Checklist: `61702fb560a9`
 
 Gate ❌ · 🔴 Must 2 (#153, #154: P0 items A11Y-02 and A11Y-03) · 🟡 Should 1 new (#151) + 1 known (#69) · 🔵 Nice 0 new (#70 N2 re-seen)
 
-Gate line: ❌ P0 accessibility sub-checks fail · crowd driver 26 PASS, 1 INFO (CQ-01…CQ-27) · browser 10 PASS, 3 FAIL, 1 MIXED (CQ-B01…B14) · SEC-01…SEC-10 run (9 PASS, SEC-01 FAIL known #69) · UI-01, UI-03, UI-04, ROB-02, A11Y-02, A11Y-03 run, closing the #131 waiver (UI-01 200 % zoom and UI-04 reduced-motion / forced-colors not run) · server stdout of driver runs 1–3 and the browser session (`grep -ci 'error\|exception'`): 0 · report: docs/architecture/qa/2026-11-12-147-crowd-campaign.md.
+Gate line: ❌ P0 accessibility sub-checks fail · crowd driver 26 PASS, 1 INFO (CQ-01…CQ-27) · browser 8 PASS, 3 FAIL, 3 MIXED (B10, B14 re-graded after Codex) (CQ-B01…B14) · SEC-01…SEC-10 run (9 PASS, SEC-01 FAIL known #69) · UI-01, UI-03, UI-04, ROB-02, A11Y-02, A11Y-03 run, closing the #131 waiver (UI-01 200 % zoom and UI-04 reduced-motion / forced-colors not run) · server stdout of driver runs 1–3 and the browser session (`grep -ci 'error\|exception'`): 0 · report: docs/architecture/qa/2026-11-12-147-crowd-campaign.md.
 
 ### Crowd driver (final run, fresh server)
 
@@ -67,11 +67,11 @@ Two earlier driver runs are superseded: run 1 had driver bugs (profiles assigned
 | CQ-B07 | ROB | Away/resume: Chrome `Offline` for 84 s, then online | MIXED | server marks Alba away (search from another socket: `away:true`), but no "Connexion perdue" banner in 84 s; online: resume, windows back as tabs, `away:false` | #24 (comment) |  |
 | CQ-B08 | ROB | ROB-02: stop the server, then start it again | PASS | banner "Connexion perdue, on se reconnecte…"; back after about 17 s on the entry screen (in-memory reset, known JRN-02c) |  | 03, 04 |
 | CQ-B09 | FON | Guest with a 20-character pseudo `Bérénice-Ü.20car_xyz`, F, 99, city `Saint-Étienne-du-Rouvray` enters | PASS | entered; pseudo fits the header from 320 px up |  |  |
-| CQ-B10 | UI | UI-01/UI-04: busy Blabla at 320×568 light, 390×844 dark, 844×390 light, 768×1024 light, 1024×768 dark | PASS | `scrollWidth == clientWidth` at each, no element past the right edge, message field reachable, dark tokens (bg rgb(27,27,47), fg rgb(242,242,242)); the mobile emulation reloads the page and lands on the rooms list with no room tab (known JRN-02b, #70) |  | 05-08 |
+| CQ-B10 | UI | UI-01/UI-04: busy Blabla at 320×568 light, 390×844 dark, 844×390 light, 768×1024 light, 1024×768 dark | MIXED | at 320×568 only the rooms list was checked (the emulation reload left the room, shot 05), the busy room at 320 px is not checked; other viewports: `scrollWidth == clientWidth` at each, no element past the right edge, message field reachable, dark tokens (bg rgb(27,27,47), fg rgb(242,242,242)); the mobile emulation reloads the page and lands on the rooms list with no room tab (known JRN-02b, #70) |  | 05-08 |
 | CQ-B11 | SEC | SEC-04: `<img src=x onerror=…>` and `"><svg onload=…>` in the room message and the search; `<b>x</b> onerror` as room name | PASS | shown as text, `window.__x` stays 0, no `img`/`svg` in the log, no CSP violation; room name refused |  |  |
 | CQ-B12 | FON | Room name refused by the server | FAIL | "Nom invalide : 3 à 30 caractères, sans mot réservé." and the field is emptied | #151 |  |
 | CQ-B13 | PERF | Performance trace during a burst: 8 more chatters fill Blabla, 120 posts in 30 s | PASS | CLS 0.00, 139 lines, 685 DOM nodes, JS heap 4 MB, the log follows the bottom |  |  |
-| CQ-B14 | UI | UI-03: Firefox and WebKit (Playwright), entry, Paris with 30+ members, XSS post, guest "message privé", 1440 light and 390 dark | PASS | no overflow, own post shown as text, 0 injected nodes, guest gets the account dialog; WebKit "Refused to apply a stylesheet" = Playwright screenshot caret (known, reports SC/AM) |  | 09 |
+| CQ-B14 | UI | UI-03: Firefox and WebKit (Playwright), entry, Paris with 30+ members, XSS post, guest "message privé", 1440 light and 390 dark | MIXED | no overflow, own post shown as text, 0 injected nodes, guest gets the account dialog at 1440 only (at 390 the member list is collapsed, the locator timed out inside a `try`, so the private step was not exercised); WebKit "Refused to apply a stylesheet" = Playwright screenshot caret (known, reports SC/AM) |  | 09 |
 
 ### Items waived from #131
 
@@ -87,8 +87,8 @@ Two earlier driver runs are superseded: run 1 had driver bugs (profiles assigned
 | SEC-08 error leaks | PASS | `/nope`, `/api/nope`, `/.git/config`, `/.env`, `/%2e%2e/%2e%2e/etc/passwd`, `/src/server/hub.ts`: 404 `text/plain` 13 B; bad JSON on `/account/device`: 400 |
 | SEC-09 bundle | PASS | `dist/` holds `index.html` and two assets, no `.map` (404); no key, token or internal URL (only hit `sk-` inside `mask-type`) |
 | SEC-10 third parties | PASS | reload: 4 requests, all `127.0.0.1:8788` |
-| UI-01 viewports | MIXED | CQ-B10 PASS at 320, 390, 768, 844×390, 1024; text zoom 200 % not run |
-| UI-03 engines | PASS | CQ-B14 |
+| UI-01 viewports | MIXED | CQ-B10 PASS in the room at 390, 768, 844×390, 1024, rooms list only at 320; text zoom 200 % not run |
+| UI-03 engines | MIXED | CQ-B14 (guest private step not run at 390 px) |
 | UI-04 dark | MIXED (dark PASS) | CQ-B10 (390 and 1024 dark), CQ-B14 (390 dark); `prefers-reduced-motion` and `forced-colors` not run |
 | ROB-02 backend down | PASS | CQ-B08 |
 | UI-02 inspector | INCONCLUSIVE | network: reload lists 4 requests, all `127.0.0.1:8788` (SEC-10); console: no CSP violation during CQ-B11; the other console and WebSocket-frame reads were not recorded per case |
@@ -112,7 +112,7 @@ Two earlier driver runs are superseded: run 1 had driver bugs (profiles assigned
 
 ## Not tested
 
-- UI-01 text zoom 200 %; UI-04 `prefers-reduced-motion`, `forced-colors`.
+- UI-01 busy room at 320 px and text zoom 200 %; UI-03 guest private step at 390 px in Firefox and WebKit; UI-04 `prefers-reduced-motion`, `forced-colors`.
 - Per-case console and WebSocket-frame reads (UI-02).
 - JRN-08…12 and JRN-15…21 (see § Journeys).
 - asvchat.fr and the tunnel (local only by rule of engagement).
