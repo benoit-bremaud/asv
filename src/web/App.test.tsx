@@ -82,6 +82,12 @@ afterEach(() => {
   sessionStorage.clear();
 });
 
+/** WCAG 2.5.3: every pseudo button's name starts with its visible text (#153). */
+const expectLabelInName = () => {
+  const buttons = [...document.querySelectorAll("button.pseudo-button")];
+  expect(buttons.length).toBeGreaterThan(0);
+  for (const button of buttons) expect(button.getAttribute("aria-label")?.startsWith(button.textContent ?? "")).toBe(true);
+};
 describe("entry screen", () => {
   const fill = async (user: ReturnType<typeof userEvent.setup>, { age = "30", pseudo = "  ana  " } = {}) => {
     await user.type(screen.getByLabelText(STRINGS.pseudo), pseudo);
@@ -725,6 +731,7 @@ describe("room screen", () => {
     const mark = pseudo.querySelector(".away-mark");
     expect(mark?.textContent).toBe(STRINGS.away);
     expect(mark?.previousSibling?.textContent).toBe(" ");
+    expectLabelInName();
   });
 
   it("uses the neutral class for an away member whose gender was never seen", async () => {
@@ -1260,6 +1267,7 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
     expect(screen.queryByText("spam")).toBeNull();
     expect(screen.getByText(STRINGS.ignoredMark)).toBeTruthy();
     expect(screen.getByText(STRINGS.ignoredMark).previousSibling?.textContent).toBe(" ");
+    expectLabelInName();
     await user.click(screen.getByRole("button", { name: "bob (ignoré), actions" }));
     await user.click(screen.getByRole("menuitem", { name: STRINGS.unignore }));
     expect(sent()).toContainEqual({ type: "unignore", payload: { targetSessionId: "s2" } });
@@ -1325,6 +1333,8 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByText(STRINGS.otherGone)).toBeTruthy();
     expect(within(dialog).getByLabelText(STRINGS.message)).toHaveProperty("disabled", true);
+    expect(within(dialog).getByRole("button", { name: "bob (absent), actions" })).toBeTruthy();
+    expectLabelInName();
     await user.click(within(dialog).getByRole("button", { name: STRINGS.close }));
     expect(sent().filter((command) => command.type === "closePrivate")).toEqual([]);
   });
