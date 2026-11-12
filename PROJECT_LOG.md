@@ -615,3 +615,16 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   1024 × 768 added). Codex review: no findings.
 - Merged 2026-11-12: PR #174 squash 8989ae8; verify, gitleaks, audit and SonarQube green on ced8d06.
   Next: #170, #104 dark, #136, #171.
+
+## 2026-11-12 — Header buttons get the 44 px touch floor (#170)
+
+- `.header-end button { min-height: 44px; }` joins the #105 `pointer: coarse` block (owner option A, 465/500):
+  "Mon compte" and "quitter" go from 33 to 44 px on touch; 33 px with a mouse (≥ 24 px). Study `web-ui/04`
+  "Small controls" first; JRN-24 case e; the rule check counts a single rule.
+- QA BT on the local prod build in Chrome DevTools MCP with a 20-character pseudo: 320 and 1440 mouse, 390 × 844
+  (light, dark), 844 × 390, 1024 × 768 and 320 × 568 touch; no sideways scroll, axe-core 4.14 `target-size`
+  clean. Chromium only.
+- Adversarial review: 2 rounds (Should 1: the other `.bevel` buttons stay 33 px on touch, filed as #176; Nice 4
+  fixed). Codex review: no findings.
+- Merged 2026-11-12: PR #177 squash d31aac7; verify, gitleaks, audit and SonarQube green on a037fba.
+  Next: #176, #104 dark, #136, #171.
