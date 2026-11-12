@@ -214,7 +214,7 @@ classDiagram
   ≥ 720 px high): the room screen fits the viewport; the lines and the members list scroll inside their
   panels, and the lines follow new messages, and stay at the bottom when their panel shrinks (a private window opens, the window is resized), while the reader is at the bottom, never while they read
   older ones; sending a message always brings the reader back to the bottom (#65, #85). Below either
-  size the page scrolls as a whole (#83). Phone width (< 768 px): the members list is a toggled panel (NF-006). Leaving a tab sends `leaveRoom`.
+  size the page scrolls as a whole (#83). Phone width (< 768 px, down to 320 px): the members list is a toggled panel (NF-006). The stylesheet is mobile first (#171): its base rules are the phone layout, and wider layouts are added only by `min-width` (and `min-height`) media queries, never a `max-width` one. Leaving a tab sends `leaveRoom`.
 - **Strings**: every UI text lives in `src/web/strings.ts`, French (NF-012).
 - **Accessibility** (NF-004): native form controls with labels, the message list is an `aria-live="polite"`
   log, focus visible, colours from the design pack tokens only, both themes via `prefers-color-scheme`.
