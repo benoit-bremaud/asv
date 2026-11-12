@@ -78,7 +78,9 @@ stateDiagram-v2
 - **Strings** in `strings.ts`, French; notices for the new codes: `self`, `tooManyWindows`, `targetBusy`, `offline`,
   `accountRequired`, and `invalidText` (BR-090, room and private).
 - **Accessibility** (NF-004): the pseudo menu is a `menu` with `menuitem`s, keyboard reachable from the
-  pseudo button; each window is a `dialog` (non-modal) labelled by the other pseudo with an
+  pseudo button; the pseudo button's accessible name starts with its visible text, "<pseudo>[ (absent)][ (ignoré)], actions"
+  (WCAG 2.5.3 Label in Name, #153; the space before each suffix is a text node outside its `<span>`, as axe 4.12
+  drops a space that opens an element's text), while the open `menu` stays labelled "actions pour <pseudo>"; each window is a `dialog` (non-modal) labelled by the other pseudo with an
   `aria-live="polite"` log; the search results are a list of buttons.
 - **Focus after close or minimise** (#131, WCAG 2.4.3, owner choice A 420/500): closing a window moves the
   focus to the window after it in Tab order (opened after it; shown to its left on desktop, above it on

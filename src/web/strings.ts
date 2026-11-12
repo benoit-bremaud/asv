@@ -51,6 +51,9 @@ export const STRINGS = {
   smileys: "smileys",
   closeTab: (name: string) => `quitter ${name}`,
   pseudoMenu: (pseudo: string) => `actions pour ${pseudo}`,
+  /** The pseudo button's name starts with its visible text (WCAG 2.5.3, #153). */
+  pseudoButton: (pseudo: string, away = false, ignored = false) =>
+    `${[pseudo, away && STRINGS.away, ignored && STRINGS.ignoredMark].filter(Boolean).join(" ")}, actions`,
   privateMessage: "message privé",
   ignore: "ignorer",
   unignore: "ne plus ignorer",
