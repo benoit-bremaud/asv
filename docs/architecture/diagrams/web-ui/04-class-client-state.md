@@ -287,3 +287,10 @@ classDiagram
   new class: `min-height: 24px` on `.pseudo-button` (a button centres its text) and `line-height: 24px` on
   `.smileys summary`, which stays `display: list-item` so its disclosure marker is kept (`inline-flex` would
   drop it); both 44 px under `@media (pointer: coarse)`, in a block placed after the base rules.
+  Header reflow (#143, UI-01, WCAG 2.2 SC 1.4.10, option A 480/500): `.header` already wraps; its end group
+  `.header-end` (pseudo, "Mon compte", "quitter") gets `flex-wrap: wrap` and `min-width: 0`, and the pseudo
+  (`.header-end strong`) gets `min-width: 0` and `overflow-wrap: anywhere` (`min-width: 0` is a safeguard,
+  `anywhere` already lowers the min-content size), so a pseudo of up to 20 characters (BR-001) breaks only when it
+  is wider than the band and the buttons wrap to the next line as needed, instead of widening the page.
+  The pseudo is never truncated (no ellipsis): the chatter reads it in full. jsdom computes no layout: unit
+  tests check the rules; the QA pass reads `scrollWidth` and the button boxes on the production build.
