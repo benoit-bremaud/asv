@@ -39,7 +39,7 @@
     --bevel-light: #4a4a6a;
     --bevel-dark: #0e0e1c;
     --on-brand: #1b1b2f;
-    /* A black shadow vanishes on the dimmed night page (1.07:1): the brand edge carries the frame (7.7:1). */
+    /* A black shadow vanishes on the dimmed night page (1.07:1): the brand edge carries the frame (7.73:1). */
     --backdrop: rgb(0 0 0 / 0.6);
     --dialog-shadow: #000;
     --dialog-edge: var(--brand);
@@ -252,8 +252,10 @@ input { font: inherit; padding: 4px; min-height: 32px; }
 /* Legal pages (ADR-0018): a modal dialog (#59), bounded to the viewport and scrollable. */
 .legal-page { position: fixed; inset: var(--gap); z-index: 30; box-sizing: border-box; width: auto; max-height: calc(100dvh - 2 * var(--gap)); max-width: min(720px, calc(100vw - 2 * var(--gap))); margin: 0 auto; overflow: auto; color: inherit; }
 /* One layered look for every modal dialog (#104): dimmed page, one shadow, an edge visible in dark. */
-.overlay, .legal-page { box-shadow: 4px 4px 0 var(--dialog-shadow); outline: 2px solid var(--dialog-edge); }
-.overlay::backdrop, .legal-page::backdrop { background: var(--backdrop); }
+/* The edge is a spread shadow, not an outline, so the :focus-visible ring of a focused dialog still shows. */
+.overlay, .legal-page { box-shadow: 0 0 0 2px var(--dialog-edge), 4px 4px 0 var(--dialog-shadow); }
+/* Fallback for engines whose ::backdrop does not inherit custom properties (before Chrome 122, Safari 17.4). */
+.overlay::backdrop, .legal-page::backdrop { background: var(--backdrop, rgb(0 0 0 / 0.25)); }
 .legal-table { width: 100%; border-collapse: collapse; font-size: 13px; overflow-wrap: break-word; hyphens: auto; }
 .legal-table th, .legal-table td { border: 1px solid var(--bevel-dark); padding: 4px; text-align: left; vertical-align: top; }
 .search form { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }

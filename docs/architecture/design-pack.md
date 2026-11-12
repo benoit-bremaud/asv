@@ -34,10 +34,11 @@ Every text token passes WCAG AA (4.5:1) on both backgrounds of its theme.
 | Token | Light | Dark | Use | Frame vs dimmed page |
 |---|---|---|---|---|
 | `--backdrop` | `rgb(0 0 0 / 0.25)` | `rgb(0 0 0 / 0.6)` | `::backdrop` dimming | — |
-| `--dialog-shadow` | `--bevel-dark` | `#000` | 4 px offset shadow | light 1.57 (lavender frame) |
-| `--dialog-edge` | `transparent` | `--brand` | 2 px outline | dark 7.72 (WCAG 1.4.11 ≥ 3:1) |
+| `--dialog-shadow` | `--bevel-dark` | `#000` | 4 px offset shadow | light 1.73, dark 1.07 |
+| `--dialog-edge` | `transparent` | `--brand` | 2 px edge (spread shadow) | dark 7.73 (WCAG 1.4.11 ≥ 3:1) |
 
-In dark, a black shadow reads 1.07:1 on the dimmed night page, so the brand edge carries the frame.
+In dark, a black shadow reads 1.07:1 on the dimmed night page, so the brand edge carries the frame. The edge is a spread `box-shadow`, never an `outline`, so the
+`:focus-visible` ring of a focused dialog still shows.
 
 **Away style** (single source, referenced by ADR-0009): the pseudo uses its `-away` token, in italics,
 followed by "(absent)". Colour is never the only cue.

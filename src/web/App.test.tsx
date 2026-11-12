@@ -822,10 +822,13 @@ describe("room screen", () => {
     expect(dark).toContain("--backdrop: rgb(0 0 0 / 0.6);");
     expect(dark).toContain("--dialog-shadow: #000;");
     expect(dark).toContain("--dialog-edge: var(--brand);");
-    expect(css).toContain(".overlay, .legal-page { box-shadow: 4px 4px 0 var(--dialog-shadow); outline: 2px solid var(--dialog-edge); }");
-    expect(css).toContain(".overlay::backdrop, .legal-page::backdrop { background: var(--backdrop); }");
+    const shared = css.match(/^\.overlay, \.legal-page \{[^}]*\}/m)?.[0] ?? "";
+    expect(shared).toContain("box-shadow: 0 0 0 2px var(--dialog-edge), 4px 4px 0 var(--dialog-shadow);");
+    // No outline: the :focus-visible ring of a focused legal page must keep winning.
+    expect(shared).not.toMatch(/\boutline\s*:/);
+    expect(css).toContain(".overlay::backdrop, .legal-page::backdrop { background: var(--backdrop, rgb(0 0 0 / 0.25)); }");
     // Single source: no other rule on the dialogs themselves sets its own shadow, outline or backdrop colour.
-    expect(css.match(/^\.(?:overlay|legal-page)(?:, \.(?:overlay|legal-page))* \{[^}]*\b(?:box-shadow|outline):/gm)).toHaveLength(1);
+    expect(css.match(/^\.(?:overlay|legal-page)(?:, \.(?:overlay|legal-page))* \{[^}]*\b(?:box-shadow|outline)\s*:/gm)).toHaveLength(1);
     expect(css.match(/::backdrop[^{]*\{/g)).toHaveLength(1);
   });
 

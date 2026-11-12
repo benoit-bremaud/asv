@@ -261,9 +261,10 @@ classDiagram
   and from the account panel, that Escape and `cancel` are prevented, the nested Escape, and the focus return
   after a click that does not focus the link.
   Dialog layering (#104, option B 480/500): the account, search and legal page dialogs share one rule:
-  a 4 px shadow, a 2 px edge and a dimmed `::backdrop`, from the `--backdrop`, `--dialog-shadow` and
+  a 4 px shadow, a 2 px edge drawn as a spread shadow (never an `outline`, which would hide the
+  `:focus-visible` ring of the focused legal page) and a dimmed `::backdrop`, from the `--backdrop`, `--dialog-shadow` and
   `--dialog-edge` tokens of the design pack. Light keeps the #63 look (25 % dimming, bevel shadow, no edge);
-  dark dims the page at 60 % and draws the edge in `--brand` (7.7:1 against the dimmed page), since no shadow
+  dark dims the page at 60 % and draws the edge in `--brand` (7.73:1 against the dimmed page), since no shadow
   shows on a near-black page. Unit tests check the tokens per theme and that both selectors use the rule.
   Account dialog (#63, A11Y-01, option A 435/500): the account panel is a modal `dialog` opened with
   `showModal()` when it mounts and closed with `close()` when it unmounts, so the browser gives the focus
