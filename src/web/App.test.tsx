@@ -422,8 +422,8 @@ describe("legal pages (ADR-0018)", () => {
     const user = await setup();
     const closers = [
       (page: HTMLElement) => user.click(within(page).getByRole("button", { name: STRINGS.close })),
-      async (page: HTMLElement) => fireEvent.keyDown(page, { key: "Escape" }),
-      async (page: HTMLElement) => fireEvent(page, new Event("cancel", { cancelable: true })),
+      async (page: HTMLElement) => expect(fireEvent.keyDown(page, { key: "Escape" })).toBe(false),
+      async (page: HTMLElement) => expect(fireEvent(page, new Event("cancel", { cancelable: true }))).toBe(false),
     ];
 
     for (const topic of ["rules", "notice", "privacy"] as const) {
@@ -441,6 +441,22 @@ describe("legal pages (ADR-0018)", () => {
         expect(document.activeElement).toBe(link);
       }
     }
+  });
+
+  it("gives the focus back to a link a click did not focus, as on macOS (#59, #130)", async () => {
+    await setup();
+    const footer = screen.getByRole("button", { name: STRINGS.legal.notice });
+    fireEvent.click(footer);
+    fireEvent.keyDown(screen.getByRole("dialog", { name: STRINGS.legal.notice }), { key: "Escape" });
+    expect(document.activeElement).toBe(footer);
+
+    await goOnline();
+    await enterChat();
+    fireEvent.click(screen.getByRole("button", { name: STRINGS.myAccount }));
+    const link = within(screen.getByRole("dialog", { name: STRINGS.accountTitle })).getByRole("button", { name: STRINGS.legal.privacy });
+    fireEvent.click(link);
+    fireEvent.keyDown(screen.getByRole("dialog", { name: STRINGS.legal.privacy }), { key: "Escape" });
+    expect(document.activeElement).toBe(link);
   });
 
   it("ignores keys other than Escape (#59)", async () => {
@@ -1206,7 +1222,7 @@ describe("account panel", () => {
     const page = screen.getByRole("dialog", { name: STRINGS.legal.privacy });
     expect(showModal.mock.contexts.at(-1)).toBe(page);
 
-    fireEvent.keyDown(page, { key: "Escape" });
+    expect(fireEvent.keyDown(page, { key: "Escape" })).toBe(false);
 
     expect(screen.queryByRole("dialog", { name: STRINGS.legal.privacy })).toBeNull();
     expect(panel()).toBeTruthy();
@@ -1223,7 +1239,7 @@ describe("account panel", () => {
     const link = within(panel()).getByRole("button", { name: STRINGS.legal.privacy });
     await user.click(link);
 
-    fireEvent(screen.getByRole("dialog", { name: STRINGS.legal.privacy }), new Event("cancel", { cancelable: true }));
+    expect(fireEvent(screen.getByRole("dialog", { name: STRINGS.legal.privacy }), new Event("cancel", { cancelable: true }))).toBe(false);
 
     expect(screen.queryByRole("dialog", { name: STRINGS.legal.privacy })).toBeNull();
     expect(panel()).toBeTruthy();

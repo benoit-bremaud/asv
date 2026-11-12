@@ -112,7 +112,7 @@ export const LegalPage = ({ topic, onClose }: { readonly topic: LegalTopic; read
     element?.focus();
     return () => {
       element?.close();
-      if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
+      if (opener instanceof HTMLElement) opener.focus();
     };
   }, []);
   useEffect(() => {

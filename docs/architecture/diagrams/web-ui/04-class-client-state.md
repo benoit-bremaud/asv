@@ -253,24 +253,26 @@ classDiagram
   Legal page dialog (#59, A11Y-01, WCAG 2.4.3, option A 460/500): each legal page is a modal `dialog`, opened
   with `showModal()` when it mounts and closed with `close()` when it unmounts (a layout effect, as the account
   dialog), so the focus is trapped in it and the page behind is inert. On open the focus goes to the `dialog`
-  itself (`tabIndex={-1}`), so its `h2` is read first and Tab reaches its text and "fermer". Escape (a key
+  itself (`tabIndex={-1}`), so its `h2` is read first; Tab reaches "fermer" (the text has no control), the
+  arrow keys scroll the text. Its backdrop dims the page like the account panel's (the layering part of #111). Escape (a key
   handler on the dialog) and `cancel` close it and stop there: from the account panel, Escape with the privacy
   page open closes only the page, a second Escape closes the panel. On unmount the focus returns to the element
-  that had it when the page opened (the footer link or the panel's "confidentialité" link), when it is still in
-  the page. Unit tests check the focus on open, Escape, `cancel` and "fermer" from the entry footer (each topic)
-  and from the account panel, and the nested Escape.
+  that had it when the page opened (the footer link or the panel's "confidentialité" link); each link focuses
+  itself on click, since Safari and Firefox on macOS do not (#130). Unit tests check the focus on open, Escape, `cancel` and "fermer" from the entry footer (each topic)
+  and from the account panel, that Escape and `cancel` are prevented, the nested Escape, and the focus return
+  after a click that does not focus the link.
   Account dialog (#63, A11Y-01, option A 435/500): the account panel is a modal `dialog` opened with
   `showModal()` when it mounts and closed with `close()` when it unmounts, so the browser gives the focus
   trap, the inert background and the top layer (above the private dock, #84). Escape (a key handler on the
-  dialog, since a nested non-modal `dialog` takes the browser close request) and `cancel` (Android back) dispatch
+  dialog) and `cancel` (Android back) dispatch
   `closeAccount`; "fermer" does the same. Its height fits the viewport and it scrolls, so "fermer" stays
   reachable on a phone in landscape. While it is open the notice shows inside it, not in the inert page. On unmount the focus returns to the element
   that had it when the panel opened ("Mon compte", the pseudo whose "message privé" opened it, or the room
   field when the server opened it); "Mon compte" focuses itself on click, since Safari and Firefox on
   macOS do not (#130); nothing gets it if that element left the page. The background being inert, no screen change can come from the user
   while the panel is open; leaving the chat (back to entry) unmounts it. The privacy page opened from the
-  panel stays a non-modal `dialog` inside it, so it stays reachable. Unit tests stub `showModal` and `close`
-  (jsdom has neither) and check the modal opening, Escape (also with the privacy page open),
+  panel is a modal `dialog` stacked above it (Legal page dialog, #59); Escape closes it alone. Unit tests stub `showModal` and `close`
+  (jsdom has neither) and check the modal opening, Escape (with the privacy page open: the page only, then the panel),
   "fermer", the notice inside the dialog and the focus return.
   Small controls (#105, A11Y-05, option A 480/500; smileys added after review round 1, option A 450/500): the
   glyph-only buttons that close a room tab ("×"), minimise or close a private window ("_", "×") and insert a

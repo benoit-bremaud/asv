@@ -1,4 +1,4 @@
-import { useEffect, useState, type SubmitEvent } from "react";
+import { useEffect, useState, type MouseEvent, type SubmitEvent } from "react";
 import { gender as genderSchema, type entryRefusal, type Gender } from "../../shared/protocol";
 import { hasForbiddenChar } from "../../domain/text";
 import { useChat } from "../chat-context";
@@ -52,6 +52,11 @@ export const EntryScreen = () => {
   const [age, setAge] = useState("");
   const [city, setCity] = useState("");
   const [legal, setLegal] = useState<LegalTopic>();
+  const openLegal = (event: MouseEvent<HTMLButtonElement>, topic: LegalTopic) => {
+    // Safari and Firefox on macOS do not focus a clicked button: focus it, so the page gives it back (#130).
+    event.currentTarget.focus();
+    setLegal(topic);
+  };
   const [adult, setAdult] = useState(false);
   const [terms, setTerms] = useState(false);
   const [email, setEmail] = useState("");
@@ -145,7 +150,7 @@ export const EntryScreen = () => {
       <footer className="footer">
         <span>{STRINGS.moderatorSignIn}</span>
         {LEGAL_TOPICS.map((topic) => (
-          <button key={topic} type="button" className="link" onClick={() => setLegal(topic)}>{STRINGS.legal[topic]}</button>
+          <button key={topic} type="button" className="link" onClick={(event) => openLegal(event, topic)}>{STRINGS.legal[topic]}</button>
         ))}
       </footer>
       {legal && <LegalPage topic={legal} onClose={() => setLegal(undefined)} />}

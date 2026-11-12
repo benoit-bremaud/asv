@@ -30,7 +30,11 @@ const AskEmail = () => {
       <p className="small">{STRINGS.codeCreates}</p>
       <p className="small">
         {STRINGS.emailKept}{" "}
-        <button type="button" className="link" onClick={() => setPrivacy(true)}>{STRINGS.legal.privacy}</button>
+        <button type="button" className="link" onClick={(event) => {
+          // Safari and Firefox on macOS do not focus a clicked button: focus it, so the page gives it back (#130).
+          event.currentTarget.focus();
+          setPrivacy(true);
+        }}>{STRINGS.legal.privacy}</button>
       </p>
       {privacy && <LegalPage topic="privacy" onClose={() => setPrivacy(false)} />}
     </form>
@@ -110,7 +114,7 @@ const AccountDialog = () => {
   }, []);
   const close = () => commands.local({ type: "closeAccount" });
   // The state closes the dialog, not the browser: `cancel` covers close requests (Android back), the key handler
-  // covers Escape when a nested non-modal dialog (privacy page, private window) has taken the close request.
+  // covers Escape when the browser sends no close request.
   const cancel = (event: SyntheticEvent) => {
     event.preventDefault();
     close();
