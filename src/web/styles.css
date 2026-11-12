@@ -83,7 +83,9 @@ h2 { font-size: 15px; margin: 0 0 8px; }
 }
 
 .tagline { font-weight: bold; font-style: italic; }
-.header-end { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.header-end { margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-width: 0; }
+/* A 20-character pseudo is one word: let it break rather than widen the page (#143). */
+.header-end strong { min-width: 0; overflow-wrap: anywhere; }
 
 .panel {
   background: var(--panel);
