@@ -107,7 +107,7 @@ label.inline { flex-direction: row; align-items: center; gap: 6px; }
 fieldset { border: 0; padding: 0; margin: 0 0 8px; display: flex; gap: var(--gap); flex-wrap: wrap; }
 legend { padding: 0; margin-bottom: 2px; }
 input { font: inherit; padding: 4px; min-height: 32px; }
-.row { display: flex; gap: var(--gap); }
+.row { display: flex; flex-direction: column; gap: 0; }
 .row label { flex: 1; }
 
 /* Bevelled 2000s buttons. */
@@ -147,7 +147,7 @@ input { font: inherit; padding: 4px; min-height: 32px; }
 
 .entry, .rooms {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: var(--gap);
   margin-top: var(--gap);
 }
@@ -188,16 +188,17 @@ input { font: inherit; padding: 4px; min-height: 32px; }
 
 .room {
   display: grid;
-  grid-template-columns: 1fr 240px;
-  grid-template-areas: "lines members" "composer composer";
+  grid-template-columns: 1fr;
+  grid-template-areas: "toggle" "lines" "composer";
   gap: var(--gap);
   margin-top: var(--gap);
 }
 .lines { grid-area: lines; min-height: 50vh; }
 .lines ol { list-style: none; padding: 0; margin: 0; overflow-wrap: anywhere; }
-.members { grid-area: members; }
+.members { display: none; }
+.members.members-open { display: block; grid-area: lines; z-index: 1; }
 .members ul { list-style: none; padding: 0; margin: 0; }
-.members-toggle { display: none; }
+.members-toggle { display: inline-block; grid-area: toggle; justify-self: end; }
 .composer { grid-area: composer; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .composer input { flex: 1; min-width: 160px; }
 /* Text targets (#142): line-height keeps the summary a list item, so its disclosure marker stays. */
@@ -213,14 +214,14 @@ input { font: inherit; padding: 4px; min-height: 32px; }
 .pseudo-away.pseudo-unspecified { color: var(--pseudo-unspecified-away); }
 .smiley { font-style: normal; }
 
-/* Phones (ASV-NF-006): one column, members behind a toggle. */
-@media (max-width: 767px) {
-  .entry, .rooms { grid-template-columns: 1fr; }
-  .room { grid-template-columns: 1fr; grid-template-areas: "toggle" "lines" "composer"; }
-  .members { display: none; }
-  .members.members-open { display: block; grid-area: lines; z-index: 1; }
-  .members-toggle { display: inline-block; grid-area: toggle; justify-self: end; }
-  .row { flex-direction: column; gap: 0; }
+/* Mobile first (ASV-NF-006, #171): the base rules are the phone layout, one column with the members
+   behind a toggle; from 768 px wide, two columns and the members list always shown. */
+@media (min-width: 768px) {
+  .entry, .rooms { grid-template-columns: 1fr 1fr; }
+  .room { grid-template-columns: 1fr 240px; grid-template-areas: "lines members" "composer composer"; }
+  .members, .members.members-open { display: block; grid-area: members; z-index: auto; }
+  .members-toggle { display: none; }
+  .row { flex-direction: row; gap: var(--gap); }
 }
 
 /* Over the BR-020 limit: colour plus weight, never colour alone. */
@@ -240,13 +241,14 @@ input { font: inherit; padding: 4px; min-height: 32px; }
 }
 .menu { position: absolute; z-index: 20; top: 100%; left: 0; display: flex; flex-direction: column; gap: 4px; padding: 6px var(--gap); white-space: nowrap; box-shadow: 4px 4px 0 var(--bevel-dark); }
 .menu [aria-disabled="true"] { opacity: 0.55; }
-/* The dock follows the screen in the page flow; tall desktops dock it bottom right (below, #65). */
-.privates { margin-top: var(--gap); display: flex; flex-direction: row-reverse; align-items: flex-end; gap: 8px; overflow-x: auto; }
+/* Phones: the windows stack in a column (ASV-NF-006); wider screens get the row below.
+   The dock follows the screen in the page flow; tall desktops dock it bottom right (below, #65). */
+.privates { margin-top: var(--gap); display: flex; flex-direction: column-reverse; align-items: stretch; gap: 8px; overflow-x: auto; }
 /* A non-modal <dialog open>: reset the user-agent position, margin and colours so it docks like a panel. */
-.private-window { position: static; margin: 0; color: inherit; width: 300px; display: flex; flex-direction: column; gap: 6px; box-shadow: 4px 4px 0 var(--bevel-dark); }
+.private-window { position: static; margin: 0; color: inherit; width: auto; display: flex; flex-direction: column; gap: 6px; box-shadow: 4px 4px 0 var(--bevel-dark); }
 .private-title { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--brand); }
 .private-actions { display: flex; gap: 8px; }
-.private-lines { list-style: none; margin: 0; padding: 0; height: 200px; overflow-y: auto; }
+.private-lines { list-style: none; margin: 0; padding: 0; height: 40vh; overflow-y: auto; }
 .private-window .composer input { flex: 1; min-width: 0; }
 .unread { color: var(--brand); font-weight: bold; }
 /* Legal pages (ADR-0018): a modal dialog (#59), bounded to the viewport and scrollable. */
@@ -260,15 +262,20 @@ input { font: inherit; padding: 4px; min-height: 32px; }
 .legal-table th, .legal-table td { border: 1px solid var(--bevel-dark); padding: 4px; text-align: left; vertical-align: top; }
 .search form { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
 .search-results { list-style: none; padding: 0; margin: var(--gap) 0 0; }
-@media (max-width: 767px) {
-  /* Legal table as stacked blocks, each cell labelled by its column (ADR-0018). */
-  .legal-table thead { display: none; }
-  .legal-table tr, .legal-table td { display: block; }
-  .legal-table tr { margin-bottom: var(--gap); }
-  .legal-table td::before { content: attr(data-label) " : "; font-weight: bold; }
-  .privates { flex-direction: column-reverse; align-items: stretch; }
-  .private-window { width: auto; }
-  .private-lines { height: 40vh; }
+/* Phones: the legal table as stacked blocks, each cell labelled by its column (ADR-0018). */
+.legal-table thead { display: none; }
+.legal-table tr, .legal-table td { display: block; }
+.legal-table tr { margin-bottom: var(--gap); }
+.legal-table td::before { content: attr(data-label) " : "; font-weight: bold; }
+/* From 768 px wide (#171): a real table, and the private windows docked in a row. */
+@media (min-width: 768px) {
+  .legal-table thead { display: table-header-group; }
+  .legal-table tr { display: table-row; margin-bottom: 0; }
+  .legal-table td { display: table-cell; }
+  .legal-table td::before { content: none; }
+  .privates { flex-direction: row-reverse; align-items: flex-end; }
+  .private-window { width: 300px; }
+  .private-lines { height: 200px; }
 }
 
 /* Tall desktop (#65, #83, `web-ui/04` and `web-ui/07`): the room screen fits the viewport and its panels

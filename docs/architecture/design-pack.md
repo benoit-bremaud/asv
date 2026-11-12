@@ -110,6 +110,8 @@ ROOM (desktop)                                   ROOM (phone)
 - Ignore is two clicks away: pseudo, then "ignore". Report adds a reason pick.
 - Private windows are floating panels on desktop, a stacked tab bar on phones (ASV-NF-006); they never
   cover the room composer (#65).
+- Mobile first (ASV-NF-006, #171): the phone layout is the default, usable from 320 px wide with no
+  sideways scroll; from 768 px wide the stylesheet adds the desktop layout, never the reverse.
 - Smileys: a small palette button inserts codes. Rendering follows BR-022; whitelist and renderer in
   `web-ui/04`.
 - Away members: `-away` colour of the last gender the client saw, else unspecified, italics and "(absent)"

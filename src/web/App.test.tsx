@@ -888,6 +888,50 @@ describe("room screen", () => {
     for (const item of items) expect(item.matches(".menu .link")).toBe(true);
   });
 
+  it("writes the stylesheet mobile first: phone rules at the base, wider layouts by min-width only (#171)", () => {
+    // jsdom computes no layout or media query: check the cascade in the source.
+    const css = readFileSync("src/web/styles.css", "utf8");
+    expect(css).not.toMatch(/@media[^{]*max-width/);
+    const base = (selector: string) => css.match(new RegExp(`^${selector.replace(/[.*()]/g, "\\$&")} \\{[^}]*\\}`, "m"))?.[0] ?? "";
+    expect(base(".entry, .rooms")).toContain("grid-template-columns: 1fr;");
+    expect(base(".room")).toContain('grid-template-areas: "toggle" "lines" "composer";');
+    expect(base(".members")).toContain("display: none;");
+    expect(base(".members.members-open")).toContain("display: block; grid-area: lines; z-index: 1;");
+    expect(base(".members-toggle")).toContain("display: inline-block;");
+    expect(base(".row")).toContain("flex-direction: column;");
+    expect(base(".privates")).toContain("flex-direction: column-reverse;");
+    expect(base(".legal-table thead")).toContain("display: none;");
+    // Each wide block comes after the base rules it overrides, so it wins at equal specificity.
+    const wide = [...css.matchAll(/^@media \(min-width: 768px\) \{/gm)].map((m) => m.index);
+    expect(wide).toHaveLength(2);
+    expect(wide[0]).toBeGreaterThan(css.search(/^\.members-toggle \{/m));
+    expect(wide[0]).toBeGreaterThan(css.search(/^\.row \{/m));
+    expect(wide[1]).toBeGreaterThan(css.search(/^\.legal-table td::before \{/m));
+    expect(wide[1]).toBeGreaterThan(css.search(/^\.private-lines \{/m));
+    const block = (at: number | undefined) => css.slice(at).match(/^@media[^{]*\{[\s\S]*?^\}/m)?.[0] ?? "";
+    // Whole blocks: every desktop reset is guarded, so dropping one turns the test red.
+    expect(block(wide[0])).toBe(
+      "@media (min-width: 768px) {\n" +
+        "  .entry, .rooms { grid-template-columns: 1fr 1fr; }\n" +
+        '  .room { grid-template-columns: 1fr 240px; grid-template-areas: "lines members" "composer composer"; }\n' +
+        "  .members, .members.members-open { display: block; grid-area: members; z-index: auto; }\n" +
+        "  .members-toggle { display: none; }\n" +
+        "  .row { flex-direction: row; gap: var(--gap); }\n" +
+        "}",
+    );
+    expect(block(wide[1])).toBe(
+      "@media (min-width: 768px) {\n" +
+        "  .legal-table thead { display: table-header-group; }\n" +
+        "  .legal-table tr { display: table-row; margin-bottom: 0; }\n" +
+        "  .legal-table td { display: table-cell; }\n" +
+        "  .legal-table td::before { content: none; }\n" +
+        "  .privates { flex-direction: row-reverse; align-items: flex-end; }\n" +
+        "  .private-window { width: 300px; }\n" +
+        "  .private-lines { height: 200px; }\n" +
+        "}",
+    );
+  });
+
   it("lets the header end wrap and the pseudo break, so a long pseudo never widens the page (#143)", async () => {
     // jsdom computes no layout: check the rules, then that the pseudo matches the selector.
     const css = readFileSync("src/web/styles.css", "utf8");
