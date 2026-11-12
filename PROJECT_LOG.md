@@ -678,3 +678,19 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   two wrong ratios. Codex not run (quota exhausted, optional).
 - Merged 2026-11-12: PR #183 squash 7bc9d16; verify, gitleaks, audit and SonarQube green on the head.
   Next: #136, #171.
+
+## 2026-11-12 — Account dialog aligned, account notices only (#136)
+
+- Found by the #104 smoke check: at 1440 px the account dialog sat against the window edge, 170 px past the
+  page column, and since #63 every notice moved into it (a room "Nom invalide" in "Mon compte", the header
+  jumping 45 px on open and close); "code envoyé" outlived the sign-in.
+- Owner option A (445/500, a fixed `ACCOUNT_NOTICES` set in `store.ts`) over a notice typed by origin (375)
+  and showing it in both places (300). `.overlay` `right` now follows the column, measured with `100%` (the
+  viewport without its scrollbar); `accountLinked` clears an account notice. Study first: `web-ui/04`, `06`.
+- QA AD (JRN-27a…h) on the local prod build in Chrome DevTools MCP: 320, 390 touch, 768 and 1440 px, light
+  and dark, and 1440 × 420 with a page scrollbar; dialog edge on the column at every width.
+- Adversarial review: 2 rounds. Must fixed: `unavailable` and `notConnected` (the dialog's own feedback) had
+  landed in the inert page; a stale SearchPanel comment; JRN-27 missing from the coverage matrix. Should
+  fixed: `100vw` counted the scrollbar, two over-broad claims. Follow-up #185 (search dialog notice twice).
+- Merged 2026-11-12: PR #186 squash fe2c774 with owner approval (no attestation in this repo); verify,
+  gitleaks, audit and SonarQube green on 7cbbaa6. Next: #171.
