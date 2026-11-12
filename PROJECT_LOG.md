@@ -662,3 +662,19 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   on the pseudo trigger; Android back with a menu open), both fixed.
 - Merged 2026-11-12: PR #181 squash 747c1c1; verify, gitleaks, audit and SonarQube green on the head.
   Next: #104 dark, #136, #171.
+
+## 2026-11-12 — Modal dialogs readable in the dark theme (#104)
+
+- #104 was still open for the dark theme only: the 25 % backdrop and the `#0e0e1c` shadow made every modal
+  dialog (account, room search, legal page) read at about 1:1 against the dimmed page.
+- Owner option B (480/500, shared tokens `--backdrop`, `--dialog-shadow`, `--dialog-edge` and one rule for
+  `.overlay, .legal-page`) over the issue's per-selector values (440) and a light veil (255). Dark: 60 %
+  backdrop and a 2 px `--brand` edge, 7.73:1 against the dimmed page; light unchanged. Study first:
+  `design-pack.md` (Modal dialog layering) and `web-ui/04`.
+- QA DL (JRN-26a…k) on the local prod build in Chrome DevTools MCP: three dialogs at 320 and 1440 mouse,
+  390 × 844, 844 × 390 and 1024 × 768 touch, light and dark; 0 axe violations, no sideways scroll.
+- Adversarial review: 2 rounds. Must fixed: the edge as an `outline` hid the legal page's `:focus-visible`
+  ring, now a spread `box-shadow` with a test forbidding `outline`; Should fixed: `::backdrop` fallback,
+  two wrong ratios. Codex not run (quota exhausted, optional).
+- Merged 2026-11-12: PR #183 squash 7bc9d16; verify, gitleaks, audit and SonarQube green on the head.
+  Next: #136, #171.
