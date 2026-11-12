@@ -25,6 +25,9 @@ const MemberLine = ({ member, knownGender }: { member: Member; knownGender?: Gen
   );
 
 /** UC3, UC4: room tabs, lines, members and the message field. */
+/** The room message field, where the focus lands once the last private window closes (`web-ui/07`). */
+export const MESSAGE_FIELD_ID = "message";
+
 export const RoomScreen = () => {
   const { state, commands } = useChat();
   // One draft per room, so a draft never follows a tab switch into another room.
@@ -118,8 +121,8 @@ export const RoomScreen = () => {
           {STRINGS.members} ({room.members.length})
         </button>
         <form className="composer" onSubmit={submit}>
-          <label className="sr-only" htmlFor="message">{STRINGS.message}</label>
-          <input id="message" value={text} aria-invalid={describedBy ? true : undefined} aria-describedby={describedBy} maxLength={2000} autoComplete="off" onChange={(e) => setText(e.target.value)} />
+          <label className="sr-only" htmlFor={MESSAGE_FIELD_ID}>{STRINGS.message}</label>
+          <input id={MESSAGE_FIELD_ID} value={text} aria-invalid={describedBy ? true : undefined} aria-describedby={describedBy} maxLength={2000} autoComplete="off" onChange={(e) => setText(e.target.value)} />
           <span id="message-count" className={`small${tooLong ? " too-long" : ""}`} aria-live="polite">{[...text].length}/{MAX_TEXT}</span>
           {invisible && <output id="message-invisible" className="small too-long">{STRINGS.invisibleChars}</output>}
           <details className="smileys">

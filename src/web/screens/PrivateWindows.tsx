@@ -6,12 +6,11 @@ import { MAX_TEXT, type PrivateView } from "../store";
 import { STRINGS } from "../strings";
 import { Pseudo } from "./Pseudo";
 import { PseudoMenu } from "./PseudoMenu";
+import { MESSAGE_FIELD_ID } from "./RoomScreen";
 
 
 /** Where the focus goes once the store has applied a close or a minimise (`web-ui/07`, #131). */
 interface Refocus {
-  /** The window that was closed; if it is still there, the close was refused and nothing moves. */
-  readonly closed?: string;
   /** The other session id of the window to focus; none means the room message field. */
   readonly target?: string;
 }
@@ -21,7 +20,9 @@ type Props = {
   readonly window: PrivateView;
   readonly draft: string;
   readonly setDraft: (text: string) => void;
+  /** Called once the close is applied, so the dock can move the focus to a neighbour. */
   readonly onClose: () => void;
+  /** Called on minimise, so the dock can move the focus to the new tab. */
   readonly onMinimise: () => void;
 };
 
@@ -39,8 +40,8 @@ const PrivateWindow = ({ windowKey, window, draft, setDraft, onClose, onMinimise
   const gone = window.presence === "gone";
   // A pending window (keyed by the other session id) or a gone partner has nothing to close on the server.
   const close = () => {
-    onClose();
-    commands.closePrivate(windowKey, windowKey !== other.sessionId && !gone);
+    // A refused close keeps the window, and the focus stays on its "×".
+    if (commands.closePrivate(windowKey, windowKey !== other.sessionId && !gone)) onClose();
   };
   const minimise = () => {
     onMinimise();
@@ -105,11 +106,10 @@ export const PrivateWindows = () => {
     const pending = refocus.current;
     if (!pending) return;
     refocus.current = undefined;
-    if (pending.closed && Object.values(state.windows).some((window) => window.other.sessionId === pending.closed)) return;
     const target = pending.target === undefined
-      ? document.getElementById("message")
+      ? undefined
       : document.querySelector<HTMLElement>(`button[data-window="${CSS.escape(pending.target)}"], [data-window="${CSS.escape(pending.target)}"] button`);
-    target?.focus();
+    (target ?? document.getElementById(MESSAGE_FIELD_ID))?.focus();
   });
   if (entries.length === 0) return null;
   return (
@@ -123,7 +123,7 @@ export const PrivateWindows = () => {
           setDraft={(text) => setDrafts((current) => ({ ...current, [window.other.sessionId]: text }))}
           onClose={() => {
             const neighbour = entries[index + 1] ?? entries[index - 1];
-            refocus.current = { closed: window.other.sessionId, target: neighbour?.[1].other.sessionId };
+            refocus.current = { target: neighbour?.[1].other.sessionId };
           }}
           onMinimise={() => {
             refocus.current = { target: window.other.sessionId };

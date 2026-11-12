@@ -1357,7 +1357,42 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
       expect(document.activeElement).toBe(titleOf("cid"));
     });
 
-    it("moves the focus to a minimised neighbour's tab", async () => {
+    it("moves the focus to the second window when the first one closes", async () => {
+      const user = await setup();
+      await signedIn();
+      await threeWindows();
+
+      await user.click(closeOf("bob"));
+
+      expect(document.activeElement).toBe(titleOf("cid"));
+    });
+
+    it("moves the focus to a minimised previous window's tab", async () => {
+      const user = await setup();
+      await signedIn();
+      await open("c1", "s2", "bob");
+      await open("c2", "s3", "cid");
+      await user.click(within(screen.getByRole("dialog", { name: STRINGS.privateWith("bob") })).getByRole("button", { name: STRINGS.minimise }));
+
+      await user.click(closeOf("cid"));
+
+      expect(document.activeElement).toBe(screen.getByRole("button", { name: new RegExp(STRINGS.restore("bob")) }));
+    });
+
+    it("moves the focus on when a gone partner's window closes, with nothing sent", async () => {
+      const user = await setup();
+      await signedIn();
+      await open("c1", "s2", "bob");
+      await open("c2", "s3", "cid");
+      await fromServer(msg("memberLeft", { sessionId: "s2", pseudo: "bob" }));
+
+      await user.click(closeOf("bob"));
+
+      expect(sent().filter((command) => command.type === "closePrivate")).toEqual([]);
+      expect(document.activeElement).toBe(titleOf("cid"));
+    });
+
+    it("moves the focus to a minimised next window's tab", async () => {
       const user = await setup();
       await signedIn();
       await open("c1", "s2", "bob");
@@ -1400,6 +1435,7 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
 
       await user.click(closeOf("bob"));
 
+      expect(screen.getByRole("dialog", { name: STRINGS.privateWith("bob") })).toBeTruthy();
       expect(document.activeElement).toBe(closeOf("bob"));
     });
 
