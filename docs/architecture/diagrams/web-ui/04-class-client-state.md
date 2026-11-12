@@ -248,9 +248,17 @@ classDiagram
   height `fit-content` (a short page stays as tall as its text; it beats `inset`, which is why the page used to
   overflow) and caps it with `max-height: calc(100dvh - 2 * var(--gap))`, so a long text scrolls inside it and
   "fermer", at the end, stays
-  reachable at 320, 390 and 768 px wide and at 1440 × 600. It stays non-modal (Escape and focus return are #59,
-  layering #111). jsdom computes no layout: unit tests check the rule in `styles.css` and that each page still
+  reachable at 320, 390 and 768 px wide and at 1440 × 600. Since #59 it is modal (below). jsdom computes no layout: unit tests check the rule in `styles.css` and that each page still
   renders with its "fermer"; the QA pass measures the scroll on the production build.
+  Legal page dialog (#59, A11Y-01, WCAG 2.4.3, option A 460/500): each legal page is a modal `dialog`, opened
+  with `showModal()` when it mounts and closed with `close()` when it unmounts (a layout effect, as the account
+  dialog), so the focus is trapped in it and the page behind is inert. On open the focus goes to the `dialog`
+  itself (`tabIndex={-1}`), so its `h2` is read first and Tab reaches its text and "fermer". Escape (a key
+  handler on the dialog) and `cancel` close it and stop there: from the account panel, Escape with the privacy
+  page open closes only the page, a second Escape closes the panel. On unmount the focus returns to the element
+  that had it when the page opened (the footer link or the panel's "confidentialité" link), when it is still in
+  the page. Unit tests check the focus on open, Escape, `cancel` and "fermer" from the entry footer (each topic)
+  and from the account panel, and the nested Escape.
   Account dialog (#63, A11Y-01, option A 435/500): the account panel is a modal `dialog` opened with
   `showModal()` when it mounts and closed with `close()` when it unmounts, so the browser gives the focus
   trap, the inert background and the top layer (above the private dock, #84). Escape (a key handler on the

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode, type SyntheticEvent } from "react";
 import { STRINGS } from "../strings";
 
 /** The three provisional legal pages of ADR-0018 (`web-ui/05`, `LegalPage`). */
@@ -99,9 +99,22 @@ const Privacy = ({ id }: { id: LegalIdentity }) => (
   </>
 );
 
-/** A legal page as a non-modal dialog over the current screen; identity fields show "(à compléter)" until set. */
+/** A legal page as a modal dialog (`web-ui/04` Accessibility, #59); identity fields show "(à compléter)" until set. */
 export const LegalPage = ({ topic, onClose }: { readonly topic: LegalTopic; readonly onClose: () => void }) => {
   const [identity, setIdentity] = useState<LegalIdentity>({});
+  const dialog = useRef<HTMLDialogElement>(null);
+  // Layout effect: its cleanup runs while the dialog is still in the page, so `close()` and the focus return happen.
+  useLayoutEffect(() => {
+    const opener = document.activeElement;
+    const element = dialog.current;
+    element?.showModal();
+    // The dialog itself takes the focus, so its title is read first.
+    element?.focus();
+    return () => {
+      element?.close();
+      if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
+    };
+  }, []);
   useEffect(() => {
     let live = true;
     const load = async () => {
@@ -118,9 +131,18 @@ export const LegalPage = ({ topic, onClose }: { readonly topic: LegalTopic; read
       live = false;
     };
   }, []);
+  // The parent closes the page, not the browser; Escape stops here so an account panel under it stays open.
+  const cancel = (event: SyntheticEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    onClose();
+  };
+  const keyDown = (event: KeyboardEvent) => {
+    if (event.key === "Escape") cancel(event);
+  };
   const body: Record<LegalTopic, ReactNode> = { rules: <Rules />, notice: <Notice id={identity} />, privacy: <Privacy id={identity} /> };
   return (
-    <dialog open aria-label={STRINGS.legal[topic]} className="panel legal-page">
+    <dialog ref={dialog} tabIndex={-1} aria-label={STRINGS.legal[topic]} className="panel legal-page" onCancel={cancel} onKeyDown={keyDown}>
       <h2>{STRINGS.legal[topic]}</h2>
       {body[topic]}
       <button type="button" className="bevel" onClick={onClose}>{STRINGS.close}</button>

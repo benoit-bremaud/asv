@@ -41,6 +41,9 @@ stateDiagram-v2
 - `LegalPage` (ADR-0018) shows one of three static texts (rules, legal notice, privacy) from
   `docs/product/legal-pages-draft.md`. The account panel shows the short privacy notice before
   "recevoir mon code" and links to the privacy page.
+- `LegalPage` is a modal dialog (#59, `web-ui/04` Accessibility): it takes the focus on open; "fermer",
+  Escape or `cancel` (back) close it and give the focus back to the link that opened it. Opened from the
+  account panel, it closes alone and the panel stays open.
 - `expelled` and `leave` apply from any screen of `InChat`.
 - The account panel (UC17 to UC19) is an overlay in `InChat`: it opens from the "Mon compte" button in
   the header, after "recevoir mon code" on the entry screen, and (brick 6) when a chatter without an
