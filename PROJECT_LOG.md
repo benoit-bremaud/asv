@@ -694,3 +694,18 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   fixed: `100vw` counted the scrollbar, two over-broad claims. Follow-up #185 (search dialog notice twice).
 - Merged 2026-11-12: PR #186 squash fe2c774 with owner approval (no attestation in this repo); verify,
   gitleaks, audit and SonarQube green on 7cbbaa6. Next: #171.
+
+## 2026-11-12 — #171 mobile-first stylesheet, NF-006 at 320 px
+
+- `styles.css` was desktop first (two `max-width: 767px` blocks) while ASV-NF-006 said "mobile first" and
+  stopped at 360 px. Study first: NF-006 now 320 px (WCAG 2.2 SC 1.4.10), `web-ui/04` and the design pack
+  state base = phone, wider layouts by `min-width` only.
+- Owner option A (410/500, phone rules at the base and two `min-width: 768px` blocks resetting the desktop)
+  over a `(width < 768px)` rename (340). No `max-width` query left; a unit test asserts both wide blocks whole.
+- QA MF (JRN-28a…i) on the prod build in Chrome DevTools MCP: every box equal to 28aa249's stylesheet on the
+  same DOM at 320, 390 × 844, 844 × 390, 767, 768, 1024 × 768, 1440, light and dark; negative control
+  caught; only change: widths between 767 and 768 px (zoom) now get the phone layout.
+- Adversarial review: 2 rounds, 0 Must; Should fixed: the test missed desktop resets, ledger SETUP row and
+  pinned reference SHA. Out of scope noted: design pack "stacked tab bar" wording, missing SD/DL/AD codes.
+- Merged 2026-11-12: PR #188 squash 7c234b4 with owner approval (no attestation); verify, gitleaks, audit
+  and SonarQube green on e4577d4. Next: P2 batch #130, #106, #67.
