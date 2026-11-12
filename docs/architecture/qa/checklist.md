@@ -15,7 +15,7 @@ Report codes: **FP** `2026-10-24-full-pass` · **RS** `2026-10-24-tester-runbook
 · **SA** `2026-11-03-security-audit` (static review, findings only) · **SC** `2026-11-05-23-socket-caps-full` · **OH**
 `2026-11-05-64-one-h1-pass` · **BI** `2026-11-05-91-invisible-chars-pass` · **SZ** `2026-11-06-105-target-size-pass`
 · **AR** `2026-11-06-121-aria-invalid-pass` · **LS** `2026-11-06-126-legal-scroll-pass` · **AM**
-`2026-11-06-63-account-modal-pass` · **PF** `2026-11-12-131-private-focus-pass` · **CQ** `2026-11-12-147-crowd-campaign` · **PL** #153 label-in-name check (rows only) · **PI** #154 refused pseudo check (rows only) · **TT** #142 text target check (rows only) · **MF** #171 mobile-first stylesheet check (rows only) · **HW** #143 header wrap check (rows only) · **PM** #168 pseudo menu touch check (rows only) · **BT** #170 header button touch check (rows only) · **BB** #176 bevel button touch check (rows only).
+`2026-11-06-63-account-modal-pass` · **PF** `2026-11-12-131-private-focus-pass` · **CQ** `2026-11-12-147-crowd-campaign` · **PL** #153 label-in-name check (rows only) · **PI** #154 refused pseudo check (rows only) · **TT** #142 text target check (rows only) · **HW** #143 header wrap check (rows only) · **PM** #168 pseudo menu touch check (rows only) · **BT** #170 header button touch check (rows only) · **BB** #176 bevel button touch check (rows only) · **MF** #171 mobile-first stylesheet check (rows only).
 
 Seeding note: rows dated before 2026-11-12 are compressed from the reports' own result tables (action = the check
 column, observed = the evidence column cut at about 400 characters, evidence = screenshots, issues and head SHA);
