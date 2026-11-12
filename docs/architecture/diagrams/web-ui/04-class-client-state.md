@@ -221,8 +221,7 @@ classDiagram
   Headings (#64, A11Y-02, option A 470/500): every screen renders `Header` (today entry, rooms, room), whose
   "asv" logo is the screen's only `h1`. It takes its name from its text (no `aria-label`) and `.logo` gets
   `margin: 0`, so the header looks as before. Below it, titles start at `h2`: the screen and section titles,
-  the search panel (a `section`, inline on rooms, floating on room; it keeps its `h2` if #111 makes it a
-  `dialog`), and the account and legal page `dialog`s,
+  the search panel (a `section`, inline on rooms, inside a modal `dialog` in a room, #111, keeping its `h2`), and the account and legal page `dialog`s,
   the legal page keeping its `h2` when opened from the account panel. Private windows stay `dialog`s named by
   `aria-label`, with no heading (`web-ui/07`). Unit tests check, per screen and with the account and legal
   dialogs open, one `level: 1` heading named "asv" and the titles at `level: 2`.
@@ -273,7 +272,12 @@ classDiagram
   while the panel is open; leaving the chat (back to entry) unmounts it. The privacy page opened from the
   panel is a modal `dialog` stacked above it (Legal page dialog, #59); Escape closes it alone. Unit tests stub `showModal` and `close`
   (jsdom has neither) and check the modal opening, Escape (with the privacy page open: the page only, then the panel),
-  "fermer", the notice inside the dialog and the focus return.
+  "fermer", the notice inside the dialog and the focus return. On a screen at most 500 px high it starts at
+  the top of the viewport (`@media (max-height: 500px)`, #111), so "fermer" stays in view.
+  Search dialog (#111, option A 460/500): in a room the search panel is a modal `dialog` built like the
+  account dialog (`.overlay`, `showModal()` on mount, `close()` and focus return on unmount, Escape and
+  `cancel` close it, "fermer"); "rechercher" focuses itself on click (#130). Escape on an open pseudo menu
+  inside it closes the menu only. The notice shows inside it too. Rules in `web-ui/07`.
   Small controls (#105, A11Y-05, option A 480/500; smileys added after review round 1, option A 450/500): the
   glyph-only buttons that close a room tab ("×"), minimise or close a private window ("_", "×") and insert a
   smiley in the room composer carry the class `icon-button` next to `link`. It gives them `min-width` and
@@ -285,7 +289,9 @@ classDiagram
   window buttons); one class rule covers future buttons and replaces the #170 `.header-end button` rule. With a
   mouse they keep their box of at least 33 px (`.bevel.big`: 45 px), already above the 24 px floor; text inputs
   keep theirs. Every button that is not `.bevel` is a `.link`; the glyph, pseudo and menu links get the floors
-  above and below, plain text links do not. Other text links (`.link` alone) do not grow, except the text targets below, which get a height floor. jsdom
+  above and below, plain text links do not. Other text links (`.link` alone) do not grow, except the text targets below, which get a height floor, and the
+  links of the account and search dialogs (`.overlay .link`: "fermer", "annuler", "nouveau code", the inline
+  "confidentialité", #111), 44 px high under `@media (pointer: coarse)` in the same block as `.menu .link`. jsdom
   computes no layout: unit tests check the rules in `styles.css`, the class on the header and room-screen
   bevelled buttons, and that every button rendered on the room screen is `.link` or `.bevel`; the QA pass measures the boxes on the production build.
   Text targets (#142, option C 470/500): the "smileys" toggle (`details.smileys > summary`) and each pseudo

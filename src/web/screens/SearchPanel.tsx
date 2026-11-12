@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState, type KeyboardEvent, type SubmitEvent, type SyntheticEvent } from "react";
 import { useChat } from "../chat-context";
 import { STRINGS } from "../strings";
+import { Notice } from "./Notice";
 import { PseudoMenu } from "./PseudoMenu";
 
 const MIN_QUERY = 2;
@@ -74,6 +75,8 @@ export const SearchDialog = ({ onClose }: { onClose: () => void }) => {
   return (
     <dialog ref={dialog} className="panel overlay" aria-labelledby="search-title" onCancel={cancel} onKeyDown={keyDown}>
       <SearchPanel onPrivate={onClose} />
+      {/* The page behind is inert: a notice raised meanwhile shows here too, reachable (as the account dialog, #63). */}
+      <Notice />
       <button type="button" className="link" onClick={onClose}>{STRINGS.close}</button>
     </dialog>
   );

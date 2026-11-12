@@ -86,7 +86,11 @@ export const RoomScreen = () => {
       <Header />
       <nav className="tabs" aria-label="salons">
         <button type="button" className="bevel" onClick={() => commands.local({ type: "showRooms" })}>{STRINGS.backToRooms}</button>
-        <button type="button" className="bevel" aria-expanded={showSearch} onClick={() => setShowSearch(!showSearch)}>{STRINGS.search}</button>
+        <button type="button" className="bevel" aria-haspopup="dialog" onClick={(event) => {
+          // Safari and Firefox on macOS do not focus a clicked button: focus it, so the dialog gives it back (#130).
+          event.currentTarget.focus();
+          setShowSearch(true);
+        }}>{STRINGS.search}</button>
         {Object.keys(state.open).map((id) => (
           <span key={id} className={`tab${id === roomId ? " tab-active" : ""}`}>
             <button type="button" className="link" aria-current={id === roomId} onClick={() => commands.local({ type: "showRoom", roomId: id })}>

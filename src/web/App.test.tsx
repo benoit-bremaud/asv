@@ -1831,9 +1831,9 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
     expect(screen.queryByText(STRINGS.noResult)).toBeNull();
   });
 
-  const openSearch = async () => {
+  const openSearch = async (enter: () => Promise<void> = signedIn) => {
     const user = await setup();
-    await signedIn();
+    await enter();
     await joinRoom("r1");
     const opener = screen.getByRole("button", { name: STRINGS.search });
     await user.click(opener);
@@ -1856,14 +1856,66 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
     expect(searchClosed()).toBe(true);
     expect(closeDialog).toHaveBeenCalled();
     expect(document.activeElement).toBe(opener);
-    expect(opener.getAttribute("aria-expanded")).toBe("false");
   });
 
-  it("gives the dialog links the 44 px touch floor (#111)", async () => {
-    // jsdom computes no layout: the touch rule is checked with the #142 block; here, the links match it.
+  it("gives the focus back to \"rechercher\" when the click did not focus it (#111, #130)", async () => {
+    await setup();
+    await signedIn();
+    await joinRoom("r1");
+    const opener = screen.getByRole("button", { name: STRINGS.search });
+
+    fireEvent.click(opener);
+    fireEvent.keyDown(screen.getByRole("dialog", { name: STRINGS.searchTitle }), { key: "Escape" });
+
+    expect(document.activeElement).toBe(opener);
+  });
+
+  it("raises the dialogs on a short screen and draws one frame around the search (#111)", () => {
+    // jsdom computes no layout: check the rules, after the base `.overlay` rule so they win.
+    const css = readFileSync("src/web/styles.css", "utf8");
+    const short = /^@media \(max-height: 500px\) \{ \.overlay \{ top: var\(--gap\); max-height: calc\(100dvh - 2 \* var\(--gap\)\); \} \}/m;
+
+    expect(css).toMatch(short);
+    expect(css.search(short)).toBeGreaterThan(css.search(/^\.overlay \{/m));
+    expect(css.match(/^\.overlay > \.search \{[^}]*\}/m)?.[0]).toContain("border: 0;");
+  });
+
+  it("closes only the pseudo menu on Escape inside the search dialog (#111)", async () => {
+    const { user, dialog } = await openSearch();
+    await user.type(within(dialog()).getByLabelText(STRINGS.searchLabel), "zo{Enter}");
+    await fromServer(msg("searchResults", { results: [{ sessionId: "s3", pseudo: "zoe", hasAccount: true, away: false, gender: "woman", age: 30, city: "Lyon", rooms: [] }] }));
+    const pseudo = within(dialog()).getByRole("button", { name: STRINGS.pseudoButton("zoe") });
+    await user.click(pseudo);
+
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(searchClosed()).toBe(false);
+    expect(document.activeElement).toBe(pseudo);
+  });
+
+  it("opens the account dialog over the search dialog when \"message privé\" needs an account (#111)", async () => {
+    const { user, dialog } = await openSearch(async () => { await enterChat(); });
+    await user.type(within(dialog()).getByLabelText(STRINGS.searchLabel), "zo{Enter}");
+    await fromServer(msg("searchResults", { results: [{ sessionId: "s3", pseudo: "zoe", hasAccount: true, away: false, gender: "woman", age: 30, city: "Lyon", rooms: [] }] }));
+    const pseudo = within(dialog()).getByRole("button", { name: STRINGS.pseudoButton("zoe") });
+    await user.click(pseudo);
+
+    await user.click(screen.getByRole("menuitem", { name: STRINGS.privateMessage }));
+    const account = screen.getByRole("dialog", { name: STRINGS.accountTitle });
+    fireEvent.keyDown(account, { key: "Escape" });
+
+    expect(screen.queryByRole("dialog", { name: STRINGS.accountTitle })).toBeNull();
+    expect(searchClosed()).toBe(false);
+    expect(document.activeElement).toBe(pseudo);
+  });
+
+  it("shows a notice raised meanwhile inside the search dialog (#111)", async () => {
     const { dialog } = await openSearch();
 
-    expect(within(dialog()).getByRole("button", { name: STRINGS.close }).matches(".overlay .link")).toBe(true);
+    await fromServer(msg("error", { code: "invalid", message: "m" }));
+
+    expect(within(dialog()).getByRole("alert")).toBeTruthy();
   });
 
   it("closes the search dialog on Escape and on a close request (#111)", async () => {

@@ -81,7 +81,14 @@ export const PseudoMenu = ({ target, onPrivate }: { target: MenuTarget; onPrivat
         {ignored && <> <span className="small">{STRINGS.ignoredMark}</span></>}
       </button>
       {open && (
-        <span role="menu" className="menu panel" aria-label={STRINGS.pseudoMenu(target.pseudo)}>
+        <span role="menu" className="menu panel" aria-label={STRINGS.pseudoMenu(target.pseudo)} onKeyDown={(event) => {
+          // Escape closes the menu only, never the dialog around it (search dialog, #111): focus back on the pseudo.
+          if (event.key !== "Escape") return;
+          event.preventDefault();
+          event.stopPropagation();
+          setOpen(false);
+          trigger.current?.focus();
+        }}>
           <button
             ref={first}
             type="button"
