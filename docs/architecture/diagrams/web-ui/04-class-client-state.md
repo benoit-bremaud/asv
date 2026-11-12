@@ -231,6 +231,13 @@ classDiagram
   The entry city field gets `aria-invalid="true"` while its trimmed text holds a BR-090 character; its link to
   the notice is #120. Once the text fits, the attributes are removed (not set to `false`). Unit tests check
   both attributes on the two composers and `aria-invalid` on the city field, set then removed.
+  Refused pseudo (#154, A11Y-03, option A 480/500): when the server refuses the pseudo (`entryRefused` with
+  `pseudoTaken` or `pseudoInvalid`), the entry pseudo field gets `aria-invalid="true"` and
+  `aria-describedby="entry-error"`, the id of the entry alert, while its trimmed text equals the pseudo last
+  sent. Editing it to another text removes both attributes; typing the refused pseudo back sets them again.
+  Other refusals (`rate`, `banned`, `age`) leave the field unmarked. The `pseudoTaken` text says how to fix it:
+  pick another pseudo, accents and case do not count (BR-002); `pseudoInvalid` already lists the rule (BR-001,
+  BR-003). Unit tests check both codes, removal on edit, setting again on the same text, and no mark on `age`.
   Legal page scroll (#126, UI-01, option A 480/500; the issue's `height: auto` dropped after review
   round 1, owner 2026-11-06, since it stretched short pages): a legal page `dialog` (rules, notice, privacy; from the
   entry footer or the account panel) never grows past the viewport. `.legal-page` keeps the user-agent `dialog`

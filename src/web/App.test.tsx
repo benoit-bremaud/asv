@@ -229,6 +229,52 @@ describe("entry screen", () => {
     expect(screen.getByRole("alert").textContent).toBe(STRINGS.entryRefused.pseudoTaken);
   });
 
+  it.each(["pseudoTaken", "pseudoInvalid"] as const)("marks the pseudo field invalid on %s and links it to the alert (#154)", async (reason) => {
+    const user = await setup();
+    await goOnline();
+    await fill(user);
+    await user.click(enterButton());
+
+    await fromServer(msg("entryRefused", { reason }));
+
+    const field = screen.getByLabelText(STRINGS.pseudo);
+    expect(field.getAttribute("aria-invalid")).toBe("true");
+    expect(document.getElementById(field.getAttribute("aria-describedby") ?? "")?.textContent).toBe(STRINGS.entryRefused[reason]);
+  });
+
+  it("unmarks the pseudo field once edited, and marks it again on the refused pseudo (#154)", async () => {
+    const user = await setup();
+    await goOnline();
+    await fill(user);
+    await user.click(enterButton());
+    await fromServer(msg("entryRefused", { reason: "pseudoTaken" }));
+    const field = screen.getByLabelText(STRINGS.pseudo);
+
+    await user.type(field, "x");
+
+    expect(field.hasAttribute("aria-invalid")).toBe(false);
+    expect(field.hasAttribute("aria-describedby")).toBe(false);
+    await user.keyboard("{Backspace}");
+    expect(field.getAttribute("aria-invalid")).toBe("true");
+  });
+
+  it("leaves the pseudo field unmarked on a refusal that is not about the pseudo (#154)", async () => {
+    const user = await setup();
+    await goOnline();
+    await fill(user);
+    await user.click(enterButton());
+
+    await fromServer(msg("entryRefused", { reason: "age" }));
+
+    const field = screen.getByLabelText(STRINGS.pseudo);
+    expect(field.hasAttribute("aria-invalid")).toBe(false);
+    expect(field.hasAttribute("aria-describedby")).toBe(false);
+  });
+
+  it("says how to fix a taken pseudo (BR-002, #154)", () => {
+    expect(STRINGS.entryRefused.pseudoTaken).toMatch(/accents et les majuscules ne comptent pas/);
+  });
+
   it("prefills the pseudo after a leave", async () => {
     await setup();
     await enterChat("ana");
