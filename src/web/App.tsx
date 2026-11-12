@@ -5,6 +5,7 @@ import { Notice } from "./screens/Notice";
 import { PrivateWindows } from "./screens/PrivateWindows";
 import { RoomScreen } from "./screens/RoomScreen";
 import { RoomsScreen } from "./screens/RoomsScreen";
+import { isAccountNotice } from "./store";
 import { STRINGS } from "./strings";
 
 /** Reconnecting banner and notices, over every screen (`web-ui/05`). */
@@ -14,8 +15,8 @@ const Banners = () => {
     <>
       {state.link === "reconnecting" && <output className="banner">{STRINGS.reconnecting}</output>}
       {state.link === "offline" && state.screen === "entry" && <output className="banner">{STRINGS.offline}</output>}
-      {/* The modal account dialog makes the page inert: it shows the notice itself (#63). */}
-      {!(state.account.open && state.screen !== "entry") && <Notice />}
+      {/* The modal account dialog shows the account notices itself (#63); the others stay here (#136). */}
+      <Notice show={(code) => !(state.account.open && state.screen !== "entry" && isAccountNotice(code))} />
     </>
   );
 };
