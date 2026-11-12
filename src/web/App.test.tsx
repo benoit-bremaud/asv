@@ -1434,6 +1434,8 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
       connection.send.mockReturnValue(false);
 
       await user.click(closeOf("bob"));
+      // Any later render (here a message for cid) must not apply a stale refocus.
+      await fromServer(msg("privateMessage", { conversationId: "c2", authorSessionId: "s3", text: "re", sentAt: "2026-10-24T10:00:00.000Z" }));
 
       expect(screen.getByRole("dialog", { name: STRINGS.privateWith("bob") })).toBeTruthy();
       expect(document.activeElement).toBe(closeOf("bob"));
