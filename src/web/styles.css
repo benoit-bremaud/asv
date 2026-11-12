@@ -133,6 +133,8 @@ input { font: inherit; padding: 4px; min-height: 32px; }
   .icon-button { min-width: 44px; min-height: 44px; }
   /* The room name beside its "×" stays as tall, so leaving is not the easier target. */
   .tab .link { min-height: 44px; }
+  /* Header buttons (#170): 33 px with a mouse, already above 24 px. */
+  .header-end button { min-height: 44px; }
 }
 
 .entry, .rooms {
