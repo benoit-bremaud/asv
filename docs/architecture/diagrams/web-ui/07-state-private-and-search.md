@@ -80,3 +80,9 @@ stateDiagram-v2
 - **Accessibility** (NF-004): the pseudo menu is a `menu` with `menuitem`s, keyboard reachable from the
   pseudo button; each window is a `dialog` (non-modal) labelled by the other pseudo with an
   `aria-live="polite"` log; the search results are a list of buttons.
+- **Focus after close or minimise** (#131, WCAG 2.4.3, owner choice A 420/500): closing a window moves the
+  focus to the window after it in Tab order (opened after it; shown to its left on desktop, above it on
+  phones), else the one before it, on its first control (the title pseudo, or
+  the tab of a minimised window); with no window left, to the room message field; with no room screen
+  either, the focus stays on the document. A close the server cannot be told about keeps the window and the
+  focus where they are. Minimising a window moves the focus to its new tab.

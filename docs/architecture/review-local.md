@@ -1,44 +1,63 @@
-# Local review — asv (branch fix/91-refuse-control-bidi-characters)
+# Local review — asv (branch fix/131-private-close-focus)
 
-This report records the pre-push review of issue #91 (BR-090: refuse control, bidi and zero-width characters in free text).
+This report records the pre-push review of issue #131 (keep the focus when a private window is closed or minimised).
 
-- Date: 2026-11-05
-- Commit: db44453
-- Scope: branch diff origin/main...HEAD (`src/domain/text.ts`, its callers in `rooms`, `private`, `entry`, the web composers and entry form, their tests; business rules, rooms, private-conversations, entry, web-ui and platform diagrams, traceability, STRIDE table, test plan)
-- Checks run: adversarial (Opus, 2 rounds) · tests and design (test-auditor) · security and correctness (adversarial pass) · execution checks (pre-push mode)
-- Verdict: ship as-is · Must 0 · Should 0 open (6 adversarial and 3 test-audit Should fixed) · Nice 4
+- Date: 2026-11-12
+- Commit: 74472ed
+- Scope: branch diff origin/main...HEAD (`src/web/screens/PrivateWindows.tsx`, `RoomScreen.tsx`, `chat-context.tsx`, `App.test.tsx`; `web-ui/07` study, QA test plan JRN-21)
+- Checks run: adversarial (Opus, 2 rounds) · design, docs, tests, security, correctness (one combined audit agent) · execution checks (pre-push mode)
+- Verdict: ship as-is · Must 0 · Should 0 open · Nice 0 open
 
 ## Adversarial review (#236)
-- Round 1 on `73aeb65`: Must 2 · Should 6 · Nice 5 · unverified 0 · Push gate: closed
-- Round 2 on `db44453`: 12 fixed · 1 not fixed (Nice N3) · 0 regressed · new Must 0 · **Push gate: open**
-- Hosted reviewers (filled at the pre-merge run): Copilot pending · Codex optional
 
-## Pre-merge gate (head SHA db44453)
+- Round 1 on `c454723`: Must 0 · Should 3 · Nice 1 · unverified 1 · Push gate: open
+- Round 2 on `379c984` (range c454723..379c984): 3 fixed · 0 not fixed · 0 regressed · new Must 0 · new Should 1 and Nice 2, fixed in `74472ed` · **Push gate: open**
+- Optional second review (owner's OpenAI account): ChatGPT/Codex not run (never a gate step)
+
+## Pre-merge gate (head SHA 74472ed)
+
 | Step | Result |
 |---|---|
-| 0 CI mirror | `ci.yml` job `verify` mirrored by `pnpm verify`; CodeQL, dependency review and Scorecard are CI-only |
-| 1 Tests | ✅ `pnpm verify`: 701 passed (lint, typecheck, build green) |
-| 2 Coverage | tests 98.65 % stmts / 94.61 % branches (floor 80) · docs ⏸ deferred to the pre-merge run |
-| 3 SonarQube | ⏸ deferred to the pre-merge run (`pnpm sonar` on the PR head) |
+| 0 CI mirror | `ci.yml` → `pnpm verify` (lint, typecheck, tests with coverage, build) ✅; `codeql.yml`, `dependency-review.yml`, `scorecard.yml` CI-only |
+| 1 Tests | ✅ 726 unit/integration (10 new for #131) |
+| 2 Coverage | tests 98.67 % stmts / 94.84 % branches (floor 80) · docs ⏸ deferred to the pre-merge run (`--push`) |
+| 3 SonarQube | ⏸ deferred to the pre-merge run (`--push`) |
 | 4 Secrets | ✅ gitleaks clean (origin/main..HEAD) · no tracked .env · diff read: nothing sensitive |
-| 5 E2E/smoke | ⏸ deferred to the pre-merge run · JRN-15 not covered yet (QA pass) |
-- Gate: `--push`: **pre-push green**, steps 2 (docs), 3 and 5 deferred (never GREEN)
+| 5 E2E/smoke | ⏸ deferred to the pre-merge run (`--push`) · JRN-21 QA evidence still to run |
+
+- Gate: **pre-push green** — `pnpm verify` passed; SonarQube, doc coverage, E2E and JRN-21 QA deferred (never GREEN)
 
 ## 🔴 Must Have
-_None open._ Fixed in db44453: BR-090 missing from the UC4 and UC6 specs and their sequences; JRN-15 without a coverage row.
+
+_None._
 
 ## 🟡 Should Have
-_None open._ Fixed in db44453: the client checks BR-090 before sending and keeps the text (owner choice A, 405/500); the character set is widened to the characters shown as blanks (owner choice A, 440/500); a resume test with a BR-090 city; BR-090 in the business-rule headers and UC13; a STRIDE spoofing row; the refusal test asserts the state is untouched.
+
+All fixed on the branch:
+
+- `src/web/App.test.tsx` `[adversarial|tests]` · the refused-close test passed without its guard · it now re-renders after the click and fails when `onClose` runs unconditionally (mutation checked) · fixed in 379c984
+- `src/web/screens/PrivateWindows.tsx` `[correctness]` · a refocus could stay pending after a refused close; a missing target dropped the focus · `closePrivate` returns whether it applied, fallback to the room field · fixed in d941d03
+- `src/web/screens/PrivateWindows.tsx` `[design]` · hard-coded `"message"` id of another component · `MESSAGE_FIELD_ID` exported by `RoomScreen` · fixed in d941d03
+- `docs/architecture/diagrams/web-ui/07-state-private-and-search.md` `[adversarial|docs]` · "next window in the dock" ambiguous with `row-reverse` · named by Tab order · fixed in 379c984
+- `docs/architecture/qa/test-plan.md` `[adversarial|docs]` · JRN-21 cases missed the refused close and the no-room case · cases (f) and (g) added · fixed in 379c984
+- `src/web/screens/RoomScreen.tsx` `[adversarial|docs]` · new constant split `RoomScreen` from its doc comment · moved above it · fixed in 74472ed
 
 ## 🔵 Nice to Have
-- `src/domain/text.test.ts:24` `[adversarial]` · U+034F, U+115F, U+1160, U+180E, U+FFA0, U+206F and U+FFFB are not tested one by one · add one row each.
-- `docs/architecture/diagrams/web-ui/03-component.md:58` `[adversarial]` · no lint rule keeps `src/domain/text.ts` the only domain module the web imports, and web-ui/03 has no arrow for it · add a `src/web/**` `no-restricted-imports` pattern and the arrow.
-- `src/web/screens/EntryScreen.tsx:107` `[adversarial]` · the city notice sits inside the label, so it joins the input's accessible name · move it out and link it with `aria-describedby`.
-- `docs/architecture/qa/test-plan.md` JRN-15 `[adversarial]` · split the UI check (send disabled, `invisibleChars`) from the WebSocket probe (`warning invalidText`).
+
+- `src/web/screens/RoomScreen.tsx` `[adversarial]` · `message-count` / `message-invisible` ids derived from `MESSAGE_FIELD_ID` · fixed in 74472ed
+- `docs/architecture/qa/test-plan.md` `[adversarial]` · JRN-21 journey row names the no-room case · fixed in 74472ed
+- `src/web/screens/PrivateWindows.tsx` `[design]` · two callbacks (`onClose`, `onMinimise`) could become one hook · kept: two clear props, no second user (YAGNI)
 
 ## ⚪ Disagree / Intentional
-- `src/domain/text.ts:12` `[adversarial]` · U+034F sits outside the character class · ESLint `no-misleading-character-class`; same behaviour.
-- `src/domain/text.ts:12` `[adversarial]` · U+200C and U+200D stay allowed · owner choice (emoji sequences, Persian), tested.
+
+- `src/web/screens/PrivateWindows.tsx` `[adversarial]` · minimise is fixed too, beyond the issue text · owner asked for it in the same PR; study updated first
+- `src/web/screens/PrivateWindows.tsx` `[adversarial|correctness]` · `useEffect` with no dependency array · intended (runs after the store applied the action), comment in place
 
 ## Per-dimension summary
-- Adversarial: 2 Must and 6 Should fixed, gate open · Design: one pure function, three domain callers and three screens, right-sized · Docs: the study lists BR-090 everywhere the refusals are named · Tests: unit and UI tests can fail, none mock the domain · Security: server enforces BR-090, the client check is a convenience · Correctness: client and server both check the trimmed text.
+
+- Adversarial: 2 rounds, 0 Must, gate open; pre-existing study mismatch on closing a minimised window filed as #145
+- Design: simple ref plus effect in the dock; no new abstraction
+- Docs: study, test plan and doc comments aligned
+- Tests: 10 behaviour tests, each failing without the change (mutation checked)
+- Security: server session ids pass through `CSS.escape`; no new input, nothing persisted
+- Correctness: hook order stable, keys stable across pending → conversation id, refused close keeps the focus

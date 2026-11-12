@@ -25,7 +25,8 @@ export interface Commands {
   /** False when nothing was sent (offline), so the window keeps the draft. */
   sendPrivate(targetPseudo: string, text: string): boolean;
   /** `notify`: the window has a conversation on the server (not pending, partner not gone). */
-  closePrivate(windowKey: string, notify: boolean): void;
+  /** Closes the window locally; false when the server could not be told, and the window stays. */
+  closePrivate(windowKey: string, notify: boolean): boolean;
   ignore(sessionId: string): void;
   unignore(sessionId: string): void;
   search(query: string): void;
@@ -84,8 +85,9 @@ export const ChatProvider = ({ connect, children }: { connect: ConnectionFactory
       sendPrivate: (targetPseudo, text) => send({ type: "sendPrivate", payload: { targetPseudo, text } }),
       closePrivate: (windowKey, notify) => {
         // Offline: the server keeps the window open (BR-043 slot), so it stays here too, like `leaveRoom`.
-        if (notify && !send({ type: "closePrivate", payload: { conversationId: windowKey } })) return;
+        if (notify && !send({ type: "closePrivate", payload: { conversationId: windowKey } })) return false;
         dispatch({ type: "closePrivate", conversationId: windowKey });
+        return true;
       },
       ignore: (sessionId) => send({ type: "ignore", payload: { targetSessionId: sessionId } }),
       unignore: (sessionId) => send({ type: "unignore", payload: { targetSessionId: sessionId } }),

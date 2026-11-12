@@ -24,6 +24,9 @@ const MemberLine = ({ member, knownGender }: { member: Member; knownGender?: Gen
     </li>
   );
 
+/** The room message field, where the focus lands once the last private window closes (`web-ui/07`). */
+export const MESSAGE_FIELD_ID = "message";
+
 /** UC3, UC4: room tabs, lines, members and the message field. */
 export const RoomScreen = () => {
   const { state, commands } = useChat();
@@ -67,7 +70,7 @@ export const RoomScreen = () => {
   // BR-090, checked on the trimmed text as the server does; the text stays in the field.
   const invisible = hasForbiddenChar(text.trim());
   // A11Y-03 (#121): the field names what refuses it.
-  const describedBy = [tooLong && "message-count", invisible && "message-invisible"].filter(Boolean).join(" ") || undefined;
+  const describedBy = [tooLong && `${MESSAGE_FIELD_ID}-count`, invisible && `${MESSAGE_FIELD_ID}-invisible`].filter(Boolean).join(" ") || undefined;
   const submit = (event: SubmitEvent) => {
     event.preventDefault();
     if (text.trim() === "" || tooLong || invisible) return;
@@ -118,10 +121,10 @@ export const RoomScreen = () => {
           {STRINGS.members} ({room.members.length})
         </button>
         <form className="composer" onSubmit={submit}>
-          <label className="sr-only" htmlFor="message">{STRINGS.message}</label>
-          <input id="message" value={text} aria-invalid={describedBy ? true : undefined} aria-describedby={describedBy} maxLength={2000} autoComplete="off" onChange={(e) => setText(e.target.value)} />
-          <span id="message-count" className={`small${tooLong ? " too-long" : ""}`} aria-live="polite">{[...text].length}/{MAX_TEXT}</span>
-          {invisible && <output id="message-invisible" className="small too-long">{STRINGS.invisibleChars}</output>}
+          <label className="sr-only" htmlFor={MESSAGE_FIELD_ID}>{STRINGS.message}</label>
+          <input id={MESSAGE_FIELD_ID} value={text} aria-invalid={describedBy ? true : undefined} aria-describedby={describedBy} maxLength={2000} autoComplete="off" onChange={(e) => setText(e.target.value)} />
+          <span id={`${MESSAGE_FIELD_ID}-count`} className={`small${tooLong ? " too-long" : ""}`} aria-live="polite">{[...text].length}/{MAX_TEXT}</span>
+          {invisible && <output id={`${MESSAGE_FIELD_ID}-invisible`} className="small too-long">{STRINGS.invisibleChars}</output>}
           <details className="smileys">
             <summary>{STRINGS.smileys}</summary>
             {Object.entries(SMILEYS).map(([code, symbol]) => (
