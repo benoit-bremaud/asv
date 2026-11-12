@@ -1895,7 +1895,7 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
   });
 
   it.each([["Escape", (dialog: HTMLElement) => fireEvent.keyDown(dialog, { key: "Escape" })], ["a close request", (dialog: HTMLElement) => fireEvent(dialog, new Event("cancel", { cancelable: true }))]])(
-    "keeps the search dialog open on %s while a menu with the focus on its pseudo is open (#111)",
+    "closes the open menu first, then the search dialog, on %s with the focus on the pseudo (#111)",
     async (_name, press) => {
       const { user, dialog } = await openSearch();
       await user.type(within(dialog()).getByLabelText(STRINGS.searchLabel), "zo{Enter}");
@@ -1904,7 +1904,11 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
 
       press(dialog());
 
+      expect(screen.queryByRole("menu")).toBeNull();
       expect(searchClosed()).toBe(false);
+      expect(document.activeElement).toBe(within(dialog()).getByRole("button", { name: STRINGS.pseudoButton("zoe") }));
+      press(dialog());
+      expect(searchClosed()).toBe(true);
     },
   );
 

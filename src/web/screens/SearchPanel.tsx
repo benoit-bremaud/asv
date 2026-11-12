@@ -65,10 +65,14 @@ export const SearchDialog = ({ onClose }: { onClose: () => void }) => {
     };
   }, []);
   // The state closes the dialog: `cancel` covers close requests (Android back), the key handler covers Escape.
-  // An open pseudo menu takes the Escape first, wherever the focus is (its trigger, a disabled item): only it closes.
+  // An open pseudo menu closes first, wherever the focus is (its trigger, a disabled item), on Escape as on a close
+  // request (Android back): its own Escape listener closes it, the focus goes back to its pseudo.
   const cancel = (event: SyntheticEvent) => {
     event.preventDefault();
-    if (!dialog.current?.querySelector('[role="menu"]')) onClose();
+    const menu = dialog.current?.querySelector('[role="menu"]');
+    if (!menu) return onClose();
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    if (menu.previousElementSibling instanceof HTMLElement) menu.previousElementSibling.focus();
   };
   const keyDown = (event: KeyboardEvent) => {
     if (event.key === "Escape") cancel(event);
