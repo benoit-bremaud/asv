@@ -835,7 +835,9 @@ describe("room screen", () => {
     await setup();
     await enterChat();
     await joinRoom("r1");
-    await userEvent.click(document.querySelector<HTMLButtonElement>(".members button.pseudo-button")!);
+    const pseudo = document.querySelector(".members button.pseudo-button");
+    if (!(pseudo instanceof HTMLButtonElement)) throw new Error("no member pseudo button");
+    await userEvent.click(pseudo);
 
     const items = screen.getAllByRole("menuitem");
     expect(items).toHaveLength(2);
