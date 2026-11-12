@@ -1,4 +1,4 @@
-import { useState, type SubmitEvent } from "react";
+import { useEffect, useRef, useState, type SubmitEvent } from "react";
 import { useChat } from "../chat-context";
 import { STRINGS } from "../strings";
 import { Header } from "./Header";
@@ -8,6 +8,14 @@ import { SearchPanel } from "./SearchPanel";
 export const RoomsScreen = () => {
   const { state, commands } = useChat();
   const [name, setName] = useState("");
+  // #151: the last name sent with its seq, given back if the server refuses it and the field is still empty.
+  const sent = useRef<{ seq: number; name: string } | undefined>(undefined);
+  useEffect(() => {
+    const last = sent.current;
+    if (!last || last.seq !== state.refusedSeq) return;
+    sent.current = undefined;
+    setName((current) => (current === "" ? last.name : current));
+  }, [state.refusedSeq]);
   const official = state.roomList.filter((room) => room.kind !== "user");
   const user = state.roomList.filter((room) => room.kind === "user");
   const open = (roomId: string) =>
@@ -27,7 +35,10 @@ export const RoomsScreen = () => {
     event.preventDefault();
     if (name.trim() === "") return;
     // Offline: nothing left, so the name stays (`write` shows the notice).
-    if (commands.createRoom(name)) setName("");
+    const seq = commands.createRoom(name);
+    if (seq === undefined) return;
+    sent.current = { seq, name };
+    setName("");
   };
 
   return (

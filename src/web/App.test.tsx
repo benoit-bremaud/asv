@@ -67,7 +67,7 @@ beforeEach(() => {
   closeDialog.mockClear();
   HTMLDialogElement.prototype.showModal = showModal;
   HTMLDialogElement.prototype.close = closeDialog;
-  connection = { enter: vi.fn(), signOutDevice: vi.fn(async () => undefined), send: vi.fn(() => true), forgetCode: vi.fn(), leave: vi.fn(), close: vi.fn() };
+  connection = { enter: vi.fn(), signOutDevice: vi.fn(async () => undefined), send: vi.fn(() => 7), forgetCode: vi.fn(), leave: vi.fn(), close: vi.fn() };
   connect = (d) => {
     dispatch = d;
     return connection;
@@ -644,12 +644,54 @@ describe("rooms screen", () => {
   it("keeps the room name when the create could not be sent", async () => {
     const user = await setup();
     await enterChat();
-    connection.send.mockReturnValue(false);
+    connection.send.mockReturnValue(undefined);
     const field = screen.getByLabelText(STRINGS.roomName) as HTMLInputElement;
 
     await user.type(field, "Mon salon{Enter}");
 
     expect(field.value).toBe("Mon salon");
+  });
+
+  describe("refused room name (#151)", () => {
+    const create = async (user: ReturnType<typeof userEvent.setup>, name: string) => {
+      const field = screen.getByLabelText(STRINGS.roomName) as HTMLInputElement;
+      await user.type(field, `${name}{Enter}`);
+      return field;
+    };
+
+    it("gives the name back when the server refuses that create", async () => {
+      const user = await setup();
+      await enterChat();
+      connection.send.mockReturnValue(4);
+      const field = await create(user, "Mon salon");
+
+      await fromServer(msg("warning", { code: "invalidName", message: "m", replyTo: 4 }));
+
+      expect(field.value).toBe("Mon salon");
+    });
+
+    it("keeps the field empty when the refusal answers another command", async () => {
+      const user = await setup();
+      await enterChat();
+      connection.send.mockReturnValue(4);
+      const field = await create(user, "Mon salon");
+
+      await fromServer(msg("error", { code: "invalid", message: "m", replyTo: 3 }));
+
+      expect(field.value).toBe("");
+    });
+
+    it("never overwrites a name typed since", async () => {
+      const user = await setup();
+      await enterChat();
+      connection.send.mockReturnValue(4);
+      const field = await create(user, "Mon salon");
+      await user.type(field, "Autre");
+
+      await fromServer(msg("warning", { code: "invalidName", message: "m", replyTo: 4 }));
+
+      expect(field.value).toBe("Autre");
+    });
   });
 
   it("ignores a blank room name", async () => {
@@ -733,7 +775,7 @@ describe("room screen", () => {
     const user = await setup();
     await enterChat();
     await joinRoom("r1");
-    connection.send.mockReturnValue(false);
+    connection.send.mockReturnValue(undefined);
 
     await user.click(screen.getByRole("button", { name: STRINGS.closeTab("Paris") }));
 
@@ -909,7 +951,7 @@ describe("room screen", () => {
     const user = await setup();
     await enterChat();
     await joinRoom("r1");
-    connection.send.mockReturnValue(false);
+    connection.send.mockReturnValue(undefined);
     const field = screen.getByLabelText(STRINGS.message) as HTMLInputElement;
 
     await user.type(field, "bonjour{Enter}");
@@ -1296,6 +1338,58 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
     expect(within(dialog).getByLabelText(STRINGS.message)).toHaveProperty("value", "");
   });
 
+  describe("refused private message (#151)", () => {
+    const openAndSend = async (user: ReturnType<typeof userEvent.setup>, text: string) => {
+      await openMenu(user);
+      await user.click(screen.getByRole("menuitem", { name: STRINGS.privateMessage }));
+      const dialog = screen.getByRole("dialog", { name: STRINGS.privateWith("bob") });
+      const field = within(dialog).getByLabelText(STRINGS.message) as HTMLInputElement;
+      await user.type(field, `${text}{Enter}`);
+      return { dialog, field };
+    };
+
+    it("keeps the Opening window and gives the draft back on tooManyWindows", async () => {
+      const user = await setup();
+      await signedIn();
+      await joinRoom("r1", [member(true)]);
+      connection.send.mockReturnValue(9);
+      const { field } = await openAndSend(user, "salut");
+      expect(field.value).toBe("");
+
+      await fromServer(msg("warning", { code: "tooManyWindows", message: "m", replyTo: 9 }));
+
+      expect(screen.getByRole("dialog", { name: STRINGS.privateWith("bob") })).toBeTruthy();
+      expect(field.value).toBe("salut");
+    });
+
+    it("keeps the field empty once the message went through", async () => {
+      const user = await setup();
+      await signedIn();
+      await joinRoom("r1", [member(true)]);
+      connection.send.mockReturnValue(9);
+      await openAndSend(user, "salut");
+
+      await fromServer(msg("privateWindow", { conversationId: "c1", other: { sessionId: "s2", pseudo: "bob", hasAccount: true, away: false, gender: "man" } }));
+      await fromServer(msg("warning", { code: "full", message: "m", replyTo: 8 }));
+
+      const dialog = screen.getByRole("dialog", { name: STRINGS.privateWith("bob") });
+      expect(within(dialog).getByLabelText(STRINGS.message)).toHaveProperty("value", "");
+    });
+
+    it("never overwrites a draft typed since", async () => {
+      const user = await setup();
+      await signedIn();
+      await joinRoom("r1", [member(true)]);
+      connection.send.mockReturnValue(9);
+      const { field } = await openAndSend(user, "salut");
+      await user.type(field, "encore");
+
+      await fromServer(msg("error", { code: "invalid", message: "m", replyTo: 9 }));
+
+      expect(field.value).toBe("encore");
+    });
+  });
+
   it("closes the menu with Escape and does not show it on my own pseudo", async () => {
     const user = await setup();
     await signedIn();
@@ -1390,7 +1484,7 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
     const user = await setup();
     await signedIn();
     await fromServer(msg("privateWindow", { conversationId: "c1", other: { sessionId: "s2", pseudo: "bob", hasAccount: true, away: false, gender: "man" } }));
-    connection.send.mockReturnValue(false);
+    connection.send.mockReturnValue(undefined);
 
     await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: STRINGS.close }));
 
@@ -1521,7 +1615,7 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
       await signedIn();
       await open("c1", "s2", "bob");
       await open("c2", "s3", "cid");
-      connection.send.mockReturnValue(false);
+      connection.send.mockReturnValue(undefined);
 
       await user.click(closeOf("bob"));
       // Any later render (here a message for cid) must not apply a stale refocus.

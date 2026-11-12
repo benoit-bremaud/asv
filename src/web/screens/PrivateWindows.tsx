@@ -20,6 +20,8 @@ type Props = {
   readonly window: PrivateView;
   readonly draft: string;
   readonly setDraft: (text: string) => void;
+  /** Called with the seq of a sent message, so a refusal can give the text back (#151). */
+  readonly onSent: (seq: number, text: string) => void;
   /** Called once the close is applied, so the dock can move the focus to a neighbour. */
   readonly onClose: () => void;
   /** Called on minimise, so the dock can move the focus to the new tab. */
@@ -27,7 +29,7 @@ type Props = {
 };
 
 /** One private window (`web-ui/07`): a non-modal dialog labelled by the other pseudo. */
-const PrivateWindow = ({ windowKey, window, draft, setDraft, onClose, onMinimise }: Props) => {
+const PrivateWindow = ({ windowKey, window, draft, setDraft, onSent, onClose, onMinimise }: Props) => {
   const { state, commands } = useChat();
   const { other } = window;
   const fieldId = `private-${windowKey}`;
@@ -50,7 +52,10 @@ const PrivateWindow = ({ windowKey, window, draft, setDraft, onClose, onMinimise
   const submit = (event: SubmitEvent) => {
     event.preventDefault();
     if (draft.trim() === "" || tooLong || invisible || gone) return;
-    if (commands.sendPrivate(other.pseudo, draft)) setDraft("");
+    const seq = commands.sendPrivate(other.pseudo, draft);
+    if (seq === undefined) return;
+    onSent(seq, draft);
+    setDraft("");
   };
 
   if (window.minimised) {
@@ -100,6 +105,16 @@ export const PrivateWindows = () => {
   // One draft per chatter, so it survives the pending → conversation key change.
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const refocus = useRef<Refocus | undefined>(undefined);
+  // #151: the last message sent per chatter with its seq; a refusal gives it back to an empty field,
+  // and an Opening window stays open so the chatter can send again (`web-ui/07`).
+  const sent = useRef(new Map<string, { seq: number; text: string }>());
+  useEffect(() => {
+    const entry = [...sent.current].find(([, last]) => last.seq === state.refusedSeq);
+    if (!entry) return;
+    const [sessionId, last] = entry;
+    sent.current.delete(sessionId);
+    setDrafts((current) => (current[sessionId] ? current : { ...current, [sessionId]: last.text }));
+  }, [state.refusedSeq]);
   const entries = Object.entries(state.windows);
   // Runs after every render, so after the store applied the close or minimise asked for.
   useEffect(() => {
@@ -121,6 +136,9 @@ export const PrivateWindows = () => {
           window={window}
           draft={drafts[window.other.sessionId] ?? ""}
           setDraft={(text) => setDrafts((current) => ({ ...current, [window.other.sessionId]: text }))}
+          onSent={(seq, text) => {
+            sent.current.set(window.other.sessionId, { seq, text });
+          }}
           onClose={() => {
             const neighbour = entries[index + 1] ?? entries[index - 1];
             refocus.current = { target: neighbour?.[1].other.sessionId };

@@ -23,6 +23,7 @@ stateDiagram-v2
   state PrivateWindow {
     [*] --> Opening: "message privé" (needs both accounts)
     Opening --> Active: first message sent, privateWindow received
+    Opening --> Opening: warning or error replying to that sendPrivate / notice, draft restored
     [*] --> Active: privateWindow received (incoming)
     Active --> Minimised: minimise
     Minimised --> Active: click the window tab, unread count cleared
@@ -54,7 +55,7 @@ stateDiagram-v2
   lists. `ignoreUpdated` replaces the list.
 - **Opening**: "message privé" opens a window in `Opening` with the composer focused; nothing is sent until
   the first message. A refusal (`warning` or `error` replying to that `sendPrivate`) shows the notice and
-  keeps the draft. `accountRequired` also opens the account panel.
+  keeps the draft: the field clears on send and gets the sent text back when the refusal arrives (`web-ui/04`, #151). The window stays in `Opening` (option A 470/500), so after `tooManyWindows` the chatter can close another window and send again. `accountRequired` also opens the account panel.
 - **Windows**: at most 3 open (BR-043; the server enforces it). Each window holds its last 200 lines in
   memory only (BR-034), its own draft, the 500 code point counter and the BR-090 check of the room composer (BR-020, BR-090), with its refused-field marking (`web-ui/04`, #121), and an
   unread count while minimised. Lines render through the same `Renderer` (smileys, never HTML).

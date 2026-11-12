@@ -49,8 +49,8 @@ export interface Connection {
   enter(form: EnterForm, codeRequest?: CodeRequest): void;
   /** UC18 "this device": forgets the device cookie, then shows the panel signed out. */
   signOutDevice(): Promise<void>;
-  /** False when the socket is not open: nothing was sent. */
-  send(command: Command): boolean;
+  /** The command's `seq`, or `undefined` when the socket is not open: nothing was sent. */
+  send(command: Command): number | undefined;
   /** "nouveau code": drops the saved code deadline (BR-087). */
   forgetCode(): void;
   leave(): void;
@@ -131,18 +131,20 @@ export const createConnection = (deps: ConnectionDeps): Connection => {
     return false;
   };
 
-  const write = (message: Outbound): boolean => {
+  /** The `seq` given to the message, or `undefined` when nothing was sent. */
+  const write = (message: Outbound): number | undefined => {
     if (socket?.readyState !== OPEN) {
       deps.dispatch({ type: "notice", code: "notConnected" });
-      return false;
+      return undefined;
     }
-    socket.send(JSON.stringify({ ...message, seq: seq++ }));
-    return true;
+    const sent = seq++;
+    socket.send(JSON.stringify({ ...message, seq: sent }));
+    return sent;
   };
 
-  const requestCode = (code: CodeRequest): boolean => {
+  const requestCode = (code: CodeRequest): number | undefined => {
     const sent = write({ type: "requestCode", payload: code });
-    if (sent) deps.dispatch({ type: "requestingCode" });
+    if (sent !== undefined) deps.dispatch({ type: "requestingCode" });
     return sent;
   };
 
@@ -272,7 +274,7 @@ export const createConnection = (deps: ConnectionDeps): Connection => {
   return {
     enter(form, codeRequest) {
       // Pending only once the frame left: a failed write gets no answer to clear it.
-      if (!write({ type: "enter", payload: form })) return;
+      if (write({ type: "enter", payload: form }) === undefined) return;
       pendingProfile = { gender: form.gender, age: form.age, city: form.city };
       pendingCode = codeRequest;
       deps.dispatch({ type: "entering", pseudo: form.pseudo.normalize("NFC") });
@@ -292,7 +294,7 @@ export const createConnection = (deps: ConnectionDeps): Connection => {
         deps.dispatch({ type: "notice", code: "notConnected" });
         return;
       }
-      if (!write({ type: "leave", payload: {} })) return;
+      if (write({ type: "leave", payload: {} }) === undefined) return;
       forget();
       deps.dispatch({ type: "left" });
     },

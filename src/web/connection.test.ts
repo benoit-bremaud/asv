@@ -443,9 +443,11 @@ describe("createConnection", () => {
       const socket = start();
       socket.open();
 
-      connection.send({ type: "joinRoom", payload: { roomId: "r1" } });
-      connection.send({ type: "createRoom", payload: { name: "abc" } });
+      const first = connection.send({ type: "joinRoom", payload: { roomId: "r1" } });
+      const second = connection.send({ type: "createRoom", payload: { name: "abc" } });
 
+      // #151: `send` returns the seq, so a refusal's `replyTo` names the field that sent it.
+      expect([first, second]).toEqual([0, 1]);
       expect(socket.frames().map((f) => f.seq)).toEqual([0, 1]);
       expect(socket.frames()[0]).toEqual({ type: "joinRoom", seq: 0, payload: { roomId: "r1" } });
     });
@@ -531,9 +533,9 @@ describe("createConnection", () => {
     it("sends requestCode through send, and reports a closed socket", () => {
       const socket = start();
       socket.open();
-      expect(connection.send({ type: "requestCode", payload: { email: "a@b.fr", remember: false } })).toBe(true);
+      expect(connection.send({ type: "requestCode", payload: { email: "a@b.fr", remember: false } })).toEqual(expect.any(Number));
       socket.drop();
-      expect(connection.send({ type: "requestCode", payload: { email: "a@b.fr", remember: false } })).toBe(false);
+      expect(connection.send({ type: "requestCode", payload: { email: "a@b.fr", remember: false } })).toBeUndefined();
     });
 
     it("clears a stale device cookie silently", () => {
