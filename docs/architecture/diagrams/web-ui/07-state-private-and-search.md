@@ -35,6 +35,11 @@ stateDiagram-v2
     Minimised --> [*]: close (closePrivate sent)
     OtherGone --> [*]: close (nothing sent)
   }
+  state SearchDialog {
+    [*] --> DialogClosed
+    DialogClosed --> DialogOpen: "rechercher" in a room (modal, focus on the field)
+    DialogOpen --> DialogClosed: "fermer", Escape, close request or "message privé" picked in a result
+  }
   state SearchPanel {
     [*] --> Idle
     Idle --> Searching: submit, 2 characters or more
@@ -76,6 +81,13 @@ stateDiagram-v2
   characters (UC7 2a); results list pseudo (colour from gender), age, city, "(absent)", and the rooms they
   are in; click a result → pseudo menu. Results are not refreshed live; a new submit refreshes them.
   At most 50 results (server cap); "aucun chatteur trouvé" when empty.
+- **Search dialog in a room** (#111, owner choice A 460/500): in a room the panel is a modal `dialog` (`showModal`,
+  backdrop, top layer, the #59/#63 pattern), never a box drawn over the tab bar. It closes with its own "fermer"
+  button, Escape or a close request (Android back), and the focus goes back to "rechercher". Picking
+  "message privé" in a result while signed in closes it, so the new private window is not left inert behind
+  the backdrop; picking it without an account opens the account dialog on top. The query and results stay in
+  the state, so reopening shows them. On a screen at most 500 px high it starts at the top, so "fermer"
+  stays in view; its links are 44 px high on a touch screen. On the rooms screen the panel stays in the page flow.
 - **Strings** in `strings.ts`, French; notices for the new codes: `self`, `tooManyWindows`, `targetBusy`, `offline`,
   `accountRequired`, and `invalidText` (BR-090, room and private).
 - **Accessibility** (NF-004): the pseudo menu is a `menu` with `menuitem`s, keyboard reachable from the

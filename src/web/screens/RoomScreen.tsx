@@ -8,7 +8,7 @@ import { STRINGS } from "../strings";
 import { Header } from "./Header";
 import { Pseudo } from "./Pseudo";
 import { PseudoMenu } from "./PseudoMenu";
-import { SearchPanel } from "./SearchPanel";
+import { SearchDialog } from "./SearchPanel";
 
 
 /** Distance from the bottom, in pixels, still counted as "at the bottom" (rounding, last line half shown). */
@@ -96,7 +96,7 @@ export const RoomScreen = () => {
           </span>
         ))}
       </nav>
-      {showSearch && <div className="overlay"><SearchPanel /></div>}
+      {showSearch && <SearchDialog onClose={() => setShowSearch(false)} />}
       <main className="room">
         <section ref={lines} className="lines panel" onScroll={followBottom}>
           <h2># {nameOf(roomId)}</h2>

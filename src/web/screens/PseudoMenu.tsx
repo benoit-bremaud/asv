@@ -18,7 +18,7 @@ export interface MenuTarget {
  * "message privé" is greyed when either side has no account (BR-040); while the chatter has none, it opens
  * the account panel instead.
  */
-export const PseudoMenu = ({ target }: { target: MenuTarget }) => {
+export const PseudoMenu = ({ target, onPrivate }: { target: MenuTarget; onPrivate?: () => void }) => {
   const { state, commands } = useChat();
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLSpanElement>(null);
@@ -56,13 +56,15 @@ export const PseudoMenu = ({ target }: { target: MenuTarget }) => {
   };
   const privateMessage = () => {
     if (!signedIn) commands.local({ type: "openAccount" });
-    else
+    else {
+      onPrivate?.();
       commands.local({
         type: "openPrivate",
         other: target.away
           ? { sessionId: target.sessionId, pseudo: target.pseudo, hasAccount: target.hasAccount, away: true }
           : { sessionId: target.sessionId, pseudo: target.pseudo, hasAccount: target.hasAccount, away: false, gender: gender ?? "unspecified" },
       });
+    }
   };
   return (
     <span className="pseudo-menu" ref={root}>

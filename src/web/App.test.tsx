@@ -839,7 +839,7 @@ describe("room screen", () => {
     const css = readFileSync("src/web/styles.css", "utf8");
     expect(css.match(/^\.smileys summary \{[^}]*\}/m)?.[0]).toContain("line-height: 24px;");
     expect(css.match(/^\.pseudo-button \{[^}]*\}/m)?.[0]).toContain("min-height: 24px;");
-    const touch = /@media \(pointer: coarse\) \{\s*\.smileys summary \{ line-height: 44px; \}\s*\.pseudo-button \{ min-height: 44px; \}\s*(?:\/\*[^*]*\*\/\s*)?\.menu \.link \{ min-height: 44px; \}\s*\}/;
+    const touch = /@media \(pointer: coarse\) \{\s*\.smileys summary \{ line-height: 44px; \}\s*\.pseudo-button \{ min-height: 44px; \}\s*(?:\/\*[^*]*\*\/\s*)?\.menu \.link \{ min-height: 44px; \}\s*(?:\/\*[^*]*\*\/\s*)?\.overlay \.link \{ min-height: 44px; \}\s*\}/;
     expect(css).toMatch(touch);
     // Same specificity: the touch block must come after both base rules to win.
     const touchAt = css.search(touch);
@@ -1831,13 +1831,81 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
     expect(screen.queryByText(STRINGS.noResult)).toBeNull();
   });
 
-  it("opens the search overlay from a room", async () => {
+  const openSearch = async () => {
     const user = await setup();
     await signedIn();
     await joinRoom("r1");
+    const opener = screen.getByRole("button", { name: STRINGS.search });
+    await user.click(opener);
+    return { user, opener, dialog: () => screen.getByRole("dialog", { name: STRINGS.searchTitle }) };
+  };
+  const searchClosed = () => screen.queryByRole("dialog", { name: STRINGS.searchTitle }) === null;
 
-    await user.click(screen.getByRole("button", { name: STRINGS.search }));
+  it("opens the search of a room as a modal dialog (#111)", async () => {
+    const { dialog } = await openSearch();
 
-    expect(screen.getByRole("heading", { name: STRINGS.searchTitle })).toBeTruthy();
+    expect(showModal.mock.contexts.at(-1)).toBe(dialog());
+    expect(within(dialog()).getByLabelText(STRINGS.searchLabel)).toBeTruthy();
+  });
+
+  it("closes the search dialog with its button and gives the focus back (#111)", async () => {
+    const { user, opener, dialog } = await openSearch();
+
+    await user.click(within(dialog()).getByRole("button", { name: STRINGS.close }));
+
+    expect(searchClosed()).toBe(true);
+    expect(closeDialog).toHaveBeenCalled();
+    expect(document.activeElement).toBe(opener);
+    expect(opener.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("gives the dialog links the 44 px touch floor (#111)", async () => {
+    // jsdom computes no layout: the touch rule is checked with the #142 block; here, the links match it.
+    const { dialog } = await openSearch();
+
+    expect(within(dialog()).getByRole("button", { name: STRINGS.close }).matches(".overlay .link")).toBe(true);
+  });
+
+  it("closes the search dialog on Escape and on a close request (#111)", async () => {
+    const { user, opener, dialog } = await openSearch();
+
+    expect(fireEvent.keyDown(dialog(), { key: "Escape" })).toBe(false);
+    expect(searchClosed()).toBe(true);
+
+    await user.click(opener);
+    expect(fireEvent(dialog(), new Event("cancel", { cancelable: true }))).toBe(false);
+    expect(searchClosed()).toBe(true);
+  });
+
+  it("keeps the search dialog open on other keys (#111)", async () => {
+    const { dialog } = await openSearch();
+
+    expect(fireEvent.keyDown(dialog(), { key: "Enter" })).toBe(true);
+
+    expect(searchClosed()).toBe(false);
+  });
+
+  it("keeps the query and results when the search dialog reopens (#111)", async () => {
+    const { user, opener, dialog } = await openSearch();
+    await user.type(within(dialog()).getByLabelText(STRINGS.searchLabel), "bo{Enter}");
+    await fromServer(msg("searchResults", { results: [{ sessionId: "s3", pseudo: "zoe", hasAccount: true, away: false, gender: "woman", age: 30, city: "Lyon", rooms: [] }] }));
+
+    await user.click(within(dialog()).getByRole("button", { name: STRINGS.close }));
+    await user.click(opener);
+
+    expect((within(dialog()).getByLabelText(STRINGS.searchLabel) as HTMLInputElement).value).toBe("bo");
+    expect(within(dialog()).getByRole("button", { name: STRINGS.pseudoButton("zoe") })).toBeTruthy();
+  });
+
+  it("closes the search dialog when \"message privé\" opens a window from a result (#111)", async () => {
+    const { user, dialog } = await openSearch();
+    await user.type(within(dialog()).getByLabelText(STRINGS.searchLabel), "zo{Enter}");
+    await fromServer(msg("searchResults", { results: [{ sessionId: "s3", pseudo: "zoe", hasAccount: true, away: false, gender: "woman", age: 30, city: "Lyon", rooms: [] }] }));
+
+    await user.click(within(dialog()).getByRole("button", { name: STRINGS.pseudoButton("zoe") }));
+    await user.click(screen.getByRole("menuitem", { name: STRINGS.privateMessage }));
+
+    expect(searchClosed()).toBe(true);
+    expect(screen.getByRole("dialog", { name: STRINGS.privateWith("zoe") })).toBeTruthy();
   });
 });
