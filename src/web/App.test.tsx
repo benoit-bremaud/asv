@@ -833,6 +833,9 @@ describe("room screen", () => {
   it("lets the header end wrap and the pseudo break, so a long pseudo never widens the page (#143)", async () => {
     // jsdom computes no layout: check the rules, then that the pseudo matches the selector.
     const css = readFileSync("src/web/styles.css", "utf8");
+    // One top-level rule each, so no later rule can undo the fix unnoticed.
+    expect(css.match(/^\.header-end \{/gm)).toHaveLength(1);
+    expect(css.match(/^\.header-end strong \{/gm)).toHaveLength(1);
     const end = css.match(/^\.header-end \{[^}]*\}/m)?.[0] ?? "";
     expect(end).toContain("flex-wrap: wrap;");
     expect(end).toContain("min-width: 0;");
@@ -842,7 +845,7 @@ describe("room screen", () => {
     await setup();
     await enterChat();
 
-    expect(document.querySelector(".header-end strong")?.textContent).toBeTruthy();
+    expect(document.querySelector(".header-end strong")?.textContent).toBe("ana");
   });
 
   it("closing a tab sends leaveRoom and falls back to another room", async () => {
