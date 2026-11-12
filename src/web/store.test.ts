@@ -416,10 +416,10 @@ describe("chatReducer: account (web-ui/06)", () => {
   });
 
   it("tells account notices from the others (#136)", () => {
-    for (const code of ["codeSent", "codeWrong", "emailInvalid", "accountUnlinked", "accountRequired", "deviceNotSaved", "notSignedIn"]) {
+    for (const code of ["codeSent", "codeWrong", "emailInvalid", "accountUnlinked", "accountRequired", "deviceNotSaved", "notSignedIn", "unavailable", "notConnected"]) {
       expect(isAccountNotice(code)).toBe(true);
     }
-    for (const code of ["nameInvalid", "flood", "notConnected", undefined]) expect(isAccountNotice(code)).toBe(false);
+    for (const code of ["nameInvalid", "flood", "logUnavailable", undefined]) expect(isAccountNotice(code)).toBe(false);
   });
 
   it.each([

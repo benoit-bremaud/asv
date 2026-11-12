@@ -1421,11 +1421,11 @@ describe("account panel", () => {
   });
 
   it("lines the dialogs up with the page column's right edge (#136)", () => {
-    // jsdom computes no layout: check the rule against the page column's width.
+    // jsdom computes no layout: this only guards the rule's presence; JRN-27 a…e measure the boxes.
     const css = readFileSync("src/web/styles.css", "utf8");
 
     expect(css).toMatch(/^\.app \{ max-width: 1100px;/m);
-    expect(css.match(/^\.overlay \{[^}]*\}/m)?.[0]).toContain("right: max(var(--gap), calc((100vw - 1100px) / 2 + var(--gap)));");
+    expect(css.match(/^\.overlay \{[^}]*\}/m)?.[0]).toContain("right: max(var(--gap), calc((100% - 1100px) / 2 + var(--gap)));");
   });
 
   it("shows the tries left and goes back to the e-mail on 'nouveau code'", async () => {

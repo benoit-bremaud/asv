@@ -150,6 +150,8 @@ export const ACCOUNT_WARNINGS: Readonly<Record<string, AccountStep>> = {
 /** Notices about the member account, shown inside the account dialog while it is open (#136); others stay in the page. */
 export const ACCOUNT_NOTICES: ReadonlySet<string> = new Set([
   ...Object.keys(ACCOUNT_WARNINGS), "codeSent", "accountUnlinked", "accountRequired", "deviceNotSaved", "notSignedIn",
+  // Feedback on the dialog's own actions: a store failure (`hub-accounts.ts`) or a click while offline (`connection.ts`).
+  "unavailable", "notConnected",
 ]);
 export const isAccountNotice = (code: string | undefined): boolean => code !== undefined && ACCOUNT_NOTICES.has(code);
 

@@ -153,7 +153,7 @@ input { font: inherit; padding: 4px; min-height: 32px; }
 }
 
 /* Account overlay (`web-ui/06`): a modal dialog floating over the chat, closable (#63). */
-.overlay { position: fixed; top: 128px; right: max(var(--gap), calc((100vw - 1100px) / 2 + var(--gap))); bottom: auto; left: auto; margin: 0; color: var(--text); width: min(340px, calc(100vw - 2 * var(--gap))); max-height: calc(100dvh - 128px - var(--gap)); overflow: auto; z-index: 16; display: flex; flex-direction: column; gap: 8px; }
+.overlay { position: fixed; top: 128px; right: max(var(--gap), calc((100% - 1100px) / 2 + var(--gap))); bottom: auto; left: auto; margin: 0; color: var(--text); width: min(340px, calc(100vw - 2 * var(--gap))); max-height: calc(100dvh - 128px - var(--gap)); overflow: auto; z-index: 16; display: flex; flex-direction: column; gap: 8px; }
 /* The search panel inside its dialog (`web-ui/07`, #111): one frame, the dialog's. */
 .overlay > .search { border: 0; padding: 0; box-shadow: none; background: none; }
 /* A short screen (phone in landscape, #111): the dialog starts at the top so "fermer" stays in view. */
