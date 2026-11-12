@@ -1,5 +1,5 @@
 import { useEffect, useState, type SubmitEvent } from "react";
-import { gender as genderSchema, type Gender } from "../../shared/protocol";
+import { gender as genderSchema, type entryRefusal, type Gender } from "../../shared/protocol";
 import { hasForbiddenChar } from "../../domain/text";
 import { useChat } from "../chat-context";
 import { STRINGS } from "../strings";
@@ -10,6 +10,9 @@ const GENDERS = genderSchema.options;
 const LEGAL_TOPICS: readonly LegalTopic[] = ["rules", "notice", "privacy"];
 /** BR-006, in code points: `maxLength` would count UTF-16 units and stop at 20 emoji. */
 const MAX_CITY = 40;
+const ENTRY_ERROR_ID = "entry-error";
+/** Refusals that mean the pseudo itself must change (#154). */
+const PSEUDO_REFUSALS: ReadonlySet<string | undefined> = new Set<(typeof entryRefusal.options)[number]>(["pseudoTaken", "pseudoInvalid"]);
 /** Refresh interval (ms) of the connected count on the entry screen (D8). */
 export const STATS_MS = 30_000;
 
@@ -56,6 +59,7 @@ export const EntryScreen = () => {
   const [hint, setHint] = useState(false);
   // BR-090, checked on the trimmed city as the server does.
   const cityInvisible = hasForbiddenChar(city.trim());
+  const pseudoRefused = PSEUDO_REFUSALS.has(state.entryError) && pseudo.trim().normalize("NFC") === state.refusedPseudo;
   const ready = !cityInvisible && adult && terms && pseudo.trim() !== "" && age !== "" && state.link === "online" && state.pendingPseudo === undefined;
 
   const form = () => ({
@@ -85,7 +89,7 @@ export const EntryScreen = () => {
           <h2 id="guest-title">{STRINGS.guestTitle}</h2>
           <label>
             {STRINGS.pseudo}
-            <input value={pseudo} maxLength={20} autoComplete="off" onChange={(e) => setPseudo(e.target.value)} />
+            <input value={pseudo} aria-invalid={pseudoRefused || undefined} aria-describedby={pseudoRefused ? ENTRY_ERROR_ID : undefined} maxLength={20} autoComplete="off" onChange={(e) => setPseudo(e.target.value)} />
           </label>
           <fieldset>
             <legend>{STRINGS.iAm}</legend>
@@ -116,7 +120,7 @@ export const EntryScreen = () => {
             {STRINGS.terms}
           </label>
           {state.entryError && (
-            <p role="alert" className="error">
+            <p id={ENTRY_ERROR_ID} role="alert" className="error">
               {STRINGS.entryRefused[state.entryError as keyof typeof STRINGS.entryRefused]}
             </p>
           )}

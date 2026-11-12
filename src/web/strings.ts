@@ -77,7 +77,7 @@ export const STRINGS = {
     rate: "Trop d'essais, attends une minute.",
     banned: "Tu es banni pour le moment.",
     pseudoInvalid: "Pseudo invalide : 3 à 20 lettres, chiffres, _ - ou point, sans mot réservé.",
-    pseudoTaken: "Ce pseudo est déjà pris.",
+    pseudoTaken: "Ce pseudo est déjà pris : choisis-en un autre, les accents et les majuscules ne comptent pas.",
     age: "Le chat est réservé aux 18 à 99 ans.",
   },
   /** BR-090, shown under a field before sending, not a server notice. */

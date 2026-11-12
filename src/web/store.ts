@@ -77,6 +77,8 @@ export interface ChatState {
   readonly known: Readonly<Record<string, Gender>>;
   readonly notice?: string;
   readonly entryError?: string;
+  /** Pseudo the server refused with `entryError` (NFC, trimmed), so the entry field can be marked (#154). */
+  readonly refusedPseudo?: string;
   readonly account: AccountView;
   /** Keyed by conversation id; a window opened before its first message is keyed by the other session id. */
   readonly windows: Readonly<Record<string, PrivateView>>;
@@ -288,11 +290,12 @@ const onServer = (state: ChatState, message: ServerMessage): ChatState => {
         me: { sessionId: message.payload.sessionId, pseudo: state.pendingPseudo ?? "" },
         pendingPseudo: undefined,
         entryError: undefined,
+        refusedPseudo: undefined,
         roomList: message.payload.roomList,
         account: linkedTo(state.account, message.payload.accountId),
       };
     case "entryRefused":
-      return { ...state, pendingPseudo: undefined, entryError: message.payload.reason };
+      return { ...state, pendingPseudo: undefined, entryError: message.payload.reason, refusedPseudo: state.pendingPseudo };
     case "resumed":
       return onResumed(state, message.payload);
     case "resumeRefused":
@@ -374,7 +377,7 @@ export const chatReducer = (state: ChatState, action: Action): ChatState => {
       // A lost socket drops a pending entry: the server never answered it.
       return action.link === "online" ? { ...state, link: action.link } : { ...state, link: action.link, pendingPseudo: undefined };
     case "entering":
-      return { ...state, pendingPseudo: action.pseudo, entryError: undefined };
+      return { ...state, pendingPseudo: action.pseudo, entryError: undefined, refusedPseudo: undefined };
     case "left":
       return { ...initialState, link: state.link, lastPseudo: state.me?.pseudo };
     case "showRooms":

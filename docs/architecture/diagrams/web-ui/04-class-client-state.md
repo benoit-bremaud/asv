@@ -28,6 +28,7 @@ classDiagram
     +Record~SessionId, Gender~ known
     +Code notice
     +Code entryError
+    +String refusedPseudo
     +AccountView account
     +Record~ConversationId, PrivateView~ windows
     +SessionId[] ignored
@@ -170,7 +171,7 @@ classDiagram
   connection manager lives outside React; it dispatches actions and screens call its commands. Screens
   never touch the socket (`web-ui/03`). Screens call `Commands`; their only local actions are `showRooms`,
   `showRoom` and `dismissNotice` (`LocalAction`), never `server` or `link`.
-- **Reducer**: `entered` → screen `rooms`, `me` set; `entryRefused` → `entryError` (the reason code);
+- **Reducer**: `entered` → screen `rooms`, `me` set; `entryRefused` → `entryError` (the reason code) and `refusedPseudo` (from `pendingPseudo`), `entering` and `entered` clear both;
   `roomList` → list; `roomJoined` → room opened with its members and active, screen `room`; `memberJoined`,
   `memberLeft`, `memberAway`, `memberBack` → member list of that room updated; `roomMessage` → line
   appended, at most the last 200 lines per room in memory (BR-034: never stored); `warning`, `error` →
@@ -231,6 +232,15 @@ classDiagram
   The entry city field gets `aria-invalid="true"` while its trimmed text holds a BR-090 character; its link to
   the notice is #120. Once the text fits, the attributes are removed (not set to `false`). Unit tests check
   both attributes on the two composers and `aria-invalid` on the city field, set then removed.
+  Refused pseudo (#154, A11Y-03, option A 480/500): when the server refuses the pseudo (`entryRefused` with
+  `pseudoTaken` or `pseudoInvalid`), the entry pseudo field gets `aria-invalid="true"` and
+  `aria-describedby="entry-error"`, the id of the entry alert, while its trimmed NFC text equals the refused
+  pseudo. The store keeps it as `refusedPseudo`, taken from `pendingPseudo` when `entryRefused` arrives and
+  cleared by the next `entering`, so a pseudo whose sending failed is never marked. Editing it to another text removes both attributes; typing the refused pseudo back sets them again.
+  Other refusals (`rate`, `banned`, `age`) leave the field unmarked. The `pseudoTaken` text says how to fix it:
+  pick another pseudo, accents and case do not count (BR-002); `pseudoInvalid` already lists the rule (BR-001,
+  BR-003). Unit tests check both codes, both entry panels, removal on edit, setting again on the same text, a failed
+  sending, and no mark on `age`.
   Legal page scroll (#126, UI-01, option A 480/500; the issue's `height: auto` dropped after review
   round 1, owner 2026-11-06, since it stretched short pages): a legal page `dialog` (rules, notice, privacy; from the
   entry footer or the account panel) never grows past the viewport. `.legal-page` keeps the user-agent `dialog`

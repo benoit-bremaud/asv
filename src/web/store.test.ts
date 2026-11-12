@@ -59,6 +59,24 @@ describe("chatReducer: server messages", () => {
 
     expect(next.entryError).toBe("pseudoTaken");
     expect(next.pendingPseudo).toBeUndefined();
+    expect(next.refusedPseudo).toBe("ana");
+  });
+
+  it("entered clears the refused pseudo (#154)", () => {
+    const next = server({ ...initialState, pendingPseudo: "ana", refusedPseudo: "ana" }, {
+      type: "entered",
+      seq: 0,
+      payload: { sessionId: "s1", resumeToken: "t", roomList: [], isModerator: false },
+    });
+
+    expect(next.refusedPseudo).toBeUndefined();
+  });
+
+  it("entering clears the refused pseudo (#154)", () => {
+    const next = chatReducer({ ...initialState, entryError: "pseudoTaken", refusedPseudo: "ana" }, { type: "entering", pseudo: "bob" });
+
+    expect(next.refusedPseudo).toBeUndefined();
+    expect(next.entryError).toBeUndefined();
   });
 
   describe("resumed", () => {
