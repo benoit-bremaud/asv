@@ -628,3 +628,19 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   fixed). Codex review: no findings.
 - Merged 2026-11-12: PR #177 squash d31aac7; verify, gitleaks, audit and SonarQube green on a037fba.
   Next: #176, #104 dark, #136, #171.
+
+## 2026-11-12 — Every bevel button gets the 44 px touch floor (#176)
+
+- `.bevel { min-height: 44px; }` in the #105 `pointer: coarse` block replaces the #170 `.header-end button` rule
+  (owner option A, 460/500): every bevelled button reaches 44 px on touch; at least 33 px with a mouse
+  (`.bevel.big` 45 px). Study `web-ui/04` "Small controls" first; JRN-20 case f; the rule check guards order,
+  `.bevel` height overrides and that every room-screen button is `.link` or `.bevel`.
+- QA BB on the local prod build in Chrome DevTools MCP: entry, rooms list, room, search, account dialog; 320 and
+  1440 mouse, 390 × 844 (light, dark), 844 × 390 and 1024 × 768 touch; no sideways scroll, axe-core 4.14
+  `target-size` clean; closes BT A11Y-05b. Chromium only; private window, legal "fermer" and signed-in account
+  buttons not measured. Pre-existing finding added to #111: at 390 × 844 the search panel covers its own toggle
+  and cannot be closed by touch.
+- Adversarial review: 2 rounds (Should 5 fixed; Nice open: the guard misses a later `.private-tab` or
+  `.members-toggle` height rule). Codex review: no findings.
+- Merged 2026-11-12: PR #179 squash 07b3b9e; verify, gitleaks, audit and SonarQube green on the head.
+  Next: #111 (raise to Must), #104 dark, #136, #171.
