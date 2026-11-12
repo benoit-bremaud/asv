@@ -185,7 +185,8 @@ input { font: inherit; padding: 4px; min-height: 32px; }
 .members-toggle { display: none; }
 .composer { grid-area: composer; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .composer input { flex: 1; min-width: 160px; }
-.smileys summary { cursor: pointer; }
+/* Text targets (#142): line-height keeps the summary a list item, so its disclosure marker stays. */
+.smileys summary { cursor: pointer; line-height: 24px; }
 
 .pseudo { font-weight: bold; }
 .pseudo-woman { color: var(--pseudo-woman); }
@@ -212,7 +213,12 @@ input { font: inherit; padding: 4px; min-height: 32px; }
 
 /* Brick 6 (`web-ui/07`): pseudo menu, private windows, search. */
 .pseudo-menu { position: relative; display: inline-block; }
-.pseudo-button { padding: 0; }
+.pseudo-button { padding: 0; min-height: 24px; }
+/* Text targets (#142): house touch floor, after the base rules so it wins. */
+@media (pointer: coarse) {
+  .smileys summary { line-height: 44px; }
+  .pseudo-button { min-height: 44px; }
+}
 .menu { position: absolute; z-index: 20; top: 100%; left: 0; display: flex; flex-direction: column; gap: 4px; padding: 6px var(--gap); white-space: nowrap; box-shadow: 4px 4px 0 var(--bevel-dark); }
 .menu [aria-disabled="true"] { opacity: 0.55; }
 /* The dock follows the screen in the page flow; tall desktops dock it bottom right (below, #65). */

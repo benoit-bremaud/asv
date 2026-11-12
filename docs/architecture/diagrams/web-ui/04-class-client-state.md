@@ -282,3 +282,8 @@ classDiagram
   height so leaving a room is never the bigger target. Text links keep `.link` alone and do not grow. jsdom
   computes no layout: unit tests check the rules in `styles.css` and the class on each of these controls; the
   QA pass measures each box on the production build.
+  Text targets (#142, option C 470/500): the "smileys" toggle (`details.smileys > summary`) and each member
+  pseudo button (`.pseudo-button`) are text controls with a 21 px line box. They get the same floors without a
+  new class: `min-height: 24px` on `.pseudo-button` (a button centres its text) and `line-height: 24px` on
+  `.smileys summary`, which stays `display: list-item` so its disclosure marker is kept (`inline-flex` would
+  drop it); both 44 px under `@media (pointer: coarse)`, in a block placed after the base rules.
