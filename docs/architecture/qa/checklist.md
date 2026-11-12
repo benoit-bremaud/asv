@@ -691,3 +691,25 @@ from PF on, the owner's rule (2026-11-12) is Chrome DevTools MCP for every check
 | 2026-11-12 | CQ | A11Y-02 | Closes the #131 waiver: Lighthouse entry and busy room | no semantic violation | entry 100, room 91 (#107, #142, #153) | FAIL | #153 |
 | 2026-11-12 | CQ | A11Y-03 | Closes the #131 waiver: refused pseudo announced | error announced, field marked, fix stated | `role=alert` but no `aria-invalid`, no how-to-fix | MIXED | #154 |
 | 2026-11-12 | CQ | SETUP-04 | Stop ambient crowd and server, close DevTools pages, `gitleaks dir docs/architecture/qa` | nothing running; no secret | stopped; see commit | PASS | report § Cleanup |
+| 2026-11-12 | CQ | SETUP-05 | Start `ambient.mjs` (40 chatters from 127.2.0.x, 6 request codes `ambient0…5@example.test`, posts every 2.5 s, waves of 5 every minute, 90 min) | crowd stays connected | "ambient crowd ready"; ambient.out 0 errors | PASS | driver annex `ambient.mjs` |
+| 2026-11-12 | CQ | SETUP-06 | Server restarts before driver runs 2 and 3 and before the browser session (`stop.sh`, `start.sh`) | fresh in-memory state | each start `/api/stats` 200 | PASS | report § Rules |
+| 2026-11-12 | CQ | SETUP-07 | Chrome DevTools MCP `new_page` in isolated contexts alba and clara, window 956 × 905 | two independent sessions | pages 2 and 3 | PASS | report § Tools |
+| 2026-11-12 | CQ | CQ-B01a | alba: fill pseudo Alba, F, 34, Paris, enter; Mon compte, e-mail `alba@example.test`, request code; read `devOnlySecret` line in server stdout; type code | signed in | "Connecté·e comme membre." | PASS | shot 01 |
+| 2026-11-12 | CQ | CQ-B01b | clara: same with Clara, `clara@example.test` | signed in | signed in | PASS |  |
+| 2026-11-12 | CQ | CQ-B07a | alba: `emulate` networkConditions Offline 84 s; clara: search `Paris` | server away, client banner | `away:true` in clara's result; no banner in alba | MIXED | #24 comment |
+| 2026-11-12 | CQ | CQ-B07b | alba: `emulate` networkConditions No emulation | resume, windows back | resumed, windows back as tabs, `away:false` | PASS |  |
+| 2026-11-12 | CQ | SEC-RUN | `sec.mjs` (protocol probes) and `curl -sI` / `curl -X POST -H Origin:` probes on 127.0.0.1:8788 | as SEC-03, 05, 06, 08 | see report § Items waived | PASS | driver annex `sec.mjs` |
+| 2026-11-12 | CQ | PERF-RUN | `performance_start_trace` reload off, `burst.mjs` (8 chatters, 120 posts / 30 s), `performance_stop_trace` | CLS < 0.1, log follows | CLS 0.00, 685 nodes, 4 MB | PASS | CQ-B13 |
+| 2026-11-12 | CQ | LH-RUN | `lighthouse_audit` (Lighthouse 13.4.1, desktop, navigation) on the room screen and the entry screen | no P0 accessibility fault | room 91 (listitem #107, target-size #142, label-content-name-mismatch #153); entry 100 (favicon 404 #62, meta description) | FAIL | #153 |
+| 2026-11-12 | CQ | ENG-RUN | `engines.cjs` with Playwright 1.64.1 Firefox and WebKit, 1440 light and 390 dark | same behaviour as Chrome | same; WebKit caret stylesheet artefact | PASS | shots 09 |
+| 2026-11-12 | CQ | NET-01 | `list_network_requests` after reload (alba) | only the local origin | 4 requests, all 127.0.0.1:8788 | PASS | SEC-10 |
+| 2026-11-12 | CQ | CON-01 | `list_console_messages` after the CQ-B11 payloads | no CSP violation, no error | none | PASS | CQ-B11 |
+| 2026-11-12 | CQ | UI-02 | Per-case console and WebSocket-frame reads | recorded per case | not recorded for the other cases | INCONCLUSIVE | report § Not tested |
+| 2026-11-12 | CQ | ROB-13 | `grep -ci 'error\\|exception'` on server stdout of runs 1–3 and the ambient crowd output | 0 | 0 in each file; connection log 2138 lines | PASS | report gate line |
+| 2026-11-12 | CQ | BACKLOG-151 | File #151 keep draft on refused private message or room name, project board | issue open on board | open, P2 | PASS | #151 |
+| 2026-11-12 | CQ | BACKLOG-152 | File #152 short search query; closed as duplicate of #70 N2 after review | no duplicate left open | closed not planned | PASS | #70 |
+| 2026-11-12 | CQ | BACKLOG-153 | File #153 accessible name of away member; raised to P1 (P0 item A11Y-02) | open on board, P1 | open, P1 | PASS | #153 |
+| 2026-11-12 | CQ | BACKLOG-154 | File #154 `aria-invalid` and how-to-fix on refused pseudo; raised to P1 (P0 item A11Y-03) | open on board, P1 | open, P1 | PASS | #154 |
+| 2026-11-12 | CQ | BACKLOG-24 | Comment #24: 84 s offline without banner | comment posted | posted | PASS | #24 |
+| 2026-11-12 | CQ | BACKLOG-68 | Comment #68 (edited after review to cite CQ-B01 and CQ-B08) | comment posted | posted | PASS | #68 |
+| 2026-11-12 | CQ | SETUP-08 | Rename shots 01–04 from `-1440` to `-956x905` (real window size) | names match viewport | renamed | PASS | report |

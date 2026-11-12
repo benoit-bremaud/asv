@@ -6,7 +6,7 @@ coverage matrix that records the last QA evidence of every case, so each QA pass
 > Written with skill `test-plan`. Families, tools and owners refer to the owner's
 > `~/.claude/skills/testing-strategy/taxonomy.md` (not linked). Levels and checklist IDs (FON, DAT, UI,
 > A11Y, PERF, SEC, ROB, MOB, USA, PRI) refer to skill `qa-browser-check` and its `checklist.md`.
-> Last reviewed: 2026-11-12 · JRN-21 evidence written by the pass of #131 on 0d4f213 and d783b18 (PF); JRN-20 evidence written by the pass of #105 on 3c3fdec (SZ); JRN-19 evidence written by the pass of #126 on 31c19ff (LS); JRN-18 evidence written by the pass of #121 on 79bbd89 (AR); JRN-17 evidence written by the pass of #63 on e4b4223 (AM); JRN-16 evidence written by the pass of #64 on 0d48cd1 (OH); JRN-15 evidence written by the pass of #91 on fea172c (BI); JRN-14 evidence written by the full pass of #23 on 77d7c17 (SC)
+> Last reviewed: 2026-11-12 · JRN-02, 04, 05, 06 evidence added by campaign #147 on ba2c98e (CQ); JRN-21 evidence written by the pass of #131 on 0d4f213 and d783b18 (PF); JRN-20 evidence written by the pass of #105 on 3c3fdec (SZ); JRN-19 evidence written by the pass of #126 on 31c19ff (LS); JRN-18 evidence written by the pass of #121 on 79bbd89 (AR); JRN-17 evidence written by the pass of #63 on e4b4223 (AM); JRN-16 evidence written by the pass of #64 on 0d48cd1 (OH); JRN-15 evidence written by the pass of #91 on fea172c (BI); JRN-14 evidence written by the full pass of #23 on 77d7c17 (SC)
 
 ## Rule: the plan follows the product
 
@@ -110,7 +110,7 @@ Level is the lowest QA level that must run the row: smoke ⊂ pass ⊂ full.
 | JRN-01 refused pseudo / age, rate limit | pass | FP · `full-02-entry-error` · c470f1a; rate limit FP SEC-07 · c470f1a and PD SEC-07 · debc8ce | covered |
 | JRN-02 away 5 min, peer away | pass | FP · `full-14-peer-away`, `full-15-peer-closed` · c470f1a | covered |
 | JRN-02 resume after a socket drop | pass | CS · `2026-11-02-09-recheck-after-drop-375` · 09f44e7 | covered |
-| JRN-02 server down and restart | pass | FP · `full-21-server-down`, `full-22-server-back` · c470f1a | covered |
+| JRN-02 server down and restart | pass | FP · `full-21-server-down`, `full-22-server-back` · c470f1a; CQ CQ-B08 · `2026-11-12-147-03-server-down-956x905`, `-04-server-back-entry-956x905` · ba2c98e | covered |
 | JRN-02 leave | pass | FP FON-01 (no shot) · c470f1a | covered |
 | JRN-03 join and post | smoke | TS · `2026-11-02-test-plan-smoke-03-room-post-375` · f9970ba; PD UI-65q (lines scroll inside the panel and follow at the bottom, tab switching) · `2026-11-02-65-29-sender-lines-follow-3-open-1440` · ce90fc5; PD UI-85a own post follows · `2026-11-02-65-52-own-post-follows-1440x900` · 5669e7d | covered |
 | JRN-03 flood notice | pass | FP · `full-07-room-flood` · c470f1a | covered |
@@ -121,9 +121,9 @@ Level is the lowest QA level that must run the row: smoke ⊂ pass ⊂ full.
 | JRN-04 windows never cover the room composer, phone 390 px, 3 / 2 + 1 min / 1 + 2 min, receiver 2 / 1 + 1 min / 0 | pass | PD UI-65h2 · `2026-11-02-65-36-sender-3-open-390`, `-37-sender-2-open-1-min-390`, `-38-sender-1-open-2-min-390`, `-39-receiver-open-390` · ce90fc5; PD UI-65h3 · `2026-11-02-65-56-sender-2-open-390`, `-59-receiver-390` · 5669e7d (earlier: debc8ce shots 07…13) | covered (dock static after the room, no regression; composer above the fold with 2+ windows, reachable by scrolling) |
 | JRN-03 rooms list with private windows open, desktop and phone | pass | PD UI-65j (first pass) · `2026-11-02-65-16-sender-rooms-list-2-open-1440`, `-17-sender-rooms-list-2-open-390` · debc8ce | covered; re-run on 5669e7d: PD UI-65j2 · `2026-11-02-65-57-rooms-list-2-open-390`, `-58-rooms-list-2-open-1440` |
 | JRN-03 search and account overlays with the dock, desktop | pass | PD UI-65t, UI-65n · `2026-11-02-65-30-sender-search-overlay-3-open-1440`, `-31-sender-account-overlay-3-open-1440`, `-32-account-overlay-covered-by-dock-3-open-1440x600` · ce90fc5; re-run PD UI-84a/b · `2026-11-02-65-49-account-overlay-over-dock-1440x600-scrolled`, `-51-search-overlay-over-dock-1440x600-scrolled` · 5669e7d | covered on 5669e7d (overlay z-index 16 over the dock, every control hit and "fermer" / "annuler" clicked; #84 verified; FAIL on ce90fc5 fixed) |
-| JRN-04 cap of 3 windows | pass | FL JRN-04b · `2026-11-03-89-13-receiver-3-windows-cap-1440` · 9913901 | covered (`warning targetBusy`) |
-| JRN-05 ignore | pass | FP · `full-12-ignore-receiver` · c470f1a | covered |
-| JRN-06 directory search | pass | FP · `full-13-search` · c470f1a | covered |
+| JRN-04 cap of 3 windows | pass | FL JRN-04b · `2026-11-03-89-13-receiver-3-windows-cap-1440` · 9913901 ; CQ CQ-11, CQ-12, CQ-B03 · `2026-11-12-147-02-fourth-window-draft-lost-956x905` · ba2c98e | covered (`warning targetBusy`); sender's draft lost on `tooManyWindows`, #151 |
+| JRN-05 ignore | pass | FP · `full-12-ignore-receiver` · c470f1a; CQ CQ-13, CQ-B06 · ba2c98e | covered |
+| JRN-06 directory search | pass | FP · `full-13-search` · c470f1a; CQ CQ-10, CQ-B04 · ba2c98e | covered |
 | JRN-07 request a code, right code | pass | CS · `2026-11-02-11-recheck-signed-in-375` · 09f44e7 | covered |
 | JRN-07 wrong code, exhausted | pass | CS · `2026-11-02-12-recheck-f1-no-dead-step-375` · 09f44e7 | covered |
 | JRN-07 IP quota 10 codes per hour | full | FL JRN-07b (no shot) · 9913901 | covered |
