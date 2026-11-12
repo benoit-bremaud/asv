@@ -713,3 +713,10 @@ from PF on, the owner's rule (2026-11-12) is Chrome DevTools MCP for every check
 | 2026-11-12 | CQ | BACKLOG-24 | Comment #24: 84 s offline without banner | comment posted | posted | PASS | #24 |
 | 2026-11-12 | CQ | BACKLOG-68 | Comment #68 (edited after review to cite CQ-B01 and CQ-B08) | comment posted | posted | PASS | #68 |
 | 2026-11-12 | CQ | SETUP-08 | Rename shots 01–04 from `-1440` to `-956x905` (real window size) | names match viewport | renamed | PASS | report |
+| 2026-11-12 | CQ | SEC-01 | Re-graded after review (supersedes the SEC-01 CQ row) | no missing header | Permissions-Policy missing | FAIL (known #69) | report § Items waived |
+| 2026-11-12 | CQ | UI-01 | Re-graded after review (supersedes the UI-01 CQ row) | all viewports and 200 % zoom | viewports PASS; 200 % zoom not run | MIXED | report § Items waived |
+| 2026-11-12 | CQ | UI-04 | Re-graded after review (supersedes the UI-04 CQ row) | dark, reduced-motion, forced-colors | dark PASS; reduced-motion, forced-colors not run | MIXED | report § Items waived |
+| 2026-11-12 | CQ | A11Y-03 | Re-graded after review, P0 (supersedes the A11Y-03 CQ row) | field marked invalid, fix stated | no `aria-invalid`, no how-to-fix | FAIL | #154 |
+| 2026-11-12 | CQ | CQ-B08 | Detail: `stop.sh` with alba in a room, wait banner, `start.sh`, wait reconnect (956 × 905) | banner, then entry screen | banner; entry after about 17 s | PASS | shots 03, 04 |
+| 2026-11-12 | CQ | CQ-B10 | Detail: `emulate` viewport 320x568 light, 390x844 dark, 844x390 light, 768x1024 light, 1024x768 dark; `evaluate_script` scrollWidth vs clientWidth | no overflow | equal at each | PASS | shots 05-08 |
+| 2026-11-12 | CQ | CQ-B11 | Detail: room message and search `<img src=x onerror=window.__x=1>`, `"><svg onload=window.__x=1>`; room name `<b>x</b> onerror` | text only | `window.__x` 0; name refused | PASS | CON-01 |

@@ -16,7 +16,7 @@ Checklist: `61702fb560a9`
 
 ## QA matrix
 
-Gate ❌ · 🔴 Must 2 (#153, #154: P0 items A11Y-02 and A11Y-03) · 🟡 Should 1 (#151) · 🔵 Nice 0 new (#70 N2 re-seen)
+Gate ❌ · 🔴 Must 2 (#153, #154: P0 items A11Y-02 and A11Y-03) · 🟡 Should 1 new (#151) + 1 known (#69) · 🔵 Nice 0 new (#70 N2 re-seen)
 
 Gate line: ❌ P0 accessibility sub-checks fail · crowd driver 26 PASS, 1 INFO (CQ-01…CQ-27) · browser 10 PASS, 3 FAIL, 1 MIXED (CQ-B01…B14) · SEC-01…SEC-10 run (9 PASS, SEC-01 FAIL known #69) · UI-01, UI-03, UI-04, ROB-02, A11Y-02, A11Y-03 run, closing the #131 waiver (UI-01 200 % zoom and UI-04 reduced-motion / forced-colors not run) · server stdout of driver runs 1–3 and the browser session (`grep -ci 'error\|exception'`): 0 · report: docs/architecture/qa/2026-11-12-147-crowd-campaign.md.
 
@@ -134,7 +134,7 @@ Two earlier driver runs are superseded: run 1 had driver bugs (profiles assigned
 | #24 | known | comment: 84 s offline without the reconnect banner (CQ-B07) |
 | #68 | known | comment: code-sent notice outlives success (CQ-B01), window-cap notice outlives the reconnect (CQ-B08, shot 03) |
 
-Lighthouse `target-size` on the room screen is A11Y-05, already #142. Not filed: Lighthouse SEO `meta-description` (the product does not aim at search ranking; owner may decide otherwise). No new user journey; `test-plan.md` gets the CQ evidence in this PR (JRN-02, 04, 05, 06, 07, 13, 14).
+Lighthouse `target-size` on the room screen is A11Y-05, already #142. Not filed: Lighthouse SEO `meta-description` (the product does not aim at search ranking; owner may decide otherwise). No new user journey; `test-plan.md` gets the CQ evidence in this PR (JRN-02, 04, 05, 06).
 
 ## Cleanup
 
