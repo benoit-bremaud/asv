@@ -811,6 +811,27 @@ describe("room screen", () => {
     }
   });
 
+  it("layers every modal dialog with theme tokens, a brand edge in dark (#104)", () => {
+    // jsdom computes no layout or media query: check the tokens per theme and the one shared rule.
+    const css = readFileSync("src/web/styles.css", "utf8");
+    const light = css.match(/^:root \{[^}]*\}/m)?.[0] ?? "";
+    const dark = css.match(/@media \(prefers-color-scheme: dark\) \{\s*:root \{[^}]*\}/)?.[0] ?? "";
+    expect(light).toContain("--backdrop: rgb(0 0 0 / 0.25);");
+    expect(light).toContain("--dialog-shadow: var(--bevel-dark);");
+    expect(light).toContain("--dialog-edge: transparent;");
+    expect(dark).toContain("--backdrop: rgb(0 0 0 / 0.6);");
+    expect(dark).toContain("--dialog-shadow: #000;");
+    expect(dark).toContain("--dialog-edge: var(--brand);");
+    const shared = css.match(/^\.overlay, \.legal-page \{[^}]*\}/m)?.[0] ?? "";
+    expect(shared).toContain("box-shadow: 0 0 0 2px var(--dialog-edge), 4px 4px 0 var(--dialog-shadow);");
+    // No outline: the :focus-visible ring of a focused legal page must keep winning.
+    expect(shared).not.toMatch(/\boutline\s*:/);
+    expect(css).toContain(".overlay::backdrop, .legal-page::backdrop { background: var(--backdrop, rgb(0 0 0 / 0.25)); }");
+    // Single source: no other rule on the dialogs themselves sets its own shadow, outline or backdrop colour.
+    expect(css.match(/^\.(?:overlay|legal-page)(?:, \.(?:overlay|legal-page))* \{[^}]*\b(?:box-shadow|outline)\s*:/gm)).toHaveLength(1);
+    expect(css.match(/::backdrop[^{]*\{/g)).toHaveLength(1);
+  });
+
   it("gives every bevelled button the 44 px touch floor (#170, #176)", async () => {
     // jsdom computes no layout: check the rule sits in the #105 touch block, then that the buttons carry the class.
     const css = readFileSync("src/web/styles.css", "utf8");

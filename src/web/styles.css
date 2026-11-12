@@ -14,6 +14,10 @@
   --bevel-light: #ffffff;
   --bevel-dark: #8a8aa8;
   --on-brand: #ffffff;
+  /* Modal dialogs (#104): page dimming, frame shadow and frame edge, per theme. */
+  --backdrop: rgb(0 0 0 / 0.25);
+  --dialog-shadow: var(--bevel-dark);
+  --dialog-edge: transparent;
   --gap: 12px;
   /* Tallest docked private window (#65): the page keeps this much free space at the bottom. */
   --dock-height: 340px;
@@ -35,6 +39,10 @@
     --bevel-light: #4a4a6a;
     --bevel-dark: #0e0e1c;
     --on-brand: #1b1b2f;
+    /* A black shadow vanishes on the dimmed night page (1.07:1): the brand edge carries the frame (7.73:1). */
+    --backdrop: rgb(0 0 0 / 0.6);
+    --dialog-shadow: #000;
+    --dialog-edge: var(--brand);
   }
 }
 
@@ -145,8 +153,7 @@ input { font: inherit; padding: 4px; min-height: 32px; }
 }
 
 /* Account overlay (`web-ui/06`): a modal dialog floating over the chat, closable (#63). */
-.overlay { position: fixed; top: 128px; right: var(--gap); bottom: auto; left: auto; margin: 0; color: var(--text); width: min(340px, calc(100vw - 2 * var(--gap))); max-height: calc(100dvh - 128px - var(--gap)); overflow: auto; z-index: 16; display: flex; flex-direction: column; gap: 8px; box-shadow: 4px 4px 0 var(--bevel-dark); }
-.overlay::backdrop { background: rgb(0 0 0 / 0.25); }
+.overlay { position: fixed; top: 128px; right: var(--gap); bottom: auto; left: auto; margin: 0; color: var(--text); width: min(340px, calc(100vw - 2 * var(--gap))); max-height: calc(100dvh - 128px - var(--gap)); overflow: auto; z-index: 16; display: flex; flex-direction: column; gap: 8px; }
 /* The search panel inside its dialog (`web-ui/07`, #111): one frame, the dialog's. */
 .overlay > .search { border: 0; padding: 0; box-shadow: none; background: none; }
 /* A short screen (phone in landscape, #111): the dialog starts at the top so "fermer" stays in view. */
@@ -243,8 +250,12 @@ input { font: inherit; padding: 4px; min-height: 32px; }
 .private-window .composer input { flex: 1; min-width: 0; }
 .unread { color: var(--brand); font-weight: bold; }
 /* Legal pages (ADR-0018): a modal dialog (#59), bounded to the viewport and scrollable. */
-.legal-page { position: fixed; inset: var(--gap); z-index: 30; box-sizing: border-box; width: auto; max-height: calc(100dvh - 2 * var(--gap)); max-width: min(720px, calc(100vw - 2 * var(--gap))); margin: 0 auto; overflow: auto; color: inherit; box-shadow: 4px 4px 0 var(--bevel-dark); }
-.legal-page::backdrop { background: rgb(0 0 0 / 0.25); }
+.legal-page { position: fixed; inset: var(--gap); z-index: 30; box-sizing: border-box; width: auto; max-height: calc(100dvh - 2 * var(--gap)); max-width: min(720px, calc(100vw - 2 * var(--gap))); margin: 0 auto; overflow: auto; color: inherit; }
+/* One layered look for every modal dialog (#104): dimmed page, one shadow, an edge visible in dark. */
+/* The edge is a spread shadow, not an outline, so the :focus-visible ring of a focused dialog still shows. */
+.overlay, .legal-page { box-shadow: 0 0 0 2px var(--dialog-edge), 4px 4px 0 var(--dialog-shadow); }
+/* Fallback for engines whose ::backdrop does not inherit custom properties (before Chrome 122, Safari 17.4). */
+.overlay::backdrop, .legal-page::backdrop { background: var(--backdrop, rgb(0 0 0 / 0.25)); }
 .legal-table { width: 100%; border-collapse: collapse; font-size: 13px; overflow-wrap: break-word; hyphens: auto; }
 .legal-table th, .legal-table td { border: 1px solid var(--bevel-dark); padding: 4px; text-align: left; vertical-align: top; }
 .search form { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }

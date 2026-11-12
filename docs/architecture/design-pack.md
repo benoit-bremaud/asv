@@ -28,6 +28,18 @@ Contrast ratios computed with the WCAG formula on 2026-10-15.
 
 Every text token passes WCAG AA (4.5:1) on both backgrounds of its theme.
 
+**Modal dialog layering** (#104, option B 480/500): every modal `dialog` (account and search `.overlay`,
+`.legal-page`) shares one rule fed by three tokens. Ratios against the dimmed page, computed 2026-11-12.
+
+| Token | Light | Dark | Use | Frame vs dimmed page |
+|---|---|---|---|---|
+| `--backdrop` | `rgb(0 0 0 / 0.25)` | `rgb(0 0 0 / 0.6)` | `::backdrop` dimming | — |
+| `--dialog-shadow` | `--bevel-dark` | `#000` | 4 px offset shadow | light 1.73, dark 1.07 |
+| `--dialog-edge` | `transparent` | `--brand` | 2 px edge (spread shadow) | dark 7.73 (WCAG 1.4.11 ≥ 3:1) |
+
+In dark, a black shadow reads 1.07:1 on the dimmed night page, so the brand edge carries the frame. The edge is a spread `box-shadow`, never an `outline`, so the
+`:focus-visible` ring of a focused dialog still shows.
+
 **Away style** (single source, referenced by ADR-0009): the pseudo uses its `-away` token, in italics,
 followed by "(absent)". Colour is never the only cue.
 
