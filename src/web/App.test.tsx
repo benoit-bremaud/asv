@@ -417,6 +417,58 @@ describe("legal pages (ADR-0018)", () => {
     expect(screen.getByRole("dialog", { name: STRINGS.legal.privacy })).toBeTruthy();
   });
 
+  it("opens each page as a modal dialog holding the focus, and gives it back to its link (#59)", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("{}", { status: 200 })));
+    const user = await setup();
+    const closers = [
+      (page: HTMLElement) => user.click(within(page).getByRole("button", { name: STRINGS.close })),
+      async (page: HTMLElement) => expect(fireEvent.keyDown(page, { key: "Escape" })).toBe(false),
+      async (page: HTMLElement) => expect(fireEvent(page, new Event("cancel", { cancelable: true }))).toBe(false),
+    ];
+
+    for (const topic of ["rules", "notice", "privacy"] as const) {
+      for (const closeWith of closers) {
+        const link = screen.getByRole("button", { name: STRINGS.legal[topic] });
+        await user.click(link);
+        const page = screen.getByRole("dialog", { name: STRINGS.legal[topic] });
+        expect(showModal.mock.contexts.at(-1)).toBe(page);
+        expect(document.activeElement).toBe(page);
+
+        await closeWith(page);
+
+        expect(screen.queryByRole("dialog", { name: STRINGS.legal[topic] })).toBeNull();
+        expect(closeDialog.mock.contexts.at(-1)).toBe(page);
+        expect(document.activeElement).toBe(link);
+      }
+    }
+  });
+
+  it("gives the focus back to a link a click did not focus, as on macOS (#59, #130)", async () => {
+    await setup();
+    const footer = screen.getByRole("button", { name: STRINGS.legal.notice });
+    fireEvent.click(footer);
+    fireEvent.keyDown(screen.getByRole("dialog", { name: STRINGS.legal.notice }), { key: "Escape" });
+    expect(document.activeElement).toBe(footer);
+
+    await goOnline();
+    await enterChat();
+    fireEvent.click(screen.getByRole("button", { name: STRINGS.myAccount }));
+    const link = within(screen.getByRole("dialog", { name: STRINGS.accountTitle })).getByRole("button", { name: STRINGS.legal.privacy });
+    fireEvent.click(link);
+    fireEvent.keyDown(screen.getByRole("dialog", { name: STRINGS.legal.privacy }), { key: "Escape" });
+    expect(document.activeElement).toBe(link);
+  });
+
+  it("ignores keys other than Escape (#59)", async () => {
+    const user = await setup();
+    await user.click(screen.getByRole("button", { name: STRINGS.legal.rules }));
+    const page = screen.getByRole("dialog", { name: STRINGS.legal.rules });
+
+    fireEvent.keyDown(page, { key: "Enter" });
+
+    expect(screen.getByRole("dialog", { name: STRINGS.legal.rules })).toBe(page);
+  });
+
   it("keeps each page within the viewport so it scrolls and its fermer stays reachable (#126)", async () => {
     // jsdom computes no layout: check the rule that bounds the page, then that each page uses it.
     const rule = readFileSync("src/web/styles.css", "utf8").match(/^\.legal-page \{[^}]*\}/m)?.[0] ?? "";
@@ -1163,14 +1215,35 @@ describe("account panel", () => {
     expect(panel()).toBeTruthy();
   });
 
-  it("closes on Escape with the privacy page open inside it (#63)", async () => {
+  it("closes only the privacy page on Escape, then the panel on a second Escape (#63, #59)", async () => {
     const user = await openPanel();
-    await user.click(within(panel()).getByRole("button", { name: STRINGS.legal.privacy }));
+    const link = within(panel()).getByRole("button", { name: STRINGS.legal.privacy });
+    await user.click(link);
+    const page = screen.getByRole("dialog", { name: STRINGS.legal.privacy });
+    expect(showModal.mock.contexts.at(-1)).toBe(page);
 
-    fireEvent.keyDown(screen.getByRole("dialog", { name: STRINGS.legal.privacy }), { key: "Escape" });
+    expect(fireEvent.keyDown(page, { key: "Escape" })).toBe(false);
+
+    expect(screen.queryByRole("dialog", { name: STRINGS.legal.privacy })).toBeNull();
+    expect(panel()).toBeTruthy();
+    expect(document.activeElement).toBe(link);
+
+    fireEvent.keyDown(link, { key: "Escape" });
 
     expect(screen.queryByRole("dialog", { name: STRINGS.accountTitle })).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: STRINGS.myAccount }));
+  });
+
+  it("closes only the privacy page on a cancel request (#59)", async () => {
+    const user = await openPanel();
+    const link = within(panel()).getByRole("button", { name: STRINGS.legal.privacy });
+    await user.click(link);
+
+    expect(fireEvent(screen.getByRole("dialog", { name: STRINGS.legal.privacy }), new Event("cancel", { cancelable: true }))).toBe(false);
+
     expect(screen.queryByRole("dialog", { name: STRINGS.legal.privacy })).toBeNull();
+    expect(panel()).toBeTruthy();
+    expect(document.activeElement).toBe(link);
   });
 
   it("closes on \"fermer\" and gives the focus back to the opener (#63)", async () => {
