@@ -665,7 +665,7 @@ describe("rooms screen", () => {
       connection.send.mockReturnValue(4);
       const field = await create(user, "Mon salon");
 
-      await fromServer(msg("warning", { code: "invalidName", message: "m", replyTo: 4 }));
+      await fromServer(msg("warning", { code: "nameInvalid", message: "m", replyTo: 4 }));
 
       expect(field.value).toBe("Mon salon");
     });
@@ -688,7 +688,7 @@ describe("rooms screen", () => {
       const field = await create(user, "Mon salon");
       await user.type(field, "Autre");
 
-      await fromServer(msg("warning", { code: "invalidName", message: "m", replyTo: 4 }));
+      await fromServer(msg("warning", { code: "nameInvalid", message: "m", replyTo: 4 }));
 
       expect(field.value).toBe("Autre");
     });
@@ -1362,18 +1362,45 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
       expect(field.value).toBe("salut");
     });
 
-    it("keeps the field empty once the message went through", async () => {
+    it("gives the text back to the window that sent the refused seq only", async () => {
+      const user = await setup();
+      await signedIn();
+      await joinRoom("r1", [member(true), { ...man("s3", "cid"), hasAccount: true }]);
+      connection.send.mockReturnValueOnce(9).mockReturnValueOnce(10);
+      const bob = await openAndSend(user, "salut");
+      await user.click(screen.getByRole("button", { name: STRINGS.pseudoButton("cid") }));
+      await user.click(screen.getByRole("menuitem", { name: STRINGS.privateMessage }));
+      const cid = within(screen.getByRole("dialog", { name: STRINGS.privateWith("cid") })).getByLabelText(STRINGS.message) as HTMLInputElement;
+      await user.type(cid, "coucou{Enter}");
+
+      await fromServer(msg("warning", { code: "tooManyWindows", message: "m", replyTo: 10 }));
+      await fromServer(msg("error", { code: "invalid", message: "m" }));
+
+      expect(cid.value).toBe("coucou");
+      expect(bob.field.value).toBe("");
+    });
+
+    it("keeps the private draft when it could not be sent", async () => {
       const user = await setup();
       await signedIn();
       await joinRoom("r1", [member(true)]);
-      connection.send.mockReturnValue(9);
-      await openAndSend(user, "salut");
+      connection.send.mockReturnValue(undefined);
 
-      await fromServer(msg("privateWindow", { conversationId: "c1", other: { sessionId: "s2", pseudo: "bob", hasAccount: true, away: false, gender: "man" } }));
-      await fromServer(msg("warning", { code: "full", message: "m", replyTo: 8 }));
+      const { field } = await openAndSend(user, "salut");
 
-      const dialog = screen.getByRole("dialog", { name: STRINGS.privateWith("bob") });
-      expect(within(dialog).getByLabelText(STRINGS.message)).toHaveProperty("value", "");
+      expect(field.value).toBe("salut");
+    });
+
+    it("gives the text back for seq 0", async () => {
+      const user = await setup();
+      await signedIn();
+      await joinRoom("r1", [member(true)]);
+      connection.send.mockReturnValue(0);
+      const { field } = await openAndSend(user, "salut");
+
+      await fromServer(msg("warning", { code: "tooManyWindows", message: "m", replyTo: 0 }));
+
+      expect(field.value).toBe("salut");
     });
 
     it("never overwrites a draft typed since", async () => {
