@@ -60,7 +60,7 @@ const readClaim = async (c: Context): Promise<string | undefined> => {
  * imports a transport (ADR-0002). The WebSocket upgrade belongs to the transport (`platform/02`).
  */
 /** Browser features no page of the chat may use (BR-086, #69). */
-const DENIED_FEATURES = ["camera", "microphone", "geolocation", "payment", "usb", "serial", "hid", "bluetooth", "displayCapture", "browsingTopics"] as const;
+const DENIED_FEATURES = ["camera", "microphone", "geolocation", "payment", "usb", "serial", "hid", "displayCapture", "browsingTopics"] as const;
 
 export const createApp = (deps: AppDeps): Hono => {
   const app = new Hono();
