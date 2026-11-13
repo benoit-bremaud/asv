@@ -59,6 +59,9 @@ const readClaim = async (c: Context): Promise<string | undefined> => {
  * Builds the Hono app. Each transport calls it and plugs in its hub; the server never
  * imports a transport (ADR-0002). The WebSocket upgrade belongs to the transport (`platform/02`).
  */
+/** Browser features no page of the chat may use (BR-086, #69). */
+const DENIED_FEATURES = ["camera", "microphone", "geolocation", "payment", "usb", "serial", "hid", "bluetooth", "displayCapture", "browsingTopics"] as const;
+
 export const createApp = (deps: AppDeps): Hono => {
   const app = new Hono();
   const { accounts } = deps;
@@ -77,6 +80,8 @@ export const createApp = (deps: AppDeps): Hono => {
         formAction: ["'self'"],
       },
       referrerPolicy: "no-referrer",
+      // #69: no powerful feature the chat never uses.
+      permissionsPolicy: Object.fromEntries(DENIED_FEATURES.map((feature) => [feature, false])),
       strictTransportSecurity: accounts.secureCookie ? "max-age=15552000" : false,
     }),
   );

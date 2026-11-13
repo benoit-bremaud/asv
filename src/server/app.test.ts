@@ -23,6 +23,9 @@ describe("createApp", () => {
     );
     expect(response.headers.get("x-content-type-options")).toBe("nosniff");
     expect(response.headers.get("referrer-policy")).toBe("no-referrer");
+    expect(response.headers.get("permissions-policy")).toBe(
+      "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), hid=(), bluetooth=(), display-capture=(), browsing-topics=()",
+    );
     expect(response.headers.get("strict-transport-security")).toBe("max-age=15552000");
     const plain = createApp({ stats: () => ({ connected: 0 }), accounts: { allowedOrigins: [], secureCookie: false, redeemDeviceClaim: () => Promise.resolve(undefined), signOutDevice: () => Promise.resolve() } });
     expect((await plain.request("/api/stats")).headers.get("strict-transport-security")).toBeNull();
