@@ -57,7 +57,8 @@ sequenceDiagram
   fixed system prompt, the closed schema is the only thing read back, and the summary is rendered as
   text only.
 - The hub checks both caps before calling: 200 calls per UTC day in all, and 20 per UTC day per reporter
-  (keyed IP hash, or account id for a member), so a reported party cannot exhaust the budget alone. The
+  (counted by keyed IP hash, and for a member also by account id, whichever limit is reached first,
+  BR-101), so a reported party cannot exhaust the budget alone. The
   counters live in hub memory and restart at midnight UTC or on a restart.
 - The urgency floor follows the reason: `seemsMinor` and `illegalContent` are never below medium, and
   a report left `unknown` sorts with its reason's floor (BR-101, BR-102).
