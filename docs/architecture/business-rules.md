@@ -66,7 +66,12 @@ Values are owned here. Rationale lives in the ADRs.
 | BR-055 | Every moderation action records the moderator name and time. |
 | BR-056 | A moderator invitation is single use and expires after 24 hours. |
 | BR-057 | A report is closed with one outcome: no action, warned, expelled, suspended, severe deletion, room removed. The AI triage never closes a report (ADR-0010). |
-| BR-091 | Brick 8a only (#209): a session gets `isModerator` when its `enter` carries a token equal, in constant time, to the server's `ASV_MODERATOR_TOKEN` (32 characters or more, generated with `openssl rand -hex 32`). After 5 wrong tokens from one IP within 10 minutes, every grant from that IP answers `entryRefused(rate)` until the window slides. The server refuses to start with the token and `ASV_TUNNEL=1` together. Actions record the name `owner`. Removed by brick 8b (passkeys, ADR-0008). |
+| BR-091 | Removed by brick 8b (#210): the interim token `ASV_MODERATOR_TOKEN` of brick 8a is gone; moderator rights come only from a passkey grant (BR-095). |
+| BR-093 | Invitation and revocation routes (`POST /mod/invitations`, `DELETE /mod/moderators/<name>`) accept only a loopback peer, no tunnel, and `Authorization: Bearer` equal in constant time to `ASV_OWNER_SECRET` (32 characters or more). The server refuses to start with a shorter secret. |
+| BR-094 | A moderator name is 2 to 20 characters among `A-Z a-z 0-9 _ -`, compared case-insensitively. Enrolling again under a name replaces its credential (lost device); one credential per name. |
+| BR-095 | A successful passkey sign-in returns a grant: name, expiry 60 seconds and a random nonce, signed with HMAC-SHA256 under `ASV_GRANT_KEY` (32 characters or more). `enter` with a valid, unexpired grant whose nonce is unused gets `isModerator`; the hub keeps used nonces until their expiry. Registration and authentication challenges are single use and kept 5 minutes. |
+| BR-096 | After 5 refused grants or owner secrets from one IP within 10 minutes, further ones from that IP are refused (`entryRefused(rate)` or `429`) until the window slides. Each `/mod` ceremony route takes a token from a per-IP bucket of 10 refilled at 1 every 6 seconds. |
+| BR-097 | Every `/mod/*` route answers 404 when the transport runs with `ASV_TUNNEL=1`: moderation stays closed to testers before brick 8c. Moderator names, credential ids and public keys are encrypted at rest in the moderator file (ADR-0017); invitations keep only the SHA-256 of their token. |
 | BR-092 | Brick 8a only: without AI triage, open reports are listed oldest first. Severe deletion, room removal and the decision e-mail to the reporter are not offered before brick 8c (#211). |
 
 ## Accounts and strikes (ADR-0012, ADR-0013, ADR-0014)

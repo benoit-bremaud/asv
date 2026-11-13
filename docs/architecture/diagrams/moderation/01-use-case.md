@@ -95,7 +95,7 @@ flowchart LR
   grant. 5. The moderator completes the entry form (UC1) and enters with moderator rights.
 - Extensions: 4a. Unknown or revoked credential → refused.
 
-**UC16i — Sign in as moderator, interim** (brick 8a, removed by 8b)
+**UC16i — Sign in as moderator, interim** (brick 8a, removed by 8b, #210)
 - Primary actor: Owner. Main scenario: 1. Owner opens "modération" on the entry form and types the
   server token. 2. System checks it (BR-091) and enters the owner with moderator rights. Sequence 02e.
 - Extensions: 2a. No token configured, tunnel on, or mismatch → refused (`entryRefused`), no session.
@@ -109,6 +109,12 @@ flowchart LR
 - Behind the tester tunnel the server sends `canReport = false`, refuses `report` and refuses the
   moderator token at start (BR-091), so UC9 to UC12 stay closed to testers.
 - Brick 8a is not exposed to testers before 8c: the impact assessment comes first (`security-and-rgpd.md`).
+
+## Brick 8b scope (#210, 2026-11-13)
+
+- In: UC14 (script + loopback route, BR-093), UC15 (enrolment page), UC16 (passkey sign-in, grant BR-095),
+  revocation script, on the Node transport (`02f`, `web-ui/09`). UC16i and BR-091 are removed.
+- Still closed behind the tester tunnel (BR-097).
 
 ## Notes
 

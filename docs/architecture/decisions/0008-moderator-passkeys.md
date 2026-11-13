@@ -54,3 +54,12 @@ Sensitivity: with simplicity 40 and security 10, D leads (425 vs 370).
 - A lost device means a new invitation. The owner can revoke a moderator by deleting the credential.
 - Each moderation action is attributable to a named moderator.
 - Moderator credentials are persisted (names and public keys). Add them to the privacy notice.
+
+## Addendum 2026-11-13 — Node transport first (brick 8b, #210)
+
+Before any Cloudflare deployment, the Node transport realises the decision (`moderation/02f`): the
+Hono app runs the ceremonies and calls the in-memory hub directly; moderators live in an encrypted file
+(MCDA 430/500 against SQLite 360 and memory 315); the invitation script calls a loopback-only route
+guarded by `ASV_OWNER_SECRET` (440/500 against writing the file 305 and a panel button 290); the
+moderator panel is the entry-screen link, the enrolment page and the 8a queue (425/500 against a `/mod`
+page 320 and an in-chat panel 330). The grant key is `ASV_GRANT_KEY`. Rules: BR-093 to BR-097.

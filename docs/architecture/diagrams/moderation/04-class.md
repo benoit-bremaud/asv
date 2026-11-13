@@ -108,6 +108,13 @@ classDiagram
     +findByCredential(id) Moderator
     +updateSignCount(id, count)
     +deleteModerator(name)
+    +purgeExpiredInvitations(now)
+  }
+  class ModeratorGrant {
+    +String name
+    +Date expiresAt
+    +String nonce
+    +String mac
   }
   class ReportTriage {
     <<interface>>
@@ -123,6 +130,7 @@ classDiagram
   ModerationStore ..> Ban
   ModeratorStore ..> Moderator
   ModeratorStore ..> Invitation
+  ModeratorStore ..> ModeratorGrant : names
 ```
 
 ## Notes
@@ -161,3 +169,13 @@ The contract stays `platform/04-class-protocol`. Brick 8a uses it as follows:
   hashes (HMAC) of the IP and of the folded pseudo, so the entry check compares hashes and never
   decrypts.
 - `resumed.isModerator` carries the rights back to a moderator session after a resume (BR-091).
+
+## Brick 8b (#210)
+
+- `ModeratorStore` gets two adapters on Node: in memory for tests, and an encrypted file
+  (`ASV_MODERATOR_FILE`, 0600, rewritten through a temporary file and a rename) for the running server
+  (BR-097). `Invitation.used` is dropped: `consumeInvitation` deletes it.
+- `ModeratorGrant` is built and checked in `src/server/moderator-grant.ts` (BR-095), which replaces
+  `moderator-token.ts`. `enter.moderatorGrant` carries its serialised form.
+- The WebAuthn ceremonies sit in `src/server/moderator-routes.ts`, the only module importing
+  `@simplewebauthn/server`; the web client uses `@simplewebauthn/browser`.
