@@ -6,7 +6,7 @@ coverage matrix that records the last QA evidence of every case, so each QA pass
 > Written with skill `test-plan`. Families, tools and owners refer to the owner's
 > `~/.claude/skills/testing-strategy/taxonomy.md` (not linked). Levels and checklist IDs (FON, DAT, UI,
 > A11Y, PERF, SEC, ROB, MOB, USA, PRI) refer to skill `qa-browser-check` and its `checklist.md`.
-> Last reviewed: 2026-11-13 · JRN-31 evidence written by the check of #199 on 10c5679 and cfa85aa (SN); JRN-30 evidence written by the check of #60, #68, #148 and #110 on a148de0 (FN); JRN-29 evidence written by the check of #67 and #106 on 7828fe5 (FS); JRN-28 evidence written by the check of #171 on 5e2e923 (MF); JRN-27 evidence written by the check of #136 on 540a623 (AD); JRN-26 evidence written by the check of #104 on 2ce2a4e (DL); JRN-25 evidence written by the check of #111 on 6844535 (SD); JRN-20 evidence extended by the check of #176 on e09aaa2 (BB); JRN-24 evidence extended by the check of #170 on 3edb917 (BT); JRN-20 evidence extended by the check of #168 on f0d79ab and 6881bc2 (PM); JRN-24 evidence written by the check of #143 on 32cd1bc (HW); JRN-20 evidence extended by the check of #142 on 4f3144d (TT); JRN-23 evidence written by the pass of #59 on 7edf57d and a772665 (LM); JRN-22 evidence written by the pass of #151 on 5987750 (DR); JRN-18 evidence extended by the pass of #154 on 15c303a and 560cd56 (PI); JRN-02, 04, 05, 06 evidence added by campaign #147 on ba2c98e (CQ); JRN-21 evidence written by the pass of #131 on 0d4f213 and d783b18 (PF); JRN-20 evidence written by the pass of #105 on 3c3fdec (SZ); JRN-19 evidence written by the pass of #126 on 31c19ff (LS); JRN-18 evidence written by the pass of #121 on 79bbd89 (AR); JRN-17 evidence written by the pass of #63 on e4b4223 (AM); JRN-16 evidence written by the pass of #64 on 0d48cd1 (OH); JRN-15 evidence written by the pass of #91 on fea172c (BI); JRN-14 evidence written by the full pass of #23 on 77d7c17 (SC)
+> Last reviewed: 2026-11-13 · SEC-01 re-checked for #69 on bb56afb (PP); JRN-31 evidence written by the check of #199 on 10c5679 and cfa85aa (SN); JRN-30 evidence written by the check of #60, #68, #148 and #110 on a148de0 (FN); JRN-29 evidence written by the check of #67 and #106 on 7828fe5 (FS); JRN-28 evidence written by the check of #171 on 5e2e923 (MF); JRN-27 evidence written by the check of #136 on 540a623 (AD); JRN-26 evidence written by the check of #104 on 2ce2a4e (DL); JRN-25 evidence written by the check of #111 on 6844535 (SD); JRN-20 evidence extended by the check of #176 on e09aaa2 (BB); JRN-24 evidence extended by the check of #170 on 3edb917 (BT); JRN-20 evidence extended by the check of #168 on f0d79ab and 6881bc2 (PM); JRN-24 evidence written by the check of #143 on 32cd1bc (HW); JRN-20 evidence extended by the check of #142 on 4f3144d (TT); JRN-23 evidence written by the pass of #59 on 7edf57d and a772665 (LM); JRN-22 evidence written by the pass of #151 on 5987750 (DR); JRN-18 evidence extended by the pass of #154 on 15c303a and 560cd56 (PI); JRN-02, 04, 05, 06 evidence added by campaign #147 on ba2c98e (CQ); JRN-21 evidence written by the pass of #131 on 0d4f213 and d783b18 (PF); JRN-20 evidence written by the pass of #105 on 3c3fdec (SZ); JRN-19 evidence written by the pass of #126 on 31c19ff (LS); JRN-18 evidence written by the pass of #121 on 79bbd89 (AR); JRN-17 evidence written by the pass of #63 on e4b4223 (AM); JRN-16 evidence written by the pass of #64 on 0d48cd1 (OH); JRN-15 evidence written by the pass of #91 on fea172c (BI); JRN-14 evidence written by the full pass of #23 on 77d7c17 (SC)
 
 ## Rule: the plan follows the product
 
@@ -42,7 +42,7 @@ coverage matrix that records the last QA evidence of every case, so each QA pass
 | RSK-06 | Account takeover: e-mail code, device cookie, sign-out (UC17, UC18) | 3 | 5 | 15 high | auth surface; #72 defect found by QA |
 | RSK-07 | Account deletion leaves data or breaks the legal vault (UC19) | 2 | 5 | 10 medium | ADR-0014, BR-080…083; never run in the browser |
 | RSK-08 | Personal data persisted or logged beyond ADR rules | 2 | 5 | 10 medium | `security-and-rgpd.md` §1 rules; no defect seen yet (judgement) |
-| RSK-09 | Web attack: XSS, CSWSH, headers, input limits | 3 | 5 | 15 high | public chat input; SEC-01 open (#69) |
+| RSK-09 | Web attack: XSS, CSWSH, headers, input limits | 3 | 5 | 15 high | public chat input; SEC-01 closed by #69 |
 | RSK-10 | Tunnel mode misconfigured: HSTS, `Secure` cookie, client IP (BR-084…086) | 2 | 5 | 10 medium | production config, never run by QA |
 | RSK-11 | Legal pages missing or wrong (ADR-0018) | 2 | 4 | 8 medium | legal duty before testers |
 | RSK-12 | Accessibility barriers (WCAG 2.2 AA) | 3 | 3 | 9 medium | F1–F3 of the full pass (#63, #64; #65 fixed on ce90fc5; #84 overlays verified on 5669e7d) |
@@ -177,7 +177,7 @@ Level is the lowest QA level that must run the row: smoke ⊂ pass ⊂ full.
 | A11Y keyboard, semantics, contrast, targets | pass | FP · `full-23-keyboard-guest-rooms` · c470f1a; #65 re-checked in PD at scrollY 0 and after scrolling (target visibility and `elementFromPoint`) · `2026-11-02-65-22-sender-1-open-1440-scrolly0` · ce90fc5; overlay controls PD A11Y-65b · `2026-11-02-65-49-account-overlay-over-dock-1440x600-scrolled` · 5669e7d | covered (FAIL: #63, #64; #84 overlay controls verified on 5669e7d; #65 fixed on ce90fc5) |
 | A11Y axe-core, screen reader | full | FL A11Y-11 axe-core 4.13 (no shot) · 9913901; screen reader NOT TESTED (Orca missing) | covered for axe (FAIL: #105, #64, #107); screen reader not covered |
 | PERF lab budget | full | FL PERF-01 Lighthouse 12.6.1 mobile, 3 runs (no shot) · 9913901 | covered (FAIL: LCP 2.6 s, #98) |
-| SEC probes | pass | FL SEC-01…10 · 9913901 (earlier PD · debc8ce) | covered (SEC-01 FAIL, #69) |
+| SEC probes | pass | FL SEC-01…10 · 9913901 (earlier PD · debc8ce); PP SEC-01 · bb56afb | covered (SEC-01 PASS since #69) |
 | ROB down, restart, two users | pass | FP ROB-01/02/05 · c470f1a; CS ROB-01 · e774c8c | covered |
 | MOB native or real phone | full | — (CS MOB-03 NOT TESTED) | not covered |
 | USA messages, confirmations | pass | FP USA-03/04 · c470f1a | covered |
@@ -190,7 +190,7 @@ dev server and own production build. Not re-run on ce90fc5 or 5669e7d (CSS and c
 
 | Case | Level | Last evidence (report · head) | Status |
 |---|---|---|---|
-| SEC-01 security headers | smoke | PD SEC-01 (`curl -I` on the production build, no shot) · debc8ce | covered (FAIL: no `Permissions-Policy`, no `object-src 'none'`, #69) |
+| SEC-01 security headers | smoke | PD SEC-01 (`curl -I` on the production build, no shot) · debc8ce; PP SEC-01 · bb56afb | covered (PASS: `Permissions-Policy` and `object-src 'none'` added by #69; the earlier FAIL is kept in PD) |
 | SEC-02 cookies | pass | PD SEC-02 (no shot) · debc8ce | covered (`Secure` in tunnel: not covered) |
 | SEC-03 Origin, CORS, CSWSH | pass | PD SEC-03 (no shot) · debc8ce | covered |
 | SEC-04 XSS | pass | PD SEC-04 · `2026-11-02-65-21-sec04-private-and-room-xss-as-text-921` · debc8ce | covered (room and private window) |
@@ -221,6 +221,7 @@ dev server and own production build. Not re-run on ce90fc5 or 5669e7d (CSS and c
 
 ## Changelog
 
+- 2026-11-13 — #69 (PP): SEC-01 passes: `Permissions-Policy` denies the powerful features the chat never uses and the CSP adds `object-src 'none'` (BR-086).
 - 2026-11-13 — #199 (SN): JRN-31 added and covered on Playwright Chromium: the notice hold lives in the store and one timer runs in `Banners`, so the inert page no longer expires a notice held in the search dialog; a copy closed under its hold (Escape) releases it, so the page copy expires (JRN-31c, cfa85aa).
 - 2026-11-13 — #60, #68, #148, #110 (FN): JRN-30 added and covered on Playwright Chromium: the entry screen names the missing fields under a disabled ENTRER, notices expire after 8 s and clear on the next success, every form field has a `name`, and the e-mail retention sentence (ADR-0014) shows under both e-mail fields and before deletion.
 - 2026-11-13 — #67, #106 (FS): JRN-29 added and covered on Playwright Chromium with two members: an incoming private window no longer steals the focus from the room field (the typed text continues there), "message privé" (also on an already open window, mouse and keyboard) and restoring a tab focus the composer, and the private composer is named "message privé à <pseudo>" so the two composers have unique accessible names. #130 was already fixed by #129 and closed.

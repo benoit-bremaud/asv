@@ -80,7 +80,7 @@ No analytics, no ads, no third-party trackers, no cookies other than strictly ne
 
 ## 4. Security controls checklist (ASVS level 1 targets)
 
-- HTTPS only, HSTS, secure headers (CSP, frame-ancestors none, referrer-policy): BR-086, from the tester exposure on (ADR-0018).
+- HTTPS only, HSTS, secure headers (CSP, frame-ancestors none, referrer-policy, permissions-policy): BR-086, from the tester exposure on (ADR-0018).
 - Origin check on WebSocket upgrade.
 - Input validation at the protocol boundary and in the domain.
 - Secrets (HMAC key, data keys, vault public key, Brevo API key, owner invitation secret) in Wrangler

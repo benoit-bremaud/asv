@@ -75,8 +75,11 @@ export const createApp = (deps: AppDeps): Hono => {
         frameAncestors: ["'none'"],
         baseUri: ["'none'"],
         formAction: ["'self'"],
+        objectSrc: ["'none'"],
       },
       referrerPolicy: "no-referrer",
+      // #69: deny the powerful features the chat never uses (a literal, so the compiler checks every name).
+      permissionsPolicy: { camera: false, microphone: false, geolocation: false, payment: false, usb: false, serial: false, hid: false, displayCapture: false, browsingTopics: false },
       strictTransportSecurity: accounts.secureCookie ? "max-age=15552000" : false,
     }),
   );

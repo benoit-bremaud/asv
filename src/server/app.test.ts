@@ -19,10 +19,13 @@ describe("createApp", () => {
     const response = await app.request("/nowhere");
 
     expect(response.headers.get("content-security-policy")).toBe(
-      "default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+      "default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'",
     );
     expect(response.headers.get("x-content-type-options")).toBe("nosniff");
     expect(response.headers.get("referrer-policy")).toBe("no-referrer");
+    expect(response.headers.get("permissions-policy")).toBe(
+      "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), hid=(), display-capture=(), browsing-topics=()",
+    );
     expect(response.headers.get("strict-transport-security")).toBe("max-age=15552000");
     const plain = createApp({ stats: () => ({ connected: 0 }), accounts: { allowedOrigins: [], secureCookie: false, redeemDeviceClaim: () => Promise.resolve(undefined), signOutDevice: () => Promise.resolve() } });
     expect((await plain.request("/api/stats")).headers.get("strict-transport-security")).toBeNull();
