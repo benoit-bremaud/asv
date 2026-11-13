@@ -23,6 +23,8 @@
   },
   "dependencies": {
     "@hono/node-server": "^2.1.7",
+    "@simplewebauthn/browser": "^14.0.0",
+    "@simplewebauthn/server": "^14.1.0",
     "hono": "^4.13.18",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",

@@ -22,7 +22,7 @@ interface Saved {
 }
 
 type Profile = Extract<ClientMessage, { type: "resume" }>["payload"]["profile"];
-/** The entry form as screens send it; the moderator grant is sent once and never saved (BR-091). */
+/** The entry form as screens send it; the moderator grant is sent once and never saved (BR-095). */
 export type EnterForm = Extract<ClientMessage, { type: "enter" }>["payload"];
 type Outbound<M = ClientMessage> = M extends { type: infer T; payload: infer P } ? { type: T; payload: P } : never;
 /** What screens may send, without `seq` (the manager numbers it); enter, resume and leave have their own methods. */

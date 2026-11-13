@@ -54,8 +54,8 @@ export interface ModerationContext {
 
 type ModerationHandler<T extends ClientMessage["type"]> = (caller: ModerationCaller, command: Command<T>, now: Date) => Promise<Outgoing[]>;
 
-/** BR-091: the only moderator name before brick 8b. */
-export const INTERIM_MODERATOR = "owner";
+/** BR-055: the name recorded on an action, from the passkey grant of the session (BR-095). */
+const moderatorOf = (state: HubState, sessionId: string): string => state.sessions.get(sessionId)?.moderatorName ?? "unknown";
 
 /** DSA art. 17 statement of reasons, in the chat's language (BR-076). */
 export const suspensionStatement = (until: Date): string =>
@@ -133,7 +133,7 @@ export const createModerationHandlers = (ctx: ModerationContext) => {
   };
 
   const close = async (caller: ModerationCaller, report: Report, outcome: "noAction" | "warned" | "expelled" | "suspended", now: Date) => {
-    await deps.moderation.closeReport(report, outcome, INTERIM_MODERATOR, now);
+    await deps.moderation.closeReport(report, outcome, moderatorOf(ctx.state(), caller.sessionId), now);
     return out.send([caller.key], "reportClosed", { reportId: report.id });
   };
 
@@ -144,7 +144,7 @@ export const createModerationHandlers = (ctx: ModerationContext) => {
     const report = await openReport(caller, command.payload.reportId, command.seq);
     if (Array.isArray(report)) return report;
     if (report.targetKind === "room") return [out.warning(caller.key, "reportInvalid", command.seq)];
-    const decision = decideExpel(ctx.state(), report, command.payload.duration, INTERIM_MODERATOR, now);
+    const decision = decideExpel(ctx.state(), report, command.payload.duration, moderatorOf(ctx.state(), caller.sessionId), now);
     await deps.moderation.saveBan(decision.ban, report.id, deps.random.id(), now);
     // Every store write first: a failure then leaves no evicted session behind (`guarded`).
     const closed = await close(caller, report, "expelled", now);
@@ -211,7 +211,7 @@ export const createModerationHandlers = (ctx: ModerationContext) => {
     const found = report.targetAccountId === command.payload.accountId ? await deps.accounts.accountById(command.payload.accountId) : undefined;
     if (!found || !canSuspend(found.account.strikes, now)) return [out.warning(caller.key, "suspensionRefused", command.seq)];
     const until = suspensionUntil(now);
-    const decision = decideExpel(ctx.state(), report, "7d", INTERIM_MODERATOR, now);
+    const decision = decideExpel(ctx.state(), report, "7d", moderatorOf(ctx.state(), caller.sessionId), now);
     const closure = closeAccount(found.account, now);
     // Ban, block and delete the account first: a failure there leaves the report open to retry on.
     await deps.moderation.saveBan({ ...decision.ban, until }, report.id, deps.random.id(), now);

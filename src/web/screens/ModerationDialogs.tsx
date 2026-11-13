@@ -109,7 +109,7 @@ export const QueueDialog = () => {
   const { proposal } = queue;
   return (
     <Modal labelledBy="queue-title" onClose={() => commands.local({ type: "closeQueue" })}>
-      <h2 id="queue-title">{STRINGS.queueTitle}</h2>
+      <h2 id="queue-title">{state.moderatorName ? STRINGS.queueTitleOf(state.moderatorName) : STRINGS.queueTitle}</h2>
       {proposal && (
         <section role="alert" className="queue-proposal">
           <p>{STRINGS.proposal(proposal.activeStrikes)}</p>

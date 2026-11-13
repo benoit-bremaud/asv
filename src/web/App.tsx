@@ -1,5 +1,8 @@
 import { ChatProvider, browserConnection, useChat, type ConnectionFactory } from "./chat-context";
 import { AccountPanel } from "./screens/AccountPanel";
+import { useState } from "react";
+import { takeEnrolToken } from "./moderator-passkey";
+import { EnrolPage } from "./screens/EnrolPage";
 import { EntryScreen } from "./screens/EntryScreen";
 import { QueueDialog, ReportDialog } from "./screens/ModerationDialogs";
 import { Notice, useNoticeTimer } from "./screens/Notice";
@@ -35,6 +38,9 @@ const InChatOverlays = () =>
 
 const Screens = () => {
   const { state } = useChat();
+  // `web-ui/05`: an invitation link opens the enrolment page instead of the entry screen (UC15).
+  const [enrolToken, setEnrolToken] = useState(takeEnrolToken);
+  if (enrolToken !== undefined && state.screen === "entry") return <EnrolPage token={enrolToken} onBack={() => setEnrolToken(undefined)} />;
   if (state.screen === "room") return <RoomScreen />;
   if (state.screen === "rooms") return <RoomsScreen />;
   return <EntryScreen />;

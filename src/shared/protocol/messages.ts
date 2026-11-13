@@ -184,6 +184,8 @@ export const serverMessage = z.discriminatedUnion("type", [
       resumeToken: id,
       roomList: z.array(roomSummary),
       isModerator: z.boolean(),
+      // BR-095: the enrolled name, shown in the queue title.
+      moderatorName: z.optional(capped(20)),
       // Brick 8a stays off for testers until the impact assessment of 8c (`moderation/01`).
       canReport: z.boolean(),
       accountId: z.optional(id),
@@ -203,8 +205,9 @@ export const serverMessage = z.discriminatedUnion("type", [
       // BR-013: only private messages are buffered while away, never room messages.
       buffered: z.array(privateMessage),
       accountId: z.optional(id),
-      // BR-091: a moderator session keeps its rights across a resume.
+      // BR-095: a moderator session keeps its rights and name across a resume.
       isModerator: z.optional(z.boolean()),
+      moderatorName: z.optional(capped(20)),
       canReport: z.boolean(),
     }),
   ),

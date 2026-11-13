@@ -48,8 +48,10 @@ interface SessionBase {
   readonly resumeTokenHash: string;
   /** Ids of the rooms joined (BR-012, `rooms/07`). */
   readonly rooms: readonly string[];
-  /** Moderator rights, granted at entry by the hub (BR-054, BR-091). */
+  /** Moderator rights, granted at entry by the hub (BR-054, BR-095). */
   readonly isModerator?: true;
+  /** Name of the enrolled moderator, recorded on every action (BR-055, BR-095). */
+  readonly moderatorName?: string;
 }
 
 /** A live session; `ip` and `openedAt` feed the hub's connection line (BR-060). */
@@ -103,8 +105,10 @@ export interface EnterCommand {
   readonly accountId?: string;
   /** Hash of that device cookie, so UC18 can sign this device out. */
   readonly deviceTokenHash?: string;
-  /** The hub checked the moderator grant (BR-091). */
+  /** The hub checked the moderator grant (BR-095). */
   readonly isModerator?: boolean;
+  /** The name the grant carries. */
+  readonly moderatorName?: string;
 }
 
 /** UC13: the client resends its profile, never stored (ADR-0011). */
@@ -239,6 +243,7 @@ export const enter = <S extends EntryState>(state: S, command: EnterCommand, now
     resumeTokenHash: token.hash,
     rooms: [],
     ...(command.isModerator ? { isModerator: true as const } : {}),
+    ...(command.isModerator && command.moderatorName !== undefined ? { moderatorName: command.moderatorName } : {}),
   };
   const next = withSession({ ...counted, pseudoIndex: new Map(counted.pseudoIndex).set(key, session.id) }, session);
   return result(next, {
@@ -262,6 +267,7 @@ export const socketLost = <S extends EntryState>(state: S, sessionId: string, no
     resumeTokenHash: session.resumeTokenHash,
     rooms: session.rooms,
     ...(session.isModerator ? { isModerator: true as const } : {}),
+    ...(session.moderatorName !== undefined ? { moderatorName: session.moderatorName } : {}),
     status: "away",
     awayUntil,
     buffered: [],
@@ -298,6 +304,7 @@ export const resume = <S extends EntryState>(state: S, command: ResumeCommand, n
     resumeTokenHash: token.hash,
     rooms: session.rooms,
     ...(session.isModerator ? { isModerator: true as const } : {}),
+    ...(session.moderatorName !== undefined ? { moderatorName: session.moderatorName } : {}),
   };
   return result(withSession(state, resumed), {
     type: "resumed",

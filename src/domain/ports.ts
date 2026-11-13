@@ -91,6 +91,42 @@ export interface ModerationStore {
   purgeExpired(now: Date): Promise<void>;
 }
 
+/** An enrolled moderator (`moderation/04`, BR-099): name, credential id and key encrypted, looked up by keyed hash. */
+export interface StoredModerator {
+  /** Keyed hash of the lower-cased name (BR-094). */
+  readonly nameKeyedHash: string;
+  /** Keyed hash of the credential id, for sign-in. */
+  readonly credentialKeyedHash: string;
+  readonly name: string;
+  readonly credentialId: string;
+  readonly publicKey: string;
+  readonly signCount: number;
+}
+
+/** A pending invitation (BR-056, BR-099): SHA-256 of the token, encrypted name. */
+export interface StoredInvitation {
+  readonly tokenHash: string;
+  readonly nameKeyedHash: string;
+  readonly name: string;
+  readonly expiresAt: Date;
+}
+
+/** Moderators and invitations (`moderation/04`); every call may fail. */
+export interface ModeratorStore {
+  saveInvitation(invitation: StoredInvitation): Promise<void>;
+  /** The invitation if still valid at `now`, without consuming it. */
+  findInvitation(tokenHash: string, now: Date): Promise<StoredInvitation | undefined>;
+  /** Deletes it and returns it if still valid at `now`. */
+  consumeInvitation(tokenHash: string, now: Date): Promise<StoredInvitation | undefined>;
+  /** Saves it, replacing any moderator with the same name hash (BR-094). */
+  saveModerator(moderator: StoredModerator): Promise<void>;
+  findByCredential(credentialKeyedHash: string): Promise<StoredModerator | undefined>;
+  updateSignCount(credentialKeyedHash: string, count: number): Promise<void>;
+  /** Deletes the moderator and its pending invitations; false when nothing matched (BR-094). */
+  deleteModerator(nameKeyedHash: string): Promise<boolean>;
+  purgeExpiredInvitations(now: Date): Promise<void>;
+}
+
 /** A sign-in code waiting for its session (BR-070); e-mail encrypted, code keyed-hashed. */
 export interface StoredCode {
   readonly sessionId: string;

@@ -11,7 +11,7 @@ import { cryptoKeysFromEnv } from "../../server/crypto/keys";
 import { createHub, GRANT_FAILURES_MAX, GRANT_WINDOW_MS, type Outgoing } from "../../server/hub";
 import { STATEMENT_RETRY_MS } from "../../server/hub-moderation";
 import { createModerationIo } from "../../server/moderation-io";
-import { moderatorTokenDigest } from "../../server/moderator-token";
+import { createGrantKey, signGrant } from "../../server/moderator-grant";
 import { createMemoryAccountStore, createMemoryVault } from "./memory-accounts";
 import { createMemoryLog } from "./memory-log";
 import { createMemoryModerationStore } from "./memory-moderation";
@@ -21,9 +21,11 @@ const T0 = new Date("2026-11-13T10:00:00Z");
 const later = (ms: number) => new Date(T0.getTime() + ms);
 const HOUR = 60 * 60_000;
 const DAY = 24 * HOUR;
-const TOKEN = "owner-token-for-tests-0123456789abcdef";
 
-const setup = async (options: { mailAccepted?: boolean; token?: string; canReport?: boolean } = {}) => {
+const setup = async (options: { mailAccepted?: boolean; canReport?: boolean } = {}) => {
+  const grantKey = await createGrantKey();
+  /** A fresh passkey grant for "Marc" (BR-095). */
+  const grant = (at: Date = T0) => signGrant(grantKey, "Marc", at);
   const random = createNodeRandom();
   const store = createMemoryAccountStore();
   const vault = createMemoryVault();
@@ -55,7 +57,7 @@ const setup = async (options: { mailAccepted?: boolean; token?: string; canRepor
     mailer,
     onStoreError,
     moderation: createModerationIo({ store: moderationStore, crypto }),
-    moderatorTokenDigest: await moderatorTokenDigest(options.token ?? TOKEN, false),
+    grantKey,
     canReport: options.canReport,
   });
   let seq = 0;
@@ -65,7 +67,7 @@ const setup = async (options: { mailAccepted?: boolean; token?: string; canRepor
     return send(key, "enter", { pseudo, age: 30, adultConfirmed: true, termsAccepted: true, ...extra });
   };
   const enterAs = async (key: string, pseudo: string, extra: object = {}, ip?: string) => only(await enter(key, pseudo, extra, ip), "entered").payload;
-  const owner = () => enterAs("9", "Patron", { moderatorGrant: TOKEN });
+  const owner = async () => enterAs("9", "Patron", { moderatorGrant: await grant() });
   const signIn = async (key: string, email: string) => {
     only(await send(key, "requestCode", { email, remember: false }), "codeSent");
     return only(await send(key, "verifyCode", { code: codes.at(-1) ?? "" }), "accountLinked").payload.accountId;
@@ -81,7 +83,7 @@ const setup = async (options: { mailAccepted?: boolean; token?: string; canRepor
   const setMailDelay = (value: Promise<void> | undefined) => {
     mailDelay = value;
   };
-  return { hub, store, vault, moderationStore, codes, send, enter, enterAs, owner, signIn, reportMax, statements, setMailAccepted, setMailDelay, closeSocket, onStoreError };
+  return { hub, store, vault, moderationStore, codes, send, enter, enterAs, owner, signIn, reportMax, statements, setMailAccepted, setMailDelay, closeSocket, onStoreError, grant };
 };
 
 const find = <T extends ServerMessage["type"]>(out: Outgoing[], type: T) =>
@@ -259,7 +261,7 @@ describe("expel (UC11, BR-008, BR-053, BR-055)", () => {
     expect(only(out, "memberLeft").payload).toMatchObject({ roomId: "lyon", sessionId: max.sessionId });
     only(out, "reportClosed");
     expect(closeSocket).toHaveBeenCalledWith("2");
-    expect(moderationStore.dump().bans[0]).toMatchObject({ decidedBy: "owner", until: later(HOUR) });
+    expect(moderationStore.dump().bans[0]).toMatchObject({ decidedBy: "Marc", until: later(HOUR) });
     expect(only(await enter("3", "MAX", {}, "10.0.0.50"), "entryRefused").payload).toEqual({ reason: "banned", bannedUntil: later(HOUR).toISOString() });
     expect(only(await enter("4", "Autre", {}, "10.0.0.2"), "entryRefused").payload).toMatchObject({ reason: "banned" });
     expect(only(await send("4", "enter", { pseudo: "Autre", age: 30, adultConfirmed: true, termsAccepted: true }, later(HOUR)), "entered")).toBeDefined();
@@ -467,15 +469,15 @@ describe("hardening (review round 1)", () => {
   });
 
   it("refuses the sixth moderator grant from one IP within 10 minutes, even the right one", async () => {
-    const { enter, hub } = await setup();
+    const { enter, hub, grant } = await setup();
     for (let index = 0; index < GRANT_FAILURES_MAX; index += 1) {
       expect(only(await enter(`${20 + index}`, "Patron", { moderatorGrant: "wrong" }, "10.0.0.9"), "entryRefused").payload).toEqual({ reason: "notModerator" });
     }
 
-    expect(only(await enter("30", "Patron", { moderatorGrant: TOKEN }, "10.0.0.9"), "entryRefused").payload).toEqual({ reason: "rate" });
+    expect(only(await enter("30", "Patron", { moderatorGrant: await grant() }, "10.0.0.9"), "entryRefused").payload).toEqual({ reason: "rate" });
     await hub.tick(later(GRANT_WINDOW_MS));
     hub.open("31", "10.0.0.9", 4000);
-    expect(only(await hub.receive("31", JSON.stringify({ type: "enter", seq: 1, payload: { pseudo: "Patron", age: 30, adultConfirmed: true, termsAccepted: true, moderatorGrant: TOKEN } }), later(GRANT_WINDOW_MS)), "entered").payload.isModerator).toBe(true);
+    expect(only(await hub.receive("31", JSON.stringify({ type: "enter", seq: 1, payload: { pseudo: "Patron", age: 30, adultConfirmed: true, termsAccepted: true, moderatorGrant: await grant(later(GRANT_WINDOW_MS)) } }), later(GRANT_WINDOW_MS)), "entered").payload.isModerator).toBe(true);
   });
 
   it("keeps reporting off behind the tester tunnel (`moderation/01`)", async () => {

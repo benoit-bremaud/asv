@@ -32,7 +32,7 @@ import { createAccountHandlers, type Caller } from "./hub-accounts";
 import { createModerationHandlers, type ModerationCaller } from "./hub-moderation";
 import { createPrivateHandlers, type PrivateCaller } from "./hub-private";
 import type { ModerationIo } from "./moderation-io";
-import { matchesModeratorToken } from "./moderator-token";
+import { readGrant } from "./moderator-grant";
 import { createOutgoing, sessionOf, type Outgoing } from "./outgoing";
 import { FRAME_LIMITS, type PolicyReason } from "./frame-budget";
 import { UPGRADE_LIMITS } from "./upgrade-limit";
@@ -63,13 +63,13 @@ export interface HubDeps {
   readonly onStoreError: (error: unknown) => void;
   /** Reports and bans behind the crypto of ADR-0017 (`moderation/04`). */
   readonly moderation: ModerationIo;
-  /** SHA-256 digest of `ASV_MODERATOR_TOKEN`; absent, no session can be a moderator (BR-091). */
-  readonly moderatorTokenDigest?: Uint8Array;
+  /** Key of the passkey grants, drawn at start (BR-095); absent, no session can be a moderator. */
+  readonly grantKey?: CryptoKey;
   /** False behind the tester tunnel: `report` answers `notAvailable` until brick 8c (`moderation/01`). */
   readonly canReport?: boolean;
 }
 
-/** BR-091: at most 5 refused moderator grants per IP within 10 minutes, then `entryRefused(rate)`. */
+/** BR-096: at most 5 refused moderator grants per IP within 10 minutes, then `entryRefused(rate)`. */
 export const GRANT_FAILURES_MAX = 5;
 export const GRANT_WINDOW_MS = 10 * 60_000;
 
@@ -219,25 +219,35 @@ export const createHub = (deps: HubDeps): Hub => {
     return away?.accountId === undefined || deps.accounts.accountExists(away.accountId);
   };
 
-  /** BR-091: refused grants per IP within the last `GRANT_WINDOW_MS`, so the token cannot be guessed. */
+  /** BR-096: refused grants per IP within the last `GRANT_WINDOW_MS`, so the token cannot be guessed. */
   const canReport = deps.canReport ?? true;
   const grantFailures = new Map<string, number[]>();
   const recentGrantFailures = (ip: string, nowMs: number): number[] =>
     (grantFailures.get(ip) ?? []).filter((at) => nowMs - at < GRANT_WINDOW_MS);
 
+  /** BR-095: nonces of grants already used, kept until the grant expires. */
+  const usedNonces = new Map<string, number>();
+  const checkGrant = async (grant: string, now: Date) => {
+    const nowMs = now.getTime();
+    for (const [nonce, expiresAt] of usedNonces) if (expiresAt <= nowMs) usedNonces.delete(nonce);
+    const claims = deps.grantKey && (await readGrant(deps.grantKey, grant, now));
+    return claims && !usedNonces.has(claims.nonce) ? claims : undefined;
+  };
+
   const onEnter = async (socket: Socket, command: Command<"enter">, now: Date): Promise<Outgoing[]> => {
     const { payload } = command;
-    let isModerator = false;
+    let grant: Awaited<ReturnType<typeof checkGrant>>;
     if (payload.moderatorGrant !== undefined) {
       const failures = recentGrantFailures(socket.ip, now.getTime());
       if (failures.length >= GRANT_FAILURES_MAX) return [send([socket.key], "entryRefused", { reason: "rate" })];
-      // BR-091: a refused grant creates no session, so a mistyped token cannot enter as a chatter.
-      if (!(await matchesModeratorToken(deps.moderatorTokenDigest, payload.moderatorGrant))) {
+      // BR-095: a refused grant creates no session, so a bad grant cannot enter as a chatter.
+      grant = await checkGrant(payload.moderatorGrant, now);
+      if (!grant) {
         grantFailures.set(socket.ip, [...failures, now.getTime()]);
         return [send([socket.key], "entryRefused", { reason: "notModerator" })];
       }
-      isModerator = true;
     }
+    const isModerator = grant !== undefined;
     const device = await deviceAccount(socket, now);
     if (device === "unavailable") return [out.warning(socket.key, "unavailable", command.seq)];
     let activeBan: { until: Date } | undefined;
@@ -259,17 +269,21 @@ export const createHub = (deps: HubDeps): Hub => {
       deviceTokenHash: socket.deviceTokenHash,
       activeBan,
       isModerator,
+      moderatorName: grant?.name,
     }, now, deps.random);
     const [effect] = result.effects;
     if (effect?.type === "entered") {
       if (!(await bind(socket, effect.sessionId, result.state, now))) {
         return [out.error(socket.key, "logUnavailable", command.seq)];
       }
+      // BR-095: the nonce is spent only once the entry succeeded.
+      if (grant) usedNonces.set(grant.nonce, grant.expiresAt);
       return [send([socket.key], "entered", {
         sessionId: effect.sessionId,
         resumeToken: effect.resumeToken,
         roomList: roomList(state),
         isModerator,
+        ...(grant ? { moderatorName: grant.name } : {}),
         canReport,
         ...(effect.accountId ? { accountId: effect.accountId } : {}),
         ...(device.stale ? { staleDevice: true } : {}),
@@ -346,6 +360,7 @@ export const createHub = (deps: HubDeps): Hub => {
           buffered: windows.buffered,
           ...(session.accountId ? { accountId: session.accountId } : {}),
           ...(session.isModerator ? { isModerator: true } : {}),
+          ...(session.moderatorName !== undefined ? { moderatorName: session.moderatorName } : {}),
           canReport,
         }),
         send([socket.key], "roomList", { rooms: roomList(state) }),
