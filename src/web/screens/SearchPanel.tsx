@@ -80,7 +80,7 @@ export const SearchDialog = ({ onClose }: { onClose: () => void }) => {
   return (
     <dialog ref={dialog} className="panel overlay" aria-labelledby="search-title" onCancel={cancel} onKeyDown={keyDown}>
       <SearchPanel onPrivate={onClose} />
-      {/* The page behind is inert: every notice raised meanwhile shows here too, reachable (the account dialog shows only account notices, #136). */}
+      {/* The page behind is inert: every notice raised meanwhile shows here only, reachable (`Banners` hides it, #185; the account dialog shows only account notices, #136). */}
       <Notice />
       <button type="button" className="link" onClick={onClose}>{STRINGS.close}</button>
     </dialog>

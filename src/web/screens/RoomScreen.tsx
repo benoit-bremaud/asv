@@ -33,7 +33,6 @@ export const RoomScreen = () => {
   // One draft per room, so a draft never follows a tab switch into another room.
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [showMembers, setShowMembers] = useState(false);
-  const [showSearch, setShowSearch] = useState(false);
   const roomId = state.active ?? "";
   const text = drafts[roomId] ?? "";
   const setText = (value: string) => setDrafts((current) => ({ ...current, [roomId]: value }));
@@ -89,7 +88,7 @@ export const RoomScreen = () => {
         <button type="button" className="bevel" aria-haspopup="dialog" onClick={(event) => {
           // Safari and Firefox on macOS do not focus a clicked button: focus it, so the dialog gives it back (#130).
           event.currentTarget.focus();
-          setShowSearch(true);
+          commands.local({ type: "openSearch" });
         }}>{STRINGS.search}</button>
         {Object.keys(state.open).map((id) => (
           <span key={id} className={`tab${id === roomId ? " tab-active" : ""}`}>
@@ -100,7 +99,7 @@ export const RoomScreen = () => {
           </span>
         ))}
       </nav>
-      {showSearch && <SearchDialog onClose={() => setShowSearch(false)} />}
+      {state.searchOpen && <SearchDialog onClose={() => commands.local({ type: "closeSearch" })} />}
       <main className="room">
         <section ref={lines} className="lines panel" onScroll={followBottom}>
           <h2># {nameOf(roomId)}</h2>
