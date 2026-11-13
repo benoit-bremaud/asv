@@ -1,10 +1,10 @@
-/** Every UI text, French first (ASV-NF-012). */
 /** "1 avertissement actif", "2 avertissements actifs". */
 const activeStrikes = (strikes: number): string => {
   const plural = strikes > 1 ? "s" : "";
   return `${strikes} avertissement${plural} actif${plural}`;
 };
 
+/** Every UI text, French first (ASV-NF-012). */
 export const STRINGS = {
   tagline: "âge ? sexe ? ville ?",
   connected: (n: number) => `${n} connecté${n > 1 ? "s" : ""}`,
