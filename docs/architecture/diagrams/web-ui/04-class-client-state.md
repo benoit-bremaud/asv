@@ -209,7 +209,7 @@ classDiagram
   account notice (#136). "fermer" (`dismissNotice`) still clears it at once. The timer stops while the pointer or
   the focus is on the notice, so it never vanishes under a reader or takes the focus away (WCAG 2.2.1, 2.4.3).
   The hold lives in the store (#199), so a notice held in a dialog is held for every `Notice` rendering it, the
-  inert page behind included: `Notice` only renders and dispatches `holdNotice(by)` / `releaseNotice(by)`
+  inert page behind included: `NoticeCopy` only renders and dispatches `holdNotice(by, copy)` / `releaseNotice(by, copy)`
   (`by` is `focus` or `pointer`, `copy` the rendered copy's `useId`, local actions). `noticeHold.focus` names the
   holding copy and is cleared with the notice; `noticeHold.pointer` keeps the copy and the `noticeSeq` it was set on,
   so a notice removed under the pointer never holds the next one. A release only drops a hold its own copy set, and
