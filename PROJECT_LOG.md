@@ -746,3 +746,17 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
 - Merged 2026-11-13: PR #194 squash 6f88edb with owner approval (no attestation); verify, gitleaks and
   SonarQube green on 5242640; `pnpm audit --prod` shows the 7 hono advisories already on `main`. Next:
   Permissions-Policy #69, then #185, then brick 8 moderation (study first).
+
+## 2026-11-13 — #199 notice held in the search dialog
+
+- Codex P2 on PR #194: with the search dialog open, the inert page's `Notice` copy ran its own timer and
+  expired a notice held in the dialog. Owner chose option A (400/500): one timer (`useNoticeTimer`) in
+  `Banners`, the hold in the store. Study first: `web-ui/04` (`NoticeHold`, `holdNotice(by, copy)`).
+- The hold is owned by the rendered copy (`useId`): a copy releases only its own hold, and releases it on
+  unmount, since a copy closed under the pointer or the focus gets no `mouseleave` or `blur`.
+- QA SN (JRN-31a…c) on the prod build, notice raised with the server stopped: 1440 dark focus, 390 × 844
+  light pointer, 844 × 390 dark closed with Escape under the focus.
+- Adversarial review: 3 rounds. Must fixed: a hold that outlived its closed dialog (regression), stale study
+  lines. Sonar S3776 on `reduce`: hold and expiry moved to helpers.
+- Merged 2026-11-13: PR #200 squash ca24b73 with owner approval (no attestation); verify, gitleaks and
+  SonarQube green on 240f0ef; Codex found nothing. Next: Permissions-Policy #69, then #185, then brick 8.
