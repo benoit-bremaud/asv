@@ -49,6 +49,9 @@ stateDiagram-v2
   10 minutes." (ADR-0013 amendment, same answer).
 - Sign-up legal notice, shown under the e-mail field and before deletion: "Ton e-mail est gardé 5 ans
   après la fermeture du compte, uniquement pour la loi." (ADR-0014, GDPR art. 13).
+  It shows under the e-mail field of the entry "Membres" panel and of the account dialog, and in the
+  deletion confirmation (#110); a component test asserts each place.
+- The "Membres" hint names the missing pseudo-form fields like the guest panel (`web-ui/04`, #60).
 - `SignedIn` shows "connecté·e comme membre" (never the e-mail, since the client does not receive it) and
   the three actions. `entered.staleDevice` triggers `POST /account/sign-out` silently.
 - **Tab switch (BR-087)**: `codeSent` saves the code deadline in `sessionStorage`. A resume keeps the
