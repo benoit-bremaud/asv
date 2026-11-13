@@ -10,8 +10,10 @@ export const Notice = ({ show = () => true }: { readonly show?: (code: string) =
   const { state, commands } = useChat();
   const { notice, noticeSeq } = state;
   const shown = notice !== undefined && show(notice);
-  // WCAG 2.2.1 and 2.4.3: no expiry while the pointer or the focus is on the notice.
-  const [held, setHeld] = useState(false);
+  // WCAG 2.2.1 and 2.4.3: no expiry while the pointer or the focus is on the notice. The hold names its stamp, so a
+  // notice removed under the pointer (no `mouseleave`) never holds the next one.
+  const [heldSeq, setHeldSeq] = useState<number>();
+  const held = heldSeq === noticeSeq;
   useEffect(() => {
     if (!shown || held) return;
     const timer = setTimeout(() => commands.local({ type: "expireNotice", seq: noticeSeq }), NOTICE_MS);
@@ -19,9 +21,9 @@ export const Notice = ({ show = () => true }: { readonly show?: (code: string) =
   }, [shown, held, noticeSeq, commands]);
   if (!shown) return null;
   return (
-    // Keyed by the stamp, so a repeated code is announced again.
-    <p key={noticeSeq} className="notice" role="alert" onMouseEnter={() => setHeld(true)} onMouseLeave={() => setHeld(false)} onFocus={() => setHeld(true)} onBlur={() => setHeld(false)}>
-      {STRINGS.notices[notice] ?? STRINGS.genericNotice}
+    <p className="notice" role="alert" onMouseEnter={() => setHeldSeq(noticeSeq)} onMouseLeave={() => setHeldSeq(undefined)} onFocus={() => setHeldSeq(noticeSeq)} onBlur={() => setHeldSeq(undefined)}>
+      {/* Only the text is keyed by the stamp: a repeated code is announced again and the focus stays on "fermer". */}
+      <span key={noticeSeq}>{STRINGS.notices[notice] ?? STRINGS.genericNotice}</span>
       <button type="button" className="link" onClick={() => commands.local({ type: "dismissNotice" })}>{STRINGS.dismiss}</button>
     </p>
   );

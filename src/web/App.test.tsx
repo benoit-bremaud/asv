@@ -735,6 +735,28 @@ describe("banners", () => {
     }
   });
 
+  it("lets the next notice expire after one dismissed under the pointer, and keeps the focus on fermer (#68)", async () => {
+    const user = await setup();
+    await fire({ type: "notice", code: "flood" });
+    fireEvent.mouseEnter(screen.getByRole("alert"));
+    await user.click(screen.getByRole("button", { name: STRINGS.dismiss }));
+
+    vi.useFakeTimers();
+    try {
+      await fire({ type: "notice", code: "full" });
+      const dismiss = screen.getByRole("button", { name: STRINGS.dismiss });
+      dismiss.focus();
+      await fire({ type: "notice", code: "flood" });
+      expect(document.activeElement).toBe(dismiss);
+
+      dismiss.blur();
+      await act(async () => vi.advanceTimersByTime(NOTICE_MS));
+      expect(screen.queryByRole("alert")).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("clears a stale refusal on the next room joined (#68)", async () => {
     await setup();
     await goOnline();
