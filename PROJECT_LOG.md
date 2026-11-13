@@ -760,3 +760,18 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   lines. Sonar S3776 on `reduce`: hold and expiry moved to helpers.
 - Merged 2026-11-13: PR #200 squash ca24b73 with owner approval (no attestation); verify, gitleaks and
   SonarQube green on 240f0ef; Codex found nothing. Next: Permissions-Policy #69, then #185, then brick 8.
+
+## 2026-11-13 — #69 Permissions-Policy
+
+- QA finding SEC-01 (2026-10-24): no `Permissions-Policy` and no `object-src 'none'`. Study first: BR-086.
+  Owner chose to deny the powerful features the chat never uses (470/500): camera, microphone, geolocation,
+  payment, usb, serial, hid, display-capture, browsing-topics. Owner also added `object-src 'none'` to the
+  CSP in the same PR (440/500).
+- Gotcha: Chromium warns "Unrecognized feature: 'bluetooth'", so it was dropped. Keep the policy an object
+  literal: `Object.fromEntries` hides misspelled names from the compiler.
+- QA PP SEC-01 on the prod build: both headers on `/`, `/api/stats`, the bundle and a 404, no console
+  warning at 320 light and 1440 dark. Watch `browsing-topics` at the next SEC-01 pass (Privacy Sandbox).
+- Adversarial review: 2 rounds, no Must. Should fixed: a detached JSDoc, untyped feature names, the
+  legend missing PP and SN.
+- Merged 2026-11-13: PR #203 squash 35da9f8 with owner approval (no attestation); verify, gitleaks and
+  SonarQube green on a6d5b0a; Codex found nothing. Next: #185, then brick 8 moderation (study first).
