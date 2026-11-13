@@ -52,6 +52,8 @@ export interface HubState extends EntryState {
   readonly conversations: ReadonlyMap<string, PrivateConversation>;
   /** BR-042, BR-044. */
   readonly ignores: IgnoreLists;
+  /** Times of each session's reports in the last 10 minutes (BR-052). */
+  readonly reportAttempts: ReadonlyMap<string, readonly Date[]>;
 }
 
 /** One line of the room list (UC2). */
@@ -134,6 +136,7 @@ export const emptyHubState = (officialRooms: readonly OfficialRoom[]): HubState 
   deviceClaims: new Map(),
   conversations: new Map(),
   ignores: new Map(),
+  reportAttempts: new Map(),
 });
 
 /** Members of a room, connected and away (BR-023 counts both). */
@@ -184,6 +187,7 @@ export const restoreHubState = (
     deviceClaims: new Map(),
     conversations: new Map(),
     ignores: new Map(),
+    reportAttempts: new Map(),
   };
   for (const room of [...rooms.values()].filter((candidate) => candidate.kind === "user")) {
     const members = roomMembers(state, room.id);

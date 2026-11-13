@@ -1,10 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import type { AccountStore, ConnectionLine, ContributionLine, ConnectionLogStore } from "../domain";
+import type { AccountStore, ModerationStore, ConnectionLine, ContributionLine, ConnectionLogStore } from "../domain";
 import { createAccountIo } from "./account-io";
 import { createCrypto } from "./crypto/cipher";
 import { cryptoKeysFromEnv } from "./crypto/keys";
 import { CAPS, type ServerMessage } from "../shared/protocol";
 import { createHub, type Outgoing } from "./hub";
+import { createModerationIo } from "./moderation-io";
 
 const T0 = new Date("2026-10-23T10:00:00Z");
 const later = (ms: number) => new Date(T0.getTime() + ms);
@@ -49,10 +50,20 @@ const unusedStore: AccountStore = {
   accountForDevice: unused,
   deleteDevice: unused,
   deleteAllDevices: unused,
+  blockEmail: unused,
   isBlocked: unused,
   loadCarryOver: unused,
   saveCarryOver: unused,
   deleteCarryOver: unused,
+  purgeExpired: () => Promise.resolve(),
+};
+/** Moderation is exercised in `transports/node/hub-moderation.test.ts`; here no ban ever matches. */
+const quietModeration: ModerationStore = {
+  saveReport: unused,
+  findReport: unused,
+  openReports: unused,
+  saveBan: unused,
+  activeBan: () => Promise.resolve(undefined),
   purgeExpired: () => Promise.resolve(),
 };
 const crypto = createCrypto(await cryptoKeysFromEnv({}, false, () => undefined));
@@ -83,6 +94,7 @@ const setup = (hashToken = (value: string) => `h:${value}`, store: Partial<Accou
     accounts: createAccountIo({ store: { ...unusedStore, ...store }, vault: { record: unused, purgeExpired: () => Promise.resolve() }, crypto }),
     mailer: { sendCode: unused, sendStatementOfReasons: unused },
     onStoreError: vi.fn(),
+    moderation: createModerationIo({ store: quietModeration, crypto }),
   });
   const send = (key: string, type: string, payload: object, seq = 1, now = T0) =>
     hub.receive(key, JSON.stringify({ type, seq, payload }), now);
@@ -203,26 +215,26 @@ describe("hub validation (issue #13)", () => {
     ["unignore", { targetSessionId: "s" }],
     ["search", { query: "Lyon" }],
   ];
-  const LATER: readonly (readonly [string, object])[] = [
-    ["report", { targetKind: "room", targetRoomId: "lyon", reason: "spam", excerpt: "x", context: [] }],
+  const MODERATOR_ONLY: readonly (readonly [string, object])[] = [
     ["listOpenReports", {}],
     ["warn", { targetSessionId: "s", text: "stop" }],
-    ["expel", { targetSessionId: "s", duration: "1h" }],
+    ["expel", { reportId: "r", duration: "1h" }],
     ["closeReport", { reportId: "r", outcome: "noAction" }],
     ["confirmSuspension", { accountId: "a", reportId: "r" }],
     ["declineSuspension", { accountId: "a", reportId: "r" }],
     ["removeRoom", { roomId: "lyon" }],
   ];
 
-  it.each(LATER)("answers %s, a command of a later brick, with notAvailable", async (type, payload) => {
+  it.each(MODERATOR_ONLY)("answers %s from a chatter with forbidden (BR-054)", async (type, payload) => {
     const { send, enterAs } = setup();
     await enterAs("1", "Lola");
 
-    expect(only(await send("1", type, payload, 5), "error").payload)
-      .toEqual({ code: "invalid", message: "notAvailable", replyTo: 5 });
+    expect(only(await send("1", type, payload, 5), "error").payload).toEqual({ code: "forbidden", message: "forbidden", replyTo: 5 });
   });
 
-  it.each([...BRICK_6, ...LATER])("answers %s from a socket without session with forbidden", async (type, payload) => {
+  const REPORT: readonly [string, object] = ["report", { targetKind: "room", targetRoomId: "lyon", reason: "spam", excerpt: "x", context: [] }];
+
+  it.each([...BRICK_6, ...MODERATOR_ONLY, REPORT])("answers %s from a socket without session with forbidden", async (type, payload) => {
     const { hub, send } = setup();
     hub.open("1", "ip");
 

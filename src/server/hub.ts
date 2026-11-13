@@ -15,6 +15,7 @@ import {
   pruneDeviceClaims,
   pruneEntryAttempts,
   pruneFlood,
+  pruneReportAttempts,
   redeemDeviceClaim,
   resume,
   roomList,
@@ -28,7 +29,10 @@ import {
 } from "../domain";
 import type { AccountIo } from "./account-io";
 import { createAccountHandlers, type Caller } from "./hub-accounts";
+import { createModerationHandlers, type ModerationCaller } from "./hub-moderation";
 import { createPrivateHandlers, type PrivateCaller } from "./hub-private";
+import type { ModerationIo } from "./moderation-io";
+import { matchesModeratorToken } from "./moderator-token";
 import { createOutgoing, sessionOf, type Outgoing } from "./outgoing";
 import { FRAME_LIMITS, type PolicyReason } from "./frame-budget";
 import { UPGRADE_LIMITS } from "./upgrade-limit";
@@ -57,6 +61,10 @@ export interface HubDeps {
   readonly mailer: Mailer;
   /** Called on every failed account store write or purge; the command then gets `warning unavailable`. */
   readonly onStoreError: (error: unknown) => void;
+  /** Reports and bans behind the crypto of ADR-0017 (`moderation/04`). */
+  readonly moderation: ModerationIo;
+  /** SHA-256 digest of `ASV_MODERATOR_TOKEN`; absent, no session can be a moderator (BR-091). */
+  readonly moderatorTokenDigest?: Uint8Array;
 }
 
 /** A device token set by `POST /account/device` (BR-073). */
@@ -207,8 +215,22 @@ export const createHub = (deps: HubDeps): Hub => {
 
   const onEnter = async (socket: Socket, command: Command<"enter">, now: Date): Promise<Outgoing[]> => {
     const { payload } = command;
+    let isModerator = false;
+    if (payload.moderatorGrant !== undefined) {
+      // BR-091: a refused grant creates no session, so a mistyped token cannot enter as a chatter.
+      if (!(await matchesModeratorToken(deps.moderatorTokenDigest, payload.moderatorGrant)))
+        return [send([socket.key], "entryRefused", { reason: "notModerator" })];
+      isModerator = true;
+    }
     const device = await deviceAccount(socket, now);
     if (device === "unavailable") return [out.warning(socket.key, "unavailable", command.seq)];
+    let activeBan: { until: Date } | undefined;
+    try {
+      activeBan = await deps.moderation.activeBan(socket.ip, payload.pseudo, now);
+    } catch (cause) {
+      deps.onStoreError(cause);
+      return [out.warning(socket.key, "unavailable", command.seq)];
+    }
     const result = enter(state, {
       pseudo: payload.pseudo,
       gender: payload.gender,
@@ -219,6 +241,8 @@ export const createHub = (deps: HubDeps): Hub => {
       ip: socket.ip,
       accountId: device.accountId,
       deviceTokenHash: socket.deviceTokenHash,
+      activeBan,
+      isModerator,
     }, now, deps.random);
     const [effect] = result.effects;
     if (effect?.type === "entered") {
@@ -229,7 +253,7 @@ export const createHub = (deps: HubDeps): Hub => {
         sessionId: effect.sessionId,
         resumeToken: effect.resumeToken,
         roomList: roomList(state),
-        isModerator: false,
+        isModerator,
         ...(effect.accountId ? { accountId: effect.accountId } : {}),
         ...(device.stale ? { staleDevice: true } : {}),
       })];
@@ -326,6 +350,22 @@ export const createHub = (deps: HubDeps): Hub => {
     return out.roomOutgoing(result.effects);
   };
 
+  /** UC11: the target learns the end of its ban, its socket closes, and its rooms see it leave. */
+  const evict = async (sessionId: string, until: Date, now: Date): Promise<Outgoing[]> => {
+    const key = socketOfSession.get(sessionId);
+    const socket = key === undefined ? undefined : sockets.get(key);
+    const told = key === undefined ? [] : [send([key], "expelled", { until: until.toISOString() })];
+    if (socket?.bound) {
+      await onLeave(socket, socket.bound, now).then((left) => told.push(...left));
+      deps.closeSocket(socket.key);
+      return told;
+    }
+    const result = leave(state, sessionId);
+    state = result.state;
+    return [...told, ...out.roomOutgoing(result.effects)];
+  };
+  const moderation = createModerationHandlers({ deps, out, state: () => state, setState, evict });
+
   /** Rooms commands; content creation is logged before anything is kept or sent (`rooms/02`, BR-060). */
   const roomCommand = <K extends BoundType>(compute: (sessionId: string, command: Command<K>, now: Date) => RoomsResult): BoundHandler<K> =>
     async (socket, bound, command, now) => {
@@ -347,9 +387,7 @@ export const createHub = (deps: HubDeps): Hub => {
 
   const caller = (socket: Socket, bound: Bound): Caller => ({ key: socket.key, ip: socket.ip, sessionId: bound.sessionId });
   const privateCaller = (socket: Socket, bound: Bound): PrivateCaller => ({ key: socket.key, ...bound });
-  /** Commands of later bricks. */
-  const notAvailable = (socket: Socket, _bound: Bound, command: ClientMessage): Promise<Outgoing[]> =>
-    Promise.resolve([out.error(socket.key, "invalid", command.seq, "notAvailable")]);
+  const modCaller = (socket: Socket, bound: Bound): ModerationCaller => ({ key: socket.key, sessionId: bound.sessionId });
 
   const handlers: HandlerMap = {
     leave: (socket, bound, _command, now) => onLeave(socket, bound, now),
@@ -367,14 +405,14 @@ export const createHub = (deps: HubDeps): Hub => {
     ignore: (socket, bound, command, now) => privates.ignore(privateCaller(socket, bound), command, now),
     unignore: (socket, bound, command, now) => privates.unignore(privateCaller(socket, bound), command, now),
     search: (socket, bound, command, now) => privates.search(privateCaller(socket, bound), command, now),
-    report: notAvailable,
-    listOpenReports: notAvailable,
-    warn: notAvailable,
-    expel: notAvailable,
-    closeReport: notAvailable,
-    confirmSuspension: notAvailable,
-    declineSuspension: notAvailable,
-    removeRoom: notAvailable,
+    report: (socket, bound, command, now) => moderation.report(modCaller(socket, bound), command, now),
+    listOpenReports: (socket, bound, command, now) => moderation.listOpenReports(modCaller(socket, bound), command, now),
+    expel: (socket, bound, command, now) => moderation.expel(modCaller(socket, bound), command, now),
+    closeReport: (socket, bound, command, now) => moderation.closeReport(modCaller(socket, bound), command, now),
+    confirmSuspension: (socket, bound, command, now) => moderation.confirmSuspension(modCaller(socket, bound), command, now),
+    declineSuspension: (socket, bound, command, now) => moderation.declineSuspension(modCaller(socket, bound), command, now),
+    warn: (socket, bound, command) => moderation.later(modCaller(socket, bound), command),
+    removeRoom: (socket, bound, command) => moderation.later(modCaller(socket, bound), command),
   };
   const runBound = <K extends BoundType>(type: K, socket: Socket, bound: Bound, command: Command<K>, now: Date): Promise<Outgoing[]> => {
     // Accepted by TypeScript's correlated-union rule: `handlers[K]` is `BoundHandler<K>`.
@@ -448,10 +486,12 @@ export const createHub = (deps: HubDeps): Hub => {
     tick: (now) =>
       serial(async () => {
         const expired = expireAway(state, now);
-        state = pruneDeviceClaims(pruneEntryAttempts(pruneFlood(expired.state, now), now), now);
+        state = pruneReportAttempts(pruneDeviceClaims(pruneEntryAttempts(pruneFlood(expired.state, now), now), now), now);
         closeUnbound(now.getTime());
         try {
           await deps.accounts.purgeExpired(now);
+          await deps.moderation.purgeExpired(now);
+          await moderation.retryStatements(now);
         } catch (cause) {
           deps.onStoreError(cause);
         }

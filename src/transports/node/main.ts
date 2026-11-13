@@ -16,6 +16,7 @@ const server = await startNodeServer({
   port,
   hostname: "127.0.0.1",
   allowedOrigins,
+  moderatorToken: env.ASV_MODERATOR_TOKEN,
   cryptoEnv: env,
   brevoApiKey: env.BREVO_API_KEY,
   mailFrom: env.ASV_MAIL_FROM,

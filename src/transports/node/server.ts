@@ -20,7 +20,10 @@ import { OFFICIAL_ROOMS } from "../../server/official-rooms";
 import { createUpgradeLimiter, UPGRADE_LIMITS, type UpgradeVerdict } from "../../server/upgrade-limit";
 import type { ConnectionLogStore, LegalVaultStore, Mailer } from "../../domain";
 import { CAPS } from "../../shared/protocol";
+import { createModerationIo } from "../../server/moderation-io";
+import { moderatorTokenDigest } from "../../server/moderator-token";
 import { createMemoryAccountStore, createMemoryVault } from "./memory-accounts";
+import { createMemoryModerationStore } from "./memory-moderation";
 import { createFileLog, createFileVault } from "./file-stores";
 import { createMemoryLog } from "./memory-log";
 import { createNodeRandom } from "./random";
@@ -31,6 +34,8 @@ export interface NodeServerOptions {
   readonly hostname: string;
   /** Exact `Origin` values allowed to open the WebSocket. */
   readonly allowedOrigins: readonly string[];
+  /** `ASV_MODERATOR_TOKEN`: interim owner access, refused with `behindTunnel` (BR-091). */
+  readonly moderatorToken?: string;
   /** Injected in tests; defaults to the wall clock. */
   readonly now?: () => Date;
   /** Milliseconds between hub ticks (away expiry, pruning); default 1000. */
@@ -101,6 +106,7 @@ export interface NodeServer {
   readonly log: ReturnType<typeof createMemoryLog>;
   readonly accounts: ReturnType<typeof createMemoryAccountStore>;
   readonly vault: ReturnType<typeof createMemoryVault>;
+  readonly moderation: ReturnType<typeof createMemoryModerationStore>;
   stop(): Promise<void>;
 }
 
@@ -134,6 +140,8 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
   const random = createNodeRandom();
   const accounts = createMemoryAccountStore();
   const vault = createMemoryVault();
+  const moderation = createMemoryModerationStore();
+  const moderatorToken = await moderatorTokenDigest(options.moderatorToken, behindTunnel);
   const fileLog = options.logFile === undefined ? undefined : createFileLog(options.logFile, now());
   const fileVault = options.vaultFile === undefined ? undefined : createFileVault(options.vaultFile, now());
   const purgeFiles = () => {
@@ -164,6 +172,8 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
     accounts: createAccountIo({ store: accounts, vault: hubVault, crypto }),
     mailer,
     onStoreError: (error) => console.error("account store failed", error),
+    moderation: createModerationIo({ store: moderation, crypto }),
+    moderatorTokenDigest: moderatorToken,
   });
   const app = createApp({
     stats: hub.stats,
@@ -268,6 +278,7 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
     log,
     accounts,
     vault,
+    moderation,
     stop: async () => {
       clearInterval(tick);
       clearInterval(sweep);

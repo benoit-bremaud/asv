@@ -22,8 +22,6 @@ interface Issued {
 export const createMemoryAccountStore = (): AccountStore & {
   /** Test hook: what is stored, to check nothing is in clear. */
   dump(): { accounts: StoredAccount[]; codes: StoredCode[]; devices: DeviceRecord[] };
-  /** Moderation writes blocks in brick 8; tests add them here. */
-  block(emailKeyedHash: string, until: Date): void;
 } => {
   const codes = new Map<string, StoredCode>();
   const accounts = new Map<string, StoredAccount>();
@@ -92,6 +90,10 @@ export const createMemoryAccountStore = (): AccountStore & {
       for (const [hash, device] of devices) if (device.accountId === accountId) devices.delete(hash);
       return done();
     },
+    blockEmail: (hash, until) => {
+      blocks.set(hash, until);
+      return done();
+    },
     isBlocked: (hash, now) => Promise.resolve((blocks.get(hash)?.getTime() ?? 0) > now.getTime()),
     loadCarryOver: (hash) => Promise.resolve(carryOvers.get(hash)),
     saveCarryOver: (hash, expiries) => {
@@ -113,9 +115,6 @@ export const createMemoryAccountStore = (): AccountStore & {
       return done();
     },
     dump: () => ({ accounts: [...accounts.values()], codes: [...codes.values()], devices: [...devices.values()] }),
-    block: (hash, until) => {
-      blocks.set(hash, until);
-    },
   };
 };
 

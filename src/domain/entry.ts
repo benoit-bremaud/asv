@@ -48,6 +48,8 @@ interface SessionBase {
   readonly resumeTokenHash: string;
   /** Ids of the rooms joined (BR-012, `rooms/07`). */
   readonly rooms: readonly string[];
+  /** Moderator rights, granted at entry by the hub (BR-054, BR-091). */
+  readonly isModerator?: true;
 }
 
 /** A live session; `ip` and `openedAt` feed the hub's connection line (BR-060). */
@@ -101,6 +103,8 @@ export interface EnterCommand {
   readonly accountId?: string;
   /** Hash of that device cookie, so UC18 can sign this device out. */
   readonly deviceTokenHash?: string;
+  /** The hub checked the moderator grant (BR-091). */
+  readonly isModerator?: boolean;
 }
 
 /** UC13: the client resends its profile, never stored (ADR-0011). */
@@ -116,7 +120,7 @@ export interface ResumeCommand {
 }
 
 /** Mirrors the protocol `entryRefusal` enum. */
-export type EntryRefusal = "rate" | "banned" | "pseudoInvalid" | "pseudoTaken" | "age";
+export type EntryRefusal = "rate" | "banned" | "pseudoInvalid" | "pseudoTaken" | "age" | "notModerator";
 
 /** What the hub must do next; it maps each effect to protocol messages and storage. */
 export type Effect =
@@ -234,6 +238,7 @@ export const enter = <S extends EntryState>(state: S, command: EnterCommand, now
     deviceTokenHash: command.accountId === undefined ? undefined : command.deviceTokenHash,
     resumeTokenHash: token.hash,
     rooms: [],
+    ...(command.isModerator ? { isModerator: true as const } : {}),
   };
   const next = withSession({ ...counted, pseudoIndex: new Map(counted.pseudoIndex).set(key, session.id) }, session);
   return result(next, {
@@ -256,6 +261,7 @@ export const socketLost = <S extends EntryState>(state: S, sessionId: string, no
     deviceTokenHash: session.deviceTokenHash,
     resumeTokenHash: session.resumeTokenHash,
     rooms: session.rooms,
+    ...(session.isModerator ? { isModerator: true as const } : {}),
     status: "away",
     awayUntil,
     buffered: [],
@@ -291,6 +297,7 @@ export const resume = <S extends EntryState>(state: S, command: ResumeCommand, n
     deviceTokenHash: accountUnlinked ? undefined : session.deviceTokenHash,
     resumeTokenHash: token.hash,
     rooms: session.rooms,
+    ...(session.isModerator ? { isModerator: true as const } : {}),
   };
   return result(withSession(state, resumed), {
     type: "resumed",
