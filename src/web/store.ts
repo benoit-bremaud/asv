@@ -172,6 +172,10 @@ const withoutPageNotice = (state: ChatState): ChatState => (isAccountNotice(stat
 /** True while the focus or the pointer is on the shown notice, wherever it renders (#68, #199). */
 export const isNoticeHeld = (state: ChatState): boolean => state.noticeHold.focus !== undefined || state.noticeHold.pointer?.seq === state.noticeSeq;
 
+/** Clears the notice it timed, unless a newer one replaced it or a copy holds it (#68, #199). */
+const expireNotice = (state: ChatState, seq: number): ChatState =>
+  seq === state.noticeSeq && !isNoticeHeld(state) ? { ...state, notice: undefined } : state;
+
 /** Records which copy holds the notice; the pointer only for the shown `noticeSeq` (#199). */
 const holdNotice = (state: ChatState, by: "focus" | "pointer", copy: string): ChatState => ({
   ...state,
@@ -444,7 +448,7 @@ const reduce = (state: ChatState, action: Action): ChatState => {
     case "dismissNotice":
       return { ...state, notice: undefined };
     case "expireNotice":
-      return action.seq === state.noticeSeq && !isNoticeHeld(state) ? { ...state, notice: undefined } : state;
+      return expireNotice(state, action.seq);
     case "holdNotice":
       return holdNotice(state, action.by, action.copy);
     case "releaseNotice":
