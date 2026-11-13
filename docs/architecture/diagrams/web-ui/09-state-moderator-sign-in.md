@@ -32,7 +32,7 @@ stateDiagram-v2
     Ready --> Creating: "créer ma clé"
     Creating --> Done: enrolled, link back to the entry screen
     Creating --> Ready: device cancelled, notice
-    Creating --> Ready: network or verification failure, notice "réessayez"
+    Creating --> Ready: network or verification failure, notice "recommencez"
     Creating --> Refused: invitation expired, used or unknown
   }
 ```

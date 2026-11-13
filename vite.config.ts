@@ -11,7 +11,7 @@ export const config = defineConfig({
       "/ws": { target: "ws://127.0.0.1:8787", ws: true },
       "/api": "http://127.0.0.1:8787",
       "/account": "http://127.0.0.1:8787",
-      "/mod": "http://127.0.0.1:8787",
+      "/mod/": "http://127.0.0.1:8787",
     },
   },
   test: {

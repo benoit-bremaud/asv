@@ -171,8 +171,11 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
   }));
   const publicOrigin = options.publicOrigin ?? DEFAULT_PUBLIC_ORIGIN;
   // BR-098: a bare origin the browser routes accept, or every enrolment and sign-in fails without a trace.
+  // Fatal only when moderation is configured; a plain local run (QA of other journeys) just warns.
   if (!behindTunnel && (URL.parse(publicOrigin)?.origin !== publicOrigin || !options.allowedOrigins.includes(publicOrigin))) {
-    throw new Error(`publicOrigin ${publicOrigin} must be a bare origin listed in allowedOrigins (BR-098)`);
+    const problem = `publicOrigin ${publicOrigin} must be a bare origin listed in allowedOrigins (BR-098)`;
+    if (options.ownerSecret !== undefined || options.moderatorFile !== undefined) throw new Error(problem);
+    console.warn(`${problem}; moderator passkeys will fail`);
   }
   const grantKey = await createGrantKey();
   const fileLog = options.logFile === undefined ? undefined : createFileLog(options.logFile, now());

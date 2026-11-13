@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { WebSocket } from "ws";
 import { createMemoryLog } from "./memory-log";
 import { createNodeRandom } from "./random";
@@ -398,9 +398,18 @@ describe("moderator wiring (moderation/02f)", () => {
   it.each([
     [{ ownerSecret: "short" }, /BR-093/],
     [{ moderatorFile: "/tmp/never-moderators.json" }, /BR-099/],
-    [{ publicOrigin: "https://elsewhere.example" }, /BR-098/],
-    [{ publicOrigin: "http://localhost:5173/" }, /BR-098/],
+    [{ ownerSecret: "o".repeat(32), publicOrigin: "https://elsewhere.example" }, /BR-098/],
+    [{ ownerSecret: "o".repeat(32), publicOrigin: "http://localhost:5173/" }, /BR-098/],
   ])("refuses to start with %j", async (overrides, message) => {
     await expect(start(overrides)).rejects.toThrow(message);
+  });
+
+  it("only warns on a mismatched public origin when moderation is not configured (local QA)", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    await start({ allowedOrigins: ["http://127.0.0.1:8790"] });
+
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/BR-098/));
+    warn.mockRestore();
   });
 });
