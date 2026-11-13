@@ -500,6 +500,22 @@ describe("private windows, ignore and search (web-ui/07)", () => {
     expect(again.windows.c1?.minimised).toBe(false);
   });
 
+  it("asks for the composer focus only on the chatter's own open or restore (#67)", () => {
+    const incoming = server(me, window("c1"));
+    expect(incoming.windows.c1?.focusRequest).toBe(0);
+
+    const pending = server(act(me, { type: "openPrivate", other: max }), window("c1"));
+    expect(pending.windows.c1?.focusRequest).toBe(1);
+
+    const reopened = act(incoming, { type: "openPrivate", other: max });
+    expect(reopened.windows.c1?.focusRequest).toBe(1);
+
+    const minimised = act(reopened, { type: "togglePrivate", conversationId: "c1" });
+    expect(minimised.windows.c1?.focusRequest).toBe(1);
+    expect(act(minimised, { type: "togglePrivate", conversationId: "c1" }).windows.c1?.focusRequest).toBe(2);
+    expect(server(reopened, window("c1")).windows.c1?.focusRequest).toBe(1);
+  });
+
   it("appends lines from both sides, counts unread while minimised and clears it on restore", () => {
     let state = server(me, window("c1"));
     state = server(state, message("c1", "me", "salut"));
@@ -552,7 +568,7 @@ describe("private windows, ignore and search (web-ui/07)", () => {
       },
     });
 
-    expect(resumed.windows.c1).toMatchObject({ minimised: true, unread: 1, presence: "here" });
+    expect(resumed.windows.c1).toMatchObject({ minimised: true, unread: 1, presence: "here", focusRequest: 0 });
     expect(resumed.windows.c1?.lines.map((line) => line.text)).toEqual(["tu es là ?"]);
   });
 

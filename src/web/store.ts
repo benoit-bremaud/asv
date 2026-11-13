@@ -37,6 +37,8 @@ export interface PrivateView {
   readonly minimised: boolean;
   readonly unread: number;
   readonly presence: "here" | "away" | "gone";
+  /** Bumped by the chatter's own "message privé" or restore; the composer takes the focus on each bump, never for an incoming window (#67). */
+  readonly focusRequest: number;
 }
 
 /** The search panel (UC7). */
@@ -236,7 +238,7 @@ const onPrivateWindow = (state: ChatState, conversationId: string, other: OtherC
   const current = state.windows[conversationId] ?? pending;
   const window: PrivateView = current
     ? { ...current, other, presence: other.away ? "away" : "here" }
-    : { other, lines: [], minimised: false, unread: 0, presence: other.away ? "away" : "here" };
+    : { other, lines: [], minimised: false, unread: 0, presence: other.away ? "away" : "here", focusRequest: 0 };
   const known = other.away ? state.known : { ...state.known, [other.sessionId]: other.gender };
   return { ...state, known, windows: { ...(pending ? rest : state.windows), [conversationId]: window } };
 };
@@ -245,7 +247,7 @@ const onResumedWindows = (state: ChatState, payload: Extract<ServerMessage, { ty
   const windows: Record<string, PrivateView> = {};
   for (const { conversationId, other } of payload.windows) {
     const lines = state.windows[conversationId]?.lines ?? [];
-    windows[conversationId] = { other, lines, minimised: true, unread: 0, presence: other.away ? "away" : "here" };
+    windows[conversationId] = { other, lines, minimised: true, unread: 0, presence: other.away ? "away" : "here", focusRequest: 0 };
   }
   return payload.buffered.reduce((acc, message) => appendPrivate(acc, message, true), { ...state, windows });
 };
@@ -278,9 +280,9 @@ const openPrivate = (state: ChatState, other: OtherChatter): ChatState => {
   const existing = Object.entries(state.windows).find(([, window]) => window.other.sessionId === other.sessionId);
   if (existing) {
     const [id, window] = existing;
-    return { ...state, windows: { ...state.windows, [id]: { ...window, minimised: false, unread: 0 } } };
+    return { ...state, windows: { ...state.windows, [id]: { ...window, minimised: false, unread: 0, focusRequest: window.focusRequest + 1 } } };
   }
-  const window: PrivateView = { other, lines: [], minimised: false, unread: 0, presence: other.away ? "away" : "here" };
+  const window: PrivateView = { other, lines: [], minimised: false, unread: 0, presence: other.away ? "away" : "here", focusRequest: 1 };
   return { ...state, windows: { ...state.windows, [other.sessionId]: window } };
 };
 
@@ -288,7 +290,7 @@ const togglePrivate = (state: ChatState, conversationId: string): ChatState => {
   const window = state.windows[conversationId];
   if (!window) return state;
   const minimised = !window.minimised;
-  return { ...state, windows: { ...state.windows, [conversationId]: { ...window, minimised, unread: minimised ? window.unread : 0 } } };
+  return { ...state, windows: { ...state.windows, [conversationId]: { ...window, minimised, unread: minimised ? window.unread : 0, focusRequest: minimised ? window.focusRequest : window.focusRequest + 1 } } };
 };
 
 const onServer = (state: ChatState, message: ServerMessage): ChatState => {

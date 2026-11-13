@@ -26,6 +26,8 @@ const msg = <T extends ServerMessage["type"]>(type: T, payload: Extract<ServerMe
 const man = (sessionId: string, pseudo = sessionId): Member => ({ sessionId, pseudo, hasAccount: false, away: false, gender: "man", age: 30 });
 const woman = (sessionId: string, pseudo = sessionId): Member => ({ sessionId, pseudo, hasAccount: false, away: false, gender: "woman", age: 25, city: "Lyon" });
 const away = (sessionId: string, pseudo = sessionId): Member => ({ sessionId, pseudo, hasAccount: false, away: true });
+/** Any private composer (#106): named after the other chatter. */
+const PRIVATE_FIELD = /^message privé à /;
 
 const rooms = [
   { id: "r1", name: "Paris", kind: "regional" as const, count: 2 },
@@ -1538,7 +1540,7 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
     await openMenu(user);
     await user.click(screen.getByRole("menuitem", { name: STRINGS.privateMessage }));
     const dialog = screen.getByRole("dialog", { name: STRINGS.privateWith("bob") });
-    const field = within(dialog).getByLabelText(STRINGS.message) as HTMLInputElement;
+    const field = within(dialog).getByLabelText(PRIVATE_FIELD) as HTMLInputElement;
 
     await user.paste("a\u200Bb");
     await user.keyboard("{Enter}");
@@ -1570,10 +1572,10 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
     await openMenu(user);
     await user.click(screen.getByRole("menuitem", { name: STRINGS.privateMessage }));
     const dialog = screen.getByRole("dialog", { name: STRINGS.privateWith("bob") });
-    await user.type(within(dialog).getByLabelText(STRINGS.message), "salut{Enter}");
+    await user.type(within(dialog).getByLabelText(PRIVATE_FIELD), "salut{Enter}");
 
     expect(sent()).toContainEqual({ type: "sendPrivate", payload: { targetPseudo: "bob", text: "salut" } });
-    expect(within(dialog).getByLabelText(STRINGS.message)).toHaveProperty("value", "");
+    expect(within(dialog).getByLabelText(PRIVATE_FIELD)).toHaveProperty("value", "");
   });
 
   describe("refused private message (#151)", () => {
@@ -1581,7 +1583,7 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
       await openMenu(user);
       await user.click(screen.getByRole("menuitem", { name: STRINGS.privateMessage }));
       const dialog = screen.getByRole("dialog", { name: STRINGS.privateWith("bob") });
-      const field = within(dialog).getByLabelText(STRINGS.message) as HTMLInputElement;
+      const field = within(dialog).getByLabelText(PRIVATE_FIELD) as HTMLInputElement;
       await user.type(field, `${text}{Enter}`);
       return { dialog, field };
     };
@@ -1608,7 +1610,7 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
       const bob = await openAndSend(user, "salut");
       await user.click(screen.getByRole("button", { name: STRINGS.pseudoButton("cid") }));
       await user.click(screen.getByRole("menuitem", { name: STRINGS.privateMessage }));
-      const cid = within(screen.getByRole("dialog", { name: STRINGS.privateWith("cid") })).getByLabelText(STRINGS.message) as HTMLInputElement;
+      const cid = within(screen.getByRole("dialog", { name: STRINGS.privateWith("cid") })).getByLabelText(STRINGS.privateMessageTo("cid")) as HTMLInputElement;
       await user.type(cid, "coucou{Enter}");
 
       await fromServer(msg("warning", { code: "tooManyWindows", message: "m", replyTo: 10 }));
@@ -1766,11 +1768,87 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
 
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByText(STRINGS.otherGone)).toBeTruthy();
-    expect(within(dialog).getByLabelText(STRINGS.message)).toHaveProperty("disabled", true);
+    expect(within(dialog).getByLabelText(PRIVATE_FIELD)).toHaveProperty("disabled", true);
     expect(within(dialog).getByRole("button", { name: "bob (absent), actions" })).toBeTruthy();
     expectLabelInName();
     await user.click(within(dialog).getByRole("button", { name: STRINGS.close }));
     expect(sent().filter((command) => command.type === "closePrivate")).toEqual([]);
+  });
+
+  describe("composer focus and name (#67, #106)", () => {
+    const incoming = () =>
+      fromServer(msg("privateWindow", { conversationId: "c1", other: { sessionId: "s2", pseudo: "bob", hasAccount: true, away: false, gender: "man" } }));
+
+    it("names each composer uniquely, the private one after the other chatter (#106)", async () => {
+      await setup();
+      await signedIn();
+      await joinRoom("r1", [member(true)]);
+      await incoming();
+
+      const names = screen.getAllByRole("textbox").map((field) => field.getAttribute("id")).map((id) => document.querySelector(`label[for="${id}"]`)?.textContent);
+      expect(names).toContain(STRINGS.message);
+      expect(names).toContain("message privé à bob");
+      expect(new Set(names).size).toBe(names.length);
+      expect(screen.getByRole("textbox", { name: STRINGS.privateMessageTo("bob") })).toBeTruthy();
+    });
+
+    it("leaves the focus in the room field when a private window opens from a message (#67)", async () => {
+      const user = await setup();
+      await signedIn();
+      await joinRoom("r1", [member(true)]);
+      await user.type(screen.getByRole("textbox", { name: STRINGS.message }), "en cours");
+
+      await incoming();
+
+      expect(screen.getByRole("dialog", { name: STRINGS.privateWith("bob") })).toBeTruthy();
+      expect(document.activeElement).toBe(screen.getByRole("textbox", { name: STRINGS.message }));
+    });
+
+    it("focuses the composer the chatter opens with \"message privé\"", async () => {
+      const user = await setup();
+      await signedIn();
+      await joinRoom("r1", [member(true)]);
+
+      await openMenu(user);
+      await user.click(screen.getByRole("menuitem", { name: STRINGS.privateMessage }));
+
+      expect(document.activeElement).toBe(screen.getByRole("textbox", { name: STRINGS.privateMessageTo("bob") }));
+    });
+
+    it("focuses an incoming window's composer, open or minimised, when the chatter picks \"message privé\"", async () => {
+      const user = await setup();
+      await signedIn();
+      await joinRoom("r1", [member(true)]);
+      await incoming();
+      const composer = () => screen.getByRole("textbox", { name: STRINGS.privateMessageTo("bob") });
+      // The members list comes before the window title, which carries the same pseudo button.
+      const listPseudo = () => {
+        const [button] = screen.getAllByRole("button", { name: STRINGS.pseudoButton("bob") });
+        if (!button) throw new Error("no pseudo button");
+        return button;
+      };
+
+      await user.click(listPseudo());
+      await user.click(screen.getByRole("menuitem", { name: STRINGS.privateMessage }));
+      expect(document.activeElement).toBe(composer());
+
+      await user.click(within(screen.getByRole("dialog", { name: STRINGS.privateWith("bob") })).getByRole("button", { name: STRINGS.minimise }));
+      await user.click(listPseudo());
+      await user.click(screen.getByRole("menuitem", { name: STRINGS.privateMessage }));
+      expect(document.activeElement).toBe(composer());
+    });
+
+    it("focuses the composer of an incoming window once the chatter restores it", async () => {
+      const user = await setup();
+      await signedIn();
+      await joinRoom("r1", [member(true)]);
+      await incoming();
+      await user.click(within(screen.getByRole("dialog", { name: STRINGS.privateWith("bob") })).getByRole("button", { name: STRINGS.minimise }));
+
+      await user.click(screen.getByRole("button", { name: new RegExp(STRINGS.restore("bob")) }));
+
+      expect(document.activeElement).toBe(screen.getByRole("textbox", { name: STRINGS.privateMessageTo("bob") }));
+    });
   });
 
   describe("focus after close or minimise (#131)", () => {

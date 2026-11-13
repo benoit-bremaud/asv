@@ -33,6 +33,12 @@ const PrivateWindow = ({ windowKey, window, draft, setDraft, onSent, onClose, on
   const { state, commands } = useChat();
   const { other } = window;
   const fieldId = `private-${windowKey}`;
+  const field = useRef<HTMLInputElement>(null);
+  // #67: only the chatter's own "message privé" or restore moves the focus here, also on an already open window.
+  const { focusRequest } = window;
+  useEffect(() => {
+    if (focusRequest > 0) field.current?.focus();
+  }, [focusRequest]);
   // BR-020 counts code points; the text stays in the field until it fits.
   const tooLong = [...draft].length > MAX_TEXT;
   // BR-090, checked on the trimmed text as the server does; the draft stays in the field.
@@ -89,8 +95,8 @@ const PrivateWindow = ({ windowKey, window, draft, setDraft, onSent, onClose, on
         {gone && <li className="small"><Pseudo pseudo={other.pseudo} away /> {STRINGS.otherGone}</li>}
       </ol>
       <form className="composer" onSubmit={submit}>
-        <label className="sr-only" htmlFor={fieldId}>{STRINGS.message}</label>
-        <input id={fieldId} value={draft} aria-invalid={describedBy ? true : undefined} aria-describedby={describedBy} maxLength={2000} autoComplete="off" disabled={gone} autoFocus onChange={(e) => setDraft(e.target.value)} />
+        <label className="sr-only" htmlFor={fieldId}>{STRINGS.privateMessageTo(other.pseudo)}</label>
+        <input id={fieldId} value={draft} aria-invalid={describedBy ? true : undefined} aria-describedby={describedBy} maxLength={2000} autoComplete="off" disabled={gone} ref={field} onChange={(e) => setDraft(e.target.value)} />
         <span id={`${fieldId}-count`} className={`small${tooLong ? " too-long" : ""}`} aria-live="polite">{[...draft].length}/{MAX_TEXT}</span>
         {invisible && <output id={`${fieldId}-invisible`} className="small too-long">{STRINGS.invisibleChars}</output>}
         <button type="submit" className="bevel primary" disabled={tooLong || invisible || gone}>{STRINGS.send}</button>
