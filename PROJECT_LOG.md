@@ -806,3 +806,14 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
 - Merged 2026-11-13: PR #214 squash 69c873c with owner approval (no attestation); verify (900 tests),
   gitleaks and SonarQube green on 3659fd5. Follow-ups #212 (review leftovers, atomic strike write),
   #213 (hono audit). Next: brick 8b (passkeys, ADR-0008).
+
+## 2026-11-13 — #213 hono and @hono/node-server audit fixes
+
+- Owner chose to fix the `pnpm audit --prod` advisories before brick 8b (MCDA 300/500). Patch bumps:
+  hono 4.13.13 → 4.13.18, @hono/node-server 2.1.5 → 2.1.7; clears the 7 reported advisories plus 6 fixed
+  in the same range. Audit now clean.
+- No behaviour change: the app uses neither `validator`, `css`, prefixed cookies nor hono's WebSocket
+  adapter; `serveStatic` now passes non-GET/HEAD on and raw backslash paths get 400 (harmless here).
+- Adversarial review: 1 round, gate open (Should: commit message named the wrong versions, fixed).
+- Merged 2026-11-13: PR #216 squash 180f859 with owner approval (no attestation); verify, audit, gitleaks
+  and SonarQube green on 446a63a; Codex found nothing. Next: brick 8b (passkeys, ADR-0008).
