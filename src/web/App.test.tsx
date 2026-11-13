@@ -357,6 +357,32 @@ describe("entry screen", () => {
     expect(enterButton().hasAttribute("aria-describedby")).toBe(false);
   });
 
+  it("says the link is down when the members panel is used with every field filled, offline (#60)", async () => {
+    const user = await setup();
+    await fill(user);
+    const panel = screen.getByRole("form", { name: STRINGS.membersTitle });
+    await user.type(within(panel).getByLabelText(STRINGS.email), "nath@example.org");
+
+    await user.click(within(panel).getByRole("button", { name: STRINGS.getCode }));
+
+    expect(within(panel).getByRole("alert").textContent).toBe(STRINGS.notices.notConnected);
+    expect(connection.enter).not.toHaveBeenCalled();
+  });
+
+  it("names the city's invisible characters in the members hint when nothing is missing (#60)", async () => {
+    const user = await setup();
+    await goOnline();
+    await fill(user);
+    await user.click(screen.getByLabelText(STRINGS.city));
+    await user.paste("Paris\u200B");
+    const panel = screen.getByRole("form", { name: STRINGS.membersTitle });
+    await user.type(within(panel).getByLabelText(STRINGS.email), "nath@example.org");
+
+    await user.click(within(panel).getByRole("button", { name: STRINGS.getCode }));
+
+    expect(within(panel).getByRole("alert").textContent).toBe(STRINGS.invisibleChars);
+  });
+
   it("does not count a blank pseudo as filled (#60)", async () => {
     const user = await setup();
     await goOnline();
@@ -372,7 +398,7 @@ describe("entry screen", () => {
     const fields = [...document.querySelectorAll("main input")];
     expect(fields.length).toBeGreaterThan(0);
     for (const field of fields) expect(field.getAttribute("name")).toBeTruthy();
-    expect(screen.getByLabelText(STRINGS.pseudo).getAttribute("autocomplete")).toBe("off");
+    for (const label of [STRINGS.pseudo, STRINGS.age, STRINGS.city]) expect(screen.getByLabelText(label).getAttribute("autocomplete")).toBe("off");
   });
 
   it("shows the e-mail retention notice in the members panel (#110)", async () => {
@@ -680,6 +706,29 @@ describe("banners", () => {
       expect(screen.getByRole("alert").textContent).toContain(STRINGS.notices.flood);
 
       await act(async () => vi.advanceTimersByTime(1000));
+      expect(screen.queryByRole("alert")).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps a notice while the focus or the pointer is on it (#68, WCAG 2.2.1)", async () => {
+    await setup();
+    vi.useFakeTimers();
+    try {
+      await fire({ type: "notice", code: "flood" });
+      const alert = screen.getByRole("alert");
+      fireEvent.focus(within(alert).getByRole("button", { name: STRINGS.dismiss }));
+      await act(async () => vi.advanceTimersByTime(NOTICE_MS * 2));
+      expect(screen.getByRole("alert")).toBeTruthy();
+
+      fireEvent.blur(within(alert).getByRole("button", { name: STRINGS.dismiss }));
+      fireEvent.mouseEnter(alert);
+      await act(async () => vi.advanceTimersByTime(NOTICE_MS * 2));
+      expect(screen.getByRole("alert")).toBeTruthy();
+
+      fireEvent.mouseLeave(alert);
+      await act(async () => vi.advanceTimersByTime(NOTICE_MS));
       expect(screen.queryByRole("alert")).toBeNull();
     } finally {
       vi.useRealTimers();

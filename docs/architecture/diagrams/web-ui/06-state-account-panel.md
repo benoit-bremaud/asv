@@ -41,8 +41,8 @@ stateDiagram-v2
 - The panel is a modal dialog over `InChat` (`web-ui/05`, #63), closable at any time with "fermer" or
   Escape; closing keeps the state and gives the focus back (`web-ui/04` Accessibility).
 - **Entry screen "Membres" panel**: e-mail field, "se souvenir de cet appareil" box (ticked by default),
-  "recevoir mon code" button. The button needs the pseudo form valid (pseudo, 18+, rules), shows a hint
-  otherwise, then enters the chat and sends `requestCode` as soon as `entered` arrives. The code field
+  "recevoir mon code" button. The button needs the pseudo form valid (pseudo, age, 18+, rules), shows a hint
+  otherwise (the missing fields, else the city's invisible characters, else "Pas connecté pour l'instant."), then enters the chat and sends `requestCode` as soon as `entered` arrives. The code field
   then appears in the account overlay. A failed `POST /account/device` keeps the session signed in for
   this visit only and shows a notice.
 - `codeSent` always reads "Si l'adresse peut recevoir un code, il vient d'être envoyé. Valable

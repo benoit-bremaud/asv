@@ -71,6 +71,12 @@ export const EntryScreen = () => {
     .filter(([, absent]) => absent)
     .map(([field]) => STRINGS.missingFields[field as keyof typeof STRINGS.missingFields]);
   const ready = !cityInvisible && missing.length === 0 && state.link === "online" && state.pendingPseudo === undefined;
+  // The "Membres" hint says why the click did nothing: missing fields first, then the city or the link (#60).
+  const membersHint = (): string | undefined => {
+    if (missing.length > 0) return STRINGS.missing(missing);
+    if (cityInvisible) return STRINGS.invisibleChars;
+    return state.link === "online" ? undefined : STRINGS.notices.notConnected;
+  };
 
   const form = () => ({
       pseudo: pseudo.trim(),
@@ -113,11 +119,11 @@ export const EntryScreen = () => {
           <div className="row">
             <label>
               {STRINGS.age}
-              <input name="age" type="number" min={18} max={99} inputMode="numeric" value={age} onChange={(e) => setAge(e.target.value)} />
+              <input name="age" type="number" autoComplete="off" min={18} max={99} inputMode="numeric" value={age} onChange={(e) => setAge(e.target.value)} />
             </label>
             <label>
               {STRINGS.city}
-              <input name="city" value={city} aria-invalid={cityInvisible || undefined} onChange={(e) => setCity([...e.target.value].slice(0, MAX_CITY).join(""))} />
+              <input name="city" autoComplete="off" value={city} aria-invalid={cityInvisible || undefined} onChange={(e) => setCity([...e.target.value].slice(0, MAX_CITY).join(""))} />
               {cityInvisible && <output className="small too-long">{STRINGS.invisibleChars}</output>}
             </label>
           </div>
@@ -147,7 +153,7 @@ export const EntryScreen = () => {
             <input name="remember" type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
             {STRINGS.remember}
           </label>
-          {hint && missing.length > 0 && <p role="alert" className="error">{STRINGS.missing(missing)}</p>}
+          {hint && !ready && membersHint() && <p role="alert" className="error">{membersHint()}</p>}
           <button type="submit" className="bevel" disabled={email.trim() === "" || state.pendingPseudo !== undefined}>{STRINGS.getCode}</button>
           <p className="small">{STRINGS.codeCreates}</p>
           <p className="small">{STRINGS.emailKept}</p>

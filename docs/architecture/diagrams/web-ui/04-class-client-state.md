@@ -176,8 +176,9 @@ classDiagram
 
 - **D6**: one pure `chatReducer`, held by `useReducer` in `App` and shared through a React context. The
   connection manager lives outside React; it dispatches actions and screens call its commands. Screens
-  never touch the socket (`web-ui/03`). Screens call `Commands`; their only local actions are `showRooms`,
-  `showRoom` and `dismissNotice` (`LocalAction`), never `server` or `link`.
+  never touch the socket (`web-ui/03`). Screens call `Commands`; their only local actions are the `LocalAction`
+  set of `chat-context.tsx` (navigation, account dialog, private windows, search, `dismissNotice`, `expireNotice`),
+  never `server` or `link`.
 - **Reducer**: `entered` → screen `rooms`, `me` set; `entryRefused` → `entryError` (the reason code) and `refusedPseudo` (from `pendingPseudo`), `entering` and `entered` clear both;
   `roomList` → list; `roomJoined` → room opened with its members and active, screen `room`; `memberJoined`,
   `memberLeft`, `memberAway`, `memberBack` → member list of that room updated; `roomMessage` → line
@@ -187,11 +188,13 @@ classDiagram
   cleared, last pseudo kept for the form. `memberLeft` and `memberAway` without `roomId` change nothing.
   Notices and entry errors stay codes in the state; screens translate them through `strings.ts`.
 - **Notice lifetime** (#68, batch option A 420/500): every action that sets `notice` also stamps a fresh
-  `noticeSeq` (monotonic, never reused), so the same code raised twice counts as a new notice. `Notice` starts
-  an 8 s timer per `noticeSeq` and then dispatches `expireNotice(seq)`, which clears the notice only when
+  `noticeSeq` (monotonic, never reused), so the same code raised twice counts as a new notice (the notice remounts, so
+  it is announced again). While shown, `Notice` runs an 8 s timer for its `noticeSeq` (moving between page and
+  dialog restarts it) and then dispatches `expireNotice(seq)`, which clears the notice only when
   `noticeSeq` still equals `seq` (a newer notice is never cut short). `entered` and `roomJoined` clear a notice
   that is not an account notice (the next success ends a stale refusal); `accountLinked` keeps clearing an
-  account notice (#136). "fermer" (`dismissNotice`) still clears it at once. Unit tests check the stamp, the
+  account notice (#136). "fermer" (`dismissNotice`) still clears it at once. The timer stops while the pointer or
+  the focus is on the notice, so it never vanishes under a reader or takes the focus away (WCAG 2.2.1, 2.4.3). Unit tests check the stamp, the
   expiry, the stale `expireNotice`, the clear on `entered` and `roomJoined`, and the 8 s timer in `Notice`.
 - **Known profiles** (D4): every connected member seen fills `known[sessionId] = gender` in memory. An
   away member is shown with its known gender's `-away` colour, else the unspecified one, in italics, followed
@@ -219,9 +222,10 @@ classDiagram
   règles.", only the missing ones), and ENTRER points to it with `aria-describedby`. The "Membres" panel hint
   shown on "recevoir mon code" uses the same list. The header tagline "âge ? sexe ? ville ?" is the brand
   slogan of the validated mockup, not the chatter's profile, so it stays after entry (#60, option A 410/500).
-  Field names (#148): every form field has a `name` (entry `pseudo`, `gender`, `age`, `city`, `adult`,
+  Field names (#148): every form field has an `id` or a `name` (the composers keep their `id`) (entry `pseudo`, `gender`, `age`, `city`, `adult`,
   `terms`, `email`, `remember`; rooms `roomName`; search `query`; account `email`, `remember`, `code`), so
-  Chrome reports no "form field should have an id or name"; `autoComplete` values stay as they are.
+  Chrome reports no "form field should have an id or name"; age and city get `autoComplete="off"` like the
+  pseudo, so the browser keeps no form history of them (never persisted), other `autoComplete` values stay.
 - **Members panel** (D7, 430/500): shown as in the validated mockup, fields disabled, with "Bientôt : les
   comptes membres" until brick 5. Footer links without a target yet (moderator sign-in, rules, legal
   notice, privacy) are shown as inert text, not links.
