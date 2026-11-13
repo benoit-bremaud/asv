@@ -213,11 +213,11 @@ export const createModerationHandlers = (ctx: ModerationContext) => {
     const until = suspensionUntil(now);
     const decision = decideExpel(ctx.state(), report, "7d", INTERIM_MODERATOR, now);
     const closure = closeAccount(found.account, now);
-    // Ban, block and delete the account before closing the report: a failure in between leaves the report open to retry on.
+    // Ban, block and delete the account first: a failure there leaves the report open to retry on.
     await deps.moderation.saveBan({ ...decision.ban, until }, report.id, deps.random.id(), now);
     await deps.accounts.blockEmail(found.emailKeyedHash, until);
     await deps.accounts.close(closure.vault, found.emailKeyedHash, closure.carryOver);
-    const closed = await close(caller, report, "suspended", now);
+    // The account is gone, so no retry comes back here: mail and evict before closing the report.
     // Not awaited: the hub queue must not wait for the provider (ADR-0013 amendment).
     void trySend({ email: found.account.email, statement: suspensionStatement(until), giveUpAt: suspensionUntil(now) });
     // One evict after the other: each one changes the hub state the next one reads.
@@ -225,7 +225,13 @@ export const createModerationHandlers = (ctx: ModerationContext) => {
       async (previous, session) => [...(await previous), ...(await ctx.evict(session.id, until, now))],
       Promise.resolve([]),
     );
-    return [...evicted, closed];
+    try {
+      return [...evicted, await close(caller, report, "suspended", now)];
+    } catch (cause) {
+      // The sanction is applied; only the report stays open, for the moderator to close.
+      deps.onStoreError(cause);
+      return [...evicted, out.warning(caller.key, "unavailable", command.seq)];
+    }
   };
 
   /** Declines only a proposed suspension: the report gave its strike and the account still has three (BR-075). */

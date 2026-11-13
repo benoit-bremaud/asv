@@ -395,6 +395,20 @@ describe("warn, strikes and suspension (`moderation/02d`, BR-074 to BR-077)", ()
     expect(only(await ctx.send("9", "listOpenReports", {}), "openReports").payload.reports[0]).toMatchObject({ id: reportId, activeStrikes: 3, struck: true });
   });
 
+  it("still evicts the suspended member when closing the report fails after the account is gone (Codex P1)", async () => {
+    const ctx = await setup();
+    const { accountId, reportId } = await threeStrikes(ctx);
+    ctx.moderationStore.saveReport = async () => {
+      throw new Error("disk");
+    };
+
+    const outs = await ctx.send("9", "confirmSuspension", { accountId, reportId });
+
+    expect(find(outs, "expelled").map((o) => o.to)).toEqual([["2"]]);
+    expect(only(outs, "warning").payload).toMatchObject({ code: "unavailable" });
+    expect(ctx.onStoreError).toHaveBeenCalled();
+  });
+
   it("refuses to decline a suspension nobody proposed", async () => {
     const ctx = await setup();
     await ctx.enterAs("1", "Lola");
