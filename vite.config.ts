@@ -11,6 +11,7 @@ export const config = defineConfig({
       "/ws": { target: "ws://127.0.0.1:8787", ws: true },
       "/api": "http://127.0.0.1:8787",
       "/account": "http://127.0.0.1:8787",
+      "/mod/": "http://127.0.0.1:8787",
     },
   },
   test: {
@@ -27,7 +28,7 @@ export const config = defineConfig({
     coverage: {
       provider: "v8",
       include: ["src/**/*.{ts,tsx}"],
-      exclude: ["src/**/*.test.{ts,tsx}", "src/web/main.tsx", "src/transports/node/main.ts"],
+      exclude: ["src/**/*.test.{ts,tsx}", "src/web/main.tsx", "src/transports/node/main.ts", "src/transports/node/owner-cli-main.ts"],
       reporter: ["text", "lcov"],
       thresholds: { lines: 80, functions: 80, branches: 80, statements: 80 },
     },

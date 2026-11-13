@@ -148,7 +148,7 @@ describe("fileReport (UC9, BR-050 to BR-052)", () => {
   });
 });
 
-describe("moderator rights (BR-054, BR-091)", () => {
+describe("moderator rights (BR-054, BR-095)", () => {
   it("is true only for a session entered with the grant, and survives away", () => {
     const moderated = hub(true);
     const plain = hub(false);

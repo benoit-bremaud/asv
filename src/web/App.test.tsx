@@ -13,6 +13,9 @@ import { RoomScreen } from "./screens/RoomScreen";
 import type { Action } from "./store";
 import { STRINGS } from "./strings";
 
+// `/mod/status` and WebAuthn are covered in moderation.test.tsx; here the link is simply hidden.
+vi.mock("./moderator-passkey", () => ({ moderationAccess: async () => "off", takeEnrolToken: () => undefined }));
+
 type Dispatch = (action: Action) => void;
 
 let dispatch: Dispatch;
@@ -411,7 +414,6 @@ describe("entry screen", () => {
   it("renders the footer links", async () => {
     await setup();
 
-    expect(screen.getByText(STRINGS.moderatorSignIn)).toBeTruthy();
     for (const label of Object.values(STRINGS.legal)) expect(screen.getByRole("button", { name: label })).toBeTruthy();
   });
 });

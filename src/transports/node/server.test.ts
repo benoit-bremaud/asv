@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { WebSocket } from "ws";
 import { createMemoryLog } from "./memory-log";
 import { createNodeRandom } from "./random";
@@ -370,6 +370,51 @@ describe("tester exposure (ADR-0018)", () => {
       client.ws.close();
     } finally {
       rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("moderator wiring (moderation/02f)", () => {
+  const SECRET = "o".repeat(32);
+  const invite = (port: number, secret = SECRET) =>
+    fetch(`http://127.0.0.1:${port}/mod/invitations`, { method: "POST", headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/json" }, body: JSON.stringify({ name: "Marc" }) });
+
+  it("invites from loopback with the owner secret, on the default public origin", async () => {
+    const { port } = await start({ ownerSecret: SECRET });
+
+    const response = await invite(port);
+
+    expect(response.status).toBe(201);
+    expect(((await response.json()) as { link: string }).link).toMatch(/^http:\/\/localhost:5173\/#mod\/enroll\/[\w-]+$/);
+    expect((await invite(port, "x".repeat(32))).status).toBe(401);
+  });
+
+  it("answers 404 on owner routes without a secret, while the status stays on", async () => {
+    const { port } = await start();
+    expect((await invite(port)).status).toBe(404);
+    expect((await fetch(`http://127.0.0.1:${port}/mod/status`)).status).toBe(200);
+  });
+
+  it.each([
+    [{ ownerSecret: "short" }, /BR-093/],
+    [{ moderatorFile: "/tmp/never-moderators.json" }, /BR-099/],
+    [{ ownerSecret: "o".repeat(32), publicOrigin: "https://elsewhere.example" }, /BR-098/],
+    [{ ownerSecret: "o".repeat(32), publicOrigin: "http://localhost:5173/" }, /BR-098/],
+    [{ ownerSecret: "o".repeat(32), publicOrigin: "http://127.0.0.1:5173", allowedOrigins: ["http://127.0.0.1:5173"] }, /BR-098/],
+    [{ ownerSecret: "o".repeat(32), publicOrigin: "http://[::1]:5173", allowedOrigins: ["http://[::1]:5173"] }, /BR-098/],
+  ])("refuses to start with %j", async (overrides, message) => {
+    await expect(start(overrides)).rejects.toThrow(message);
+  });
+
+  it("only warns on a mismatched public origin when moderation is not configured (local QA)", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    try {
+      await start({ allowedOrigins: ["http://127.0.0.1:8790"], ownerSecret: "" });
+
+      expect(warn).toHaveBeenCalledWith(expect.stringMatching(/BR-098/));
+    } finally {
+      warn.mockRestore();
     }
   });
 });

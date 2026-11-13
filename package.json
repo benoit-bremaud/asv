@@ -12,6 +12,8 @@
     "dev:web": "vite",
     "dev:server": "tsx watch src/transports/node/main.ts",
     "tester": "pnpm build && ASV_TUNNEL=1 ASV_STATIC_ROOT=dist tsx src/transports/node/main.ts",
+    "mod:invite": "tsx src/transports/node/owner-cli-main.ts invite",
+    "mod:revoke": "tsx src/transports/node/owner-cli-main.ts revoke",
     "build": "tsc && vite build",
     "lint": "eslint .",
     "typecheck": "tsc",
@@ -23,6 +25,8 @@
   },
   "dependencies": {
     "@hono/node-server": "^2.1.7",
+    "@simplewebauthn/browser": "^14.0.0",
+    "@simplewebauthn/server": "^14.1.0",
     "hono": "^4.13.18",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",

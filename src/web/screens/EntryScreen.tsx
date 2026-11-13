@@ -2,6 +2,8 @@ import { useEffect, useState, type MouseEvent, type SubmitEvent } from "react";
 import { gender as genderSchema, type entryRefusal, type Gender } from "../../shared/protocol";
 import { hasForbiddenChar } from "../../domain/text";
 import { useChat } from "../chat-context";
+import { MODERATOR_LIMITS } from "../../domain/moderators";
+import { moderationAccess, signInModerator, type ModerationAccess } from "../moderator-passkey";
 import { STRINGS } from "../strings";
 import { Header } from "./Header";
 import { LegalPage, type LegalTopic } from "./LegalPage";
@@ -44,6 +46,41 @@ const useConnectedCount = (): number | undefined => {
   return count;
 };
 
+/** `web-ui/09`: the moderator sign-in link, shown only where `/mod` answers (BR-097); the grant expires in 60 s (BR-095). */
+const useModeratorSignIn = (entryError: string | undefined) => {
+  const [access, setAccess] = useState<ModerationAccess>("off");
+  const [asking, setAsking] = useState(false);
+  const [grant, setGrant] = useState<{ readonly grant: string; readonly name: string }>();
+  const [notice, setNotice] = useState<string>();
+  useEffect(() => {
+    let live = true;
+    void moderationAccess().then((value) => live && setAccess(value));
+    return () => { live = false; };
+  }, []);
+  // `web-ui/09` Granted → Plain: a refused grant is never sent again (each retry would count for BR-096).
+  // Adjusted during render when the refusal arrives, as React advises instead of an effect.
+  const [seenError, setSeenError] = useState(entryError);
+  if (entryError !== seenError) {
+    setSeenError(entryError);
+    if (entryError === "notModerator") setGrant(undefined);
+  }
+  useEffect(() => {
+    if (!grant) return;
+    const timer = setTimeout(() => { setGrant(undefined); setNotice(STRINGS.moderatorExpired); }, MODERATOR_LIMITS.grantTtlMs);
+    return () => clearTimeout(timer);
+  }, [grant]);
+  const signIn = async () => {
+    setAsking(true);
+    setNotice(undefined);
+    const result = await signInModerator();
+    setAsking(false);
+    if (typeof result === "object") { setGrant(result); setNotice(STRINGS.moderatorAccepted(result.name)); }
+    else setNotice(STRINGS.moderatorRefused);
+  };
+  const cancel = () => { setGrant(undefined); setNotice(undefined); };
+  return { access, asking, grant, notice, signIn, cancel };
+};
+
 /** UC1 entry screen from the validated mockup (design pack, `web-ui/04`). */
 export const EntryScreen = () => {
   const { state, commands } = useChat();
@@ -63,9 +100,8 @@ export const EntryScreen = () => {
   const [email, setEmail] = useState("");
   const [remember, setRemember] = useState(true);
   const [hint, setHint] = useState(false);
-  // BR-091: the interim moderator token, kept in this field only, never saved.
-  const [moderatorField, setModeratorField] = useState(false);
-  const [token, setToken] = useState("");
+  // `web-ui/09`: the passkey grant lives in this state only, never saved (BR-095).
+  const moderator = useModeratorSignIn(state.entryError);
   // BR-090, checked on the trimmed city as the server does.
   const cityInvisible = hasForbiddenChar(city.trim());
   const pseudoRefused = PSEUDO_REFUSALS.has(state.entryError) && pseudo.trim().normalize("NFC") === state.refusedPseudo;
@@ -88,7 +124,7 @@ export const EntryScreen = () => {
       ...(city.trim() ? { city: city.trim() } : {}),
       adultConfirmed: adult,
       termsAccepted: terms,
-      ...(moderatorField && token !== "" ? { moderatorGrant: token } : {}),
+      ...(moderator.grant ? { moderatorGrant: moderator.grant.grant } : {}),
   });
   const submit = (event: SubmitEvent) => {
     event.preventDefault();
@@ -145,12 +181,9 @@ export const EntryScreen = () => {
               {state.bannedUntil && STRINGS.until(state.bannedUntil)}
             </p>
           )}
-          {moderatorField && (
-            <label>
-              {STRINGS.moderatorToken}
-              <input name="moderatorGrant" type="password" autoComplete="off" maxLength={512} value={token} onChange={(e) => setToken(e.target.value)} />
-            </label>
-          )}
+          {moderator.notice && (moderator.grant
+            ? <output className="small">{moderator.notice}</output>
+            : <p role="alert" className="error">{moderator.notice}</p>)}
           <button type="submit" className="bevel primary big" disabled={!ready} aria-describedby={missing.length > 0 ? MISSING_ID : undefined}>{STRINGS.enter}</button>
           {missing.length > 0 && <p id={MISSING_ID} className="small">{STRINGS.missing(missing)}</p>}
         </form>
@@ -172,7 +205,10 @@ export const EntryScreen = () => {
         </form>
       </main>
       <footer className="footer">
-        <button type="button" className="link" aria-expanded={moderatorField} onClick={() => setModeratorField(!moderatorField)}>{STRINGS.moderatorSignIn}</button>
+        {moderator.access === "noPasskey" && <button type="button" className="link" disabled>{STRINGS.moderatorSignIn} ({STRINGS.noPasskey})</button>}
+        {moderator.access === "on" && (moderator.grant
+          ? <button type="button" className="link" onClick={moderator.cancel}>{STRINGS.moderatorCancel}</button>
+          : <button type="button" className="link" disabled={moderator.asking} onClick={() => void moderator.signIn()}>{STRINGS.moderatorSignIn}</button>)}
         {LEGAL_TOPICS.map((topic) => (
           <button key={topic} type="button" className="link" onClick={(event) => openLegal(event, topic)}>{STRINGS.legal[topic]}</button>
         ))}

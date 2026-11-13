@@ -3,7 +3,7 @@
  * WebSocket upgrade with `ws` (owner choice D1). Owns sockets, heartbeat and the clock; the hub does the rest.
  */
 import { createAdaptorServer } from "@hono/node-server";
-import type { IncomingMessage } from "node:http";
+import { IncomingMessage } from "node:http";
 import { isIP, type AddressInfo } from "node:net";
 import { resolve } from "node:path";
 import type { Duplex } from "node:stream";
@@ -11,7 +11,7 @@ import { WebSocketServer, type RawData, type WebSocket } from "ws";
 import { createAccountIo } from "../../server/account-io";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { createApp, DEVICE_COOKIE, type LegalIdentity } from "../../server/app";
-import { createCrypto } from "../../server/crypto/cipher";
+import { createCrypto, type Crypto as Cipher } from "../../server/crypto/cipher";
 import { cryptoKeysFromEnv, type CryptoEnv } from "../../server/crypto/keys";
 import { createHub, type Outgoing } from "../../server/hub";
 import { createBrevoMailer } from "../../server/mailer/brevo";
@@ -21,11 +21,15 @@ import { createUpgradeLimiter, UPGRADE_LIMITS, type UpgradeVerdict } from "../..
 import type { ConnectionLogStore, LegalVaultStore, Mailer } from "../../domain";
 import { CAPS } from "../../shared/protocol";
 import { createModerationIo } from "../../server/moderation-io";
-import { moderatorTokenDigest } from "../../server/moderator-token";
+import { createModeratorOps } from "../../server/hub-moderators";
+import { createGrantKey } from "../../server/moderator-grant";
+import { createModeratorIo } from "../../server/moderator-io";
+import { addModeratorRoutes, checkOwnerSecret } from "../../server/moderator-routes";
 import { createMemoryAccountStore, createMemoryVault } from "./memory-accounts";
 import { createMemoryModerationStore } from "./memory-moderation";
 import { createFileLog, createFileVault } from "./file-stores";
 import { createMemoryLog } from "./memory-log";
+import { createFileModeratorStore, createMemoryModeratorStore } from "./moderator-stores";
 import { createNodeRandom } from "./random";
 
 /** Where the Node transport listens and how often it runs its timers. */
@@ -34,8 +38,12 @@ export interface NodeServerOptions {
   readonly hostname: string;
   /** Exact `Origin` values allowed to open the WebSocket. */
   readonly allowedOrigins: readonly string[];
-  /** `ASV_MODERATOR_TOKEN`: interim owner access, refused with `behindTunnel` (BR-091). */
-  readonly moderatorToken?: string;
+  /** `ASV_OWNER_SECRET`: guards invitation and revocation; unset, those routes answer 404 (BR-093). */
+  readonly ownerSecret?: string;
+  /** `ASV_PUBLIC_ORIGIN`: WebAuthn origin and RP ID, start of invitation links (BR-098). */
+  readonly publicOrigin?: string;
+  /** `ASV_MODERATOR_FILE`: encrypted moderator store; memory when absent (BR-099). */
+  readonly moderatorFile?: string;
   /** Injected in tests; defaults to the wall clock. */
   readonly now?: () => Date;
   /** Milliseconds between hub ticks (away expiry, pruning); default 1000. */
@@ -122,6 +130,42 @@ const deviceCookie = (header: string | undefined): string | undefined => {
 // The default `binaryType` ("nodebuffer") delivers one Buffer; the other shapes are typed, never sent.
 const toText = (data: RawData): string => (Array.isArray(data) ? Buffer.concat(data) : Buffer.from(data as ArrayBuffer)).toString();
 
+/** BR-098: the Vite origin of development. */
+export const DEFAULT_PUBLIC_ORIGIN = "http://localhost:5173";
+
+/** The socket address of a `@hono/node-server` request (`c.env.incoming`). */
+const peerOf = (env: unknown): string | undefined => {
+  if (typeof env !== "object" || env === null || !("incoming" in env)) return undefined;
+  const { incoming } = env;
+  return incoming instanceof IncomingMessage ? incoming.socket.remoteAddress : undefined;
+};
+
+/** Brick 8b wiring and its start checks (BR-093, BR-098, BR-099). */
+const moderatorSetup = (options: NodeServerOptions, crypto: Cipher, behindTunnel: boolean) => {
+  const ownerSecret = checkOwnerSecret(options.ownerSecret);
+  const cryptoEnv = options.cryptoEnv ?? {};
+  // A moderator file written under keys of one process could never be read again (BR-099).
+  if (options.moderatorFile !== undefined && (!cryptoEnv.ASV_DATA_KEYS || !cryptoEnv.ASV_HMAC_KEY)) {
+    throw new Error("moderatorFile requires ASV_DATA_KEYS and ASV_HMAC_KEY (BR-099)");
+  }
+  const moderators = createModeratorOps(createModeratorIo({
+    store: options.moderatorFile === undefined ? createMemoryModeratorStore() : createFileModeratorStore(options.moderatorFile),
+    crypto,
+  }));
+  const publicOrigin = options.publicOrigin ?? DEFAULT_PUBLIC_ORIGIN;
+  // BR-098: a bare origin the browser routes accept, or every enrolment and sign-in fails without a trace.
+  // Fatal only when moderation is configured; a plain local run (QA of other journeys) just warns.
+  const url = URL.parse(publicOrigin);
+  // The RP ID must be a domain (`localhost` included), never an IP address (BR-098).
+  const hostname = url?.hostname.replace(/^\[|\]$/g, "") ?? "";
+  if (!behindTunnel && (url?.origin !== publicOrigin || isIP(hostname) !== 0 || !options.allowedOrigins.includes(publicOrigin))) {
+    const problem = `publicOrigin ${publicOrigin} must be a bare origin on a domain name, listed in allowedOrigins (BR-098)`;
+    if (ownerSecret !== undefined || options.moderatorFile !== undefined) throw new Error(problem);
+    console.warn(`${problem}; moderator passkeys will fail`);
+  }
+  return { ownerSecret, publicOrigin, moderators };
+};
+
 /** Starts the Node transport and resolves once it listens. */
 export const startNodeServer = async (options: NodeServerOptions): Promise<NodeServer> => {
   const { now = () => new Date(), tickMs = 1000, silenceMs = 60_000 } = options;
@@ -141,7 +185,8 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
   const accounts = createMemoryAccountStore();
   const vault = createMemoryVault();
   const moderation = createMemoryModerationStore();
-  const moderatorToken = await moderatorTokenDigest(options.moderatorToken, behindTunnel);
+  const { ownerSecret, publicOrigin, moderators } = moderatorSetup(options, crypto, behindTunnel);
+  const grantKey = await createGrantKey();
   const fileLog = options.logFile === undefined ? undefined : createFileLog(options.logFile, now());
   const fileVault = options.vaultFile === undefined ? undefined : createFileVault(options.vaultFile, now());
   const purgeFiles = () => {
@@ -151,6 +196,7 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
     } catch (error) {
       console.error("legal file purge failed", error);
     }
+    moderators.purge(now()).catch((error: unknown) => console.error("moderator store purge failed", error));
   };
   purgeFiles();
   const hubLog: ConnectionLogStore = fileLog ?? log;
@@ -173,7 +219,7 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
     mailer,
     onStoreError: (error) => console.error("account store failed", error),
     moderation: createModerationIo({ store: moderation, crypto }),
-    moderatorTokenDigest: moderatorToken,
+    grantKey,
     canReport: !behindTunnel,
   });
   const app = createApp({
@@ -186,6 +232,17 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
       signOutDevice: async (token) => deliver(await hub.signOutDevice(random.hashToken(token))),
     },
     legal: options.legal,
+  });
+  addModeratorRoutes(app, {
+    ops: moderators,
+    grantKey,
+    publicOrigin,
+    allowedOrigins: options.allowedOrigins,
+    ownerSecret,
+    behindTunnel,
+    peerAddress: (c) => peerOf(c.env),
+    now,
+    onError: (error) => console.error("moderator route failed", error),
   });
   if (options.staticRoot !== undefined) app.use("*", serveStatic({ root: options.staticRoot }));
   const server = createAdaptorServer({ fetch: app.fetch, hostname: options.hostname });

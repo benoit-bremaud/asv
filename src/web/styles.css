@@ -64,6 +64,8 @@ h2 { font-size: 15px; margin: 0 0 8px; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 
 .small { font-size: 13px; }
+/* `<output>` replaces `role="status"` paragraphs (Sonar S6819); it is inline by default. */
+output { display: block; margin: 0 0 var(--gap); }
 
 /* Header: orange band, logo in a red ring. */
 .header {
