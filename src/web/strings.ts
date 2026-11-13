@@ -1,4 +1,10 @@
 /** Every UI text, French first (ASV-NF-012). */
+/** "1 avertissement actif", "2 avertissements actifs". */
+const activeStrikes = (strikes: number): string => {
+  const plural = strikes > 1 ? "s" : "";
+  return `${strikes} avertissement${plural} actif${plural}`;
+};
+
 export const STRINGS = {
   tagline: "âge ? sexe ? ville ?",
   connected: (n: number) => `${n} connecté${n > 1 ? "s" : ""}`,
@@ -53,8 +59,11 @@ export const STRINGS = {
   queueLoading: "Chargement…",
   queueEmpty: "Aucun signalement ouvert.",
   queueBy: (author: string, date: string) => `par ${author}, le ${date}`,
-  queueTarget: (hasAccount: boolean, connected: boolean, strikes: number) =>
-    `${hasAccount ? "membre" : "invité"}, ${connected ? "connecté" : "absent ou parti"}${hasAccount ? `, ${strikes} avertissement${strikes > 1 ? "s" : ""} actif${strikes > 1 ? "s" : ""}` : ""}`,
+  queueTarget: (hasAccount: boolean, connected: boolean, strikes: number) => {
+    const who = hasAccount ? "membre" : "invité";
+    const where = connected ? "connecté" : "absent ou parti";
+    return hasAccount ? `${who}, ${where}, ${activeStrikes(strikes)}` : `${who}, ${where}`;
+  },
   queueContext: "contexte",
   noAction: "aucune suite",
   warn: "avertir",
@@ -66,8 +75,10 @@ export const STRINGS = {
   noSuspend: "ne pas suspendre",
   /** BR-008: the end of a ban or an expulsion, in the reader's time zone. */
   until: (iso: string) => ` Jusqu'au ${new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}.`,
-  warned: (strikes: number) =>
-    `Un modérateur t'a averti·e : respecte les règles du chat.${strikes > 0 ? ` ${strikes} avertissement${strikes > 1 ? "s" : ""} actif${strikes > 1 ? "s" : ""} sur ton compte.` : ""}`,
+  warned: (strikes: number) => {
+    const base = "Un modérateur t'a averti·e : respecte les règles du chat.";
+    return strikes > 0 ? `${base} ${activeStrikes(strikes)} sur ton compte.` : base;
+  },
   legal: { rules: "règles du chat", notice: "mentions légales", privacy: "confidentialité" },
   quit: "quitter",
   officialRooms: "Salons officiels",

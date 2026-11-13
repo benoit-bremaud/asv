@@ -27,7 +27,7 @@ export const createMemoryModerationStore = (): ModerationStore & {
         (ban) =>
           ban.until.getTime() > now.getTime() && (ban.ipKeyedHash === ipKeyedHash || ban.pseudoKeyedHash === pseudoKeyedHash),
       );
-      return Promise.resolve(matching.sort((a, b) => b.until.getTime() - a.until.getTime())[0]);
+      return Promise.resolve([...matching].sort((a, b) => b.until.getTime() - a.until.getTime())[0]);
     },
     purgeExpired(now) {
       const time = now.getTime();

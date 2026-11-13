@@ -11,7 +11,7 @@ export interface ModerationIoDeps {
 }
 
 /** A stored report decrypted, with its closing if any. */
-export type LoadedReport = Report & { readonly closed?: StoredReport["closed"]; readonly struckAt?: Date };
+export type LoadedReport = Report & Pick<StoredReport, "closed" | "struckAt">;
 
 const field = (id: string, name: string) => `report:${id}:${name}`;
 

@@ -376,6 +376,21 @@ const togglePrivate = (state: ChatState, conversationId: string): ChatState => {
   return { ...state, windows: { ...state.windows, [conversationId]: { ...window, minimised, unread: minimised ? window.unread : 0, focusRequest: minimised ? window.focusRequest : window.focusRequest + 1 } } };
 };
 
+type ModerationMessage = Extract<ServerMessage, { type: "reportSent" | "warned" | "openReports" | "reportClosed" | "suspensionProposed" }>;
+
+/** Brick 8a messages (web-ui/08): report notices and the moderator queue. */
+const onModeration = (state: ChatState, message: ModerationMessage): ChatState => {
+  if (message.type === "reportSent") return { ...state, notice: "reportSent", report: undefined };
+  if (message.type === "warned") return { ...state, notice: "warned", warning: { rule: message.payload.rule, activeStrikes: message.payload.activeStrikes } };
+  const { queue } = state;
+  if (!queue) return state;
+  if (message.type === "openReports") return { ...state, queue: { ...queue, loading: false, reports: message.payload.reports } };
+  if (message.type === "suspensionProposed") return { ...state, queue: { ...queue, proposal: message.payload } };
+  const { reportId } = message.payload;
+  const proposal = queue.proposal?.reportId === reportId ? undefined : queue.proposal;
+  return { ...state, queue: { ...queue, proposal, reports: queue.reports.filter((report) => report.id !== reportId) } };
+};
+
 const onServer = (state: ChatState, message: ServerMessage): ChatState => {
   switch (message.type) {
     case "entered":
@@ -398,19 +413,11 @@ const onServer = (state: ChatState, message: ServerMessage): ChatState => {
       // UC11: the session is gone; the entry screen names the end of the expulsion (BR-008).
       return { ...initialState, link: state.link, lastPseudo: state.me?.pseudo, noticeSeq: state.noticeSeq, entryError: "expelled", bannedUntil: message.payload.until };
     case "reportSent":
-      return { ...state, notice: "reportSent", report: undefined };
     case "warned":
-      return { ...state, notice: "warned", warning: { rule: message.payload.rule, activeStrikes: message.payload.activeStrikes } };
     case "openReports":
-      return state.queue ? { ...state, queue: { ...state.queue, loading: false, reports: message.payload.reports } } : state;
-    case "reportClosed": {
-      if (!state.queue) return state;
-      const { reportId } = message.payload;
-      const proposal = state.queue.proposal?.reportId === reportId ? undefined : state.queue.proposal;
-      return { ...state, queue: { ...state.queue, proposal, reports: state.queue.reports.filter((report) => report.id !== reportId) } };
-    }
+    case "reportClosed":
     case "suspensionProposed":
-      return state.queue ? { ...state, queue: { ...state.queue, proposal: message.payload } } : state;
+      return onModeration(state, message);
     case "resumed":
       return onResumed(state, message.payload);
     case "resumeRefused":

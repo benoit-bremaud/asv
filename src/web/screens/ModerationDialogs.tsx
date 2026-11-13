@@ -65,6 +65,10 @@ export const ReportDialog = () => {
   );
 };
 
+/** Context lines keyed by report and position: the list never reorders. */
+const contextLines = (report: { readonly id: string; readonly context: readonly string[] }) =>
+  report.context.map((line, position) => ({ key: `${report.id}-${position}`, line }));
+
 const QueueRow = ({ report }: { report: QueuedReport }) => {
   const { commands } = useChat();
   const date = new Date(report.createdAt).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
@@ -80,7 +84,7 @@ const QueueRow = ({ report }: { report: QueuedReport }) => {
       {report.context.length > 0 && (
         <details>
           <summary>{STRINGS.queueContext}</summary>
-          <ol className="small">{report.context.map((line, index) => <li key={index}>{line}</li>)}</ol>
+          <ol className="small">{contextLines(report).map(({ key, line }) => <li key={key}>{line}</li>)}</ol>
         </details>
       )}
       <p className="queue-actions">

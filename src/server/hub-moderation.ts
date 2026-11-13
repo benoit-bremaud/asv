@@ -171,7 +171,8 @@ export const createModerationHandlers = (ctx: ModerationContext) => {
       await deps.moderation.markStruck(report.id, now);
       await deps.accounts.saveAccount({ ...found.account, strikes: strike.strikes }, found.emailKeyedHash, false);
     }
-    const to = found ? sessionsOfAccount(ctx.state(), found.account.id).map((session) => session.id) : target ? [target.id] : [];
+    const guestTarget = target ? [target.id] : [];
+    const to = found ? sessionsOfAccount(ctx.state(), found.account.id).map((session) => session.id) : guestTarget;
     const warned = out.send(out.keysOf(to), "warned", { rule: report.reason, text: "", activeStrikes: strike?.active ?? 0 });
     if (strike?.proposeSuspension && found) {
       return [warned, out.send([caller.key], "suspensionProposed", { accountId: found.account.id, reportId: report.id, activeStrikes: strike.active })];
@@ -219,8 +220,11 @@ export const createModerationHandlers = (ctx: ModerationContext) => {
     const closed = await close(caller, report, "suspended", now);
     // Not awaited: the hub queue must not wait for the provider (ADR-0013 amendment).
     void trySend({ email: found.account.email, statement: suspensionStatement(until), giveUpAt: suspensionUntil(now) });
-    const evicted: Outgoing[] = [];
-    for (const session of sessionsOfAccount(ctx.state(), found.account.id)) evicted.push(...(await ctx.evict(session.id, until, now)));
+    // One evict after the other: each one changes the hub state the next one reads.
+    const evicted = await sessionsOfAccount(ctx.state(), found.account.id).reduce<Promise<Outgoing[]>>(
+      async (previous, session) => [...(await previous), ...(await ctx.evict(session.id, until, now))],
+      Promise.resolve([]),
+    );
     return [...evicted, closed];
   };
 
@@ -264,7 +268,7 @@ export const createModerationHandlers = (ctx: ModerationContext) => {
       const due = pending.filter((entry) => entry.giveUpAt.getTime() > now.getTime());
       pending = [];
       try {
-        for (const entry of due) await trySend(entry);
+        await Promise.all(due.map(trySend));
       } finally {
         retrying = false;
       }
