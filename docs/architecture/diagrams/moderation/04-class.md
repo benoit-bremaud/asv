@@ -103,8 +103,7 @@ classDiagram
     <<interface>>
     +saveInvitation(invitation)
     +findInvitation(tokenHash, now) Invitation
-    +consumeInvitation(tokenHash, now) Invitation
-    +saveModerator(moderator)
+    +enrollModerator(tokenHash, moderator, now) Boolean
     +findByCredential(id) Moderator
     +updateSignCount(id, count)
     +deleteModerator(name)
@@ -173,8 +172,9 @@ The contract stays `platform/04-class-protocol`. Brick 8a uses it as follows:
 
 - `ModeratorStore` gets two adapters on Node: in memory for tests, and an encrypted file
   (`ASV_MODERATOR_FILE`, BR-099). `findInvitation` reads an unexpired invitation without consuming it
-  (registration options); `consumeInvitation` deletes it when the moderator is saved; `deleteModerator`
-  also deletes that name's invitations (BR-094). `purgeExpiredInvitations` runs on the hub tick.
+  (registration options); `enrollModerator` deletes it and saves the moderator in one write, so a failed
+  write changes neither; `deleteModerator` also deletes that name's invitations (BR-094).
+  `purgeExpiredInvitations` runs with the daily purge of the legal files on the Node transport.
 - `ModeratorGrant` is not stored: it is built and checked by `moderator-grant.ts`.
 - `src/server/moderator-grant.ts` (BR-095) replaces `moderator-token.ts`. `enter.moderatorGrant` carries its serialised form.
 - The WebAuthn ceremonies sit in `src/server/moderator-routes.ts`, the only module importing

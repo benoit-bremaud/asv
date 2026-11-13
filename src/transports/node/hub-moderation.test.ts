@@ -94,7 +94,7 @@ const only = <T extends ServerMessage["type"]>(out: Outgoing[], type: T) => {
   return first.message;
 };
 
-describe("interim moderator access (UC16i, BR-091)", () => {
+describe("moderator grant at entry (UC16, BR-095, BR-096)", () => {
   it("enters the owner with moderator rights", async () => {
     const { owner } = await setup();
 
@@ -120,8 +120,10 @@ describe("interim moderator access (UC16i, BR-091)", () => {
       return only(await send(`${key}b`, "resume", { resumeToken: sessionResumeToken, profile: { gender: "unspecified", age: 30 } }), "resumed").payload;
     };
 
-    expect((await resume("9", moderator.resumeToken)).isModerator).toBe(true);
-    expect(await resume("1", chatter.resumeToken)).not.toHaveProperty("isModerator");
+    expect(await resume("9", moderator.resumeToken)).toMatchObject({ isModerator: true, moderatorName: "Marc" });
+    const resumed = await resume("1", chatter.resumeToken);
+    expect(resumed).not.toHaveProperty("isModerator");
+    expect(resumed).not.toHaveProperty("moderatorName");
     expect(only(await send("9b", "listOpenReports", {}), "openReports").payload.reports).toEqual([]);
   });
 

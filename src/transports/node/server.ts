@@ -169,6 +169,11 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
     store: options.moderatorFile === undefined ? createMemoryModeratorStore() : createFileModeratorStore(options.moderatorFile),
     crypto,
   }));
+  const publicOrigin = options.publicOrigin ?? DEFAULT_PUBLIC_ORIGIN;
+  // BR-098: a bare origin the browser routes accept, or every enrolment and sign-in fails without a trace.
+  if (!behindTunnel && (URL.parse(publicOrigin)?.origin !== publicOrigin || !options.allowedOrigins.includes(publicOrigin))) {
+    throw new Error(`publicOrigin ${publicOrigin} must be a bare origin listed in allowedOrigins (BR-098)`);
+  }
   const grantKey = await createGrantKey();
   const fileLog = options.logFile === undefined ? undefined : createFileLog(options.logFile, now());
   const fileVault = options.vaultFile === undefined ? undefined : createFileVault(options.vaultFile, now());
@@ -219,7 +224,7 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
   addModeratorRoutes(app, {
     ops: moderators,
     grantKey,
-    publicOrigin: options.publicOrigin ?? DEFAULT_PUBLIC_ORIGIN,
+    publicOrigin,
     allowedOrigins: options.allowedOrigins,
     ownerSecret,
     behindTunnel,

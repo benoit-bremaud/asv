@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync, 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { StoredInvitation, StoredModerator } from "../../domain";
+import type { ModeratorStore, StoredInvitation, StoredModerator } from "../../domain";
 import { createFileModeratorStore, createMemoryModeratorStore } from "./moderator-stores";
 
 const T0 = new Date("2026-11-13T10:00:00Z");
@@ -19,6 +19,12 @@ const moderator = (nameKeyedHash: string, credentialKeyedHash: string): StoredMo
   signCount: 0,
 });
 
+/** Enrols `moderator` through a fresh invitation, as `moderator-io` does. */
+const enrol = async (store: ModeratorStore, saved: StoredModerator) => {
+  await store.saveInvitation(invitation(`t-${saved.credentialKeyedHash}`, saved.nameKeyedHash, later(1000)));
+  return store.enrollModerator(`t-${saved.credentialKeyedHash}`, saved, T0);
+};
+
 describe("memory moderator store", () => {
   it("finds an unexpired invitation only", async () => {
     const store = createMemoryModeratorStore();
@@ -29,19 +35,35 @@ describe("memory moderator store", () => {
     expect(await store.findInvitation("zz", T0)).toBeUndefined();
   });
 
-  it("consumes an invitation once, and not an expired one", async () => {
+  it("enrols once per invitation, and not on an expired one", async () => {
     const store = createMemoryModeratorStore();
     await store.saveInvitation(invitation("t1", "n1", later(1000)));
     await store.saveInvitation(invitation("t2", "n2", later(10)));
 
-    expect(await store.consumeInvitation("t1", T0)).toBeDefined();
-    expect(await store.consumeInvitation("t1", T0)).toBeUndefined();
-    expect(await store.consumeInvitation("t2", later(10))).toBeUndefined();
+    expect(await store.enrollModerator("t1", moderator("n1", "c1"), T0)).toBe(true);
+    expect(await store.enrollModerator("t1", moderator("n1", "c9"), T0)).toBe(false);
+    expect(await store.enrollModerator("t2", moderator("n2", "c2"), later(10))).toBe(false);
+    expect(store.dump().moderators.map((m) => m.credentialKeyedHash)).toEqual(["c1"]);
+    expect(store.dump().invitations.map((i) => i.tokenHash)).toEqual(["t2"]);
+  });
+
+  it("keeps memory unchanged when the write fails, so the invitation still works", async () => {
+    let failing = true;
+    const store = createMemoryModeratorStore(undefined, () => { if (failing) throw new Error("ENOSPC"); });
+    failing = false;
+    await store.saveInvitation(invitation("t1", "n1", later(1000)));
+    failing = true;
+
+    await expect(store.enrollModerator("t1", moderator("n1", "c1"), T0)).rejects.toThrow("ENOSPC");
+
+    expect(store.dump()).toEqual({ moderators: [], invitations: [invitation("t1", "n1", later(1000))] });
+    failing = false;
+    expect(await store.enrollModerator("t1", moderator("n1", "c1"), T0)).toBe(true);
   });
 
   it("saves, finds by credential and updates the sign count", async () => {
     const store = createMemoryModeratorStore();
-    await store.saveModerator(moderator("n1", "c1"));
+    await enrol(store, moderator("n1", "c1"));
 
     await store.updateSignCount("c1", 5);
     await store.updateSignCount("missing", 8);
@@ -53,7 +75,7 @@ describe("memory moderator store", () => {
 
   it("deletes a moderator and the pending invitations of its name", async () => {
     const store = createMemoryModeratorStore();
-    await store.saveModerator(moderator("n1", "c1"));
+    await enrol(store, moderator("n1", "c1"));
     await store.saveInvitation(invitation("t1", "n1", later(1000)));
     await store.saveInvitation(invitation("t2", "n2", later(1000)));
 
@@ -111,7 +133,7 @@ describe("file moderator store", () => {
   it("persists moderators and invitations (dates restored) across a reload", async () => {
     const path = join(dir, "moderators.json");
     const first = createFileModeratorStore(path);
-    await first.saveModerator(moderator("n1", "c1"));
+    await enrol(first, moderator("n1", "c1"));
     await first.saveInvitation(invitation("t1", "n2", later(1000)));
 
     const second = createFileModeratorStore(path);
@@ -124,7 +146,7 @@ describe("file moderator store", () => {
   it("persists a sign count and a revocation", async () => {
     const path = join(dir, "moderators.json");
     const first = createFileModeratorStore(path);
-    await first.saveModerator(moderator("n1", "c1"));
+    await enrol(first, moderator("n1", "c1"));
     await first.updateSignCount("c1", 4);
     expect((await createFileModeratorStore(path).findByCredential("c1"))?.signCount).toBe(4);
 
@@ -137,7 +159,7 @@ describe("file moderator store", () => {
     const path = join(dir, "moderators.json");
     const store = createFileModeratorStore(path);
 
-    await store.saveModerator(moderator("n1", "c1"));
+    await enrol(store, moderator("n1", "c1"));
 
     expect(statSync(path).mode & 0o777).toBe(0o600);
     expect(existsSync(`${path}.tmp`)).toBe(false);

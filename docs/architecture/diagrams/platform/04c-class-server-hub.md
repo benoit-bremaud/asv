@@ -37,7 +37,6 @@ classDiagram
     +Mailer mailer
     +onStoreError(error) void
     +ModerationIo moderation
-    +ModeratorIo moderators
     +Bytes grantKey
     +Boolean canReport
   }
@@ -154,8 +153,8 @@ The hub is split by command group, all behind the same `createHub(HubDeps)`:
 | `src/server/outgoing.ts` | effect mapping: `sessionOf`, `toMember`, `send`, `error`, `warning`, `keysOf`, `roomJoined`, `roomOutgoing` (with the `roomList` broadcast), `memberAwayInRooms`, `memberBackInRooms` |
 | `src/server/hub-moderation.ts` | brick 8a commands (`report`, `listOpenReports`, `expel`, `closeReport`, `confirmSuspension`, `declineSuspension`), the 8c `notAvailable` handler and the statement retry of the tick |
 | `src/server/moderation-io.ts` | encryption at rest of reports and keyed hashes of bans around the `ModerationStore` port (ADR-0017) |
-| `src/server/moderator-grant.ts` | build and check of the passkey grant, used-nonce set (BR-095); replaces the 8a `moderator-token.ts` (BR-091) |
-| `src/server/hub-moderators.ts` | brick 8b hub operations: `createInvitation`, `startRegistration`, `challengeFor`, `saveModerator`, `startAuthentication`, `credentialAndChallenge`, `updateSignCount`, `revokeModerator`; the challenge map (5 min, single use, 200 at most, BR-096) |
+| `src/server/moderator-grant.ts` | build and check of the passkey grant (BR-095); replaces the 8a `moderator-token.ts` (BR-091); the used-nonce set lives in `hub.ts`, which runs entries one at a time |
+| `src/server/hub-moderators.ts` | brick 8b operations for the `/mod` routes: `createInvitation`, `keepChallenge`, `takeChallenge` (5 min, single use, bound to its purpose and invitation, 200 at most, BR-096), `purge`, and `io` (the `ModeratorIo`) |
 | `src/server/moderator-routes.ts` | Hono `/mod/*` routes and the SimpleWebAuthn ceremonies (`moderation/02f`), owner-secret guard (BR-093), 404 behind the tunnel (BR-097) |
 | `src/server/moderator-io.ts` | encryption at rest around the `ModeratorStore` port (BR-099) |
 | `src/server/hub-private.ts` | brick 6 commands (`sendPrivate`, `closePrivate`, `ignore`, `unignore`, `search`), contribution first for `sendPrivate`, and the private presence of `close`, away and resume |
@@ -298,8 +297,9 @@ classDiagram
 - `src/domain/ports.ts` declares only types (ports), so the dependency rule holds: `src/server` imports
   `src/domain` and `src/shared/protocol`, never a transport.
 
-- Brick 8b (#210): `moderators` wraps the `ModeratorStore` (file or memory, BR-099) and `grantKey` is
-  the random key drawn at start (BR-095); `moderatorTokenDigest` and `ASV_MODERATOR_TOKEN` are gone.
+- Brick 8b (#210): `grantKey` is the random key drawn at start (BR-095), shared by the hub and the `/mod`
+  routes; the transport builds the moderator operations (`hub-moderators.ts` over `moderator-io.ts` and the
+  `ModeratorStore`, file or memory, BR-099) and hands them to the routes only, not to `HubDeps`; `moderatorTokenDigest` and `ASV_MODERATOR_TOKEN` are gone.
   The entry checks the grant, then the entry rules, and consumes the nonce only on `entered`.
 - Brick 8a (#209): `moderation` is the encrypted moderation store, `moderatorTokenDigest` (removed in 8b) the digest
   of `ASV_MODERATOR_TOKEN` (absent: no grant), `canReport` false behind the tester tunnel. Moderation

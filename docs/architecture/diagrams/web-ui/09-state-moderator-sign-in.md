@@ -18,7 +18,7 @@ not cover the queue itself.
 stateDiagram-v2
   state EntrySignIn {
     [*] --> Plain
-    Plain --> Asking: "connexion modérateur" (shown when GET /mod/status is 200)
+    Plain --> Asking: "connexion modérateur" (shown when GET /mod/status answers {enabled: true})
     Asking --> Granted: grant received, notice "Clé acceptée : ‹nom›"
     Asking --> Plain: refused or cancelled, notice "clé refusée"
     Granted --> Plain: "annuler", or 60 s elapsed (notice "recommencez")
@@ -28,9 +28,11 @@ stateDiagram-v2
   }
   state Enrolment {
     [*] --> Ready: enrolment fragment read, address bar cleaned
+    [*] --> Refused: malformed token in the fragment, no request
     Ready --> Creating: "créer ma clé"
     Creating --> Done: enrolled, link back to the entry screen
     Creating --> Ready: device cancelled, notice
+    Creating --> Ready: network or verification failure, notice "réessayez"
     Creating --> Refused: invitation expired, used or unknown
   }
 ```

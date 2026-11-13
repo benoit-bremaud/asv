@@ -116,10 +116,11 @@ export interface ModeratorStore {
   saveInvitation(invitation: StoredInvitation): Promise<void>;
   /** The invitation if still valid at `now`, without consuming it. */
   findInvitation(tokenHash: string, now: Date): Promise<StoredInvitation | undefined>;
-  /** Deletes it and returns it if still valid at `now`. */
-  consumeInvitation(tokenHash: string, now: Date): Promise<StoredInvitation | undefined>;
-  /** Saves it, replacing any moderator with the same name hash (BR-094). */
-  saveModerator(moderator: StoredModerator): Promise<void>;
+  /**
+   * In one write: deletes the invitation and saves the moderator, replacing any with the same name hash
+   * (BR-094); false, with nothing changed, when the invitation is no longer valid at `now`.
+   */
+  enrollModerator(tokenHash: string, moderator: StoredModerator, now: Date): Promise<boolean>;
   findByCredential(credentialKeyedHash: string): Promise<StoredModerator | undefined>;
   updateSignCount(credentialKeyedHash: string, count: number): Promise<void>;
   /** Deletes the moderator and its pending invitations; false when nothing matched (BR-094). */

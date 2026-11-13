@@ -10,7 +10,7 @@ import { STRINGS } from "./strings";
 
 // The WebAuthn ceremony and its `/mod` calls are the boundary (`web-ui/09`).
 const passkey = vi.hoisted(() => ({
-  moderationEnabled: vi.fn(async () => true),
+  moderationAccess: vi.fn(async (): Promise<"off" | "noPasskey" | "on"> => "on"),
   signInModerator: vi.fn(),
   enrolModerator: vi.fn(),
   takeEnrolToken: vi.fn((): string | undefined => undefined),
@@ -114,19 +114,38 @@ describe("moderator sign-in on the entry screen (UC16, BR-095, BR-097)", () => {
     }
   });
 
-  it("says when the passkey is refused, and stays silent when cancelled", async () => {
-    passkey.signInModerator.mockResolvedValueOnce("refused").mockResolvedValueOnce("cancelled");
+  it.each(["refused", "cancelled"] as const)("says the key was refused when %s (web-ui/09 Asking → Plain)", async (result) => {
+    passkey.signInModerator.mockResolvedValueOnce(result);
     const user = await setup();
-    const link = screen.getByRole("button", { name: STRINGS.moderatorSignIn });
 
-    await user.click(link);
+    await user.click(screen.getByRole("button", { name: STRINGS.moderatorSignIn }));
+
     expect(screen.getByRole("alert").textContent).toBe(STRINGS.moderatorRefused);
-    await user.click(link);
-    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("shows a disabled link on a browser without passkeys", async () => {
+    passkey.moderationAccess.mockResolvedValueOnce("noPasskey");
+    await setup();
+
+    const link = screen.getByRole("button", { name: `${STRINGS.moderatorSignIn} (${STRINGS.noPasskey})` });
+    expect((link as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("drops a grant the server refused, so the next entry goes without it", async () => {
+    passkey.signInModerator.mockResolvedValueOnce({ grant: "g.mac", name: "Marc" });
+    const user = await setup();
+    await fillGuest(user);
+    await user.click(screen.getByRole("button", { name: STRINGS.moderatorSignIn }));
+
+    await msg("entryRefused", { reason: "notModerator" });
+    await user.click(screen.getByRole("button", { name: STRINGS.enter }));
+
+    expect(screen.getByRole("button", { name: STRINGS.moderatorSignIn })).toBeTruthy();
+    expect(connection.enter.mock.calls.at(-1)?.[0]).not.toHaveProperty("moderatorGrant");
   });
 
   it("hides the link where moderation is off (tunnel)", async () => {
-    passkey.moderationEnabled.mockResolvedValueOnce(false);
+    passkey.moderationAccess.mockResolvedValueOnce("off");
     await setup();
 
     expect(screen.queryByRole("button", { name: STRINGS.moderatorSignIn })).toBeNull();
@@ -138,6 +157,28 @@ describe("moderator sign-in on the entry screen (UC16, BR-095, BR-097)", () => {
     await msg("entryRefused", { reason: "notModerator" });
 
     expect(screen.getByRole("alert").textContent).toBe(STRINGS.entryRefused.notModerator);
+  });
+});
+
+describe("moderator name in the queue title (BR-055, BR-095)", () => {
+  it.each([
+    ["entered", "Marc", STRINGS.queueTitleOf("Marc")],
+    ["resumed", "Marc", STRINGS.queueTitleOf("Marc")],
+    ["entered", undefined, STRINGS.queueTitle],
+  ] as const)("titles the queue after %s with name %s", async (type, moderatorName, title) => {
+    const user = await setup();
+    await fire({ type: "entering", pseudo: "ana" });
+    const named = { isModerator: true, canReport: true, ...(moderatorName ? { moderatorName } : {}) };
+    if (type === "entered") {
+      await msg("entered", { sessionId: "me", resumeToken: "t", roomList: [{ id: "r1", name: "Paris", kind: "regional", count: 2 }], ...named });
+      await msg("roomJoined", { roomId: "r1", members: [bob] });
+    } else {
+      await msg("resumed", { sessionId: "me", pseudo: "ana", resumeToken: "t2", rooms: [{ roomId: "r1", members: [bob] }], windows: [], buffered: [], ...named });
+    }
+
+    await user.click(screen.getByRole("button", { name: STRINGS.queue }));
+
+    expect(screen.getByRole("dialog", { name: title })).toBeTruthy();
   });
 });
 

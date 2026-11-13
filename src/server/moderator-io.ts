@@ -56,19 +56,19 @@ export const createModeratorIo = ({ store, crypto }: ModeratorIoDeps) => {
     /** Consumes the invitation and saves the moderator under its name; false when the invitation is gone. */
     async enroll(token: string, credentialId: string, publicKey: string, signCount: number, now: Date): Promise<string | undefined> {
       const tokenHash = await invitationTokenHash(token);
-      const invitation = await store.consumeInvitation(tokenHash, now);
+      const invitation = await store.findInvitation(tokenHash, now);
       if (!invitation) return undefined;
       const name = await crypto.decrypt(invitation.name, `invitation:${tokenHash}`);
       const credentialKeyedHash = await credentialHash(credentialId);
-      await store.saveModerator({
+      const saved = await store.enrollModerator(tokenHash, {
         nameKeyedHash: invitation.nameKeyedHash,
         credentialKeyedHash,
         name: await crypto.encrypt(name, field(credentialKeyedHash, "name")),
         credentialId: await crypto.encrypt(credentialId, field(credentialKeyedHash, "credentialId")),
         publicKey: await crypto.encrypt(publicKey, field(credentialKeyedHash, "publicKey")),
         signCount,
-      });
-      return name;
+      }, now);
+      return saved ? name : undefined;
     },
     async byCredential(credentialId: string): Promise<Moderator | undefined> {
       const stored = await store.findByCredential(await credentialHash(credentialId));

@@ -18,7 +18,7 @@ export const runOwnerCommand = async (argv: readonly string[], env: NodeJS.Proce
     return `Invitation for ${name}, valid 24 h, single use: ${link}`;
   }
   const response = await fetchFn(`${base}/mod/moderators/${encodeURIComponent(name)}`, { method: "DELETE", headers });
-  if (response.status === 404) throw new Error(`no moderator named ${name}`);
+  if (response.status === 404) throw new Error(`no moderator named ${name}, or the /mod routes are off (ASV_OWNER_SECRET unset, tunnel mode)`);
   if (response.status !== 204) throw new Error(`revocation refused (HTTP ${response.status})`);
   return `Moderator ${name} revoked`;
 };

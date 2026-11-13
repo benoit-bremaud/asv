@@ -14,7 +14,7 @@ import type { Action } from "./store";
 import { STRINGS } from "./strings";
 
 // `/mod/status` and WebAuthn are covered in moderation.test.tsx; here the link is simply hidden.
-vi.mock("./moderator-passkey", () => ({ moderationEnabled: async () => false, takeEnrolToken: () => undefined }));
+vi.mock("./moderator-passkey", () => ({ moderationAccess: async () => "off", takeEnrolToken: () => undefined }));
 
 type Dispatch = (action: Action) => void;
 

@@ -60,7 +60,7 @@ export const urgency = z.enum(["unknown", "low", "medium", "high"]);
 /** Expulsion lengths a moderator may pick. */
 export const expelDuration = z.enum(["1h", "24h", "7d"]);
 /** Why an entry was refused; `banned` comes with `bannedUntil`. */
-/** `notModerator`: a moderator grant was sent but refused (BR-091). */
+/** `notModerator`: a moderator grant was sent but refused (BR-095, BR-096). */
 export const entryRefusal = z.enum(["rate", "banned", "pseudoInvalid", "pseudoTaken", "age", "notModerator"]);
 /**
  * Codes of the `error` message; `offline` means the private message target is gone,

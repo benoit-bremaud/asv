@@ -2,7 +2,8 @@ import { useEffect, useState, type MouseEvent, type SubmitEvent } from "react";
 import { gender as genderSchema, type entryRefusal, type Gender } from "../../shared/protocol";
 import { hasForbiddenChar } from "../../domain/text";
 import { useChat } from "../chat-context";
-import { moderationEnabled, signInModerator } from "../moderator-passkey";
+import { MODERATOR_LIMITS } from "../../domain/moderators";
+import { moderationAccess, signInModerator, type ModerationAccess } from "../moderator-passkey";
 import { STRINGS } from "../strings";
 import { Header } from "./Header";
 import { LegalPage, type LegalTopic } from "./LegalPage";
@@ -17,8 +18,6 @@ const MISSING_ID = "entry-missing";
 const PSEUDO_REFUSALS: ReadonlySet<string | undefined> = new Set<(typeof entryRefusal.options)[number]>(["pseudoTaken", "pseudoInvalid"]);
 /** Refresh interval (ms) of the connected count on the entry screen (D8). */
 export const STATS_MS = 30_000;
-/** Lifetime (ms) of a moderator grant on the client, as on the server (BR-095). */
-const MODERATOR_GRANT_MS = 60_000;
 
 /** Connected count from `GET /api/stats`, hidden when the request fails (D8). */
 const useConnectedCount = (): number | undefined => {
@@ -47,21 +46,27 @@ const useConnectedCount = (): number | undefined => {
   return count;
 };
 
-/** UC1 entry screen from the validated mockup (design pack, `web-ui/04`). */
 /** `web-ui/09`: the moderator sign-in link, shown only where `/mod` answers (BR-097); the grant expires in 60 s (BR-095). */
-const useModeratorSignIn = () => {
-  const [enabled, setEnabled] = useState(false);
+const useModeratorSignIn = (entryError: string | undefined) => {
+  const [access, setAccess] = useState<ModerationAccess>("off");
   const [asking, setAsking] = useState(false);
   const [grant, setGrant] = useState<{ readonly grant: string; readonly name: string }>();
   const [notice, setNotice] = useState<string>();
   useEffect(() => {
     let live = true;
-    void moderationEnabled().then((on) => live && setEnabled(on));
+    void moderationAccess().then((value) => live && setAccess(value));
     return () => { live = false; };
   }, []);
+  // `web-ui/09` Granted → Plain: a refused grant is never sent again (each retry would count for BR-096).
+  // Adjusted during render when the refusal arrives, as React advises instead of an effect.
+  const [seenError, setSeenError] = useState(entryError);
+  if (entryError !== seenError) {
+    setSeenError(entryError);
+    if (entryError === "notModerator") setGrant(undefined);
+  }
   useEffect(() => {
     if (!grant) return;
-    const timer = setTimeout(() => { setGrant(undefined); setNotice(STRINGS.moderatorExpired); }, MODERATOR_GRANT_MS);
+    const timer = setTimeout(() => { setGrant(undefined); setNotice(STRINGS.moderatorExpired); }, MODERATOR_LIMITS.grantTtlMs);
     return () => clearTimeout(timer);
   }, [grant]);
   const signIn = async () => {
@@ -70,12 +75,13 @@ const useModeratorSignIn = () => {
     const result = await signInModerator();
     setAsking(false);
     if (typeof result === "object") { setGrant(result); setNotice(STRINGS.moderatorAccepted(result.name)); }
-    else if (result === "refused") setNotice(STRINGS.moderatorRefused);
+    else setNotice(STRINGS.moderatorRefused);
   };
   const cancel = () => { setGrant(undefined); setNotice(undefined); };
-  return { enabled, asking, grant, notice, signIn, cancel };
+  return { access, asking, grant, notice, signIn, cancel };
 };
 
+/** UC1 entry screen from the validated mockup (design pack, `web-ui/04`). */
 export const EntryScreen = () => {
   const { state, commands } = useChat();
   const connected = useConnectedCount();
@@ -95,7 +101,7 @@ export const EntryScreen = () => {
   const [remember, setRemember] = useState(true);
   const [hint, setHint] = useState(false);
   // `web-ui/09`: the passkey grant lives in this state only, never saved (BR-095).
-  const moderator = useModeratorSignIn();
+  const moderator = useModeratorSignIn(state.entryError);
   // BR-090, checked on the trimmed city as the server does.
   const cityInvisible = hasForbiddenChar(city.trim());
   const pseudoRefused = PSEUDO_REFUSALS.has(state.entryError) && pseudo.trim().normalize("NFC") === state.refusedPseudo;
@@ -197,7 +203,8 @@ export const EntryScreen = () => {
         </form>
       </main>
       <footer className="footer">
-        {moderator.enabled && (moderator.grant
+        {moderator.access === "noPasskey" && <button type="button" className="link" disabled>{STRINGS.moderatorSignIn} ({STRINGS.noPasskey})</button>}
+        {moderator.access === "on" && (moderator.grant
           ? <button type="button" className="link" onClick={moderator.cancel}>{STRINGS.moderatorCancel}</button>
           : <button type="button" className="link" disabled={moderator.asking} onClick={() => void moderator.signIn()}>{STRINGS.moderatorSignIn}</button>)}
         {LEGAL_TOPICS.map((topic) => (

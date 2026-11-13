@@ -6,12 +6,20 @@ import { browserSupportsWebAuthn, startAuthentication, startRegistration } from 
 
 const JSON_POST = { method: "POST", headers: { "Content-Type": "application/json" } } as const;
 
-/** BR-097: the routes answer 404 behind the tester tunnel, so the link stays hidden there. */
-export const moderationEnabled = async (): Promise<boolean> => {
+export type ModerationAccess = "off" | "noPasskey" | "on";
+
+/**
+ * BR-097: the routes answer 404 behind the tester tunnel, so the link stays hidden there; only the JSON
+ * `{enabled: true}` counts, never an HTML fallback. Without WebAuthn the link shows disabled (`web-ui/09`).
+ */
+export const moderationAccess = async (): Promise<ModerationAccess> => {
   try {
-    return (await fetch("/mod/status")).ok && browserSupportsWebAuthn();
+    const response = await fetch("/mod/status");
+    const body: unknown = response.ok ? await response.json() : undefined;
+    if (typeof body !== "object" || body === null || !("enabled" in body) || body.enabled !== true) return "off";
+    return browserSupportsWebAuthn() ? "on" : "noPasskey";
   } catch {
-    return false;
+    return "off";
   }
 };
 

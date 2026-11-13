@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { enrolModerator, moderationEnabled, signInModerator, takeEnrolToken } from "./moderator-passkey";
+import { enrolModerator, moderationAccess, signInModerator, takeEnrolToken } from "./moderator-passkey";
 
 // WebAuthn on the device and the `/mod` routes are the boundary.
 const webauthn = vi.hoisted(() => ({
@@ -23,22 +23,24 @@ afterEach(() => {
   webauthn.browserSupportsWebAuthn.mockReturnValue(true);
 });
 
-describe("moderationEnabled (BR-097)", () => {
+describe("moderationAccess (BR-097, web-ui/09)", () => {
   it.each([
-    [200, true, true],
-    [404, true, false],
-    [200, false, false],
-  ])("status %i with WebAuthn %s gives %s", async (status, supported, expected) => {
-    fetchStub.mockResolvedValueOnce(reply(status));
+    [reply(200, { enabled: true }), true, "on"],
+    [reply(200, { enabled: true }), false, "noPasskey"],
+    [reply(404), true, "off"],
+    [reply(200, { enabled: "yes" }), true, "off"],
+    [new Response("<!doctype html>", { status: 200, headers: { "Content-Type": "text/html" } }), true, "off"],
+  ])("answer %# gives %s", async (response, supported, expected) => {
+    fetchStub.mockResolvedValueOnce(response);
     webauthn.browserSupportsWebAuthn.mockReturnValue(supported);
 
-    expect(await moderationEnabled()).toBe(expected);
+    expect(await moderationAccess()).toBe(expected);
   });
 
   it("is off when the network fails", async () => {
     fetchStub.mockRejectedValueOnce(new TypeError("offline"));
 
-    expect(await moderationEnabled()).toBe(false);
+    expect(await moderationAccess()).toBe("off");
   });
 });
 
