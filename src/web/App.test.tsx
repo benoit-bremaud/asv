@@ -748,8 +748,10 @@ describe("banners", () => {
       dismiss.focus();
       await fire({ type: "notice", code: "flood" });
       expect(document.activeElement).toBe(dismiss);
+      await act(async () => vi.advanceTimersByTime(NOTICE_MS * 2));
+      expect(screen.getByRole("alert")).toBeTruthy();
 
-      dismiss.blur();
+      await act(async () => dismiss.blur());
       await act(async () => vi.advanceTimersByTime(NOTICE_MS));
       expect(screen.queryByRole("alert")).toBeNull();
     } finally {
