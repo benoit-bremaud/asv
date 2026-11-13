@@ -1,4 +1,6 @@
-# Sequence diagram — moderation — interim moderator access (brick 8a)
+# Sequence diagram — moderation — interim moderator access (brick 8a, superseded)
+
+> Superseded by `02f` in brick 8b (#210): kept as the record of brick 8a.
 
 > **Feature**: moderation (brick 8a, issue #209)
 > **Use cases**: UC16i (interim, replaced by UC16 in brick 8b)

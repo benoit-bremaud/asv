@@ -37,7 +37,8 @@ classDiagram
     +Mailer mailer
     +onStoreError(error) void
     +ModerationIo moderation
-    +Bytes moderatorTokenDigest?
+    +ModeratorIo moderators
+    +Bytes grantKey
     +Boolean canReport
   }
   class ConnectionLogStore {
@@ -125,9 +126,13 @@ classDiagram
     +Boolean secureCookie
     +String staticRoot optional
     +LegalIdentity legal optional
+    +String moderatorFile optional
+    +String ownerSecret optional
+    +String publicOrigin
   }
   NodeServerOptions ..> FileConnectionLog : logFile set
   NodeServerOptions ..> MemoryConnectionLog : logFile absent
+  NodeServerOptions ..> FileModeratorStore : moderatorFile set, BR-099
 ```
 
 ## Notes
@@ -149,7 +154,10 @@ The hub is split by command group, all behind the same `createHub(HubDeps)`:
 | `src/server/outgoing.ts` | effect mapping: `sessionOf`, `toMember`, `send`, `error`, `warning`, `keysOf`, `roomJoined`, `roomOutgoing` (with the `roomList` broadcast), `memberAwayInRooms`, `memberBackInRooms` |
 | `src/server/hub-moderation.ts` | brick 8a commands (`report`, `listOpenReports`, `expel`, `closeReport`, `confirmSuspension`, `declineSuspension`), the 8c `notAvailable` handler and the statement retry of the tick |
 | `src/server/moderation-io.ts` | encryption at rest of reports and keyed hashes of bans around the `ModerationStore` port (ADR-0017) |
-| `src/server/moderator-token.ts` | digest and constant-time check of the interim moderator token (BR-091) |
+| `src/server/moderator-grant.ts` | build and check of the passkey grant, used-nonce set (BR-095); replaces the 8a `moderator-token.ts` (BR-091) |
+| `src/server/hub-moderators.ts` | brick 8b hub operations: `createInvitation`, `startRegistration`, `challengeFor`, `saveModerator`, `startAuthentication`, `credentialAndChallenge`, `updateSignCount`, `revokeModerator`; the challenge map (5 min, single use, 200 at most, BR-096) |
+| `src/server/moderator-routes.ts` | Hono `/mod/*` routes and the SimpleWebAuthn ceremonies (`moderation/02f`), owner-secret guard (BR-093), 404 behind the tunnel (BR-097) |
+| `src/server/moderator-io.ts` | encryption at rest around the `ModeratorStore` port (BR-099) |
 | `src/server/hub-private.ts` | brick 6 commands (`sendPrivate`, `closePrivate`, `ignore`, `unignore`, `search`), contribution first for `sendPrivate`, and the private presence of `close`, away and resume |
 | `src/server/hub-accounts.ts` | account commands (`requestCode`, `verifyCode`, `signOutEverywhere`, `deleteAccount`) and their `warning unavailable` guard (`platform/04d`) |
 
@@ -221,7 +229,7 @@ classDiagram
 - **Moderation commands** (brick 8a): a chatter gets `error forbidden`; `report` answers `error invalid` with message `notAvailable` when `canReport` is false; the 8c commands always answer `notAvailable`.
 - **enter** (`entry/02a`): `activeBan` comes from `moderation.activeBan` (brick 8a), `accountId` from the device cookie (brick 5). On `entered` the hub
   draws a connection id (`random.id()`), awaits `log.open`, stores session id and connection id on the
-  socket, then sends `entered { sessionId, resumeToken, roomList, isModerator, canReport }`. If `log.open`
+  socket, then sends `entered { sessionId, resumeToken, roomList, isModerator, moderatorName?, canReport }`. If `log.open`
   fails, the new state is dropped (the pseudo stays free) and the sender gets `error logUnavailable`; a
   failed resume likewise leaves the session away.
 - **resume** (`entry/02b`): the hub hashes the token with `hashToken` and passes `accountStillExists: true`
@@ -290,7 +298,10 @@ classDiagram
 - `src/domain/ports.ts` declares only types (ports), so the dependency rule holds: `src/server` imports
   `src/domain` and `src/shared/protocol`, never a transport.
 
-- Brick 8a (#209): `moderation` is the encrypted moderation store, `moderatorTokenDigest` the digest
+- Brick 8b (#210): `moderators` wraps the `ModeratorStore` (file or memory, BR-099) and `grantKey` is
+  the random key drawn at start (BR-095); `moderatorTokenDigest` and `ASV_MODERATOR_TOKEN` are gone.
+  The entry checks the grant, then the entry rules, and consumes the nonce only on `entered`.
+- Brick 8a (#209): `moderation` is the encrypted moderation store, `moderatorTokenDigest` (removed in 8b) the digest
   of `ASV_MODERATOR_TOKEN` (absent: no grant), `canReport` false behind the tester tunnel. Moderation
   commands live in `hub-moderation.ts`: `error(forbidden)` for a non-moderator comes before any other
   check, `error(invalid, notAvailable)` for the 8c commands. The entry checks `activeBan` before the

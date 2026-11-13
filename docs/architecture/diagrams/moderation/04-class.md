@@ -87,7 +87,6 @@ classDiagram
     +String tokenHash
     +String moderatorName
     +Date expiresAt
-    +Boolean used
   }
   class ModerationStore {
     <<interface>>
@@ -103,11 +102,19 @@ classDiagram
   class ModeratorStore {
     <<interface>>
     +saveInvitation(invitation)
+    +findInvitation(tokenHash, now) Invitation
     +consumeInvitation(tokenHash, now) Invitation
     +saveModerator(moderator)
     +findByCredential(id) Moderator
     +updateSignCount(id, count)
     +deleteModerator(name)
+    +purgeExpiredInvitations(now)
+  }
+  class ModeratorGrant {
+    +String name
+    +Date expiresAt
+    +String nonce
+    +String mac
   }
   class ReportTriage {
     <<interface>>
@@ -139,7 +146,7 @@ classDiagram
 
 The contract stays `platform/04-class-protocol`. Brick 8a uses it as follows:
 
-- `enter.moderatorGrant` carries the interim token (BR-091); brick 8b puts the passkey grant there.
+- `enter.moderatorGrant` carries the interim token (BR-091); brick 8b puts the passkey grant there (BR-095).
 - `report` → `reportSent`; `listOpenReports` → `openReports`, each report adding `hasAccount`,
   `connected` and `activeStrikes` of its captured target.
 - `expel` takes `reportId` and `duration`: it acts on the report's captured target (keyed IP hash,
@@ -160,4 +167,15 @@ The contract stays `platform/04-class-protocol`. Brick 8a uses it as follows:
 - Excerpt, context and pseudos of a report are encrypted at rest (ADR-0017). A ban keeps only keyed
   hashes (HMAC) of the IP and of the folded pseudo, so the entry check compares hashes and never
   decrypts.
-- `resumed.isModerator` carries the rights back to a moderator session after a resume (BR-091).
+- `resumed.isModerator` carries the rights back to a moderator session after a resume (BR-095 since brick 8b).
+
+## Brick 8b (#210)
+
+- `ModeratorStore` gets two adapters on Node: in memory for tests, and an encrypted file
+  (`ASV_MODERATOR_FILE`, BR-099). `findInvitation` reads an unexpired invitation without consuming it
+  (registration options); `consumeInvitation` deletes it when the moderator is saved; `deleteModerator`
+  also deletes that name's invitations (BR-094). `purgeExpiredInvitations` runs on the hub tick.
+- `ModeratorGrant` is not stored: it is built and checked by `moderator-grant.ts`.
+- `src/server/moderator-grant.ts` (BR-095) replaces `moderator-token.ts`. `enter.moderatorGrant` carries its serialised form.
+- The WebAuthn ceremonies sit in `src/server/moderator-routes.ts`, the only module importing
+  `@simplewebauthn/server`; the web client uses `@simplewebauthn/browser`.

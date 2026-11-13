@@ -2,7 +2,7 @@
 
 > **Feature**: moderation (roadmap brick 8)
 > **Requirements**: ASV-F-011 to F-013, F-015, F-016, F-019, F-022, F-023
-> **Business rules**: BR-050 to BR-057, BR-074 to BR-078
+> **Business rules**: BR-050 to BR-057, BR-074 to BR-078, BR-091 to BR-099
 > **Related ADRs**: ADR-0004, ADR-0005, ADR-0008, ADR-0010, ADR-0012
 
 ## Context
@@ -77,25 +77,30 @@ flowchart LR
 - Variant: remove a user room → its members get `roomClosed`.
 - Closing the related report is a separate `closeReport` command.
 
-**UC14 — Invite a moderator** (planned)
+**UC14 — Invite a moderator** (brick 8b)
 - Primary actor: Owner. Main scenario: 1. Owner runs the invitation script with a moderator name and
   the owner secret. 2. System stores a hashed single-use invitation valid 24 hours (BR-056) and prints
   the link. 3. Owner sends the link by a channel of their choice.
+- Extensions: 1a. Wrong or unset owner secret, non-loopback peer, or tunnel on → refused (BR-093, BR-097).
+  1b. Name outside BR-094 → refused.
 
-**UC15 — Enroll as moderator** (planned)
+**UC15 — Enroll as moderator** (brick 8b)
 - Main scenario: 1. Invited person opens the link. 2. System starts a passkey registration. 3. The
   device creates a passkey after its usual unlock (PIN, pattern or biometrics, no biometric data
   reaches asv). 4. System stores name, credential id and public key, and consumes the invitation.
-- Extensions: 1a. Invitation expired or used → refused.
+- Extensions: 1a. Invitation expired, used or revoked → refused. 3a. Device cancelled → back to step 2.
+  4a. The name already has a credential → the new one replaces it (lost device, BR-094).
 
-**UC16 — Sign in as moderator** (planned)
+**UC16 — Sign in as moderator** (brick 8b)
 - Primary actor: Moderator, an enrolled person not yet in the chat.
 - Main scenario: 1. Moderator picks "Moderator sign-in" on the entry screen. 2. System starts a passkey
   authentication. 3. The device signs the challenge. 4. System verifies it and returns a moderator
   grant. 5. The moderator completes the entry form (UC1) and enters with moderator rights.
-- Extensions: 4a. Unknown or revoked credential → refused.
+- Extensions: 4a. Unknown or revoked credential, failed user verification or counter replay → refused.
+  5a. Grant expired or replayed → `entryRefused(notModerator)`. 5b. Entry refused by an entry rule → the
+  grant stays usable until it expires (BR-095).
 
-**UC16i — Sign in as moderator, interim** (brick 8a, removed by 8b)
+**UC16i — Sign in as moderator, interim** (brick 8a, removed by 8b, #210)
 - Primary actor: Owner. Main scenario: 1. Owner opens "modération" on the entry form and types the
   server token. 2. System checks it (BR-091) and enters the owner with moderator rights. Sequence 02e.
 - Extensions: 2a. No token configured, tunnel on, or mismatch → refused (`entryRefused`), no session.
@@ -109,6 +114,12 @@ flowchart LR
 - Behind the tester tunnel the server sends `canReport = false`, refuses `report` and refuses the
   moderator token at start (BR-091), so UC9 to UC12 stay closed to testers.
 - Brick 8a is not exposed to testers before 8c: the impact assessment comes first (`security-and-rgpd.md`).
+
+## Brick 8b scope (#210, 2026-11-13)
+
+- In: UC14 (script + loopback route, BR-093), UC15 (enrolment page), UC16 (passkey sign-in, grant BR-095),
+  revocation script, on the Node transport (`02f`, `web-ui/09`). UC16i and BR-091 are removed.
+- Still closed behind the tester tunnel (BR-097).
 
 ## Notes
 
