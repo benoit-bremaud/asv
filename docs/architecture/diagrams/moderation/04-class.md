@@ -28,6 +28,7 @@ classDiagram
     +Date createdAt
     +ReportStatus status
     +Triage triage
+    +String triageLabels «encrypted»
     +ReportOutcome outcome
     +String handledBy
     +Date handledAt
@@ -77,13 +78,37 @@ classDiagram
     none
   }
   class AuthorityAlert {
-    +String offenceCategory
+    +OffenceCategory offenceCategory
     +String raisedBy
     +Date raisedAt
+    +Date notifiedAt
     +AlertStatus status
-    +String channel
+    +AlertChannel channel
     +String reference
     +Date filedAt
+  }
+  class OffenceCategory {
+    <<enumeration>>
+    childAbuse
+    threatToLife
+    terrorism
+    hateOrViolence
+    harassment
+    otherListed
+  }
+  class AlertChannel {
+    <<enumeration>>
+    PHAROS
+    17
+    112
+    PointDeContact
+  }
+  class PendingDecisionMail {
+    +String id
+    +ReportId reportId
+    +String email «encrypted»
+    +String text «encrypted»
+    +Date createdAt
   }
   class AlertStatus {
     <<enumeration>>
@@ -117,14 +142,19 @@ classDiagram
   class ModerationStore {
     <<interface>>
     +saveReport(report)
-    +saveTriage(reportId, triage)
+    +saveTriage(reportId, triage, labels)
     +openReports() Report[]
+    +alertedReports() Report[]
     +closeReport(id, outcome, by, at)
     +markStruck(id, at)
     +saveBan(ban)
     +activeBan(ipKeyedHash, pseudo, now) Ban
-    +saveAuthorityAlert(reportId, alert)
-    +recordFiling(reportId, channel, reference, at) Boolean
+    +saveAuthorityAlert(reportId, alert) Boolean
+    +markAlertNotified(reportId, at)
+    +recordFiling(reportId, channel, reference, at) FilingResult
+    +savePendingDecisionMail(mail)
+    +pendingDecisionMails() PendingDecisionMail[]
+    +deletePendingDecisionMail(id)
     +purgeExpired(now)
   }
   class ModeratorStore {
@@ -145,7 +175,7 @@ classDiagram
   }
   class ReportTriage {
     <<interface>>
-    +triage(input) Triage
+    +triage(input) Triage | unavailable
   }
   Report --> ReportReason
   Report --> ReportTarget
@@ -154,10 +184,13 @@ classDiagram
   Report *-- Triage
   Triage --> Urgency
   Triage --> TriageCategory
-  Report *-- AuthorityAlert
+  Report "1" *-- "0..1" AuthorityAlert
   AuthorityAlert --> AlertStatus
+  AuthorityAlert --> OffenceCategory
+  AuthorityAlert --> AlertChannel
   ModerationStore ..> Report
   ModerationStore ..> Ban
+  ModerationStore ..> PendingDecisionMail
   ModeratorStore ..> Moderator
   ModeratorStore ..> Invitation
 ```
@@ -192,7 +225,8 @@ The contract stays `platform/04-class-protocol`. Brick 8a uses it as follows:
 - `entered` and `resumed` carry `canReport`: false behind the tester tunnel, where `report` answers
   `error(invalid, notAvailable)` and the client hides every report entry point (`01-use-case`).
 - `warn` (chat warning without a report), `removeRoom`, `expel.severe` and the outcomes `severeDeleted`
-  and `roomRemoved` answer `error(invalid, notAvailable)` until brick 8c (BR-092).
+  and `roomRemoved` answered `error(invalid, notAvailable)` in brick 8a (BR-092, removed); brick 8c
+  opens all but `warn`.
 - Every moderation command from a session without `isModerator` gets `error(forbidden)` (BR-054).
 - Excerpt, context and pseudos of a report are encrypted at rest (ADR-0017). A ban keeps only keyed
   hashes (HMAC) of the IP and of the folded pseudo, so the entry check compares hashes and never
@@ -215,10 +249,22 @@ The contract stays `platform/04-class-protocol`. Brick 8a uses it as follows:
 
 - `ReportTriage.triage` takes `{reason, targetKind, lines}` already pseudonymised by the domain (BR-100)
   and resolves a `Triage` or `unavailable`; adapters: no-AI (unchanged) and Mistral (ADR-0019, BR-101).
-- `saveTriage` ignores a closed report. `purgeExpired` keeps a report with an alert 1 year (BR-105).
-- `Mailer` gains `sendAuthorityAlert(reportId, category)` and `sendReportDecision(email, decision)`,
-  both resolving `true` only when the provider accepted the mail, retried like BR-076.
-- Protocol: `expel` gains `severe` and `alertAuthorities`; `closeReport` gains `alertAuthorities`;
-  `removeRoom(reportId)` answers `reportClosed` or `warning(reportInvalid)`; `openReports` items gain
-  `triage` and `alert`. Outcomes `severeDeleted` and `roomRemoved` become available.
+- `saveTriage` ignores a closed report and stores the label map (`[A]` → pseudo) encrypted with the
+  triage (BR-100). `purgeExpired` keeps a report with an alert 1 year (BR-061, BR-105).
+- `alertedReports` lists closed reports whose alert is `pending` or `filed`, until purge; `openReports`
+  lists open reports only.
+- `saveAuthorityAlert` is idempotent: one alert per report, a second call returns `false` and changes
+  nothing. `markAlertNotified` sets `notifiedAt` once the owner alert is accepted; until then the hub
+  tick retries it (BR-104). `recordFiling` returns `filed`, `alreadyFiled` (409) or `noAlert` (404).
+- `PendingDecisionMail` mirrors `PendingStatement` (`accounts/04`): kept until the mailer accepts the
+  decision e-mail, 7 days max (BR-107).
+- `OffenceCategory` matches the rows of `security-and-rgpd.md` §6 and is always the moderator's choice,
+  never copied from `TriageCategory` (ADR-0010).
+- `Mailer` gains `sendAuthorityAlert(reportId, category)` and `sendReportDecision(email, decision)`
+  (`accounts/04`), both resolving `true` only when the provider accepted the mail, retried like BR-076.
+- Protocol: `expel` gains `severe` and `alertAuthorities?: OffenceCategory`; `closeReport`, `removeRoom`
+  and `confirmSuspension` gain `alertAuthorities?`; `removeRoom(reportId)` answers `reportClosed` or
+  `warning(reportInvalid)`; `openReports` items gain `triage` (with the label legend) and `alert`;
+  `listAlertedReports` answers `alertedReports`. Outcomes `severeDeleted` and `roomRemoved` become
+  available.
 - Owner route `POST /mod/authority-filings` (BR-093 guard, BR-097) and script `pnpm mod:filed`.

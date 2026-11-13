@@ -51,4 +51,4 @@ flowchart LR
   encrypted at rest (ADR-0017) in an in-memory store of the Node transport, lost at restart until a
   file or database store lands (8b).
 - Brick 8c (#211): the AI flow goes live with Mistral (ADR-0019); impact assessment
-  `dpia/2026-11-13-moderation-dpia.md`.
+  `specs/moderation-dpia.md`.

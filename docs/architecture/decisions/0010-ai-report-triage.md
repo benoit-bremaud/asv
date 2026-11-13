@@ -63,4 +63,4 @@ The decision stands. See `security-and-rgpd.md` §1.
 
 ## Provider (brick 8c, 2026-11-13)
 
-Mistral, EU-hosted, chosen in ADR-0019. Impact assessment: `dpia/2026-11-13-moderation-dpia.md`.
+Mistral, EU-hosted, chosen in ADR-0019. Impact assessment: `specs/moderation-dpia.md`.

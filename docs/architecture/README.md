@@ -75,7 +75,7 @@ Component level per feature lives in the studies below.
 | Accounts | UC17, UC18, UC19 | [accounts](diagrams/accounts/) |
 | Private conversations | UC6, UC8 | [private-conversations](diagrams/private-conversations/) |
 | Directory | UC7 | [directory](diagrams/directory/) |
-| Moderation | UC9, UC11, UC12, UC14, UC15, UC16 | [moderation](diagrams/moderation/) |
+| Moderation | UC9, UC11, UC12, UC14, UC15, UC16, UC20 | [moderation](diagrams/moderation/) |
 | Web UI | screens and navigation | [web-ui](diagrams/web-ui/) |
 | Platform | hub, protocol, deployment | [platform](diagrams/platform/) |
 

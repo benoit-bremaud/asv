@@ -56,4 +56,6 @@ flowchart TB
   `secureCookie` on, so it sets the `Secure` cookie and HSTS (BR-073, BR-086).
   Mail goes from the Node process to Brevo with `BREVO_API_KEY` from the shell environment.
 - Exit door: the Node process can be containerised and run elsewhere (ADR-0002).
+- The triage key `ASV_MISTRAL_API_KEY` and model `ASV_TRIAGE_MODEL` (ADR-0019) are unset in tunnel mode,
+  so the no-AI adapter runs there.
 - Secret names are proposals for brick 9. Values live in Wrangler secrets, never in the repo.
