@@ -126,9 +126,13 @@ classDiagram
     +Boolean secureCookie
     +String staticRoot optional
     +LegalIdentity legal optional
+    +String moderatorFile optional
+    +String ownerSecret optional
+    +String publicOrigin
   }
   NodeServerOptions ..> FileConnectionLog : logFile set
   NodeServerOptions ..> MemoryConnectionLog : logFile absent
+  NodeServerOptions ..> FileModeratorStore : moderatorFile set, BR-099
 ```
 
 ## Notes
@@ -225,7 +229,7 @@ classDiagram
 - **Moderation commands** (brick 8a): a chatter gets `error forbidden`; `report` answers `error invalid` with message `notAvailable` when `canReport` is false; the 8c commands always answer `notAvailable`.
 - **enter** (`entry/02a`): `activeBan` comes from `moderation.activeBan` (brick 8a), `accountId` from the device cookie (brick 5). On `entered` the hub
   draws a connection id (`random.id()`), awaits `log.open`, stores session id and connection id on the
-  socket, then sends `entered { sessionId, resumeToken, roomList, isModerator, canReport }`. If `log.open`
+  socket, then sends `entered { sessionId, resumeToken, roomList, isModerator, moderatorName?, canReport }`. If `log.open`
   fails, the new state is dropped (the pseudo stays free) and the sender gets `error logUnavailable`; a
   failed resume likewise leaves the session away.
 - **resume** (`entry/02b`): the hub hashes the token with `hashToken` and passes `accountStillExists: true`

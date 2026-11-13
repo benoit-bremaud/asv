@@ -59,14 +59,14 @@ Sensitivity: with simplicity 40 and security 10, D leads (425 vs 370).
 
 Before any Cloudflare deployment, the Node transport realises the decision (`moderation/02f`): the
 Hono app runs the ceremonies and calls the in-memory hub directly; moderators live in an encrypted file
-(MCDA 430/500 against SQLite 360 and memory 315); the invitation script calls a loopback-only route
-guarded by `ASV_OWNER_SECRET` (440/500 against writing the file 305 and a panel button 290); the
+(MCDA 425/500 against SQLite 355 and memory 310); the invitation script calls a loopback-only route
+guarded by `ASV_OWNER_SECRET` (440/500 against writing the file 295 and a panel button 290); the
 moderator panel is the entry-screen link, the enrolment page and the 8a queue (425/500 against a `/mod`
-page 320 and an in-chat panel 330). On Node the grant key is drawn at start and never stored (KISS: one process, 60-second grants), which
-replaces `GRANT_KEY` until the Cloudflare transport. Rules: BR-093 to BR-099. 
+page 320 and an in-chat panel 340). On Node the grant key is drawn at start and never stored (KISS: one process, 60-second grants), which
+replaces `GRANT_KEY` until the Cloudflare transport. Rules: BR-093 to BR-099.
 
 | Choice (weights) | Options, scores 0–5 per criterion, total /500 |
 |---|---|
-| Store (durability 35, security 25, simplicity 25, consistency 15) | **encrypted file** 5/4/3/5 = 430 · SQLite 5/4/2/2 = 360 · memory 0/5/5/4 = 315 |
-| Invitation (security 35, simplicity 30, portability 20, ADR fit 15) | **script → loopback route + owner secret** 5/3/5/5 = 440 · script writes the file 3/4/2/2 = 305 · panel button 3/3/4/1 = 290 |
-| Panel (simplicity 35, retro fit 25, usefulness 25, security 15) | **entry link + enrolment page + 8a queue** 4/5/4/4 = 425 · in-chat panel 2/4/5/3 = 330 · `/mod` page 2/3/4/5 = 320 |
+| Store (durability 35, security 25, simplicity 25, consistency 15) | **encrypted file** 5/4/3/5 = 425 · SQLite 5/4/2/2 = 355 · memory 0/5/5/4 = 310 |
+| Invitation (security 35, simplicity 30, portability 20, ADR fit 15) | **script → loopback route + owner secret** 5/3/5/5 = 440 · script writes the file 3/4/2/2 = 295 · panel button 3/3/4/1 = 290 |
+| Panel (simplicity 35, retro fit 25, usefulness 25, security 15) | **entry link + enrolment page + 8a queue** 4/5/4/4 = 425 · in-chat panel 2/4/5/3 = 340 · `/mod` page 2/3/4/5 = 320 |

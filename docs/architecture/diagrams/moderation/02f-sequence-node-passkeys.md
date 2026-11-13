@@ -11,7 +11,7 @@ How the Node transport realises 02b and 02c before any Cloudflare deployment. Th
 `src/server/app.ts` runs the ceremonies with SimpleWebAuthn and calls the in-memory hub directly, so each
 `rpc` of 02b and 02c is a plain method call. The routes reach the moderator store only through the hub
 (`platform/03`). Moderators and invitations live in an encrypted file (owner
-choice A, 430/500, 2026-11-13); the owner creates an invitation with a script calling an HTTP route
+choice A, 425/500, 2026-11-13); the owner creates an invitation with a script calling an HTTP route
 guarded by an owner secret and limited to loopback (choice A, 440/500). Replaces the interim token of 02e.
 
 ## Diagram
@@ -81,5 +81,6 @@ sequenceDiagram
   session, like 02e; the rate rule of BR-091 moves to BR-096.
 - The client reads the token from the fragment, then removes it from the address bar
   (`history.replaceState`) before any network call.
+- `challengeId` is the challenge the browser signed, read from `clientDataJSON`.
 - `GET /mod/status` answers 200 outside the tunnel; the entry screen shows the link only then (BR-097).
 - Actions record the moderator name, never `owner` (BR-055).

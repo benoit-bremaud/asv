@@ -88,8 +88,8 @@ flowchart LR
 - Main scenario: 1. Invited person opens the link. 2. System starts a passkey registration. 3. The
   device creates a passkey after its usual unlock (PIN, pattern or biometrics, no biometric data
   reaches asv). 4. System stores name, credential id and public key, and consumes the invitation.
-- Extensions: 1a. Invitation expired, used or revoked → refused. 4a. The name already has a credential →
-  the new one replaces it (lost device, BR-094). 3a. Device cancelled → back to step 2.
+- Extensions: 1a. Invitation expired, used or revoked → refused. 3a. Device cancelled → back to step 2.
+  4a. The name already has a credential → the new one replaces it (lost device, BR-094).
 
 **UC16 — Sign in as moderator** (brick 8b)
 - Primary actor: Moderator, an enrolled person not yet in the chat.
