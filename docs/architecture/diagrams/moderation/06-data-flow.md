@@ -41,4 +41,5 @@ flowchart LR
 - Retention values: BR-060 is a legal duty (decree 2021-1362, checked 2026-10-22). BR-061 and BR-062 are owner
   decisions, no binding text sets them (GDPR art. 5(1)(e)).
 - Brick 8a (#209): no flow to the AI provider and no moderator store yet; reports and bans are
-  encrypted at rest (ADR-0017) in the Node file stores.
+  encrypted at rest (ADR-0017) in an in-memory store of the Node transport, lost at restart until a
+  file or database store lands (8b).

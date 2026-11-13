@@ -36,6 +36,9 @@ classDiagram
     +AccountIo accounts
     +Mailer mailer
     +onStoreError(error) void
+    +ModerationIo moderation
+    +Bytes moderatorTokenDigest?
+    +Boolean canReport
   }
   class ConnectionLogStore {
     <<interface, src/domain/ports.ts>>
@@ -283,3 +286,10 @@ classDiagram
   transport passes its own value.
 - `src/domain/ports.ts` declares only types (ports), so the dependency rule holds: `src/server` imports
   `src/domain` and `src/shared/protocol`, never a transport.
+
+- Brick 8a (#209): `moderation` is the encrypted moderation store, `moderatorTokenDigest` the digest
+  of `ASV_MODERATOR_TOKEN` (absent: no grant), `canReport` false behind the tester tunnel. Moderation
+  commands live in `hub-moderation.ts`: `error(forbidden)` for a non-moderator comes before any other
+  check, `error(invalid, notAvailable)` for the 8c commands. The entry checks `activeBan` before the
+  domain; a store failure answers `warning(unavailable)`. The tick retries refused statements of reasons every
+  10 minutes, never awaited.

@@ -62,6 +62,7 @@ export const STRINGS = {
   durations: { "1h": "1 h", "24h": "24 h", "7d": "7 j" },
   proposal: (strikes: number) => `${strikes} avertissements actifs : suspendre le compte 7 jours ?`,
   suspend: "suspendre 7 jours",
+  askSuspension: "décider la suspension",
   noSuspend: "ne pas suspendre",
   /** BR-008: the end of a ban or an expulsion, in the reader's time zone. */
   until: (iso: string) => ` Jusqu'au ${new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}.`,

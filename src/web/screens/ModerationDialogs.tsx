@@ -85,8 +85,8 @@ const QueueRow = ({ report }: { report: QueuedReport }) => {
       )}
       <p className="queue-actions">
         <button type="button" className="bevel" onClick={() => close("noAction")}>{STRINGS.noAction}</button>
-        {/* BR-074: a strike needs an account; a guest is warned without one. */}
-        <button type="button" className="bevel" onClick={() => close("warned")}>{STRINGS.warn}</button>
+        {/* BR-074: a strike needs an account, one per report; a struck report only asks the suspension again. */}
+        <button type="button" className="bevel" onClick={() => close("warned")}>{report.struck ? STRINGS.askSuspension : STRINGS.warn}</button>
         {DURATIONS.map((duration) => (
           <button key={duration} type="button" className="bevel" onClick={() => commands.moderate({ type: "expel", payload: { reportId: report.id, duration } })}>
             {STRINGS.expel(STRINGS.durations[duration])}

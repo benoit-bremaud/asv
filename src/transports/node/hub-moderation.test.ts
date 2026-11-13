@@ -8,7 +8,8 @@ import type { ServerMessage } from "../../shared/protocol";
 import { createAccountIo } from "../../server/account-io";
 import { createCrypto } from "../../server/crypto/cipher";
 import { cryptoKeysFromEnv } from "../../server/crypto/keys";
-import { createHub, type Outgoing } from "../../server/hub";
+import { createHub, GRANT_FAILURES_MAX, GRANT_WINDOW_MS, type Outgoing } from "../../server/hub";
+import { STATEMENT_RETRY_MS } from "../../server/hub-moderation";
 import { createModerationIo } from "../../server/moderation-io";
 import { moderatorTokenDigest } from "../../server/moderator-token";
 import { createMemoryAccountStore, createMemoryVault } from "./memory-accounts";
@@ -22,7 +23,7 @@ const HOUR = 60 * 60_000;
 const DAY = 24 * HOUR;
 const TOKEN = "owner-token-for-tests-0123456789abcdef";
 
-const setup = async (options: { mailAccepted?: boolean; token?: string } = {}) => {
+const setup = async (options: { mailAccepted?: boolean; token?: string; canReport?: boolean } = {}) => {
   const random = createNodeRandom();
   const store = createMemoryAccountStore();
   const vault = createMemoryVault();
@@ -31,9 +32,11 @@ const setup = async (options: { mailAccepted?: boolean; token?: string } = {}) =
   const codes: string[] = [];
   const statements: { email: string; statement: string }[] = [];
   let accept = options.mailAccepted ?? true;
+  let mailDelay: Promise<void> | undefined;
   const mailer: Mailer = {
     sendCode: async (_email, code) => void codes.push(code),
     sendStatementOfReasons: async (email, statement) => {
+      if (mailDelay) await mailDelay;
       statements.push({ email, statement });
       return accept;
     },
@@ -53,6 +56,7 @@ const setup = async (options: { mailAccepted?: boolean; token?: string } = {}) =
     onStoreError,
     moderation: createModerationIo({ store: moderationStore, crypto }),
     moderatorTokenDigest: await moderatorTokenDigest(options.token ?? TOKEN, false),
+    canReport: options.canReport,
   });
   let seq = 0;
   const send = (key: string, type: string, payload: object, now = T0) => hub.receive(key, JSON.stringify({ type, seq: ++seq, payload }), now);
@@ -74,7 +78,10 @@ const setup = async (options: { mailAccepted?: boolean; token?: string } = {}) =
   const setMailAccepted = (value: boolean) => {
     accept = value;
   };
-  return { hub, store, vault, moderationStore, codes, send, enter, enterAs, owner, signIn, reportMax, statements, setMailAccepted, closeSocket, onStoreError };
+  const setMailDelay = (value: Promise<void> | undefined) => {
+    mailDelay = value;
+  };
+  return { hub, store, vault, moderationStore, codes, send, enter, enterAs, owner, signIn, reportMax, statements, setMailAccepted, setMailDelay, closeSocket, onStoreError };
 };
 
 const find = <T extends ServerMessage["type"]>(out: Outgoing[], type: T) =>
@@ -375,5 +382,102 @@ describe("warn, strikes and suspension (`moderation/02d`, BR-074 to BR-077)", ()
 
     expect(only(await ctx.send("9", "confirmSuspension", { accountId, reportId }), "warning").payload).toMatchObject({ code: "suspensionRefused" });
     expect(only(await ctx.send("9", "confirmSuspension", { accountId: "other", reportId }), "warning").payload).toMatchObject({ code: "suspensionRefused" });
+  });
+
+  it("gives one strike per report: a repeated warning only proposes the suspension again (review Must)", async () => {
+    const ctx = await setup();
+    const { accountId, reportId } = await threeStrikes(ctx);
+
+    const again = await ctx.send("9", "closeReport", { reportId, outcome: "warned" });
+
+    expect(find(again, "warned")).toEqual([]);
+    expect(only(again, "suspensionProposed").payload).toEqual({ accountId, reportId, activeStrikes: 3 });
+    expect(only(await ctx.send("9", "listOpenReports", {}), "openReports").payload.reports[0]).toMatchObject({ id: reportId, activeStrikes: 3, struck: true });
+  });
+
+  it("refuses to decline a suspension nobody proposed", async () => {
+    const ctx = await setup();
+    await ctx.enterAs("1", "Lola");
+    await ctx.enterAs("2", "Max");
+    const accountId = await ctx.signIn("2", "max@example.org");
+    await ctx.owner();
+    const reportId = await ctx.reportMax();
+
+    expect(only(await ctx.send("9", "declineSuspension", { accountId, reportId }), "warning").payload).toMatchObject({ code: "suspensionRefused" });
+    expect(only(await ctx.send("9", "listOpenReports", {}), "openReports").payload.reports).toHaveLength(1);
+  });
+
+  it("does not hold the chat while the provider is slow, and retries refused statements every 10 minutes", async () => {
+    const ctx = await setup({ mailAccepted: false });
+    const { accountId, reportId } = await threeStrikes(ctx);
+    let release = () => {};
+    ctx.setMailDelay(new Promise<void>((resolve) => { release = resolve; }));
+
+    only(await ctx.send("9", "confirmSuspension", { accountId, reportId }), "reportClosed");
+    only(await ctx.send("1", "joinRoom", { roomId: "lyon" }), "roomJoined");
+    release();
+    ctx.setMailDelay(undefined);
+    const flush = () => new Promise((resolve) => setImmediate(resolve));
+    await ctx.hub.tick(later(1000));
+    await flush();
+    await ctx.hub.tick(later(STATEMENT_RETRY_MS));
+    await flush();
+    expect(ctx.statements).toHaveLength(2);
+
+    await ctx.hub.tick(later(STATEMENT_RETRY_MS + 1000));
+    await flush();
+    expect(ctx.statements).toHaveLength(3);
+  });
+});
+
+describe("hardening (review round 1)", () => {
+  it("answers forbidden to a chatter before any other check", async () => {
+    const { enterAs, send } = await setup();
+    await enterAs("1", "Lola");
+
+    expect(only(await send("1", "expel", { reportId: "r", duration: "1h", severe: true }), "error").payload).toMatchObject({ code: "forbidden" });
+    expect(only(await send("1", "closeReport", { reportId: "r", outcome: "roomRemoved" }), "error").payload).toMatchObject({ code: "forbidden" });
+  });
+
+  it("refuses to expel or warn on a room report, and to close a report as expelled without an expel", async () => {
+    const { enterAs, send, owner, reportMax } = await setup();
+    await enterAs("1", "Lola");
+    await enterAs("2", "Max");
+    const roomReport = only(await send("1", "report", { targetKind: "room", targetRoomId: "lyon", reason: "spam", excerpt: "", context: [] }), "reportSent").payload.reportId;
+    const reportId = await reportMax();
+    await owner();
+
+    expect(only(await send("9", "expel", { reportId: roomReport, duration: "1h" }), "warning").payload).toMatchObject({ code: "reportInvalid" });
+    expect(only(await send("9", "closeReport", { reportId: roomReport, outcome: "warned" }), "warning").payload).toMatchObject({ code: "reportInvalid" });
+    expect(only(await send("9", "closeReport", { reportId, outcome: "expelled" }), "error").payload).toMatchObject({ code: "invalid" });
+  });
+
+  it("refuses the sixth moderator grant from one IP within 10 minutes, even the right one", async () => {
+    const { enter, hub } = await setup();
+    for (let index = 0; index < GRANT_FAILURES_MAX; index += 1) {
+      expect(only(await enter(`${20 + index}`, "Patron", { moderatorGrant: "wrong" }, "10.0.0.9"), "entryRefused").payload).toEqual({ reason: "notModerator" });
+    }
+
+    expect(only(await enter("30", "Patron", { moderatorGrant: TOKEN }, "10.0.0.9"), "entryRefused").payload).toEqual({ reason: "rate" });
+    await hub.tick(later(GRANT_WINDOW_MS));
+    hub.open("31", "10.0.0.9", 4000);
+    expect(only(await hub.receive("31", JSON.stringify({ type: "enter", seq: 1, payload: { pseudo: "Patron", age: 30, adultConfirmed: true, termsAccepted: true, moderatorGrant: TOKEN } }), later(GRANT_WINDOW_MS)), "entered").payload.isModerator).toBe(true);
+  });
+
+  it("keeps reporting off behind the tester tunnel (`moderation/01`)", async () => {
+    const { enterAs, send } = await setup({ canReport: false });
+
+    expect(await enterAs("1", "Lola")).toMatchObject({ canReport: false });
+    expect(only(await send("1", "report", { targetKind: "chatter", targetPseudo: "Max", reason: "spam", excerpt: "", context: [] }), "error").payload).toMatchObject({ code: "invalid", message: "notAvailable" });
+  });
+
+  it("answers unavailable to an entry when the ban store fails", async () => {
+    const { enter, moderationStore, onStoreError } = await setup();
+    moderationStore.activeBan = () => {
+      throw new Error("disk");
+    };
+
+    expect(only(await enter("1", "Lola"), "warning").payload).toMatchObject({ code: "unavailable" });
+    expect(onStoreError).toHaveBeenCalled();
   });
 });

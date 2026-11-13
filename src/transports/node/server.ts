@@ -174,6 +174,7 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
     onStoreError: (error) => console.error("account store failed", error),
     moderation: createModerationIo({ store: moderation, crypto }),
     moderatorTokenDigest: moderatorToken,
+    canReport: !behindTunnel,
   });
   const app = createApp({
     stats: hub.stats,

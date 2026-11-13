@@ -108,7 +108,7 @@ export const RoomScreen = () => {
             {room.lines.filter((line) => !state.ignored.includes(line.authorSessionId)).map((line) => (
               <li key={line.id}>
                 <Pseudo pseudo={line.pseudo} gender={line.gender} />: {renderText(line.text)}
-                {line.authorSessionId !== state.me?.sessionId && (
+                {state.canReport && line.authorSessionId !== state.me?.sessionId && (
                   // UC9: a message is reported with the lines up to it (BR-051).
                   <button type="button" className="link icon-button report-line" aria-label={STRINGS.reportMessage(line.pseudo)} onClick={() => commands.local({
                     type: "openReport",

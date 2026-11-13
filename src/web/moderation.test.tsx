@@ -18,7 +18,7 @@ const msg = <T extends ServerMessage["type"]>(type: T, payload: Extract<ServerMe
 const bob: Member = { sessionId: "s2", pseudo: "bob", hasAccount: true, away: false, gender: "man", age: 30 };
 const queued = (id: string, extra: object = {}) => ({
   id, reason: "harassment" as const, targetKind: "message" as const, targetPseudo: "bob", excerpt: "insulte", context: ["bob: insulte"],
-  authorPseudo: "ana", createdAt: "2026-11-13T10:00:00.000Z", hasAccount: true, connected: true, activeStrikes: 1, ...extra,
+  authorPseudo: "ana", createdAt: "2026-11-13T10:00:00.000Z", hasAccount: true, connected: true, activeStrikes: 1, struck: false, ...extra,
 });
 
 const setup = async () => {
@@ -27,9 +27,9 @@ const setup = async () => {
   await act(async () => {});
   return user;
 };
-const enterChat = async (isModerator = false) => {
+const enterChat = async (isModerator = false, canReport = true) => {
   await fire({ type: "entering", pseudo: "ana" });
-  await msg("entered", { sessionId: "me", resumeToken: "t", roomList: [{ id: "r1", name: "Paris", kind: "regional", count: 2 }], isModerator });
+  await msg("entered", { sessionId: "me", resumeToken: "t", roomList: [{ id: "r1", name: "Paris", kind: "regional", count: 2 }], isModerator, canReport });
   await msg("roomJoined", { roomId: "r1", members: [bob] });
 };
 
@@ -167,6 +167,17 @@ describe("report dialog (UC9, web-ui/08)", () => {
     expect(screen.queryByRole("dialog", { name: STRINGS.reportTitle("bob") })).toBeNull();
   });
 
+  it("offers no report at all when the server turned reporting off (tester tunnel)", async () => {
+    const user = await setup();
+    await enterChat(false, false);
+    await msg("roomMessage", { roomId: "r1", authorSessionId: "s2", pseudo: "bob", gender: "man", text: "salut", sentAt: "2026-11-13T10:00:00.000Z" });
+
+    await user.click(screen.getByRole("button", { name: STRINGS.pseudoButton("bob") }));
+
+    expect(screen.queryByRole("button", { name: STRINGS.reportMessage("bob") })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: STRINGS.report })).toBeNull();
+  });
+
   it("names a warning and the active strikes", async () => {
     await setup();
     await enterChat();
@@ -220,6 +231,19 @@ describe("queue dialog (UC12, web-ui/08)", () => {
     expect(screen.getByText(STRINGS.proposal(3))).toBeTruthy();
     expect(connection.send).toHaveBeenCalledWith({ type: "confirmSuspension", payload: { accountId: "acc", reportId: "a" } });
     expect(connection.send).toHaveBeenCalledWith({ type: "declineSuspension", payload: { accountId: "acc", reportId: "a" } });
+  });
+
+  it("asks for the suspension again instead of a second warning on a struck report", async () => {
+    const user = await setup();
+    await enterChat(true);
+    await user.click(screen.getByRole("button", { name: STRINGS.queue }));
+    await msg("openReports", { reports: [queued("a", { struck: true, activeStrikes: 3 })] });
+    const dialog = screen.getByRole("dialog", { name: STRINGS.queueTitle });
+
+    await user.click(within(dialog).getByRole("button", { name: STRINGS.askSuspension }));
+
+    expect(within(dialog).queryByRole("button", { name: STRINGS.warn })).toBeNull();
+    expect(connection.send).toHaveBeenCalledWith({ type: "closeReport", payload: { reportId: "a", outcome: "warned" } });
   });
 
   it("keeps the queue closed when the request could not leave", async () => {

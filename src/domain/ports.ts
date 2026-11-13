@@ -59,6 +59,8 @@ export interface StoredReport {
   readonly context: string;
   readonly authorPseudo: string;
   readonly createdAt: Date;
+  /** Set once a warning on this report gave its strike, so a repeated `warned` adds none (BR-074). */
+  readonly struckAt?: Date;
   readonly closed?: {
     readonly outcome: "noAction" | "warned" | "expelled" | "suspended";
     readonly by: string;
@@ -66,7 +68,7 @@ export interface StoredReport {
   };
 }
 
-/** A ban as stored: keyed IP hash and encrypted pseudo (BR-053, BR-055, ADR-0017). */
+/** A ban as stored: keyed hashes of the IP and of the folded pseudo (BR-053, BR-055, ADR-0017). */
 export interface StoredBan {
   readonly id: string;
   readonly ipKeyedHash?: string;

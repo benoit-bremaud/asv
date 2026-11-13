@@ -65,7 +65,13 @@ export interface HubDeps {
   readonly moderation: ModerationIo;
   /** SHA-256 digest of `ASV_MODERATOR_TOKEN`; absent, no session can be a moderator (BR-091). */
   readonly moderatorTokenDigest?: Uint8Array;
+  /** False behind the tester tunnel: `report` answers `notAvailable` until brick 8c (`moderation/01`). */
+  readonly canReport?: boolean;
 }
+
+/** BR-091: at most 5 refused moderator grants per IP within 10 minutes, then `entryRefused(rate)`. */
+export const GRANT_FAILURES_MAX = 5;
+export const GRANT_WINDOW_MS = 10 * 60_000;
 
 /** A device token set by `POST /account/device` (BR-073). */
 export interface DeviceToken {
@@ -213,13 +219,23 @@ export const createHub = (deps: HubDeps): Hub => {
     return away?.accountId === undefined || deps.accounts.accountExists(away.accountId);
   };
 
+  /** BR-091: refused grants per IP within the last `GRANT_WINDOW_MS`, so the token cannot be guessed. */
+  const canReport = deps.canReport ?? true;
+  const grantFailures = new Map<string, number[]>();
+  const recentGrantFailures = (ip: string, nowMs: number): number[] =>
+    (grantFailures.get(ip) ?? []).filter((at) => nowMs - at < GRANT_WINDOW_MS);
+
   const onEnter = async (socket: Socket, command: Command<"enter">, now: Date): Promise<Outgoing[]> => {
     const { payload } = command;
     let isModerator = false;
     if (payload.moderatorGrant !== undefined) {
+      const failures = recentGrantFailures(socket.ip, now.getTime());
+      if (failures.length >= GRANT_FAILURES_MAX) return [send([socket.key], "entryRefused", { reason: "rate" })];
       // BR-091: a refused grant creates no session, so a mistyped token cannot enter as a chatter.
-      if (!(await matchesModeratorToken(deps.moderatorTokenDigest, payload.moderatorGrant)))
+      if (!(await matchesModeratorToken(deps.moderatorTokenDigest, payload.moderatorGrant))) {
+        grantFailures.set(socket.ip, [...failures, now.getTime()]);
         return [send([socket.key], "entryRefused", { reason: "notModerator" })];
+      }
       isModerator = true;
     }
     const device = await deviceAccount(socket, now);
@@ -254,6 +270,7 @@ export const createHub = (deps: HubDeps): Hub => {
         resumeToken: effect.resumeToken,
         roomList: roomList(state),
         isModerator,
+        canReport,
         ...(effect.accountId ? { accountId: effect.accountId } : {}),
         ...(device.stale ? { staleDevice: true } : {}),
       })];
@@ -329,6 +346,7 @@ export const createHub = (deps: HubDeps): Hub => {
           buffered: windows.buffered,
           ...(session.accountId ? { accountId: session.accountId } : {}),
           ...(session.isModerator ? { isModerator: true } : {}),
+          canReport,
         }),
         send([socket.key], "roomList", { rooms: roomList(state) }),
         ...ignoresOf(socket.key, state.ignores.get(session.id)),
@@ -351,9 +369,9 @@ export const createHub = (deps: HubDeps): Hub => {
     return out.roomOutgoing(result.effects);
   };
 
-  /** UC11: the target learns the end of its ban, its socket closes, and its rooms see it leave. */
   /** Sockets an expel closes once the whole command has answered, so `expelled` leaves first (UC11). */
   let closeAfter: string[] = [];
+  /** UC11: the target learns the end of its ban, its socket closes, and its rooms see it leave. */
   const evict = async (sessionId: string, until: Date, now: Date): Promise<Outgoing[]> => {
     const key = socketOfSession.get(sessionId);
     const socket = key === undefined ? undefined : sockets.get(key);
@@ -408,7 +426,8 @@ export const createHub = (deps: HubDeps): Hub => {
     ignore: (socket, bound, command, now) => privates.ignore(privateCaller(socket, bound), command, now),
     unignore: (socket, bound, command, now) => privates.unignore(privateCaller(socket, bound), command, now),
     search: (socket, bound, command, now) => privates.search(privateCaller(socket, bound), command, now),
-    report: (socket, bound, command, now) => moderation.report(modCaller(socket, bound), command, now),
+    report: (socket, bound, command, now) =>
+      !canReport ? Promise.resolve([out.error(socket.key, "invalid", command.seq, "notAvailable")]) : moderation.report(modCaller(socket, bound), command, now),
     listOpenReports: (socket, bound, command, now) => moderation.listOpenReports(modCaller(socket, bound), command, now),
     expel: (socket, bound, command, now) => moderation.expel(modCaller(socket, bound), command, now),
     closeReport: (socket, bound, command, now) => moderation.closeReport(modCaller(socket, bound), command, now),
@@ -494,10 +513,16 @@ export const createHub = (deps: HubDeps): Hub => {
         const expired = expireAway(state, now);
         state = pruneReportAttempts(pruneDeviceClaims(pruneEntryAttempts(pruneFlood(expired.state, now), now), now), now);
         closeUnbound(now.getTime());
+        for (const ip of grantFailures.keys()) {
+          const recent = recentGrantFailures(ip, now.getTime());
+          if (recent.length === 0) grantFailures.delete(ip);
+          else grantFailures.set(ip, recent);
+        }
         try {
           await deps.accounts.purgeExpired(now);
           await deps.moderation.purgeExpired(now);
-          await moderation.retryStatements(now);
+          // Outside the queue: a slow provider must not hold the chat (ADR-0013 amendment).
+          void moderation.retryStatements(now);
         } catch (cause) {
           deps.onStoreError(cause);
         }

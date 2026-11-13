@@ -106,6 +106,8 @@ flowchart LR
   third strike and suspension (02d), UC16i.
 - Out, brick 8b (#210): UC14, UC15, UC16. Out, brick 8c (#211): AI triage, severe variant of UC11 and
   the authority channel, room removal, the decision e-mail to the reporter, the impact assessment.
+- Behind the tester tunnel the server sends `canReport = false`, refuses `report` and refuses the
+  moderator token at start (BR-091), so UC9 to UC12 stay closed to testers.
 - Brick 8a is not exposed to testers before 8c: the impact assessment comes first (`security-and-rgpd.md`).
 
 ## Notes

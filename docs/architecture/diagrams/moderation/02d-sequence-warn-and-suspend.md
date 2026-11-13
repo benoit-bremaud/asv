@@ -56,6 +56,8 @@ sequenceDiagram
 
 ## Notes
 
+- A second `closeReport(warned)` on the same report adds no strike (`struckAt`, BR-074): it proposes
+  the suspension again at three active strikes, otherwise closes the report as `warned`.
 - The report is closed once the final choice is known: outcome `warned` or `suspended` (BR-057).
 - If the moderator leaves before choosing, the proposal is shown again next time: it is derived from
   the active strikes, not stored (BR-075).

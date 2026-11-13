@@ -11,7 +11,7 @@ export interface ModerationIoDeps {
 }
 
 /** A stored report decrypted, with its closing if any. */
-export type LoadedReport = Report & { readonly closed?: StoredReport["closed"] };
+export type LoadedReport = Report & { readonly closed?: StoredReport["closed"]; readonly struckAt?: Date };
 
 const field = (id: string, name: string) => `report:${id}:${name}`;
 
@@ -24,7 +24,7 @@ export const createModerationIo = ({ store, crypto }: ModerationIoDeps) => {
   const clear = async (value: string | undefined, id: string, name: string) =>
     value === undefined ? undefined : crypto.decrypt(value, field(id, name));
 
-  const toStored = async (report: Report, closed?: StoredReport["closed"]): Promise<StoredReport> => ({
+  const toStored = async (report: Report): Promise<StoredReport> => ({
     id: report.id,
     reason: report.reason,
     targetKind: report.targetKind,
@@ -37,7 +37,6 @@ export const createModerationIo = ({ store, crypto }: ModerationIoDeps) => {
     context: await crypto.encrypt(JSON.stringify(report.context), field(report.id, "context")),
     authorPseudo: await crypto.encrypt(report.authorPseudo, field(report.id, "authorPseudo")),
     createdAt: report.createdAt,
-    ...(closed ? { closed } : {}),
   });
 
   const toReport = async (stored: StoredReport): Promise<LoadedReport> => {
@@ -54,8 +53,16 @@ export const createModerationIo = ({ store, crypto }: ModerationIoDeps) => {
       context: Array.isArray(context) ? context.filter((line): line is string => typeof line === "string") : [],
       authorPseudo: await crypto.decrypt(stored.authorPseudo, field(stored.id, "authorPseudo")),
       createdAt: stored.createdAt,
+      ...(stored.struckAt ? { struckAt: stored.struckAt } : {}),
       ...(stored.closed ? { closed: stored.closed } : {}),
     };
+  };
+
+  /** Rewrites the stored report as it is, so the keyed IP hash and the ciphertexts are kept. */
+  const update = async (id: string, change: Partial<StoredReport>): Promise<void> => {
+    const stored = await store.findReport(id);
+    if (!stored) throw new Error(`report ${id} not found`);
+    await store.saveReport({ ...stored, ...change });
   };
 
   /** The stored IP hash survives the decryption, so a ban can use it once the target left. */
@@ -72,7 +79,11 @@ export const createModerationIo = ({ store, crypto }: ModerationIoDeps) => {
     },
     /** BR-055, BR-057: one outcome, the moderator and the time. */
     async closeReport(report: Report, outcome: ReportOutcome, by: string, at: Date): Promise<void> {
-      await store.saveReport(await toStored(report, { outcome, by, at }));
+      await update(report.id, { closed: { outcome, by, at } });
+    },
+    /** BR-074: the strike of this report is given, once. */
+    async markStruck(id: string, at: Date): Promise<void> {
+      await update(id, { struckAt: at });
     },
     /** The live IP when the domain has one, else the hash captured on the report. */
     async saveBan(ban: BanDecision, reportId: string, id: string, now: Date): Promise<void> {

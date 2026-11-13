@@ -114,14 +114,14 @@ export const PseudoMenu = ({ target, onPrivate }: { target: MenuTarget; onPrivat
           >
             {ignored ? STRINGS.unignore : STRINGS.ignore}
           </button>
-          <button
+          {state.canReport && <button
             type="button"
             role="menuitem"
             className="link"
             onClick={pick(() => commands.local({ type: "openReport", draft: { targetKind: "chatter", targetPseudo: target.pseudo, excerpt: "", context: reportContext(contextLines()) } }))}
           >
             {STRINGS.report}
-          </button>
+          </button>}
         </span>
       )}
     </span>

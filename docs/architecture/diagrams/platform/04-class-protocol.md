@@ -111,9 +111,9 @@ Server to client:
 
 | Type | Payload |
 |---|---|
-| entered | sessionId, resumeToken, roomList, isModerator, accountId?, staleDevice? |
+| entered | sessionId, resumeToken, roomList, isModerator, canReport, accountId?, staleDevice? |
 | entryRefused | reason (rate, banned until, pseudo invalid, pseudo taken, age, notModerator: wrong or disabled moderator grant, BR-091) |
-| resumed | sessionId, pseudo, resumeToken, rooms, windows, buffered, accountId?, isModerator? (a moderator session keeps its rights, BR-091; identity sent back because the browser stores only token and profile, ADR-0011) |
+| resumed | sessionId, pseudo, resumeToken, rooms, windows, buffered, accountId?, canReport, isModerator? (a moderator session keeps its rights, BR-091; identity sent back because the browser stores only token and profile, ADR-0011) |
 | resumeRefused | — |
 | roomList | rooms (id, name, kind, count) |
 | roomJoined | roomId, members (member: see "Away member shape") |
@@ -125,7 +125,7 @@ Server to client:
 | ignoreUpdated | ignored (session ids) |
 | searchResults | results (member + rooms) |
 | reportSent | reportId |
-| openReports | reports (with triage, hasAccount, connected, activeStrikes) |
+| openReports | reports (with triage, hasAccount, connected, activeStrikes, struck) |
 | warned | rule, text, activeStrikes |
 | expelled | until |
 | reportClosed | reportId |

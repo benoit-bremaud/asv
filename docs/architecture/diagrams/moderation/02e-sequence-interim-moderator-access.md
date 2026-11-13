@@ -23,7 +23,7 @@ sequenceDiagram
   O->>W: entry form + "accès modération" field (token)
   W->>H: enter(pseudo, profile, moderatorGrant = token)
   alt Token configured, no tunnel, constant-time match
-    H->>D: enter(state, ..., isModerator = true, moderatorName = "owner")
+    H->>D: enter(state, ..., isModerator = true)
     D-->>H: Session with isModerator
     H-->>W: entered(isModerator = true)
     W-->>O: room screen + "signalements" button

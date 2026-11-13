@@ -184,6 +184,8 @@ export const serverMessage = z.discriminatedUnion("type", [
       resumeToken: id,
       roomList: z.array(roomSummary),
       isModerator: z.boolean(),
+      // Brick 8a stays off for testers until the impact assessment of 8c (`moderation/01`).
+      canReport: z.boolean(),
       accountId: z.optional(id),
       staleDevice: z.optional(z.boolean()),
     }),
@@ -203,6 +205,7 @@ export const serverMessage = z.discriminatedUnion("type", [
       accountId: z.optional(id),
       // BR-091: a moderator session keeps its rights across a resume.
       isModerator: z.optional(z.boolean()),
+      canReport: z.boolean(),
     }),
   ),
   message("resumeRefused", empty),
@@ -247,6 +250,8 @@ export const serverMessage = z.discriminatedUnion("type", [
           hasAccount: z.boolean(),
           connected: z.boolean(),
           activeStrikes: z.int().check(z.nonnegative()),
+          // BR-074: the report already gave its strike; a new `warned` only asks the suspension again.
+          struck: z.boolean(),
           // Set once the AI triage ran; a human decides (ADR-0010).
           triage: z.optional(z.object({ category: z.string(), urgency, summary: z.string() })),
         }),

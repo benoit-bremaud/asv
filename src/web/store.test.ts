@@ -30,7 +30,7 @@ describe("chatReducer: server messages", () => {
     const next = server(state, {
       type: "entered",
       seq: 0,
-      payload: { sessionId: "s1", resumeToken: "t", roomList, isModerator: false },
+      payload: { sessionId: "s1", resumeToken: "t", roomList, isModerator: false, canReport: true },
     });
 
     expect(next.screen).toBe("rooms");
@@ -44,7 +44,7 @@ describe("chatReducer: server messages", () => {
     const next = server(initialState, {
       type: "entered",
       seq: 0,
-      payload: { sessionId: "s1", resumeToken: "t", roomList: [], isModerator: false },
+      payload: { sessionId: "s1", resumeToken: "t", roomList: [], isModerator: false, canReport: true },
     });
 
     expect(next.me).toEqual({ sessionId: "s1", pseudo: "" });
@@ -66,7 +66,7 @@ describe("chatReducer: server messages", () => {
     const next = server({ ...initialState, pendingPseudo: "ana", refusedPseudo: "ana" }, {
       type: "entered",
       seq: 0,
-      payload: { sessionId: "s1", resumeToken: "t", roomList: [], isModerator: false },
+      payload: { sessionId: "s1", resumeToken: "t", roomList: [], isModerator: false, canReport: true },
     });
 
     expect(next.refusedPseudo).toBeUndefined();
@@ -83,7 +83,7 @@ describe("chatReducer: server messages", () => {
     const resumed = (rooms: { roomId: string; members: Member[] }[]): ServerMessage => ({
       type: "resumed",
       seq: 0,
-      payload: { sessionId: "me1", pseudo: "ana", resumeToken: "t2", rooms, windows: [], buffered: [] },
+      payload: { sessionId: "me1", pseudo: "ana", resumeToken: "t2", rooms, windows: [], buffered: [], canReport: true },
     });
 
     it("keeps existing lines and the active room, and learns genders", () => {
@@ -385,7 +385,7 @@ describe("chatReducer: account (web-ui/06)", () => {
   const entered = (accountId?: string): ServerMessage => ({
     type: "entered",
     seq: 0,
-    payload: { sessionId: "s1", resumeToken: "t", roomList: [], isModerator: false, ...(accountId ? { accountId } : {}) },
+    payload: { sessionId: "s1", resumeToken: "t", roomList: [], isModerator: false, canReport: true, ...(accountId ? { accountId } : {}) },
   });
   const warning = (code: string, triesLeft?: number): ServerMessage => ({ type: "warning", seq: 0, payload: { code, message: code, triesLeft } });
 
@@ -446,7 +446,7 @@ describe("chatReducer: account (web-ui/06)", () => {
     const resumed: ServerMessage = {
       type: "resumed",
       seq: 0,
-      payload: { sessionId: "s1", pseudo: "ana", resumeToken: "t", rooms: [], windows: [], buffered: [], accountId: "a2" },
+      payload: { sessionId: "s1", pseudo: "ana", resumeToken: "t", rooms: [], windows: [], buffered: [], canReport: true, accountId: "a2" },
     };
     expect(server(initialState, resumed).account.accountId).toBe("a2");
   });
@@ -467,7 +467,7 @@ describe("chatReducer: account (web-ui/06)", () => {
 
   it("keeps an in-memory code step as the chatter left it on a resume (BR-087)", () => {
     const closed = { ...initialState, account: { ...initialState.account, open: false, step: "waitingCode" as const, pendingVerify: true } };
-    const resumedState = server(closed, { type: "resumed", seq: 0, payload: { sessionId: "s1", pseudo: "ana", resumeToken: "t", rooms: [], windows: [], buffered: [] } });
+    const resumedState = server(closed, { type: "resumed", seq: 0, payload: { sessionId: "s1", pseudo: "ana", resumeToken: "t", rooms: [], windows: [], buffered: [], canReport: true } });
 
     expect(resumedState.account).toMatchObject({ open: false, step: "waitingCode", pendingVerify: false });
     expect(act(resumedState, { type: "codeStepRestored" }).account.open).toBe(false);
@@ -561,7 +561,7 @@ describe("private windows, ignore and search (web-ui/07)", () => {
       payload: {
         sessionId: "me",
         pseudo: "Lola",
-        resumeToken: "t",
+        resumeToken: "t", canReport: true,
         rooms: [],
         windows: [{ conversationId: "c1", other: max }],
         buffered: [message("c1", "s2", "tu es là ?").payload],
@@ -613,7 +613,7 @@ describe("chatReducer: search dialog (#185)", () => {
     expect(chatReducer(inRoom, { type: "showRooms" }).searchOpen).toBe(false);
     const oneRoom: ChatState = { ...inRoom, open: { r1: { members: [], lines: [] } }, active: "r1" };
     expect(chatReducer(oneRoom, { type: "closeRoom", roomId: "r1" }).searchOpen).toBe(false);
-    expect(server(inRoom, { type: "resumed", seq: 0, payload: { sessionId: "me1", pseudo: "ana", resumeToken: "t2", rooms: [], windows: [], buffered: [] } }).searchOpen).toBe(false);
+    expect(server(inRoom, { type: "resumed", seq: 0, payload: { sessionId: "me1", pseudo: "ana", resumeToken: "t2", rooms: [], windows: [], buffered: [], canReport: true } }).searchOpen).toBe(false);
     expect(chatReducer(inRoom, { type: "notice", code: "flood" }).searchOpen).toBe(true);
   });
 });
@@ -645,7 +645,7 @@ describe("chatReducer: notice lifetime (#68)", () => {
   });
 
   it("clears a page notice on entered and roomJoined, keeps an account notice", () => {
-    const entered: ServerMessage = { type: "entered", seq: 0, payload: { sessionId: "me", resumeToken: "t", roomList: [], isModerator: false } };
+    const entered: ServerMessage = { type: "entered", seq: 0, payload: { sessionId: "me", resumeToken: "t", roomList: [], isModerator: false, canReport: true } };
     const joined: ServerMessage = { type: "roomJoined", seq: 0, payload: { roomId: "r1", members: [] } };
 
     expect(server(warn(initialState, "flood"), entered).notice).toBeUndefined();
@@ -702,14 +702,14 @@ describe("chatReducer: moderation (brick 8a, web-ui/08)", () => {
   const msg = <T extends ServerMessage["type"]>(type: T, payload: Extract<ServerMessage, { type: T }>["payload"]) => ({ type, seq: 0, payload }) as ServerMessage;
   const queued = (id: string) => ({
     id, reason: "spam" as const, targetKind: "chatter" as const, targetPseudo: "bob", excerpt: "", context: [], authorPseudo: "ana",
-    createdAt: "2026-11-13T10:00:00.000Z", hasAccount: true, connected: true, activeStrikes: 0,
+    createdAt: "2026-11-13T10:00:00.000Z", hasAccount: true, connected: true, activeStrikes: 0, struck: false,
   });
   const moderator: ChatState = { ...withRoom("r1"), me: { sessionId: "me", pseudo: "owner" }, moderator: true };
 
   it("keeps the moderator flag from entered and resumed, and drops it on leave", () => {
-    const entered = server({ ...initialState, pendingPseudo: "owner" }, msg("entered", { sessionId: "me", resumeToken: "t", roomList: [], isModerator: true }));
+    const entered = server({ ...initialState, pendingPseudo: "owner" }, msg("entered", { sessionId: "me", resumeToken: "t", roomList: [], isModerator: true, canReport: true }));
     const resumed = (isModerator?: boolean) =>
-      server(initialState, msg("resumed", { sessionId: "me", pseudo: "owner", resumeToken: "t", rooms: [], windows: [], buffered: [], ...(isModerator ? { isModerator } : {}) }));
+      server(initialState, msg("resumed", { sessionId: "me", pseudo: "owner", resumeToken: "t", rooms: [], windows: [], buffered: [], canReport: true, ...(isModerator ? { isModerator } : {}) }));
 
     expect(entered.moderator).toBe(true);
     expect(resumed(true).moderator).toBe(true);
@@ -728,7 +728,7 @@ describe("chatReducer: moderation (brick 8a, web-ui/08)", () => {
     const refused = server(initialState, msg("entryRefused", { reason: "banned", bannedUntil: "2026-11-14T10:00:00.000Z" }));
 
     expect(refused.bannedUntil).toBe("2026-11-14T10:00:00.000Z");
-    expect(server(refused, msg("entered", { sessionId: "me", resumeToken: "t", roomList: [], isModerator: false })).bannedUntil).toBeUndefined();
+    expect(server(refused, msg("entered", { sessionId: "me", resumeToken: "t", roomList: [], isModerator: false, canReport: true })).bannedUntil).toBeUndefined();
   });
 
   it("opens the report dialog over the search dialog and closes it on reportSent with a notice", () => {

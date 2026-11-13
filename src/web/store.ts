@@ -116,6 +116,8 @@ export interface ChatState {
   readonly nextLineId: number;
   /** The session entered with the moderator grant (BR-091). */
   readonly moderator: boolean;
+  /** Reporting is on; off behind the tester tunnel until brick 8c (`moderation/01`). */
+  readonly canReport: boolean;
   /** End of the ban or expulsion the entry screen names (BR-008). */
   readonly bannedUntil?: string;
   /** The open report dialog (UC9). */
@@ -186,6 +188,7 @@ export const initialState: ChatState = {
   noticeHold: {},
   nextLineId: 0,
   moderator: false,
+  canReport: false,
 };
 
 
@@ -342,7 +345,7 @@ const onResumed = (state: ChatState, payload: Extract<ServerMessage, { type: "re
   const active = state.active && open[state.active] ? state.active : Object.keys(open)[0];
   const screen = state.screen === "room" && active ? "room" : "rooms";
   const me = { sessionId: payload.sessionId, pseudo: payload.pseudo };
-  const next: ChatState = { ...state, me, open, known, active, screen, account: resumedTo(state.account, payload.accountId), moderator: payload.isModerator ?? false };
+  const next: ChatState = { ...state, me, open, known, active, screen, account: resumedTo(state.account, payload.accountId), moderator: payload.isModerator ?? false, canReport: payload.canReport };
   return onResumedWindows(next, payload);
 };
 
@@ -386,6 +389,7 @@ const onServer = (state: ChatState, message: ServerMessage): ChatState => {
         roomList: message.payload.roomList,
         account: linkedTo(state.account, message.payload.accountId),
         moderator: message.payload.isModerator,
+        canReport: message.payload.canReport,
         bannedUntil: undefined,
       };
     case "entryRefused":
