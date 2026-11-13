@@ -78,6 +78,8 @@ export interface ChatState {
   /** Last gender seen per session, to colour away pseudos (issue #21). Memory only. */
   readonly known: Readonly<Record<string, Gender>>;
   readonly notice?: string;
+  /** Stamped by every action that sets `notice`, so `expireNotice` only clears the notice it timed (#68). */
+  readonly noticeSeq: number;
   readonly entryError?: string;
   /** Pseudo the server refused with `entryError` (NFC, trimmed), so the entry field can be marked (#154). */
   readonly refusedPseudo?: string;
@@ -110,6 +112,7 @@ export type Action =
   | { readonly type: "requestingCode" }
   | { readonly type: "verifyingCode" }
   | { readonly type: "dismissNotice" }
+  | { readonly type: "expireNotice"; readonly seq: number }
   | { readonly type: "openPrivate"; readonly other: OtherChatter }
   | { readonly type: "closePrivate"; readonly conversationId: string }
   | { readonly type: "togglePrivate"; readonly conversationId: string }
@@ -132,6 +135,7 @@ export const initialState: ChatState = {
   windows: {},
   ignored: [],
   search: { query: "", pending: false, results: [] },
+  noticeSeq: 0,
   nextLineId: 0,
 };
 
@@ -156,6 +160,13 @@ export const ACCOUNT_NOTICES: ReadonlySet<string> = new Set([
   "unavailable", "notConnected",
 ]);
 export const isAccountNotice = (code: string | undefined): boolean => code !== undefined && ACCOUNT_NOTICES.has(code);
+
+/** The next success ends a stale page notice; account notices follow the account dialog (#68, #136). */
+const withoutPageNotice = (state: ChatState): ChatState => (isAccountNotice(state.notice) ? state : { ...state, notice: undefined });
+
+/** Server messages and local actions that raise a notice (#68). */
+const raisesNotice = (action: Action): boolean =>
+  action.type === "notice" || (action.type === "server" && ["warning", "error", "codeSent", "accountUnlinked"].includes(action.message.type));
 
 const signedOut = (account: AccountView): AccountView => ({ ...account, step: "signedOut", accountId: undefined, triesLeft: undefined, pendingRequest: false });
 /** BR-087: a resume keeps a code step in memory, since the server keeps the code under the session id. */
@@ -297,7 +308,7 @@ const onServer = (state: ChatState, message: ServerMessage): ChatState => {
   switch (message.type) {
     case "entered":
       return {
-        ...state,
+        ...withoutPageNotice(state),
         screen: "rooms",
         me: { sessionId: message.payload.sessionId, pseudo: state.pendingPseudo ?? "" },
         pendingPseudo: undefined,
@@ -311,13 +322,13 @@ const onServer = (state: ChatState, message: ServerMessage): ChatState => {
     case "resumed":
       return onResumed(state, message.payload);
     case "resumeRefused":
-      return { ...initialState, link: state.link, lastPseudo: state.me?.pseudo };
+      return { ...initialState, link: state.link, lastPseudo: state.me?.pseudo, noticeSeq: state.noticeSeq };
     case "roomList":
       return { ...state, roomList: message.payload.rooms };
     case "roomJoined": {
       const { roomId, members } = message.payload;
       return {
-        ...state,
+        ...withoutPageNotice(state),
         open: { ...state.open, [roomId]: { members, lines: state.open[roomId]?.lines ?? [] } },
         known: learn(state.known, members),
         active: roomId,
@@ -383,6 +394,11 @@ const onServer = (state: ChatState, message: ServerMessage): ChatState => {
 
 /** The client reducer: pure, so screens and tests share one behaviour. */
 export const chatReducer = (state: ChatState, action: Action): ChatState => {
+  const next = reduce(state, action);
+  return next.notice !== undefined && raisesNotice(action) ? { ...next, noticeSeq: state.noticeSeq + 1 } : next;
+};
+
+const reduce = (state: ChatState, action: Action): ChatState => {
   switch (action.type) {
     case "server":
       return onServer(state, action.message);
@@ -392,7 +408,7 @@ export const chatReducer = (state: ChatState, action: Action): ChatState => {
     case "entering":
       return { ...state, pendingPseudo: action.pseudo, entryError: undefined, refusedPseudo: undefined };
     case "left":
-      return { ...initialState, link: state.link, lastPseudo: state.me?.pseudo };
+      return { ...initialState, link: state.link, lastPseudo: state.me?.pseudo, noticeSeq: state.noticeSeq };
     case "showRooms":
       return { ...state, screen: "rooms" };
     case "showRoom":
@@ -405,6 +421,8 @@ export const chatReducer = (state: ChatState, action: Action): ChatState => {
       return { ...state, notice: action.code };
     case "dismissNotice":
       return { ...state, notice: undefined };
+    case "expireNotice":
+      return action.seq === state.noticeSeq ? { ...state, notice: undefined } : state;
     case "openAccount":
       return { ...state, account: { ...state.account, open: true, step: state.account.step === "signedOut" ? "askEmail" : state.account.step } };
     case "closeAccount":

@@ -7,6 +7,7 @@ import { App } from "./App";
 import { browserConnection, ChatProvider, useChat, type ConnectionFactory } from "./chat-context";
 import type { Connection } from "./connection";
 import { STATS_MS } from "./screens/EntryScreen";
+import { NOTICE_MS } from "./screens/Notice";
 import { SMILEYS } from "./render";
 import { RoomScreen } from "./screens/RoomScreen";
 import type { Action } from "./store";
@@ -334,8 +335,51 @@ describe("entry screen", () => {
 
     await user.click(within(panel).getByRole("button", { name: STRINGS.getCode }));
 
-    expect(within(panel).getByRole("alert").textContent).toBe(STRINGS.membersHint);
+    expect(within(panel).getByRole("alert").textContent).toBe(STRINGS.missing(["pseudo", "âge", "case 18 ans", "case règles"]));
     expect(connection.enter).not.toHaveBeenCalled();
+  });
+
+  it("names the missing fields under a disabled ENTRER, in form order, and drops the hint once filled (#60)", async () => {
+    const user = await setup();
+    await goOnline();
+    const all = STRINGS.missing(["pseudo", "âge", "case 18 ans", "case règles"]);
+
+    expect(enterButton().getAttribute("aria-describedby")).toBe("entry-missing");
+    expect(document.getElementById("entry-missing")?.textContent).toBe(all);
+
+    await user.type(screen.getByLabelText(STRINGS.pseudo), "ana");
+    await user.click(screen.getByLabelText(STRINGS.terms));
+    expect(document.getElementById("entry-missing")?.textContent).toBe(STRINGS.missing(["âge", "case 18 ans"]));
+
+    await user.type(screen.getByLabelText(STRINGS.age), "30");
+    await user.click(screen.getByLabelText(STRINGS.adult));
+    expect(document.getElementById("entry-missing")).toBeNull();
+    expect(enterButton().hasAttribute("aria-describedby")).toBe(false);
+  });
+
+  it("does not count a blank pseudo as filled (#60)", async () => {
+    const user = await setup();
+    await goOnline();
+
+    await fill(user, { pseudo: "   " });
+
+    expect(document.getElementById("entry-missing")?.textContent).toBe(STRINGS.missing(["pseudo"]));
+  });
+
+  it("names every entry field and keeps autocomplete off on the pseudo (#148)", async () => {
+    await setup();
+
+    const fields = [...document.querySelectorAll("main input")];
+    expect(fields.length).toBeGreaterThan(0);
+    for (const field of fields) expect(field.getAttribute("name")).toBeTruthy();
+    expect(screen.getByLabelText(STRINGS.pseudo).getAttribute("autocomplete")).toBe("off");
+  });
+
+  it("shows the e-mail retention notice in the members panel (#110)", async () => {
+    await setup();
+
+    const panel = screen.getByRole("form", { name: STRINGS.membersTitle });
+    expect(within(panel).getByText(STRINGS.emailRetention)).toBeTruthy();
   });
 
   it("renders the footer links", async () => {
@@ -625,6 +669,35 @@ describe("banners", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
+  it("expires a notice after 8 seconds, restarting for the same code raised again (#68)", async () => {
+    await setup();
+    vi.useFakeTimers();
+    try {
+      await fire({ type: "notice", code: "flood" });
+      await act(async () => vi.advanceTimersByTime(NOTICE_MS - 1000));
+      await fire({ type: "notice", code: "flood" });
+      await act(async () => vi.advanceTimersByTime(NOTICE_MS - 1000));
+      expect(screen.getByRole("alert").textContent).toContain(STRINGS.notices.flood);
+
+      await act(async () => vi.advanceTimersByTime(1000));
+      expect(screen.queryByRole("alert")).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("clears a stale refusal on the next room joined (#68)", async () => {
+    await setup();
+    await goOnline();
+    await enterChat();
+    await fromServer(msg("warning", { code: "flood", message: "m" }));
+    expect(screen.getByRole("alert")).toBeTruthy();
+
+    await joinRoom("r1");
+
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
   it("shows the generic text for an unknown notice code", async () => {
     await setup();
 
@@ -746,6 +819,15 @@ describe("rooms screen", () => {
 
       expect(field.value).toBe("Autre");
     });
+  });
+
+  it("names the room-name and search fields (#148)", async () => {
+    await setup();
+    await goOnline();
+    await enterChat();
+
+    expect(screen.getByLabelText(STRINGS.roomName).getAttribute("name")).toBe("roomName");
+    expect(screen.getByLabelText(STRINGS.searchLabel).getAttribute("name")).toBe("query");
   });
 
   it("ignores a blank room name", async () => {
@@ -1416,9 +1498,18 @@ describe("account panel", () => {
     const user = await openPanel();
 
     expect(within(panel()).getByText(new RegExp(STRINGS.emailKept.slice(0, 30)))).toBeTruthy();
+    expect(within(panel()).getByText(STRINGS.emailRetention)).toBeTruthy();
+    for (const field of panel().querySelectorAll("input")) expect(field.getAttribute("name")).toBeTruthy();
     await user.click(within(panel()).getByRole("button", { name: STRINGS.legal.privacy }));
 
     expect(screen.getByRole("dialog", { name: STRINGS.legal.privacy })).toBeTruthy();
+  });
+
+  it("names the code field (#148)", async () => {
+    await openPanel();
+    await fromServer(msg("codeSent", {}));
+
+    expect(within(panel()).getByLabelText(STRINGS.code).getAttribute("name")).toBe("code");
   });
 
   it("requests a code with the e-mail and the remember box", async () => {
@@ -1496,6 +1587,7 @@ describe("account panel", () => {
     expect(connection.signOutDevice).toHaveBeenCalled();
 
     await user.click(within(panel()).getByRole("button", { name: STRINGS.deleteAccount }));
+    expect(within(panel()).getByText(STRINGS.emailRetention)).toBeTruthy();
     await user.click(within(panel()).getByRole("button", { name: STRINGS.cancel }));
     await user.click(within(panel()).getByRole("button", { name: STRINGS.deleteAccount }));
     await user.click(within(panel()).getByRole("button", { name: STRINGS.confirm }));

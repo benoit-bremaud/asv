@@ -19,7 +19,11 @@ export const STRINGS = {
   codeCreates: "Le même code crée ton compte s'il n'existe pas.",
   emailKept: "Ton adresse sert uniquement à t'envoyer un code de connexion (via Brevo) et à gérer ton compte. Elle est chiffrée chez nous.",
   remember: "se souvenir de cet appareil",
-  membersHint: "Remplis d'abord le pseudo, l'âge et les deux cases à gauche.",
+  /** Missing pseudo-form fields, in form order (#60). */
+  missing: (fields: readonly string[]) => `Il manque : ${fields.join(", ")}.`,
+  missingFields: { pseudo: "pseudo", age: "âge", adult: "case 18 ans", terms: "case règles" },
+  /** ADR-0014, GDPR art. 13: under every e-mail field and before deletion (#110). */
+  emailRetention: "Ton e-mail est gardé 5 ans après la fermeture du compte, uniquement pour la loi.",
   myAccount: "Mon compte",
   accountTitle: "Mon compte",
   close: "fermer",

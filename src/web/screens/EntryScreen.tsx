@@ -11,6 +11,7 @@ const LEGAL_TOPICS: readonly LegalTopic[] = ["rules", "notice", "privacy"];
 /** BR-006, in code points: `maxLength` would count UTF-16 units and stop at 20 emoji. */
 const MAX_CITY = 40;
 const ENTRY_ERROR_ID = "entry-error";
+const MISSING_ID = "entry-missing";
 /** Refusals that mean the pseudo itself must change (#154). */
 const PSEUDO_REFUSALS: ReadonlySet<string | undefined> = new Set<(typeof entryRefusal.options)[number]>(["pseudoTaken", "pseudoInvalid"]);
 /** Refresh interval (ms) of the connected count on the entry screen (D8). */
@@ -65,7 +66,11 @@ export const EntryScreen = () => {
   // BR-090, checked on the trimmed city as the server does.
   const cityInvisible = hasForbiddenChar(city.trim());
   const pseudoRefused = PSEUDO_REFUSALS.has(state.entryError) && pseudo.trim().normalize("NFC") === state.refusedPseudo;
-  const ready = !cityInvisible && adult && terms && pseudo.trim() !== "" && age !== "" && state.link === "online" && state.pendingPseudo === undefined;
+  // #60: the fields still to fill, in form order, named under ENTRER and in the "Membres" hint.
+  const missing = Object.entries({ pseudo: pseudo.trim() === "", age: age === "", adult: !adult, terms: !terms })
+    .filter(([, absent]) => absent)
+    .map(([field]) => STRINGS.missingFields[field as keyof typeof STRINGS.missingFields]);
+  const ready = !cityInvisible && missing.length === 0 && state.link === "online" && state.pendingPseudo === undefined;
 
   const form = () => ({
       pseudo: pseudo.trim(),
@@ -94,7 +99,7 @@ export const EntryScreen = () => {
           <h2 id="guest-title">{STRINGS.guestTitle}</h2>
           <label>
             {STRINGS.pseudo}
-            <input value={pseudo} aria-invalid={pseudoRefused || undefined} aria-describedby={pseudoRefused ? ENTRY_ERROR_ID : undefined} maxLength={20} autoComplete="off" onChange={(e) => setPseudo(e.target.value)} />
+            <input name="pseudo" value={pseudo} aria-invalid={pseudoRefused || undefined} aria-describedby={pseudoRefused ? ENTRY_ERROR_ID : undefined} maxLength={20} autoComplete="off" onChange={(e) => setPseudo(e.target.value)} />
           </label>
           <fieldset>
             <legend>{STRINGS.iAm}</legend>
@@ -108,20 +113,20 @@ export const EntryScreen = () => {
           <div className="row">
             <label>
               {STRINGS.age}
-              <input type="number" min={18} max={99} inputMode="numeric" value={age} onChange={(e) => setAge(e.target.value)} />
+              <input name="age" type="number" min={18} max={99} inputMode="numeric" value={age} onChange={(e) => setAge(e.target.value)} />
             </label>
             <label>
               {STRINGS.city}
-              <input value={city} aria-invalid={cityInvisible || undefined} onChange={(e) => setCity([...e.target.value].slice(0, MAX_CITY).join(""))} />
+              <input name="city" value={city} aria-invalid={cityInvisible || undefined} onChange={(e) => setCity([...e.target.value].slice(0, MAX_CITY).join(""))} />
               {cityInvisible && <output className="small too-long">{STRINGS.invisibleChars}</output>}
             </label>
           </div>
           <label className="inline">
-            <input type="checkbox" checked={adult} onChange={(e) => setAdult(e.target.checked)} />
+            <input name="adult" type="checkbox" checked={adult} onChange={(e) => setAdult(e.target.checked)} />
             {STRINGS.adult}
           </label>
           <label className="inline">
-            <input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} />
+            <input name="terms" type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} />
             {STRINGS.terms}
           </label>
           {state.entryError && (
@@ -129,22 +134,24 @@ export const EntryScreen = () => {
               {STRINGS.entryRefused[state.entryError as keyof typeof STRINGS.entryRefused]}
             </p>
           )}
-          <button type="submit" className="bevel primary big" disabled={!ready}>{STRINGS.enter}</button>
+          <button type="submit" className="bevel primary big" disabled={!ready} aria-describedby={missing.length > 0 ? MISSING_ID : undefined}>{STRINGS.enter}</button>
+          {missing.length > 0 && <p id={MISSING_ID} className="small">{STRINGS.missing(missing)}</p>}
         </form>
         <form className="panel" onSubmit={submitMember} aria-labelledby="members-title">
           <h2 id="members-title">{STRINGS.membersTitle}</h2>
           <label>
             {STRINGS.email}
-            <input type="email" autoComplete="email" maxLength={254} value={email} onChange={(e) => setEmail(e.target.value)} />
+            <input name="email" type="email" autoComplete="email" maxLength={254} value={email} onChange={(e) => setEmail(e.target.value)} />
           </label>
           <label className="inline">
-            <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+            <input name="remember" type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
             {STRINGS.remember}
           </label>
-          {hint && <p role="alert" className="error">{STRINGS.membersHint}</p>}
+          {hint && missing.length > 0 && <p role="alert" className="error">{STRINGS.missing(missing)}</p>}
           <button type="submit" className="bevel" disabled={email.trim() === "" || state.pendingPseudo !== undefined}>{STRINGS.getCode}</button>
           <p className="small">{STRINGS.codeCreates}</p>
           <p className="small">{STRINGS.emailKept}</p>
+          <p className="small">{STRINGS.emailRetention}</p>
         </form>
       </main>
       <footer className="footer">
