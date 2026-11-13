@@ -17,57 +17,61 @@ interface Snapshot {
  * leaves memory as it was and both stay in step.
  */
 export const createMemoryModeratorStore = (
-  initial: Snapshot = { moderators: [], invitations: [] },
+  initial?: Snapshot,
   onChange: (snapshot: Snapshot) => void = () => undefined,
 ): ModeratorStore & { dump(): Snapshot } => {
-  let moderators = new Map(initial.moderators.map((moderator) => [moderator.nameKeyedHash, moderator]));
-  let invitations = new Map(initial.invitations.map((invitation) => [invitation.tokenHash, invitation]));
+  let moderators = new Map((initial?.moderators ?? []).map((moderator) => [moderator.nameKeyedHash, moderator]));
+  let invitations = new Map((initial?.invitations ?? []).map((invitation) => [invitation.tokenHash, invitation]));
   const dump = (): Snapshot => ({ moderators: [...moderators.values()], invitations: [...invitations.values()] });
-  /** Applies `change` to copies, writes them, then keeps them. */
-  const commit = (change: (nextModerators: typeof moderators, nextInvitations: typeof invitations) => void) => {
+  /** Applies `change` to copies, writes them, then keeps them; a failed write rejects (the port may fail). */
+  const commit = (change: (nextModerators: typeof moderators, nextInvitations: typeof invitations) => void): Promise<void> => {
     const nextModerators = new Map(moderators);
     const nextInvitations = new Map(invitations);
     change(nextModerators, nextInvitations);
-    onChange({ moderators: [...nextModerators.values()], invitations: [...nextInvitations.values()] });
+    try {
+      onChange({ moderators: [...nextModerators.values()], invitations: [...nextInvitations.values()] });
+    } catch (error) {
+      return Promise.reject(error instanceof Error ? error : new Error(String(error)));
+    }
     moderators = nextModerators;
     invitations = nextInvitations;
+    return Promise.resolve();
   };
+  const done = Promise.resolve();
   const valid = (tokenHash: string, now: Date) => {
     const invitation = invitations.get(tokenHash);
     return invitation && invitation.expiresAt.getTime() > now.getTime() ? invitation : undefined;
   };
   const byCredential = (hash: string) => [...moderators.values()].find((moderator) => moderator.credentialKeyedHash === hash);
   return {
-    async saveInvitation(invitation) {
-      commit((_, next) => next.set(invitation.tokenHash, invitation));
+    saveInvitation(invitation) {
+      return commit((_, next) => next.set(invitation.tokenHash, invitation));
     },
     findInvitation: (tokenHash, now) => Promise.resolve(valid(tokenHash, now)),
-    async enrollModerator(tokenHash, moderator, now) {
-      if (!valid(tokenHash, now)) return false;
-      commit((nextModerators, nextInvitations) => {
+    enrollModerator(tokenHash, moderator, now) {
+      if (!valid(tokenHash, now)) return Promise.resolve(false);
+      return commit((nextModerators, nextInvitations) => {
         nextInvitations.delete(tokenHash);
         nextModerators.set(moderator.nameKeyedHash, moderator);
-      });
-      return true;
+      }).then(() => true);
     },
     findByCredential: (hash) => Promise.resolve(byCredential(hash)),
-    async updateSignCount(hash, count) {
+    updateSignCount(hash, count) {
       const moderator = byCredential(hash);
-      if (moderator) commit((next) => next.set(moderator.nameKeyedHash, { ...moderator, signCount: count }));
+      return moderator ? commit((next) => next.set(moderator.nameKeyedHash, { ...moderator, signCount: count })) : done;
     },
-    async deleteModerator(nameKeyedHash) {
+    deleteModerator(nameKeyedHash) {
       const pending = [...invitations.values()].filter((invitation) => invitation.nameKeyedHash === nameKeyedHash);
       const found = moderators.has(nameKeyedHash);
-      if (!found && pending.length === 0) return false;
-      commit((nextModerators, nextInvitations) => {
+      if (!found && pending.length === 0) return Promise.resolve(false);
+      return commit((nextModerators, nextInvitations) => {
         nextModerators.delete(nameKeyedHash);
         for (const invitation of pending) nextInvitations.delete(invitation.tokenHash);
-      });
-      return true;
+      }).then(() => true);
     },
-    async purgeExpiredInvitations(now) {
+    purgeExpiredInvitations(now) {
       const expired = [...invitations.values()].filter((invitation) => invitation.expiresAt.getTime() <= now.getTime());
-      if (expired.length > 0) commit((_, next) => { for (const invitation of expired) next.delete(invitation.tokenHash); });
+      return expired.length > 0 ? commit((_, next) => { for (const invitation of expired) next.delete(invitation.tokenHash); }) : done;
     },
     dump,
   };

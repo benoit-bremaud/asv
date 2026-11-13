@@ -27,7 +27,7 @@ export const EnrolPage = ({ token, onBack }: { token: string; onBack: () => void
       <section className="panel" aria-labelledby="enrol-title">
         <h2 id="enrol-title">{STRINGS.enrolTitle}</h2>
         <p className="small">{STRINGS.enrolIntro}</p>
-        {message && <p role={step.kind === "done" ? "status" : "alert"} className={step.kind === "done" ? undefined : "error"}>{message}</p>}
+        {message && (step.kind === "done" ? <output>{message}</output> : <p role="alert" className="error">{message}</p>)}
         {canCreate && <button type="button" className="bevel primary big" onClick={() => void create()}>{STRINGS.enrolCreate}</button>}
         {step.kind === "creating" && <button type="button" className="bevel primary big" disabled>{STRINGS.enrolCreate}</button>}
         <button type="button" className="link" onClick={onBack}>{STRINGS.enrolBack}</button>

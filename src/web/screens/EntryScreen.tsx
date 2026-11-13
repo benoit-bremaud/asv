@@ -181,7 +181,9 @@ export const EntryScreen = () => {
               {state.bannedUntil && STRINGS.until(state.bannedUntil)}
             </p>
           )}
-          {moderator.notice && <p role={moderator.grant ? "status" : "alert"} className={moderator.grant ? "small" : "error"}>{moderator.notice}</p>}
+          {moderator.notice && (moderator.grant
+            ? <output className="small">{moderator.notice}</output>
+            : <p role="alert" className="error">{moderator.notice}</p>)}
           <button type="submit" className="bevel primary big" disabled={!ready} aria-describedby={missing.length > 0 ? MISSING_ID : undefined}>{STRINGS.enter}</button>
           {missing.length > 0 && <p id={MISSING_ID} className="small">{STRINGS.missing(missing)}</p>}
         </form>

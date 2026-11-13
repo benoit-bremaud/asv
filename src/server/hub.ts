@@ -32,7 +32,7 @@ import { createAccountHandlers, type Caller } from "./hub-accounts";
 import { createModerationHandlers, type ModerationCaller } from "./hub-moderation";
 import { createPrivateHandlers, type PrivateCaller } from "./hub-private";
 import type { ModerationIo } from "./moderation-io";
-import { readGrant } from "./moderator-grant";
+import { readGrant, type GrantClaims } from "./moderator-grant";
 import { createOutgoing, sessionOf, type Outgoing } from "./outgoing";
 import { FRAME_LIMITS, type PolicyReason } from "./frame-budget";
 import { UPGRADE_LIMITS } from "./upgrade-limit";
@@ -234,19 +234,24 @@ export const createHub = (deps: HubDeps): Hub => {
     return claims && !usedNonces.has(claims.nonce) ? claims : undefined;
   };
 
+  /** BR-095, BR-096: the checked grant, `undefined` without one, or the refusal to send. */
+  type Admission = { readonly grant?: GrantClaims } | { readonly refused: Outgoing[] };
+  const admitGrant = async (socket: Socket, moderatorGrant: string | undefined, now: Date): Promise<Admission> => {
+    if (moderatorGrant === undefined) return {};
+    const failures = recentGrantFailures(socket.ip, now.getTime());
+    if (failures.length >= GRANT_FAILURES_MAX) return { refused: [send([socket.key], "entryRefused", { reason: "rate" })] };
+    // BR-095: a refused grant creates no session, so a bad grant cannot enter as a chatter.
+    const grant = await checkGrant(moderatorGrant, now);
+    if (grant) return { grant };
+    grantFailures.set(socket.ip, [...failures, now.getTime()]);
+    return { refused: [send([socket.key], "entryRefused", { reason: "notModerator" })] };
+  };
+
   const onEnter = async (socket: Socket, command: Command<"enter">, now: Date): Promise<Outgoing[]> => {
     const { payload } = command;
-    let grant: Awaited<ReturnType<typeof checkGrant>>;
-    if (payload.moderatorGrant !== undefined) {
-      const failures = recentGrantFailures(socket.ip, now.getTime());
-      if (failures.length >= GRANT_FAILURES_MAX) return [send([socket.key], "entryRefused", { reason: "rate" })];
-      // BR-095: a refused grant creates no session, so a bad grant cannot enter as a chatter.
-      grant = await checkGrant(payload.moderatorGrant, now);
-      if (!grant) {
-        grantFailures.set(socket.ip, [...failures, now.getTime()]);
-        return [send([socket.key], "entryRefused", { reason: "notModerator" })];
-      }
-    }
+    const admitted = await admitGrant(socket, payload.moderatorGrant, now);
+    if ("refused" in admitted) return admitted.refused;
+    const { grant } = admitted;
     const isModerator = grant !== undefined;
     const device = await deviceAccount(socket, now);
     if (device === "unavailable") return [out.warning(socket.key, "unavailable", command.seq)];

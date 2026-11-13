@@ -11,7 +11,7 @@ import { WebSocketServer, type RawData, type WebSocket } from "ws";
 import { createAccountIo } from "../../server/account-io";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { createApp, DEVICE_COOKIE, type LegalIdentity } from "../../server/app";
-import { createCrypto } from "../../server/crypto/cipher";
+import { createCrypto, type Crypto as Cipher } from "../../server/crypto/cipher";
 import { cryptoKeysFromEnv, type CryptoEnv } from "../../server/crypto/keys";
 import { createHub, type Outgoing } from "../../server/hub";
 import { createBrevoMailer } from "../../server/mailer/brevo";
@@ -140,6 +140,29 @@ const peerOf = (env: unknown): string | undefined => {
   return incoming instanceof IncomingMessage ? incoming.socket.remoteAddress : undefined;
 };
 
+/** Brick 8b wiring and its start checks (BR-093, BR-098, BR-099). */
+const moderatorSetup = (options: NodeServerOptions, crypto: Cipher, behindTunnel: boolean) => {
+  const ownerSecret = checkOwnerSecret(options.ownerSecret);
+  const cryptoEnv = options.cryptoEnv ?? {};
+  // A moderator file written under keys of one process could never be read again (BR-099).
+  if (options.moderatorFile !== undefined && (!cryptoEnv.ASV_DATA_KEYS || !cryptoEnv.ASV_HMAC_KEY)) {
+    throw new Error("moderatorFile requires ASV_DATA_KEYS and ASV_HMAC_KEY (BR-099)");
+  }
+  const moderators = createModeratorOps(createModeratorIo({
+    store: options.moderatorFile === undefined ? createMemoryModeratorStore() : createFileModeratorStore(options.moderatorFile),
+    crypto,
+  }));
+  const publicOrigin = options.publicOrigin ?? DEFAULT_PUBLIC_ORIGIN;
+  // BR-098: a bare origin the browser routes accept, or every enrolment and sign-in fails without a trace.
+  // Fatal only when moderation is configured; a plain local run (QA of other journeys) just warns.
+  if (!behindTunnel && (URL.parse(publicOrigin)?.origin !== publicOrigin || !options.allowedOrigins.includes(publicOrigin))) {
+    const problem = `publicOrigin ${publicOrigin} must be a bare origin listed in allowedOrigins (BR-098)`;
+    if (ownerSecret !== undefined || options.moderatorFile !== undefined) throw new Error(problem);
+    console.warn(`${problem}; moderator passkeys will fail`);
+  }
+  return { ownerSecret, publicOrigin, moderators };
+};
+
 /** Starts the Node transport and resolves once it listens. */
 export const startNodeServer = async (options: NodeServerOptions): Promise<NodeServer> => {
   const { now = () => new Date(), tickMs = 1000, silenceMs = 60_000 } = options;
@@ -159,24 +182,7 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
   const accounts = createMemoryAccountStore();
   const vault = createMemoryVault();
   const moderation = createMemoryModerationStore();
-  const ownerSecret = checkOwnerSecret(options.ownerSecret);
-  const cryptoEnv = options.cryptoEnv ?? {};
-  // A moderator file written under keys of one process could never be read again (BR-099).
-  if (options.moderatorFile !== undefined && (!cryptoEnv.ASV_DATA_KEYS || !cryptoEnv.ASV_HMAC_KEY)) {
-    throw new Error("moderatorFile requires ASV_DATA_KEYS and ASV_HMAC_KEY (BR-099)");
-  }
-  const moderators = createModeratorOps(createModeratorIo({
-    store: options.moderatorFile === undefined ? createMemoryModeratorStore() : createFileModeratorStore(options.moderatorFile),
-    crypto,
-  }));
-  const publicOrigin = options.publicOrigin ?? DEFAULT_PUBLIC_ORIGIN;
-  // BR-098: a bare origin the browser routes accept, or every enrolment and sign-in fails without a trace.
-  // Fatal only when moderation is configured; a plain local run (QA of other journeys) just warns.
-  if (!behindTunnel && (URL.parse(publicOrigin)?.origin !== publicOrigin || !options.allowedOrigins.includes(publicOrigin))) {
-    const problem = `publicOrigin ${publicOrigin} must be a bare origin listed in allowedOrigins (BR-098)`;
-    if (ownerSecret !== undefined || options.moderatorFile !== undefined) throw new Error(problem);
-    console.warn(`${problem}; moderator passkeys will fail`);
-  }
+  const { ownerSecret, publicOrigin, moderators } = moderatorSetup(options, crypto, behindTunnel);
   const grantKey = await createGrantKey();
   const fileLog = options.logFile === undefined ? undefined : createFileLog(options.logFile, now());
   const fileVault = options.vaultFile === undefined ? undefined : createFileVault(options.vaultFile, now());

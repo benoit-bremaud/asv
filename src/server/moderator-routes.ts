@@ -23,7 +23,9 @@ export const MIN_OWNER_SECRET_LENGTH = 32;
 export const OWNER_FAILURES_MAX = 5;
 export const OWNER_WINDOW_MS = 10 * 60_000;
 const CEREMONY_BUCKET = { capacity: 10, perSecond: 1 / 6 } as const;
-const LOOPBACK = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1"]);
+const LOOPBACK = new Set(["127.0.0.1", "::1"]);
+/** An IPv4 peer on a dual-stack socket reads `::ffff:127.0.0.1`. */
+const isLoopback = (peer: string) => LOOPBACK.has(peer.replace(/^::ffff:/, ""));
 const NO_STORE = { "Cache-Control": "no-store" };
 const MAX_TOKEN = 64;
 
@@ -115,7 +117,7 @@ export const addModeratorRoutes = (app: Hono, deps: ModeratorRouteDeps): void =>
   /** BR-093, BR-096: the owner guard; `undefined` when the request may go on. */
   const ownerRefusal = async (c: Context): Promise<Response | undefined> => {
     const peer = deps.peerAddress(c);
-    if (deps.ownerSecret === undefined || peer === undefined || !LOOPBACK.has(peer)) return c.body(null, 404, NO_STORE);
+    if (deps.ownerSecret === undefined || peer === undefined || !isLoopback(peer)) return c.body(null, 404, NO_STORE);
     const nowMs = now().getTime();
     const failures = (ownerFailures.get(peer) ?? []).filter((at) => nowMs - at < OWNER_WINDOW_MS);
     if (failures.length >= OWNER_FAILURES_MAX) return c.body(null, 429, { ...NO_STORE, "Retry-After": "600" });

@@ -77,7 +77,7 @@ describe("moderator sign-in on the entry screen (UC16, BR-095, BR-097)", () => {
     await fillGuest(user);
 
     await user.click(screen.getByRole("button", { name: STRINGS.moderatorSignIn }));
-    expect(screen.getByText(STRINGS.moderatorAccepted("Marc")).getAttribute("role")).toBe("status");
+    expect(screen.getByText(STRINGS.moderatorAccepted("Marc")).tagName).toBe("OUTPUT");
     await user.click(screen.getByRole("button", { name: STRINGS.enter }));
 
     expect(connection.enter).toHaveBeenCalledWith(expect.objectContaining({ pseudo: "owner", moderatorGrant: "g.mac" }), undefined);
@@ -191,7 +191,7 @@ describe("enrolment page (UC15, BR-099)", () => {
     await user.click(screen.getByRole("button", { name: STRINGS.enrolCreate }));
 
     expect(passkey.enrolModerator).toHaveBeenCalledWith("tok");
-    expect(screen.getByText(STRINGS.enrolDone("Marc")).getAttribute("role")).toBe("status");
+    expect(screen.getByText(STRINGS.enrolDone("Marc")).tagName).toBe("OUTPUT");
     expect(screen.queryByRole("button", { name: STRINGS.enrolCreate })).toBeNull();
   });
 
