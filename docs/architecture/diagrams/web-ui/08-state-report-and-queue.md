@@ -42,6 +42,7 @@ stateDiagram-v2
 - Queue actions: "aucune suite" (`noAction`), "avertir" (`warned`, members only), "expulser" with
   1 h / 24 h / 7 j (`expel`, which closes the report as `expelled` on the server). Each row shows reason, date, excerpt, context,
   pseudos, whether the target has an account and is connected, and its active strikes.
+- From brick 8b the queue title reads "Signalements — ‹nom›" (`web-ui/09`).
 - The queue is sorted oldest first while there is no triage (BR-092); urgency columns arrive in 8c.
 - An `expelled` target sees the expel screen with the end time, then the entry screen (BR-008).
 - A `warned` target sees a notice naming the rule and its active strikes.

@@ -84,7 +84,8 @@ No analytics, no ads, no third-party trackers, no cookies other than strictly ne
 - Origin check on WebSocket upgrade.
 - Input validation at the protocol boundary and in the domain.
 - Secrets (HMAC key, data keys, vault public key, Brevo API key, owner invitation secret) in Wrangler
-  secrets, never in the repo. The owner keeps an offline backup of the keys and the vault private key
+  secrets, never in the repo. On the Node transport (until brick 9) they are environment variables, the
+  owner secret being `ASV_OWNER_SECRET` (BR-093); the grant key is drawn at start and never stored (BR-095). The owner keeps an offline backup of the keys and the vault private key
   for 5 years (ADR-0017).
 - Application-level encryption of personal data at rest (ADR-0017, BR-083).
 - Dependencies: Dependabot, CodeQL from brick 2, Gitleaks on the local pre-push hook (lefthook).
