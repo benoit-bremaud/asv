@@ -15,10 +15,10 @@ Links requirements to use cases and every use case to its realisations. All path
 | UC6 | Open a private conversation | F-008, F-020 | BR-013, BR-020, BR-021, BR-090, BR-040, BR-041, BR-043 | private-conversations/02 | private-conversations/04, private-conversations/07 | private-conversations/05, web-ui/07 | — |
 | UC7 | Find a chatter by pseudo or city | F-009 | BR-006, BR-042 | Spec | entry/04, directory/07 | web-ui/07 | directory/06 |
 | UC8 | Ignore a chatter | F-010 | BR-042, BR-044 | rooms/02, private-conversations/02 | private-conversations/04, private-conversations/07 | web-ui/07 | — |
-| UC9 | Report a chatter, a message or a room | F-011, F-019 | BR-050 to BR-052 | moderation/02a | moderation/04 | moderation/05, web-ui/08 | moderation/06 |
+| UC9 | Report a chatter, a message or a room | F-011, F-019 | BR-050 to BR-052, BR-100, BR-101, BR-107 | moderation/02a, moderation/02g | moderation/04 | moderation/05, web-ui/08 | moderation/06 |
 | UC10 | Leave the chat | F-017 | BR-015 | entry/02b (same closing steps) | entry/04, entry/07, rooms/07 | entry/05 | entry/06 |
-| UC11 | Expel a chatter | F-012, F-022, F-023 | BR-053 to BR-055, BR-076 to BR-078, BR-080, BR-081 | moderation/02a, moderation/02d | moderation/04, accounts/04 | entry/05, rooms/05, accounts/05 | moderation/06, accounts/06 |
-| UC12 | Review reports | F-013, F-019, F-022 | BR-054, BR-055, BR-057, BR-074, BR-075 | moderation/02a, moderation/02d | moderation/04, accounts/04 | moderation/05, accounts/05, web-ui/08 | moderation/06 |
+| UC11 | Expel a chatter | F-012, F-022, F-023 | BR-053 to BR-055, BR-076 to BR-078, BR-080, BR-081, BR-103, BR-104, BR-106 | moderation/02a, moderation/02d, moderation/02h, moderation/02i | moderation/04, accounts/04 | entry/05, rooms/05, accounts/05 | moderation/06, accounts/06 |
+| UC12 | Review reports | F-013, F-019, F-022 | BR-054, BR-055, BR-057, BR-074, BR-075, BR-102, BR-105, BR-107 | moderation/02a, moderation/02d, moderation/02g, moderation/02i | moderation/04, accounts/04 | moderation/05, accounts/05, web-ui/08 | moderation/06 |
 | UC13 | Resume my session after a disconnection | F-014 | BR-010 to BR-015, BR-090 | entry/02b | entry/04, entry/07, rooms/07 | entry/05 | entry/06 |
 | UC14 | Invite a moderator | F-015 | BR-056, BR-093 | moderation/02b, moderation/02f | moderation/04 | — | moderation/06 |
 | UC15 | Enroll as moderator | F-015 | BR-056, BR-094, BR-097 to BR-099 | moderation/02b, moderation/02f | moderation/04 | web-ui/09 | moderation/06 |
@@ -27,6 +27,7 @@ Links requirements to use cases and every use case to its realisations. All path
 | UC17 | Sign in with an e-mail code | F-020, F-021 | BR-070 to BR-073, BR-077, BR-080, BR-081, BR-083, BR-087 | accounts/02 | accounts/04, platform/04d | accounts/05, web-ui/06 | accounts/06 |
 | UC18 | Sign out of this device or everywhere | F-024 | BR-073 | Spec | accounts/04, platform/04d | web-ui/06 | accounts/06 |
 | UC19 | Delete my account | F-024 | BR-080 to BR-083 | Spec | accounts/04, platform/04d | accounts/05, web-ui/06 | accounts/06 |
+| UC20 | File a severe case with the authorities | F-012 | BR-054, BR-093, BR-097, BR-104, BR-105 | moderation/02h | moderation/04, platform/04 | web-ui/08 | moderation/06 |
 
 ## Structural and cross-cutting studies
 
@@ -45,7 +46,7 @@ Links requirements to use cases and every use case to its realisations. All path
 | web-ui/05-state-navigation | Legal pages (ADR-0018); screens for UC1, UC2, UC3, UC6, UC7, UC10, UC12, UC13, UC16 |
 | web-ui/06-state-account-panel | Account dialog, modal (UC17 to UC19, #63) |
 | web-ui/07-state-private-and-search | Pseudo menu, private windows and the search dialog of a room, modal (UC6 to UC8, BR-040 to BR-044, #111) |
-| web-ui/08-state-report-and-queue | Report dialog and moderator queue dialog, modal (UC9, UC11, UC12, UC16i, BR-050 to BR-055, BR-074, BR-075, BR-092) |
+| web-ui/08-state-report-and-queue | Report dialog and moderator queue dialog with the "alertes" tab, modal (UC9, UC11, UC12, UC16i, UC20, BR-050 to BR-055, BR-074, BR-075, BR-102 to BR-107; sorted by BR-102 since brick 8c, oldest first in brick 8a by BR-092, removed) |
 | web-ui/09-state-moderator-sign-in | Moderator sign-in link and enrolment page (UC15, UC16, BR-094, BR-095, BR-097, BR-098) |
 
 ## Tester exposure (ADR-0018, issue #54)

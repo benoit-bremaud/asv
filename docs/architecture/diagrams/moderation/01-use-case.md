@@ -2,8 +2,8 @@
 
 > **Feature**: moderation (roadmap brick 8)
 > **Requirements**: ASV-F-011 to F-013, F-015, F-016, F-019, F-022, F-023
-> **Business rules**: BR-050 to BR-057, BR-074 to BR-078, BR-091 to BR-099
-> **Related ADRs**: ADR-0004, ADR-0005, ADR-0008, ADR-0010, ADR-0012
+> **Business rules**: BR-050 to BR-057, BR-074 to BR-078, BR-091 to BR-108
+> **Related ADRs**: ADR-0004, ADR-0005, ADR-0008, ADR-0010, ADR-0012, ADR-0019
 
 ## Context
 
@@ -26,6 +26,7 @@ flowchart LR
     subgraph Handling ["Handling"]
       UC12(("UC12 Review reports"))
       UC11(("UC11 Expel a chatter"))
+      UC20(("UC20 File a severe case with the authorities"))
     end
     subgraph Access ["Moderator access"]
       UC14(("UC14 Invite a moderator"))
@@ -38,8 +39,9 @@ flowchart LR
   Moderator --> UC11
   Moderator --> UC16
   Owner --> UC14
+  Owner --> UC20
+  UC20 -.-> Authorities
   Invitee --> UC15
-  UC11 -.->|"alerted in severe cases"| Authorities
   Moderator -.->|"generalizes"| Chatter
 ```
 
@@ -57,7 +59,7 @@ flowchart LR
 - Main scenario: 1. Moderator opens the report list. 2. System shows open reports sorted by AI urgency,
   then date, with reason, AI summary, excerpt, context, pseudos and whether the target is still
   connected. 3. Moderator closes the report with an outcome (BR-057): no action, warned, expelled,
-  suspended, room removed. A warning sends the target a `warned` message and, if the target has an
+  suspended, severe deletion, room removed. A warning sends the target a `warned` message and, if the target has an
   account, adds a strike (BR-074). At the third active strike, the moderator is asked to confirm a
   7-day suspension (BR-075, sequence 02d).
 
@@ -68,13 +70,15 @@ flowchart LR
 - Variant: target has an account → a non-severe expel bans the keyed IP hash and pseudo only and keeps
   the account (strikes come from warnings, see 02d). The account is deleted only by a confirmed
   suspension (02d) or the severe variant below (BR-076 to BR-078).
-- Variant: severe case (grooming, threats, child sexual abuse material, incitement to violence):
+- Variant: severe case (grooming, threats, child sexual abuse material, incitement to violence, BR-078):
   1. Moderator marks the expel as severe. 2. System deletes the account at once, without strikes, and
   blocks its e-mail hash for the longer period (BR-078); a chatter without an account gets the longest
-  IP and pseudo ban. 3. System sends the statement of reasons. 4. When life or safety is threatened, the
-  moderator alerts the owner, who informs the authorities through the official channel (DSA art. 18 and LCEN art. 6 IV,
-  checked 2026-10-22; channel documented in brick 8). Authorities are a secondary actor of UC11.
-- Variant: remove a user room → its members get `roomClosed`.
+  IP and pseudo ban. 3. System sends the statement of reasons. 4. The alert select starts with no value;
+  "confirmer" stays disabled until the moderator picks an offence category or "aucune" (BR-104). The owner
+  files (UC20). When life is at stake the moderator who raises the alert may call 17 or 112 at once; the
+  owner records that call with `mod:filed`. Sequence
+  02h (brick 8c).
+- Variant: remove a user room → its members get `roomClosed` (BR-106, sequence 02i).
 - Closing the related report is a separate `closeReport` command.
 
 **UC14 — Invite a moderator** (brick 8b)
@@ -113,7 +117,7 @@ flowchart LR
   the authority channel, room removal, the decision e-mail to the reporter, the impact assessment.
 - Behind the tester tunnel the server sends `canReport = false`, refuses `report` and refuses the
   moderator token at start (BR-091), so UC9 to UC12 stay closed to testers.
-- Brick 8a is not exposed to testers before 8c: the impact assessment comes first (`security-and-rgpd.md`).
+- Moderation stays closed to testers until the owner opens it once the impact assessment is signed (BR-108).
 
 ## Brick 8b scope (#210, 2026-11-13)
 
@@ -126,3 +130,20 @@ flowchart LR
 - The generalization means a Moderator, once signed in (UC16), has every Chatter goal too.
   UML draws it with a solid line and a hollow triangle, Mermaid cannot.
 - Revoking a moderator is an owner maintenance script (`deleteModerator`).
+
+**UC20 — File a severe case with the authorities** (brick 8c)
+- Primary actor: Owner. Secondary actor: Authorities. Trigger: an authority alert e-mail (BR-104).
+- Main scenario: 1. Owner opens the report in the "alertes" tab of the queue (`listAlertedReports`). 2. Owner files through the official channel
+  (`security-and-rgpd.md` §6). 3. Owner runs `pnpm mod:filed <reportId> <channel> <reference>`.
+  4. System marks the alert `filed` with channel and reference.
+- Extensions: 3a. Wrong secret, non-loopback peer or tunnel → refused (BR-093, BR-097). 3b. Unknown
+  report or no alert → `404`. 3c. Alert already filed → `409`. 3d. Channel outside PHAROS, 17, 112,
+  PointDeContact, or reference outside 1 to 100 characters (BR-090) → `400`.
+
+## Brick 8c scope (#211, 2026-11-13)
+
+- In, code PR 8c-1: AI triage of UC9 (Mistral, ADR-0019, sequence 02g), queue by urgency (BR-102), the
+  impact assessment (`specs/moderation-dpia.md`). BR-092 removed.
+- In, code PR 8c-2: severe variant of UC11 and the authority alert (02h, BR-103 to BR-105), UC20, room
+  removal (02i, BR-106), decision e-mail to a member reporter (BR-107).
+- Out: `warn` without a report stays `notAvailable`; tester exposure stays closed (BR-108).

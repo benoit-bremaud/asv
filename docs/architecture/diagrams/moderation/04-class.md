@@ -1,8 +1,8 @@
 # Class diagram — moderation — reports, bans, moderators
 
 > **Feature**: moderation
-> **Business rules**: BR-050 to BR-057, BR-061, BR-062
-> **Related ADRs**: ADR-0008, ADR-0010, ADR-0011
+> **Business rules**: BR-050 to BR-057, BR-061, BR-062, BR-100 to BR-107
+> **Related ADRs**: ADR-0008, ADR-0010, ADR-0011, ADR-0019
 
 ## Context
 
@@ -24,12 +24,15 @@ classDiagram
     +String excerpt
     +String[] context
     +String authorPseudo
+    +AccountId reporterAccountId
     +Date createdAt
     +ReportStatus status
     +Triage triage
+    +String triageLabels «encrypted»
     +ReportOutcome outcome
     +String handledBy
     +Date handledAt
+    +AuthorityAlert alert
   }
   class ReportReason {
     <<enumeration>>
@@ -60,9 +63,57 @@ classDiagram
     roomRemoved
   }
   class Triage {
-    +String category
+    +TriageCategory category
     +Urgency urgency
     +String summary
+  }
+  class TriageCategory {
+    <<enumeration>>
+    harassment
+    sexualMinor
+    threat
+    hate
+    spam
+    illegalOther
+    none
+  }
+  class AuthorityAlert {
+    +OffenceCategory offenceCategory
+    +String raisedBy
+    +Date raisedAt
+    +Date notifiedAt
+    +AlertStatus status
+    +AlertChannel channel
+    +String reference
+    +Date filedAt
+  }
+  class OffenceCategory {
+    <<enumeration>>
+    childAbuse
+    threatToLife
+    terrorism
+    hateOrViolence
+    harassment
+    otherListed
+  }
+  class AlertChannel {
+    <<enumeration>>
+    PHAROS
+    police17
+    emergency112
+    PointDeContact
+  }
+  class PendingDecisionMail {
+    +String id
+    +ReportId reportId
+    +String email «encrypted»
+    +String text «encrypted»
+    +Date createdAt
+  }
+  class AlertStatus {
+    <<enumeration>>
+    pending
+    filed
   }
   class Urgency {
     <<enumeration>>
@@ -91,12 +142,19 @@ classDiagram
   class ModerationStore {
     <<interface>>
     +saveReport(report)
-    +saveTriage(reportId, triage)
+    +saveTriage(reportId, triage, labels)
     +openReports() Report[]
+    +alertedReports() Report[]
     +closeReport(id, outcome, by, at)
     +markStruck(id, at)
     +saveBan(ban)
     +activeBan(ipKeyedHash, pseudo, now) Ban
+    +saveAuthorityAlert(reportId, alert) Boolean
+    +markAlertNotified(reportId, at)
+    +recordFiling(reportId, channel, reference, at) FilingResult
+    +savePendingDecisionMail(mail)
+    +pendingDecisionMails() PendingDecisionMail[]
+    +deletePendingDecisionMail(id)
     +purgeExpired(now)
   }
   class ModeratorStore {
@@ -117,7 +175,7 @@ classDiagram
   }
   class ReportTriage {
     <<interface>>
-    +triage(context) Triage
+    +triage(input) Triage | unavailable
   }
   Report --> ReportReason
   Report --> ReportTarget
@@ -125,8 +183,14 @@ classDiagram
   Report --> ReportOutcome
   Report *-- Triage
   Triage --> Urgency
+  Triage --> TriageCategory
+  Report "1" *-- "0..1" AuthorityAlert
+  AuthorityAlert --> AlertStatus
+  AuthorityAlert --> OffenceCategory
+  AuthorityAlert --> AlertChannel
   ModerationStore ..> Report
   ModerationStore ..> Ban
+  ModerationStore ..> PendingDecisionMail
   ModeratorStore ..> Moderator
   ModeratorStore ..> Invitation
 ```
@@ -161,7 +225,8 @@ The contract stays `platform/04-class-protocol`. Brick 8a uses it as follows:
 - `entered` and `resumed` carry `canReport`: false behind the tester tunnel, where `report` answers
   `error(invalid, notAvailable)` and the client hides every report entry point (`01-use-case`).
 - `warn` (chat warning without a report), `removeRoom`, `expel.severe` and the outcomes `severeDeleted`
-  and `roomRemoved` answer `error(invalid, notAvailable)` until brick 8c (BR-092).
+  and `roomRemoved` answered `error(invalid, notAvailable)` in brick 8a (BR-092, removed); brick 8c
+  opens all but `warn`.
 - Every moderation command from a session without `isModerator` gets `error(forbidden)` (BR-054).
 - Excerpt, context and pseudos of a report are encrypted at rest (ADR-0017). A ban keeps only keyed
   hashes (HMAC) of the IP and of the folded pseudo, so the entry check compares hashes and never
@@ -179,3 +244,28 @@ The contract stays `platform/04-class-protocol`. Brick 8a uses it as follows:
 - `src/server/moderator-grant.ts` (BR-095) replaces `moderator-token.ts`. `enter.moderatorGrant` carries its serialised form.
 - The WebAuthn ceremonies sit in `src/server/moderator-routes.ts`, the only module importing
   `@simplewebauthn/server`; the web client uses `@simplewebauthn/browser`.
+
+## Brick 8c (#211)
+
+- `ReportTriage.triage` takes `{reason, targetKind, lines}` already pseudonymised by the domain (BR-100)
+  and resolves a `Triage` or `unavailable`; adapters: no-AI (unchanged) and Mistral (ADR-0019, BR-101).
+- `saveTriage` ignores a closed report and stores the label map (`[A]` → pseudo) encrypted with the
+  triage (BR-100). `purgeExpired` keeps a report with an alert 1 year (BR-061, BR-105).
+- `alertedReports` lists closed reports whose alert is `pending` or `filed`, until purge; `openReports`
+  lists open reports only.
+- `saveAuthorityAlert` is idempotent: one alert per report, a second call returns `false` and changes
+  nothing. `markAlertNotified` sets `notifiedAt` once the owner alert is accepted; until then the hub
+  tick retries it (BR-104). `recordFiling` returns `filed`, `alreadyFiled` (409) or `noAlert` (404).
+- `PendingDecisionMail` mirrors `PendingStatement` (`accounts/04`): kept until the mailer accepts the
+  decision e-mail, 7 days max (BR-107).
+- `OffenceCategory` matches the rows of `security-and-rgpd.md` §6 and is always the moderator's choice,
+  never copied from `TriageCategory` (ADR-0010).
+- `Mailer` gains `sendAuthorityAlert(reportId, category)` and `sendReportDecision(email, decision)`
+  (`accounts/04`), both resolving `true` only when the provider accepted the mail, retried like BR-076.
+- Protocol: `expel` gains `severe` and `alertAuthorities?: OffenceCategory`; `closeReport`, `removeRoom`
+  and `confirmSuspension` gain `alertAuthorities?`; `removeRoom(reportId)` answers `reportClosed` or
+  `warning(reportInvalid)`; `openReports` items gain `triage` (with the label legend) and `alert`;
+  `listAlertedReports` answers `alertedReports`. Outcomes `severeDeleted` and `roomRemoved` become
+  available.
+- Owner route `POST /mod/authority-filings` (BR-093 guard, BR-097) and script `pnpm mod:filed`.
+- `AlertChannel` values `police17` and `emergency112` are typed `17` and `112` on the `mod:filed` command line and in the queue.

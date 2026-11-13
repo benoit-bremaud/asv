@@ -34,6 +34,7 @@ classDiagram
     search
     report
     listOpenReports
+    listAlertedReports
     warn
     expel
     closeReport
@@ -65,6 +66,7 @@ classDiagram
     searchResults
     reportSent
     openReports
+    alertedReports
     warned
     expelled
     reportClosed
@@ -97,11 +99,13 @@ Client to server:
 | search | query |
 | report | targetKind, targetPseudo?, targetRoomId?, reason, excerpt, context (≤ 20 lines) |
 | listOpenReports | — |
+| listAlertedReports | — (moderator only, BR-054; brick 8c) |
 | warn | targetSessionId, text (chat warning only, no strike; strikes come from `closeReport` with outcome warned, BR-074) |
-| expel | reportId, duration (1h, 24h, 7d), severe? (acts on the report's captured target, `moderation/04`) |
-| closeReport | reportId, outcome |
-| confirmSuspension / declineSuspension | accountId, reportId |
-| removeRoom | roomId |
+| expel | reportId, duration (1h, 24h, 7d), severe?, alertAuthorities? (OffenceCategory, BR-104; acts on the report's captured target, `moderation/04`) |
+| closeReport | reportId, outcome, alertAuthorities? |
+| confirmSuspension | accountId, reportId, alertAuthorities? |
+| declineSuspension | accountId, reportId |
+| removeRoom | reportId, alertAuthorities? (BR-106) |
 | requestCode | email, remember |
 | verifyCode | code |
 | signOutEverywhere / deleteAccount | — |
@@ -125,7 +129,8 @@ Server to client:
 | ignoreUpdated | ignored (session ids) |
 | searchResults | results (member + rooms) |
 | reportSent | reportId |
-| openReports | reports (with triage, hasAccount, connected, activeStrikes, struck) |
+| openReports | reports, open only, the first 50 in BR-102 queue order, plus total (the open count; closing one brings the next) (with triage and its label legend "[A] = ‹pseudo›", alert, hasAccount, connected, activeStrikes, struck; BR-100, BR-102) |
+| alertedReports | reports closed with an alert pending or filed, until purge, up to 50: pending first, then the most recent filed (older ones stay in the store) (excerpt, context, pseudos, dates, offence category, status, channel, reference; BR-104) |
 | warned | rule, text, activeStrikes |
 | expelled | until |
 | reportClosed | reportId |

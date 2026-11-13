@@ -76,7 +76,7 @@ sequenceDiagram
 ## Notes
 
 - Every `/mod/*` route answers 404 when the transport runs with `ASV_TUNNEL=1`, so testers never reach
-  them before brick 8c (`01-use-case`, brick 8a scope).
+  them until the owner opens moderation once the impact assessment is signed (BR-108).
 - The enrolment link carries the token in the fragment, so it never reaches a server log nor a
   `Referer`; the page posts it in the body.
 - The revocation script `pnpm mod:revoke <name>` calls `DELETE /mod/moderators/<name>` with the same

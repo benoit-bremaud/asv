@@ -20,9 +20,9 @@ of the same priority.
 | 7a | Node transport + retro web UI end to end for entry and rooms; frame and field caps (#13); optional profile fields for away members in the protocol | `platform`, `web-ui` | P1 | done (PR #22) |
 | 5 | Accounts: e-mail code, device cookie, mailer port and provider choice, encryption at rest (#8), account UI | `accounts`, `platform`, `web-ui` | P1 | done (PR #33) |
 | 6 | Private conversations and ignore, directory search, with their UI overlays | `private-conversations`, `directory`, `web-ui` | P1 | done (PR #51) |
-| 8a | Moderation without AI: reports, human queue, expel, warn, strikes, suspension, interim owner token (BR-091); not exposed to testers before 8c (#209) | `moderation`, `web-ui` | P1 | done (PR #214) |
-| 8b | Moderator accounts: invitation, passkeys, moderator panel on the Node transport, interim token removed (#210) | `moderation`, `web-ui` | P1 | done |
-| 8c | AI triage, data protection impact assessment, severe variant and authority channel, room removal, reporter decision e-mail (#211) | `moderation`, `security-and-rgpd.md` | P1 | next |
+| 8a | Moderation without AI: reports, human queue, expel, warn, strikes, suspension, interim owner token (BR-091); not exposed to testers until the owner opens it once the impact assessment is signed (BR-108) (#209) | `moderation`, `web-ui` | P1 | done (PR #214) |
+| 8b | Moderator accounts: invitation, passkeys, moderator panel on the Node transport, interim token removed (#210) | `moderation`, `web-ui` | P1 | done (PR #219) |
+| 8c | AI triage, data protection impact assessment, severe variant and authority channel, room removal, reporter decision e-mail (#211); one study, code in 8c-1 (triage, impact assessment) and 8c-2 (severe, authority alert, room removal, e-mail) | `moderation`, `web-ui`, `security-and-rgpd.md` | P1 | next |
 | 9 | Cloudflare transport (Hub Durable Object), deploy to asvchat.fr, switch the repository to private | `platform` | P1 | planned |
 | 10 | Legal pack: final terms, privacy notice, legal notice, professional review, public launch | `security-and-rgpd.md` | P2 | planned |
 

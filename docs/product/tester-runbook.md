@@ -11,7 +11,8 @@ How the owner opens asv to the two testers through a Cloudflare Tunnel, then clo
 | `ASV_ALLOWED_ORIGINS` | `https://asvchat.fr` (BR-085); required, `https://` only, in tunnel mode |
 | `ASV_DATA_KEYS`, `ASV_HMAC_KEY`, `ASV_VAULT_PUBLIC_KEY` | ADR-0017 secrets, required in tunnel mode (the server refuses to start without them) |
 | `BREVO_API_KEY`, `ASV_MAIL_FROM` | Brevo key and sender (ADR-0013) |
-| `ASV_MODERATOR_FILE`, `ASV_OWNER_SECRET`, `ASV_PUBLIC_ORIGIN` | unused in tunnel mode: every `/mod` route answers 404 there until brick 8c (BR-097); they serve `pnpm mod:invite` and `pnpm mod:revoke` on a local run (BR-093, BR-098, BR-099) |
+| `ASV_MODERATOR_FILE`, `ASV_OWNER_SECRET`, `ASV_PUBLIC_ORIGIN` | unused in tunnel mode: every `/mod` route answers 404 there until the owner opens moderation once the impact assessment is signed (BR-097, BR-108); they serve `pnpm mod:invite` and `pnpm mod:revoke` on a local run (BR-093, BR-098, BR-099) |
+| `ASV_MISTRAL_API_KEY`, `ASV_TRIAGE_MODEL` | unset in tunnel mode: no AI triage, urgency `unknown` (ADR-0019) |
 | `ASV_OWNER_NAME`, `ASV_OWNER_ADDRESS`, `ASV_OWNER_PHONE`, `ASV_CONTACT_EMAIL`, `ASV_BREVO_LOCATION` | legal pages (`legal-pages-draft.md`) |
 
 `pnpm tester` builds the bundle and starts the Node transport on 127.0.0.1 with `ASV_TUNNEL=1` (client IP from

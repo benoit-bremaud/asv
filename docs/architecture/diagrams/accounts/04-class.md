@@ -111,6 +111,8 @@ classDiagram
     <<interface>>
     +sendCode(email, code) Promise~void~
     +sendStatementOfReasons(email, statement) Promise~Boolean~
+    +sendAuthorityAlert(reportId, category) Promise~Boolean~
+    +sendReportDecision(email, decision) Promise~Boolean~
   }
   class FieldCipher {
     <<interface>>
@@ -137,7 +139,8 @@ classDiagram
   reach a store; «sealed to owner key» fields are encrypted to the owner public key and the application
   cannot read them back (ADR-0017, BR-083). Ids, dates and counters stay clear.
 - `Mailer` is the brasse-bouillon `MailerService` port (ADR-0013 amendment): it never throws for
-  `sendCode`; `sendStatementOfReasons` returns whether Brevo accepted the mail (BR-076 retries).
+  `sendCode`; `sendStatementOfReasons` returns whether Brevo accepted the mail (BR-076 retries). Brick 8c adds
+  `sendAuthorityAlert` (BR-104) and `sendReportDecision` (BR-107), with the same contract.
 - `FieldCipher` lives in `src/server/crypto/` (WebCrypto), not in the domain: the domain never sees
   ciphertext or keys. It is drawn here because the stores receive its output.
 

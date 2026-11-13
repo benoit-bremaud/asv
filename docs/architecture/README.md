@@ -75,7 +75,7 @@ Component level per feature lives in the studies below.
 | Accounts | UC17, UC18, UC19 | [accounts](diagrams/accounts/) |
 | Private conversations | UC6, UC8 | [private-conversations](diagrams/private-conversations/) |
 | Directory | UC7 | [directory](diagrams/directory/) |
-| Moderation | UC9, UC11, UC12, UC14, UC15, UC16 | [moderation](diagrams/moderation/) |
+| Moderation | UC9, UC11, UC12, UC14, UC15, UC16, UC20 | [moderation](diagrams/moderation/) |
 | Web UI | screens and navigation | [web-ui](diagrams/web-ui/) |
 | Platform | hub, protocol, deployment | [platform](diagrams/platform/) |
 
@@ -109,6 +109,7 @@ Coverage: [traceability matrix](traceability-matrix.md).
 | [0016](decisions/0016-sonarqube-local-scan-commit-status.md) | SonarQube local scan, quality gate as commit status |
 | [0017](decisions/0017-encryption-at-rest.md) | Application-level encryption at rest, vault sealed to an owner key |
 | [0018](decisions/0018-real-tester-exposure-tunnel.md) | Real-tester exposure through a Cloudflare Tunnel to the Node transport |
+| [0019](decisions/0019-ai-triage-provider-mistral.md) | Mistral, EU-hosted, is the AI triage provider |
 
 ## 9. Risks and technical debt
 
