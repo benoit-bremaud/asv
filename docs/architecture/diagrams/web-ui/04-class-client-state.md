@@ -28,6 +28,7 @@ classDiagram
     +Record~SessionId, Gender~ known
     +Code notice
     +Number noticeSeq
+    +NoticeHold noticeHold
     +Code entryError
     +String refusedPseudo
     +Number refusedSeq
@@ -44,6 +45,14 @@ classDiagram
     +Number unread
     +String presence : here, away, gone
     +Number focusRequest
+  }
+  class NoticeHold {
+    +String focus
+    +PointerHold pointer
+  }
+  class PointerHold {
+    +String copy
+    +Number seq
   }
   class SearchView {
     +String query
@@ -102,6 +111,8 @@ classDiagram
     notice(code)
     dismissNotice()
     expireNotice(seq)
+    holdNotice(by, copy)
+    releaseNotice(by, copy)
     openAccount()
     closeAccount()
     accountStep(step)
@@ -152,6 +163,8 @@ classDiagram
   ChatState *-- PrivateView
   PrivateView *-- Line
   ChatState *-- SearchView
+  ChatState *-- NoticeHold
+  NoticeHold *-- PointerHold
 ```
 
 ## Rules the code applies
@@ -177,7 +190,7 @@ classDiagram
 - **D6**: one pure `chatReducer`, held by `useReducer` in `App` and shared through a React context. The
   connection manager lives outside React; it dispatches actions and screens call its commands. Screens
   never touch the socket (`web-ui/03`). Screens call `Commands`; their only local actions are the `LocalAction`
-  set of `chat-context.tsx` (navigation, account dialog, private windows, search, `dismissNotice`, `expireNotice`),
+  set of `chat-context.tsx` (navigation, account dialog, private windows, search, `dismissNotice`, `expireNotice`, `holdNotice`, `releaseNotice`),
   never `server` or `link`.
 - **Reducer**: `entered` → screen `rooms`, `me` set; `entryRefused` → `entryError` (the reason code) and `refusedPseudo` (from `pendingPseudo`), `entering` and `entered` clear both;
   `roomList` → list; `roomJoined` → room opened with its members and active, screen `room`; `memberJoined`,
@@ -189,13 +202,20 @@ classDiagram
   Notices and entry errors stay codes in the state; screens translate them through `strings.ts`.
 - **Notice lifetime** (#68, batch option A 420/500): every action that sets `notice` also stamps a fresh
   `noticeSeq` (monotonic, never reused), so the same code raised twice counts as a new notice (the notice remounts, so
-  it is announced again). While shown, `Notice` runs an 8 s timer for its `noticeSeq` (moving between page and
-  dialog restarts it) and then dispatches `expireNotice(seq)`, which clears the notice only when
+  it is announced again). While a notice is set and not held, `Banners` (always mounted)
+  runs the one 8 s timer for its `noticeSeq` and then dispatches `expireNotice(seq)`, which clears the notice only when
   `noticeSeq` still equals `seq` (a newer notice is never cut short). `entered` and `roomJoined` clear a notice
   that is not an account notice (the next success ends a stale refusal); `accountLinked` keeps clearing an
   account notice (#136). "fermer" (`dismissNotice`) still clears it at once. The timer stops while the pointer or
-  the focus is on the notice, so it never vanishes under a reader or takes the focus away (WCAG 2.2.1, 2.4.3). Unit tests check the stamp, the
-  expiry, the stale `expireNotice`, the clear on `entered` and `roomJoined`, and the 8 s timer in `Notice`.
+  the focus is on the notice, so it never vanishes under a reader or takes the focus away (WCAG 2.2.1, 2.4.3).
+  The hold lives in the store (#199), so a notice held in a dialog is held for every `Notice` rendering it, the
+  inert page behind included: `NoticeCopy` only renders and dispatches `holdNotice(by, copy)` / `releaseNotice(by, copy)`
+  (`by` is `focus` or `pointer`, `copy` the rendered copy's `useId`, local actions). `noticeHold.focus` names the
+  holding copy and is cleared with the notice; `noticeHold.pointer` keeps the copy and the `noticeSeq` it was set on,
+  so a notice removed under the pointer never holds the next one. A release only drops a hold its own copy set, and
+  a copy releases its holds when it unmounts, since a copy removed under the pointer or the focus (dialog closed,
+  filter changed) gets no `mouseleave` or `blur`. Unit tests check the stamp, the
+  expiry, the stale `expireNotice`, the clear on `entered` and `roomJoined`, and the 8 s timer in `Banners` (`useNoticeTimer`).
 - **Known profiles** (D4): every connected member seen fills `known[sessionId] = gender` in memory. An
   away member is shown with its known gender's `-away` colour, else the unspecified one, in italics, followed
   by "(absent)". Never written to storage.

@@ -1,7 +1,7 @@
 import { ChatProvider, browserConnection, useChat, type ConnectionFactory } from "./chat-context";
 import { AccountPanel } from "./screens/AccountPanel";
 import { EntryScreen } from "./screens/EntryScreen";
-import { Notice } from "./screens/Notice";
+import { Notice, useNoticeTimer } from "./screens/Notice";
 import { PrivateWindows } from "./screens/PrivateWindows";
 import { RoomScreen } from "./screens/RoomScreen";
 import { RoomsScreen } from "./screens/RoomsScreen";
@@ -11,6 +11,7 @@ import { STRINGS } from "./strings";
 /** Reconnecting banner and notices, over every screen (`web-ui/05`). */
 const Banners = () => {
   const { state } = useChat();
+  useNoticeTimer();
   return (
     <>
       {state.link === "reconnecting" && <output className="banner">{STRINGS.reconnecting}</output>}

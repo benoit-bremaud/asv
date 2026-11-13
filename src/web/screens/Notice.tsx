@@ -1,34 +1,56 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId } from "react";
 import { useChat } from "../chat-context";
+import { isNoticeHeld } from "../store";
 import { STRINGS } from "../strings";
 
 /** How long a notice stays before it expires (#68, `web-ui/04` Notice lifetime). */
 export const NOTICE_MS = 8_000;
 
-/** The current notice with its dismiss button (`web-ui/05`); `show` filters it by code (account dialog, #136). */
-export const Notice = ({ show = () => true }: { readonly show?: (code: string) => boolean }) => {
+/** The one notice timer, run by the always-mounted `Banners`; the hold lives in the store (#199). */
+export const useNoticeTimer = () => {
   const { state, commands } = useChat();
-  const { notice, noticeSeq } = state;
-  const shown = notice !== undefined && show(notice);
-  // WCAG 2.2.1 and 2.4.3: no expiry while the pointer or the focus is on the notice. The hold names its stamp, so a
-  // notice removed under the pointer (no `mouseleave`) never holds the next one.
-  const [heldSeq, setHeldSeq] = useState<number>();
-  // The focus holds every notice shown while it stays on the (stable) notice, a new one included.
-  const [focused, setFocused] = useState(false);
-  // A notice removed under the focus sends no blur: reset during render (React's "adjust state on prop change").
-  if (!shown && focused) setFocused(false);
-  const held = focused || heldSeq === noticeSeq;
+  const { noticeSeq } = state;
+  const running = state.notice !== undefined && !isNoticeHeld(state);
   useEffect(() => {
-    if (!shown || held) return;
+    if (!running) return;
     const timer = setTimeout(() => commands.local({ type: "expireNotice", seq: noticeSeq }), NOTICE_MS);
     return () => clearTimeout(timer);
-  }, [shown, held, noticeSeq, commands]);
-  if (!shown) return null;
+  }, [running, noticeSeq, commands]);
+};
+
+/** The current notice with its dismiss button (`web-ui/05`); `show` filters it by code (account dialog, #136). */
+export const Notice = ({ show = () => true }: { readonly show?: (code: string) => boolean }) => {
+  const { notice, noticeSeq } = useChat().state;
+  if (notice === undefined || !show(notice)) return null;
+  return <NoticeCopy notice={notice} noticeSeq={noticeSeq} />;
+};
+
+/** One rendered copy of the notice; it holds the notice for every copy while the pointer or the focus is on it (#199). */
+const NoticeCopy = ({ notice, noticeSeq }: { readonly notice: string; readonly noticeSeq: number }) => {
+  const { commands } = useChat();
+  const copy = useId();
+  // A copy removed under the pointer or the focus gets no mouseleave or blur (dialog closed, filter changed).
+  useEffect(
+    () => () => {
+      commands.local({ type: "releaseNotice", by: "pointer", copy });
+      commands.local({ type: "releaseNotice", by: "focus", copy });
+    },
+    [commands, copy],
+  );
   return (
-    <p className="notice" role="alert" onMouseEnter={() => setHeldSeq(noticeSeq)} onMouseLeave={() => setHeldSeq(undefined)} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}>
+    <p
+      className="notice"
+      role="alert"
+      onMouseEnter={() => commands.local({ type: "holdNotice", by: "pointer", copy })}
+      onMouseLeave={() => commands.local({ type: "releaseNotice", by: "pointer", copy })}
+      onFocus={() => commands.local({ type: "holdNotice", by: "focus", copy })}
+      onBlur={() => commands.local({ type: "releaseNotice", by: "focus", copy })}
+    >
       {/* Only the text is keyed by the stamp: a repeated code is announced again and the focus stays on "fermer". */}
       <span key={noticeSeq}>{STRINGS.notices[notice] ?? STRINGS.genericNotice}</span>
-      <button type="button" className="link" onClick={() => commands.local({ type: "dismissNotice" })}>{STRINGS.dismiss}</button>
+      <button type="button" className="link" onClick={() => commands.local({ type: "dismissNotice" })}>
+        {STRINGS.dismiss}
+      </button>
     </p>
   );
 };
