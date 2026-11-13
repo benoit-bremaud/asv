@@ -78,6 +78,8 @@ export type QueuedReport = Extract<ServerMessage, { type: "openReports" }>["payl
 export interface QueueView {
   readonly loading: boolean;
   readonly reports: readonly QueuedReport[];
+  /** Open reports on the server; `reports` holds the first 50 (BR-102). */
+  readonly total: number;
   readonly proposal?: { readonly accountId: string; readonly reportId: string; readonly activeStrikes: number };
 }
 
@@ -386,11 +388,13 @@ const onModeration = (state: ChatState, message: ModerationMessage): ChatState =
   if (message.type === "warned") return { ...state, notice: "warned", warning: { rule: message.payload.rule, activeStrikes: message.payload.activeStrikes } };
   const { queue } = state;
   if (!queue) return state;
-  if (message.type === "openReports") return { ...state, queue: { ...queue, loading: false, reports: message.payload.reports } };
+  if (message.type === "openReports") return { ...state, queue: { ...queue, loading: false, reports: message.payload.reports, total: message.payload.total } };
   if (message.type === "suspensionProposed") return { ...state, queue: { ...queue, proposal: message.payload } };
   const { reportId } = message.payload;
   const proposal = queue.proposal?.reportId === reportId ? undefined : queue.proposal;
-  return { ...state, queue: { ...queue, proposal, reports: queue.reports.filter((report) => report.id !== reportId) } };
+  const reports = queue.reports.filter((report) => report.id !== reportId);
+  const total = reports.length < queue.reports.length ? Math.max(queue.total - 1, reports.length) : queue.total;
+  return { ...state, queue: { ...queue, proposal, reports, total } };
 };
 
 const onServer = (state: ChatState, message: ServerMessage): ChatState => {
@@ -566,7 +570,7 @@ const reduce = (state: ChatState, action: Action): ChatState => {
     case "closeReport":
       return { ...state, report: undefined };
     case "openQueue":
-      return state.moderator ? { ...state, queue: { loading: true, reports: [] } } : state;
+      return state.moderator ? { ...state, queue: { loading: true, reports: [], total: 0 } } : state;
     case "closeQueue":
       return { ...state, queue: undefined };
   }

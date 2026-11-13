@@ -78,6 +78,22 @@ export const STRINGS = {
     return hasAccount ? `${who}, ${where}, ${activeStrikes(strikes)}` : `${who}, ${where}`;
   },
   queueContext: "contexte",
+  /** Brick 8c (`web-ui/08`): the AI only sorts, as text (BR-100, BR-102). */
+  queueCount: (shown: number, total: number) => `${shown} affichés sur ${total}`,
+  urgencies: { high: "haute", medium: "moyenne", unknown: "inconnue", low: "basse" },
+  urgency: (level: string) => `urgence ${level}`,
+  triageNote: "tri automatique, à vérifier",
+  categories: {
+    harassment: "harcèlement",
+    sexualMinor: "mineur et sexualité",
+    threat: "menace",
+    hate: "haine",
+    spam: "spam",
+    illegalOther: "autre contenu illégal",
+    none: "rien de notable",
+  },
+  legend: (labels: readonly { readonly label: string; readonly pseudo: string }[]) =>
+    labels.map(({ label, pseudo }) => `${label} = ${pseudo}`).join(", "),
   noAction: "aucune suite",
   warn: "avertir",
   expel: (duration: string) => `expulser ${duration}`,

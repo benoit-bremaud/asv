@@ -1,5 +1,5 @@
-import { useLayoutEffect, useRef, useState, type ReactNode, type SubmitEvent, type SyntheticEvent } from "react";
-import { expelDuration, reportReason } from "../../shared/protocol";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type SubmitEvent, type SyntheticEvent } from "react";
+import { CAPS, expelDuration, reportReason } from "../../shared/protocol";
 import { useChat } from "../chat-context";
 import type { QueuedReport } from "../store";
 import { STRINGS } from "../strings";
@@ -79,7 +79,16 @@ const QueueRow = ({ report }: { report: QueuedReport }) => {
         <strong>{report.targetPseudo ?? report.targetRoomId}</strong> — {STRINGS.reasons[report.reason]}{" "}
         <span className="small">{STRINGS.queueBy(report.authorPseudo, date)}</span>
       </p>
-      <p className="small">{STRINGS.queueTarget(report.hasAccount, report.connected, report.activeStrikes)}</p>
+      <p className="small">
+        <span className={`urgency urgency-${report.triage?.urgency ?? "unknown"}`}>{STRINGS.urgency(STRINGS.urgencies[report.triage?.urgency ?? "unknown"])}</span>{" "}
+        {STRINGS.queueTarget(report.hasAccount, report.connected, report.activeStrikes)}
+      </p>
+      {report.triage && (
+        <section className="small triage" aria-label={STRINGS.triageNote}>
+          <p><em>{STRINGS.triageNote}</em> : {STRINGS.categories[report.triage.category]} — {report.triage.summary}</p>
+          {report.triage.labels.length > 0 && <p>{STRINGS.legend(report.triage.labels)}</p>}
+        </section>
+      )}
       {report.excerpt && <blockquote className="small">{report.excerpt}</blockquote>}
       {report.context.length > 0 && (
         <details>
@@ -101,10 +110,16 @@ const QueueRow = ({ report }: { report: QueuedReport }) => {
   );
 };
 
-/** UC12: the open reports, oldest first (BR-092), and the suspension proposal (BR-075); moderators only. */
+/** UC12: the first 50 open reports in BR-102 order, and the suspension proposal (BR-075); moderators only. */
 export const QueueDialog = () => {
   const { state, commands } = useChat();
   const { queue } = state;
+  // Closing a report frees a row: the next one is asked once the page is short (BR-102).
+  const short = queue !== undefined && !queue.loading && queue.reports.length < Math.min(queue.total, CAPS.queuePage);
+  const shown = queue?.reports.length ?? 0;
+  useEffect(() => {
+    if (short) commands.refreshQueue();
+  }, [short, shown, commands]);
   if (!queue) return null;
   const { proposal } = queue;
   return (
@@ -119,6 +134,7 @@ export const QueueDialog = () => {
       )}
       {queue.loading && <p className="small">{STRINGS.queueLoading}</p>}
       {!queue.loading && queue.reports.length === 0 && <p className="small">{STRINGS.queueEmpty}</p>}
+      {queue.total > queue.reports.length && <p className="small">{STRINGS.queueCount(queue.reports.length, queue.total)}</p>}
       <ul className="queue">{queue.reports.map((report) => <QueueRow key={report.id} report={report} />)}</ul>
     </Modal>
   );

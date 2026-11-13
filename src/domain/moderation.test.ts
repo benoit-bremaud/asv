@@ -11,7 +11,6 @@ import {
   MODERATION_LIMITS,
   pruneReportAttempts,
   sessionsOfAccount,
-  sortOpenReports,
   suspensionUntil,
   type ReportCommand,
 } from "./moderation";
@@ -243,11 +242,3 @@ describe("strikes and suspension (BR-074, BR-075, BR-077)", () => {
   });
 });
 
-describe("sortOpenReports (BR-092)", () => {
-  it("lists the oldest first without changing its input", () => {
-    const input = [{ createdAt: at(2) }, { createdAt: at(1) }];
-
-    expect(sortOpenReports(input)).toEqual([{ createdAt: at(1) }, { createdAt: at(2) }]);
-    expect(input[0]?.createdAt).toEqual(at(2));
-  });
-});

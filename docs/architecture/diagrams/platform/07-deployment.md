@@ -15,7 +15,7 @@ so nodes are drawn as nested boxes. Does not cover CI pipelines.
 ```mermaid
 flowchart TB
   subgraph Dev ["local — developer machine"]
-    NodeProc["Node process: Hono + in-memory hub + no-AI triage"]
+    NodeProc["Node process: Hono + in-memory hub + triage adapter (ADR-0019)"]
     Vite["Vite dev server: web client"]
     Vite -->|"proxy /ws, /mod"| NodeProc
     LogFile[("connection-log.jsonl and vault.jsonl, outside the repo (BR-084)")]
@@ -39,10 +39,11 @@ flowchart TB
     Secrets -.-> Worker
     Secrets -.-> HubDO
   end
-  AI["AI provider for report triage"]
+  AI["Mistral API, EU (ADR-0019)"]
   Registrar["Registrar: Namecheap, OVH or Gandi"]
   Registrar -->|"name servers"| DNS
   HubDO -->|"reported context only"| AI
+  NodeProc -->|"labelled lines (BR-100), key set, not tunnel"| AI
   Mail["Transactional e-mail provider"]
   HubDO -->|"sign-in codes, statements of reasons"| Mail
 ```

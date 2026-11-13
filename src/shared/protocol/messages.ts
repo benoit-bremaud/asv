@@ -24,6 +24,10 @@ export const CAPS = {
   excerpt: 2_000,
   contextLine: 1_000,
   contextLines: 20,
+  triageSummary: 400,
+  triageLabel: 64,
+  /** Open reports per `openReports` (`platform/04-class-protocol`, `web-ui/08`). */
+  queuePage: 50,
 } as const;
 
 const capped = (max: number) => z.string().check(z.maxLength(max));
@@ -57,6 +61,8 @@ export const reportOutcome = z.enum([
 ]);
 /** Urgency suggested by the AI triage, for sorting only (ADR-0010). */
 export const urgency = z.enum(["unknown", "low", "medium", "high"]);
+/** BR-101: the AI category, shown as "tri automatique, à vérifier" only. */
+export const triageCategory = z.enum(["harassment", "sexualMinor", "threat", "hate", "spam", "illegalOther", "none"]);
 /** Expulsion lengths a moderator may pick. */
 export const expelDuration = z.enum(["1h", "24h", "7d"]);
 /** Why an entry was refused; `banned` comes with `bannedUntil`. */
@@ -255,10 +261,19 @@ export const serverMessage = z.discriminatedUnion("type", [
           activeStrikes: z.int().check(z.nonnegative()),
           // BR-074: the report already gave its strike; a new `warned` only asks the suspension again.
           struck: z.boolean(),
-          // Set once the AI triage ran; a human decides (ADR-0010).
-          triage: z.optional(z.object({ category: z.string(), urgency, summary: z.string() })),
+          // Set once the AI triage ran; a human decides (ADR-0010). `labels` is the legend "[A] = ‹pseudo›" (BR-100).
+          triage: z.optional(
+            z.object({
+              category: triageCategory,
+              urgency,
+              summary: capped(CAPS.triageSummary),
+              labels: z.array(z.object({ label: capped(CAPS.triageLabel), pseudo })),
+            }),
+          ),
         }),
-      ),
+      ).check(z.maxLength(CAPS.queuePage)),
+      // The open count; `reports` holds the first 50 in BR-102 order.
+      total: z.int().check(z.nonnegative()),
     }),
   ),
   message("warned", z.object({ rule: z.string(), text: z.string(), activeStrikes: z.int() })),

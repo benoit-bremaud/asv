@@ -18,6 +18,11 @@ export const createMemoryModerationStore = (): ModerationStore & {
     },
     findReport: (id) => Promise.resolve(reports.get(id)),
     openReports: () => Promise.resolve([...reports.values()].filter((report) => !report.closed)),
+    saveTriage: (id, triage) => {
+      const report = reports.get(id);
+      if (report && !report.closed) reports.set(id, { ...report, triage });
+      return done();
+    },
     saveBan: (ban) => {
       bans.set(ban.id, ban);
       return done();

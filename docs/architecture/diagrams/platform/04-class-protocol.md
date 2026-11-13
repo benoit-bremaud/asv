@@ -178,6 +178,9 @@ generic `invalid`:
 | `moderatorGrant` | — | 512 |
 | `report.excerpt` | one message | 2 000 |
 | `report.context` | 20 lines (BR-051) | 20 × 1 000 |
+| `openReports` triage `summary` | 200 code points (BR-101) | 400 |
+| `openReports` triage `labels[].label` | `[A]`… | 64 |
+| `openReports.reports` | — | 50 (`queuePage`) |
 
 Worst case `report`: 2 000 + 20 × 1 000 code units plus envelope, about 44 KiB in UTF-8 for BMP text, under
 the 64 KiB frame. Contract tests cover every cap at the limit and one over.

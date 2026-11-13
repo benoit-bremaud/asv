@@ -142,7 +142,7 @@ classDiagram
   class ModerationStore {
     <<interface>>
     +saveReport(report)
-    +saveTriage(reportId, triage, labels)
+    +saveTriage(reportId, storedTriage)
     +openReports() Report[]
     +alertedReports() Report[]
     +closeReport(id, outcome, by, at)
@@ -250,7 +250,8 @@ The contract stays `platform/04-class-protocol`. Brick 8a uses it as follows:
 - `ReportTriage.triage` takes `{reason, targetKind, lines}` already pseudonymised by the domain (BR-100)
   and resolves a `Triage` or `unavailable`; adapters: no-AI (unchanged) and Mistral (ADR-0019, BR-101).
 - `saveTriage` ignores a closed report and stores the label map (`[A]` → pseudo) encrypted with the
-  triage (BR-100). `purgeExpired` keeps a report with an alert 1 year (BR-061, BR-105).
+  triage (BR-100). In code the store takes one `StoredTriage` (category and urgency clear, summary and
+  label map ciphertext), the field `triageLabels` of `Report` living inside it. `purgeExpired` keeps a report with an alert 1 year (BR-061, BR-105).
 - `alertedReports` lists closed reports whose alert is `pending` or `filed`, until purge; `openReports`
   lists open reports only.
 - `saveAuthorityAlert` is idempotent: one alert per report, a second call returns `false` and changes

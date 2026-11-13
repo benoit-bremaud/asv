@@ -754,21 +754,21 @@ describe("chatReducer: moderation (brick 8a, web-ui/08)", () => {
   it("opens the queue for a moderator only, fills it, and drops closed reports and their proposal", () => {
     expect(act({ ...moderator, moderator: false }, { type: "openQueue" }).queue).toBeUndefined();
     const loading = act(moderator, { type: "openQueue" });
-    expect(loading.queue).toEqual({ loading: true, reports: [] });
+    expect(loading.queue).toEqual({ loading: true, reports: [], total: 0 });
 
-    const listed = server(loading, msg("openReports", { reports: [queued("a"), queued("b")] }));
+    const listed = server(loading, msg("openReports", { reports: [queued("a"), queued("b")], total: 2 }));
     const proposed = server(listed, msg("suspensionProposed", { accountId: "acc", reportId: "a", activeStrikes: 3 }));
     expect(proposed.queue?.proposal).toEqual({ accountId: "acc", reportId: "a", activeStrikes: 3 });
 
     const closedOther = server(proposed, msg("reportClosed", { reportId: "b" }));
     expect(closedOther.queue).toMatchObject({ reports: [queued("a")], proposal: { reportId: "a" } });
     const closed = server(closedOther, msg("reportClosed", { reportId: "a" }));
-    expect(closed.queue).toEqual({ loading: false, reports: [], proposal: undefined });
+    expect(closed.queue).toEqual({ loading: false, reports: [], total: 0, proposal: undefined });
     expect(act(closed, { type: "closeQueue" }).queue).toBeUndefined();
   });
 
   it.each(["openReports", "reportClosed", "suspensionProposed"] as const)("ignores %s while the queue is closed", (type) => {
-    const payloads = { openReports: { reports: [] }, reportClosed: { reportId: "a" }, suspensionProposed: { accountId: "acc", reportId: "a", activeStrikes: 3 } };
+    const payloads = { openReports: { reports: [], total: 0 }, reportClosed: { reportId: "a" }, suspensionProposed: { accountId: "acc", reportId: "a", activeStrikes: 3 } };
 
     expect(server(moderator, msg(type, payloads[type]))).toBe(moderator);
   });
