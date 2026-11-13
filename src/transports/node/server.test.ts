@@ -400,6 +400,8 @@ describe("moderator wiring (moderation/02f)", () => {
     [{ moderatorFile: "/tmp/never-moderators.json" }, /BR-099/],
     [{ ownerSecret: "o".repeat(32), publicOrigin: "https://elsewhere.example" }, /BR-098/],
     [{ ownerSecret: "o".repeat(32), publicOrigin: "http://localhost:5173/" }, /BR-098/],
+    [{ ownerSecret: "o".repeat(32), publicOrigin: "http://127.0.0.1:5173", allowedOrigins: ["http://127.0.0.1:5173"] }, /BR-098/],
+    [{ ownerSecret: "o".repeat(32), publicOrigin: "http://[::1]:5173", allowedOrigins: ["http://[::1]:5173"] }, /BR-098/],
   ])("refuses to start with %j", async (overrides, message) => {
     await expect(start(overrides)).rejects.toThrow(message);
   });

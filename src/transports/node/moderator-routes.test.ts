@@ -449,6 +449,24 @@ describe("sign-in (BR-095)", () => {
     );
   });
 
+  it("refuses a second sign-in of the same credential while the first is being verified", async () => {
+    const context = await setup();
+    await enrolled(context);
+    const [first, second] = [await challengeOf(context), await challengeOf(context)];
+    let release: (value: never) => void = () => undefined;
+    verifyAuthentication.mockReturnValueOnce(new Promise((resolve) => { release = resolve; }));
+
+    const pending = context.browser("/mod/sign-in", { response: credentialResponse("cred1", first) });
+    await vi.waitFor(() => expect(verifyAuthentication).toHaveBeenCalledTimes(1));
+    const parallel = await context.browser("/mod/sign-in", { response: credentialResponse("cred1", second) });
+    release({ verified: true, authenticationInfo: { newCounter: 8 } } as never);
+
+    expect(parallel.status).toBe(409);
+    expect((await pending).status).toBe(200);
+    verifyAuthentication.mockResolvedValue({ verified: true, authenticationInfo: { newCounter: 9 } } as never);
+    expect((await context.browser("/mod/sign-in", { response: credentialResponse("cred1", await challengeOf(context)) })).status).toBe(200);
+  });
+
   it("uses a challenge once", async () => {
     const context = await setup();
     await enrolled(context);

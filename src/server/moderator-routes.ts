@@ -215,13 +215,9 @@ export const addModeratorRoutes = (app: Hono, deps: ModeratorRouteDeps): void =>
     return c.json(options, 200, NO_STORE);
   }));
 
-  app.post("/mod/sign-in", guarded(async (c) => {
-    const refused = browserRefusal(c);
-    if (refused) return refused;
-    const response = readResponse<AuthenticationResponseJSON>(await readBody(c));
-    const challenge = response && signedChallenge(response);
-    if (response === undefined || challenge === undefined) return c.body(null, 400, NO_STORE);
-    if (!ops.takeChallenge(challenge, { kind: "authenticate" }, now())) return c.body(null, 401, NO_STORE);
+  /** Credentials whose sign-in is being verified. */
+  const signingIn = new Set<string>();
+  const signIn = async (c: Context, response: AuthenticationResponseJSON, challenge: string) => {
     const moderator = await ops.io.byCredential(response.id);
     if (!moderator) return c.body(null, 401, NO_STORE);
     const verification = await verifyAuthenticationResponse({
@@ -235,5 +231,23 @@ export const addModeratorRoutes = (app: Hono, deps: ModeratorRouteDeps): void =>
     if (!verification?.verified) return c.body(null, 401, NO_STORE);
     await ops.io.updateSignCount(moderator.credentialId, verification.authenticationInfo.newCounter);
     return c.json({ grant: await signGrant(deps.grantKey, moderator.name, now()), name: moderator.name }, 200, NO_STORE);
+  };
+
+  app.post("/mod/sign-in", guarded(async (c) => {
+    const refused = browserRefusal(c);
+    if (refused) return refused;
+    const response = readResponse<AuthenticationResponseJSON>(await readBody(c));
+    const challenge = response && signedChallenge(response);
+    if (response === undefined || challenge === undefined) return c.body(null, 400, NO_STORE);
+    if (!ops.takeChallenge(challenge, { kind: "authenticate" }, now())) return c.body(null, 401, NO_STORE);
+    // One sign-in per credential at a time: read, verify and counter update form one step, or two parallel
+    // assertions could both pass on the same stored counter (clone detection, BR-096).
+    if (signingIn.has(response.id)) return c.body(null, 409, NO_STORE);
+    signingIn.add(response.id);
+    try {
+      return await signIn(c, response, challenge);
+    } finally {
+      signingIn.delete(response.id);
+    }
   }));
 };

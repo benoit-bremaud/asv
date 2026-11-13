@@ -155,8 +155,11 @@ const moderatorSetup = (options: NodeServerOptions, crypto: Cipher, behindTunnel
   const publicOrigin = options.publicOrigin ?? DEFAULT_PUBLIC_ORIGIN;
   // BR-098: a bare origin the browser routes accept, or every enrolment and sign-in fails without a trace.
   // Fatal only when moderation is configured; a plain local run (QA of other journeys) just warns.
-  if (!behindTunnel && (URL.parse(publicOrigin)?.origin !== publicOrigin || !options.allowedOrigins.includes(publicOrigin))) {
-    const problem = `publicOrigin ${publicOrigin} must be a bare origin listed in allowedOrigins (BR-098)`;
+  const url = URL.parse(publicOrigin);
+  // The RP ID must be a domain (`localhost` included), never an IP address (BR-098).
+  const hostname = url?.hostname.replace(/^\[|\]$/g, "") ?? "";
+  if (!behindTunnel && (url?.origin !== publicOrigin || isIP(hostname) !== 0 || !options.allowedOrigins.includes(publicOrigin))) {
+    const problem = `publicOrigin ${publicOrigin} must be a bare origin on a domain name, listed in allowedOrigins (BR-098)`;
     if (ownerSecret !== undefined || options.moderatorFile !== undefined) throw new Error(problem);
     console.warn(`${problem}; moderator passkeys will fail`);
   }
