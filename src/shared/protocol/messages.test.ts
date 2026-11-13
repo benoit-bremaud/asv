@@ -133,6 +133,15 @@ describe("openReports triage (BR-100, BR-102)", () => {
     expect(serverMessage.safeParse(list(build(cap + 1))).success).toBe(false);
   });
 
+  it("caps the page at 50 reports and refuses 51", () => {
+    const page = (n: number) => {
+      const base = list(triage);
+      return { ...base, payload: { total: n, reports: Array.from({ length: n }, () => base.payload.reports[0]) } };
+    };
+    expect(serverMessage.safeParse(page(CAPS.queuePage)).success).toBe(true);
+    expect(serverMessage.safeParse(page(CAPS.queuePage + 1)).success).toBe(false);
+  });
+
   it("refuses a category outside BR-101 and a list without its total", () => {
     expect(serverMessage.safeParse(list({ ...triage, category: "insult" })).success).toBe(false);
     expect(serverMessage.safeParse({ ...list(triage), payload: { reports: list(triage).payload.reports } }).success).toBe(false);

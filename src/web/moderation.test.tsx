@@ -104,10 +104,11 @@ describe("moderator sign-in on the entry screen (UC16, BR-095, BR-097)", () => {
       await act(async () => {});
       await user.click(screen.getByRole("button", { name: STRINGS.moderatorSignIn }));
       await screen.findByText(STRINGS.moderatorAccepted("Marc"));
+      await act(async () => {});
 
-      await act(async () => { vi.advanceTimersByTime(60_000); });
+      await act(() => vi.advanceTimersByTimeAsync(60_000));
 
-      expect(screen.getByRole("alert").textContent).toBe(STRINGS.moderatorExpired);
+      expect((await screen.findByRole("alert")).textContent).toBe(STRINGS.moderatorExpired);
       expect(screen.getByRole("button", { name: STRINGS.moderatorSignIn })).toBeTruthy();
     } finally {
       vi.useRealTimers();

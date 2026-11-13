@@ -271,7 +271,7 @@ export const serverMessage = z.discriminatedUnion("type", [
             }),
           ),
         }),
-      ),
+      ).check(z.maxLength(CAPS.queuePage)),
       // The open count; `reports` holds the first 50 in BR-102 order.
       total: z.int().check(z.nonnegative()),
     }),
