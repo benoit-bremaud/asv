@@ -47,8 +47,8 @@ const labelAt = (index: number): string => {
 
 const WORD = new RegExp(`[${PSEUDO_CHARS}]+`, "gu");
 const AUTHOR = new RegExp(`^([${PSEUDO_CHARS}]{3,20}): `, "u");
-const EDGES = /^([._-]*)(.*?)([._-]*)$/su;
-const EMAIL = /[^\s@]+@[^\s@]+\.[^\s@]+/gu;
+const EDGE = new Set([".", "_", "-"]);
+const EMAIL = /[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+/gu;
 /** International or French numbers: 8 to 15 digits, optionally `+` or `00` first, up to 3 of space, `.`, `/`, `-` between digits. */
 const PHONE = /(?:\+|\b00)?\d(?:[\s./-]{0,3}\d){7,14}/gu;
 
@@ -85,7 +85,11 @@ export const pseudonymise = (report: Report, known: readonly string[]): { input:
   /** `bob.`, `_bob_` or `-bob` is `bob` when the whole word is nobody; the punctuation around stays. */
   const replaceWord = (word: string): string => {
     if (isName(word)) return labelOf(word);
-    const [, before = "", core = "", after = ""] = EDGES.exec(word) ?? [];
+    let start = 0;
+    let end = word.length;
+    while (start < end && EDGE.has(word.charAt(start))) start += 1;
+    while (end > start && EDGE.has(word.charAt(end - 1))) end -= 1;
+    const [before, core, after] = [word.slice(0, start), word.slice(start, end), word.slice(end)];
     return core !== word && core.length > 0 && isName(core) ? before + labelOf(core) + after : word;
   };
   const mask = (text: string): string => text.replace(WORD, replaceWord).replace(EMAIL, "[e-mail]").replace(PHONE, "[téléphone]");

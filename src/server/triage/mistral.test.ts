@@ -44,7 +44,7 @@ describe("createMistralTriage (ADR-0019, BR-101)", () => {
     ["an unknown urgency", { ...valid, urgency: "unknown" }],
     ["an empty summary", { ...valid, summary: "" }],
     ["a summary over 200 characters", { ...valid, summary: "é".repeat(201) }],
-    ["a summary with a forbidden character (BR-090)", { ...valid, summary: "gpj.‮exe" }],
+    ["a summary with a forbidden character (BR-090)", { ...valid, summary: "gpj.\u202Eexe" }],
     ["content that is not JSON", "pas du json"],
   ])("answers unavailable on %s", async (_name, content) => {
     const { triage, log } = make(reply(completion(content)));
