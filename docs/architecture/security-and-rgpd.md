@@ -118,8 +118,10 @@ Not legal advice; the URLs and numbers are the public official ones, to re-check
 
 Offence categories the moderator picks (BR-104): `childAbuse`, `threatToLife`, `terrorism`,
 `hateOrViolence`, `harassment`, `otherListed`. Channels recorded: `PHAROS`, `17`, `112`, `PointDeContact`.
-A moderator may call 17 or 112 directly when life is at stake; the owner records that call as the
-channel, with the moderator name (BR-055).
+These categories label the alert only; the severe expel keeps the BR-078 list. A moderator may call 17
+or 112 directly when life is at stake: the moderator who raises the alert is the caller (`raisedBy`,
+BR-055), and the owner records the call with `mod:filed`, channel `17` or `112` and a free-text
+reference such as "appel 2026-11-13T22:10" (1 to 100 characters, BR-090).
 
 After filing, the owner runs `pnpm mod:filed <reportId> <channel> <reference>` (UC20), which keeps the
 proof of diligence with the report for 1 year (BR-105).

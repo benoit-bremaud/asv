@@ -70,12 +70,13 @@ flowchart LR
 - Variant: target has an account → a non-severe expel bans the keyed IP hash and pseudo only and keeps
   the account (strikes come from warnings, see 02d). The account is deleted only by a confirmed
   suspension (02d) or the severe variant below (BR-076 to BR-078).
-- Variant: severe case (offences listed in LCEN art. 6 IV-A and threats to life or safety, BR-078):
+- Variant: severe case (grooming, threats, child sexual abuse material, incitement to violence, BR-078):
   1. Moderator marks the expel as severe. 2. System deletes the account at once, without strikes, and
   blocks its e-mail hash for the longer period (BR-078); a chatter without an account gets the longest
-  IP and pseudo ban. 3. System sends the statement of reasons. 4. The authority alert is preselected and
-  needs an offence category (BR-104); the moderator unticks it only deliberately. The owner files (UC20).
-  When life is at stake the moderator may call 17 or 112 at once and record it as the channel. Sequence
+  IP and pseudo ban. 3. System sends the statement of reasons. 4. The alert select starts with no value;
+  "confirmer" stays disabled until the moderator picks an offence category or "aucune" (BR-104). The owner
+  files (UC20). When life is at stake the moderator who raises the alert may call 17 or 112 at once; the
+  owner records that call with `mod:filed`. Sequence
   02h (brick 8c).
 - Variant: remove a user room → its members get `roomClosed` (BR-106, sequence 02i).
 - Closing the related report is a separate `closeReport` command.

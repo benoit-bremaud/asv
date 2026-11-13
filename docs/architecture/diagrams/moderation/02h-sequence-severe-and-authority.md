@@ -61,9 +61,11 @@ sequenceDiagram
 - `alertAuthorities` carries an `OffenceCategory` picked by the moderator, never copied from the AI
   triage category (ADR-0010). It is also accepted on `closeReport`, `removeRoom` and
   `confirmSuspension` (BR-104), for example a threat by a chatter already gone.
-- On a severe expel the alert is preselected and a category is required; the moderator unticks it only
-  deliberately. When life is at stake the moderator may call 17 or 112 directly; the owner then records
-  that call as the channel, with the moderator name (BR-055).
+- On a severe expel the alert select starts with no value and "confirmer" stays disabled until the
+  moderator picks a category or "aucune"; the server accepts `alertAuthorities` absent.
+- When life is at stake the moderator who raises the alert may call 17 or 112 directly: that moderator is
+  the caller (`raisedBy`, BR-055). The owner records the call with `mod:filed`, channel `17` or `112`
+  and a free-text reference such as "appel 2026-11-13T22:10" (1 to 100 characters, BR-090).
 - The owner is a moderator in the queue, so the "alertes" tab is the same `listAlertedReports` command
   (BR-054); filing goes through the owner route only.
 - A target who deleted their own account before the decision has no account to delete and leaves no

@@ -60,7 +60,7 @@ Likelihood and severity on the CNIL scale (1 negligible to 4 maximum), after mea
 
 | Risk | Source | Measures | Likelihood | Severity |
 |---|---|---|---|---|
-| Illegitimate access to reported content | Stolen moderator access, store leak | Passkeys (ADR-0008), encryption at rest, no read path from the AI, moderator actions recorded (BR-055) | 1 | 3 |
+| Illegitimate access to reported content | Stolen moderator access, store leak | Passkeys (ADR-0008), encryption at rest, no read path from the AI, moderator actions recorded (BR-055); note that every moderator can read alerted closed reports for up to 1 year in the "alertes" tab (BR-105) | 1 | 3 |
 | Re-identification at the provider | Content itself identifies people | Labels and masks (BR-100), EU processor, no training, no ids or dates sent | 2 | 2 |
 | Wrong sanction from a biased or manipulated triage | Model error, prompt injection in the reported lines | AI only orders the queue; summary marked "à vérifier"; closed answer schema (BR-101); moderator reads excerpt and context | 2 | 2 |
 | Missed urgent case | AI down, cap reached, wrong low urgency | `unknown` still listed; urgency floor by reason; oldest-first within each urgency; moderators read every report (BR-101, BR-102) | 2 | 3 |

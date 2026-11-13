@@ -69,8 +69,10 @@ stateDiagram-v2
 - A select "à signaler aux autorités" sits beside every closing action (BR-104), with "aucune" and the
   categories of `security-and-rgpd.md` §6 (atteinte aux mineurs, menace de mort ou contre la sécurité,
   terrorisme, haine ou violence, harcèlement, autre infraction listée). It defaults to "aucune", except
-  on "expulsion grave", where the alert is preselected and a category is required; the moderator
-  unticks it only deliberately. The AI category never fills it (ADR-0010).
+  on "expulsion grave", where it starts with no value and "confirmer" stays disabled until the moderator
+  picks a category or "aucune". The AI category never fills it (ADR-0010).
+- The queue shows the first 50 open reports in BR-102 order and the total count, so closing one brings
+  the next; the "alertes" tab shows the 50 most recent alerted reports. Nothing is dropped from the store.
 - A tab "alertes" lists the closed reports with an alert (`listAlertedReports`, moderator only, BR-054):
   excerpt, context, pseudos, dates, category, status "en attente" or "déposée", channel and reference,
   all as text; an open row with an alert shows "alerte : en attente" or "alerte : déposée (canal,

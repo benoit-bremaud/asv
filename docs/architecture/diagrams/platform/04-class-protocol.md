@@ -129,8 +129,8 @@ Server to client:
 | ignoreUpdated | ignored (session ids) |
 | searchResults | results (member + rooms) |
 | reportSent | reportId |
-| openReports | reports, open only (with triage and its label legend "[A] = ‹pseudo›", alert, hasAccount, connected, activeStrikes, struck; BR-100, BR-102) |
-| alertedReports | reports closed with an alert pending or filed, until purge (excerpt, context, pseudos, dates, offence category, status, channel, reference; BR-104) |
+| openReports | reports, open only, the first 50 in BR-102 queue order, plus total (the open count; closing one brings the next) (with triage and its label legend "[A] = ‹pseudo›", alert, hasAccount, connected, activeStrikes, struck; BR-100, BR-102) |
+| alertedReports | reports closed with an alert pending or filed, until purge, the 50 most recent (older ones stay in the store) (excerpt, context, pseudos, dates, offence category, status, channel, reference; BR-104) |
 | warned | rule, text, activeStrikes |
 | expelled | until |
 | reportClosed | reportId |
