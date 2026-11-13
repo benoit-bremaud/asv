@@ -99,8 +99,8 @@ classDiagram
   class AlertChannel {
     <<enumeration>>
     PHAROS
-    17
-    112
+    police17
+    emergency112
     PointDeContact
   }
   class PendingDecisionMail {
@@ -268,3 +268,4 @@ The contract stays `platform/04-class-protocol`. Brick 8a uses it as follows:
   `listAlertedReports` answers `alertedReports`. Outcomes `severeDeleted` and `roomRemoved` become
   available.
 - Owner route `POST /mod/authority-filings` (BR-093 guard, BR-097) and script `pnpm mod:filed`.
+- `AlertChannel` values `police17` and `emergency112` are typed `17` and `112` on the `mod:filed` command line and in the queue.
