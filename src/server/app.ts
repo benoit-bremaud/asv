@@ -78,6 +78,7 @@ export const createApp = (deps: AppDeps): Hono => {
         frameAncestors: ["'none'"],
         baseUri: ["'none'"],
         formAction: ["'self'"],
+        objectSrc: ["'none'"],
       },
       referrerPolicy: "no-referrer",
       // #69: no powerful feature the chat never uses.
