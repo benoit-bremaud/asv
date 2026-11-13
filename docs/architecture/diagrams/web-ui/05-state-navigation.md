@@ -36,6 +36,7 @@ stateDiagram-v2
 
 ## Notes
 
+- Notices show over every screen and expire after 8 s, or earlier on dismiss or on the next success (`web-ui/04` Notice lifetime, #68).
 - `Reconnecting` shows a discreet banner and keeps the last screen visible. On resume the client returns
   to the screen it was on (UML history state, drawn here as a note since Mermaid lacks it).
 - `LegalPage` (ADR-0018) shows one of three static texts (rules, legal notice, privacy) from

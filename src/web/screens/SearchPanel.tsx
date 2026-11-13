@@ -27,7 +27,7 @@ export const SearchPanel = ({ onPrivate }: { onPrivate?: () => void }) => {
       <form onSubmit={submit} role="search">
         <label>
           {STRINGS.searchLabel}
-          <input value={query} maxLength={64} onChange={(e) => setQuery(e.target.value)} />
+          <input name="query" value={query} maxLength={64} onChange={(e) => setQuery(e.target.value)} />
         </label>
         <button type="submit" className="bevel">{STRINGS.search}</button>
         {searched && (

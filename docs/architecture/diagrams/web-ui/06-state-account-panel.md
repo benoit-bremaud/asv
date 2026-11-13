@@ -41,14 +41,17 @@ stateDiagram-v2
 - The panel is a modal dialog over `InChat` (`web-ui/05`, #63), closable at any time with "fermer" or
   Escape; closing keeps the state and gives the focus back (`web-ui/04` Accessibility).
 - **Entry screen "Membres" panel**: e-mail field, "se souvenir de cet appareil" box (ticked by default),
-  "recevoir mon code" button. The button needs the pseudo form valid (pseudo, 18+, rules), shows a hint
-  otherwise, then enters the chat and sends `requestCode` as soon as `entered` arrives. The code field
+  "recevoir mon code" button. The button needs the pseudo form valid (pseudo, age, 18+, rules), shows a hint
+  otherwise (the missing fields, else the city's invisible characters, else "Pas connecté pour l'instant."), then enters the chat and sends `requestCode` as soon as `entered` arrives. The code field
   then appears in the account overlay. A failed `POST /account/device` keeps the session signed in for
   this visit only and shows a notice.
 - `codeSent` always reads "Si l'adresse peut recevoir un code, il vient d'être envoyé. Valable
   10 minutes." (ADR-0013 amendment, same answer).
 - Sign-up legal notice, shown under the e-mail field and before deletion: "Ton e-mail est gardé 5 ans
   après la fermeture du compte, uniquement pour la loi." (ADR-0014, GDPR art. 13).
+  It shows under the e-mail field of the entry "Membres" panel and of the account dialog, and in the
+  deletion confirmation (#110); a component test asserts each place.
+- The "Membres" hint names the missing pseudo-form fields like the guest panel (`web-ui/04`, #60).
 - `SignedIn` shows "connecté·e comme membre" (never the e-mail, since the client does not receive it) and
   the three actions. `entered.staleDevice` triggers `POST /account/sign-out` silently.
 - **Tab switch (BR-087)**: `codeSent` saves the code deadline in `sessionStorage`. A resume keeps the

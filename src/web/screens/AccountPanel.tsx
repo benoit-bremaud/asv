@@ -21,14 +21,15 @@ const AskEmail = () => {
     <form onSubmit={submit}>
       <label>
         {STRINGS.email}
-        <input type="email" autoComplete="email" maxLength={254} value={email} onChange={(e) => setEmail(e.target.value)} />
+        <input name="email" type="email" autoComplete="email" maxLength={254} value={email} onChange={(e) => setEmail(e.target.value)} />
       </label>
       <label className="inline">
-        <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+        <input name="remember" type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
         {STRINGS.remember}
       </label>
       <button type="submit" className="bevel primary" disabled={email.trim() === "" || state.account.pendingRequest}>{STRINGS.getCode}</button>
       <p className="small">{STRINGS.codeCreates}</p>
+      <p className="small">{STRINGS.emailRetention}</p>
       <p className="small">
         {STRINGS.emailKept}{" "}
         <button type="button" className="link" onClick={(event) => {
@@ -65,7 +66,7 @@ const WaitingCode = () => {
     <form onSubmit={submit}>
       <label>
         {STRINGS.code}
-        <input inputMode="numeric" autoComplete="one-time-code" ref={input} value={code} onChange={(e) => change(e.target.value)} />
+        <input name="code" inputMode="numeric" autoComplete="one-time-code" ref={input} value={code} onChange={(e) => change(e.target.value)} />
       </label>
       <p className="small">{STRINGS.codeHelp}</p>
       {triesLeft !== undefined && <p role="alert" className="error">{STRINGS.triesLeft(triesLeft)}</p>}
@@ -93,6 +94,7 @@ const ConfirmDelete = () => {
     <>
       <p role="alert">{STRINGS.confirmDelete}</p>
       <p className="small">{STRINGS.emailKept}</p>
+      <p className="small">{STRINGS.emailRetention}</p>
       <button type="button" className="bevel primary" onClick={commands.deleteAccount}>{STRINGS.confirm}</button>
       <button type="button" className="bevel" onClick={() => commands.local({ type: "accountStep", step: "signedIn" })}>{STRINGS.cancel}</button>
     </>

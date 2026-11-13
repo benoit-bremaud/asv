@@ -599,3 +599,46 @@ describe("private windows, ignore and search (web-ui/07)", () => {
     expect(act(found, { type: "clearSearch" }).search).toEqual(initialState.search);
   });
 });
+
+describe("chatReducer: notice lifetime (#68)", () => {
+  const warn = (state: ChatState, code: string) => server(state, { type: "warning", seq: 0, payload: { code, message: "m" } });
+
+  it("stamps a new noticeSeq for each notice, the same code included", () => {
+    const first = warn(initialState, "flood");
+    const second = warn(first, "flood");
+
+    expect(first.noticeSeq).toBe(1);
+    expect(second.noticeSeq).toBe(2);
+  });
+
+  it("stamps local notices, errors, codeSent and accountUnlinked, not other actions", () => {
+    expect(chatReducer(initialState, { type: "notice", code: "notConnected" }).noticeSeq).toBe(1);
+    expect(server(initialState, { type: "error", seq: 0, payload: { code: "invalid", message: "m" } }).noticeSeq).toBe(1);
+    expect(server(initialState, { type: "codeSent", seq: 0, payload: {} }).noticeSeq).toBe(1);
+    expect(server(initialState, { type: "accountUnlinked", seq: 0, payload: {} }).noticeSeq).toBe(1);
+    expect(chatReducer(warn(initialState, "flood"), { type: "showRooms" }).noticeSeq).toBe(1);
+  });
+
+  it("expires only the notice it timed", () => {
+    const state = warn(warn(initialState, "flood"), "full");
+
+    expect(chatReducer(state, { type: "expireNotice", seq: 1 })).toBe(state);
+    expect(chatReducer(state, { type: "expireNotice", seq: 2 }).notice).toBeUndefined();
+  });
+
+  it("clears a page notice on entered and roomJoined, keeps an account notice", () => {
+    const entered: ServerMessage = { type: "entered", seq: 0, payload: { sessionId: "me", resumeToken: "t", roomList: [], isModerator: false } };
+    const joined: ServerMessage = { type: "roomJoined", seq: 0, payload: { roomId: "r1", members: [] } };
+
+    expect(server(warn(initialState, "flood"), entered).notice).toBeUndefined();
+    expect(server(warn(initialState, "flood"), joined).notice).toBeUndefined();
+    expect(server(warn(initialState, "codeWrong"), joined).notice).toBe("codeWrong");
+  });
+
+  it("keeps the stamp across a leave, so a stamp is never reused", () => {
+    const left = chatReducer(warn(initialState, "flood"), { type: "left" });
+
+    expect(left.noticeSeq).toBe(1);
+    expect(server(warn(initialState, "flood"), { type: "resumeRefused", seq: 0, payload: {} }).noticeSeq).toBe(1);
+  });
+});
