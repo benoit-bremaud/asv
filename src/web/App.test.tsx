@@ -1656,6 +1656,13 @@ describe("account panel", () => {
     expect(css.match(/^\.overlay \{[^}]*\}/m)?.[0]).toContain("right: max(var(--gap), calc((100% - 1100px) / 2 + var(--gap)));");
   });
 
+  it("sizes the dialogs to the viewport without its scrollbar (#185)", () => {
+    const overlay = readFileSync("src/web/styles.css", "utf8").match(/^\.overlay \{[^}]*\}/m)?.[0];
+
+    expect(overlay).toContain("width: min(340px, calc(100% - 2 * var(--gap)));");
+    expect(overlay).not.toContain("100vw");
+  });
+
   it("shows the tries left and goes back to the e-mail on 'nouveau code'", async () => {
     const user = await openPanel();
     await fromServer(msg("codeSent", {}));
@@ -2193,6 +2200,19 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
   };
   const searchClosed = () => screen.queryByRole("dialog", { name: STRINGS.searchTitle }) === null;
 
+  it("shows a notice once, in the search dialog, then back in the page once it closes (#185)", async () => {
+    const { dialog } = await openSearch();
+    await fire({ type: "notice", code: "flood" });
+
+    expect(screen.getAllByRole("alert", { hidden: true })).toHaveLength(1);
+    expect(within(dialog()).getByRole("alert")).toBeTruthy();
+
+    await act(async () => fireEvent.keyDown(dialog(), { key: "Escape" }));
+
+    expect(searchClosed()).toBe(true);
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+  });
+
   const holds = [
     ["focus", (notice: HTMLElement) => act(async () => within(notice).getByRole("button", { name: STRINGS.dismiss }).focus())],
     ["pointer", (notice: HTMLElement) => act(async () => fireEvent.mouseEnter(notice))],
@@ -2214,7 +2234,7 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
     }
   });
 
-  it.each(holds)("keeps a notice held by the %s in the search dialog, the page behind included (#199)", async (_by, hold) => {
+  it.each(holds)("keeps a notice held by the %s in the search dialog (#199)", async (_by, hold) => {
     const { dialog } = await openSearch();
 
     vi.useFakeTimers();
@@ -2222,7 +2242,7 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
       await fire({ type: "notice", code: "flood" });
       await hold(within(dialog()).getByRole("alert"));
       await act(async () => vi.advanceTimersByTime(NOTICE_MS * 2));
-      expect(screen.getAllByRole("alert", { hidden: true })).toHaveLength(2);
+      expect(within(dialog()).getByRole("alert")).toBeTruthy();
     } finally {
       vi.useRealTimers();
     }
@@ -2313,6 +2333,19 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
     expect(screen.queryByRole("dialog", { name: STRINGS.accountTitle })).toBeNull();
     expect(searchClosed()).toBe(false);
     expect(document.activeElement).toBe(pseudo);
+  });
+
+  it("shows an account notice once, in the account dialog stacked on the search dialog (#185)", async () => {
+    const { user, dialog } = await openSearch(async () => { await enterChat(); });
+    await user.type(within(dialog()).getByLabelText(STRINGS.searchLabel), "zo{Enter}");
+    await fromServer(msg("searchResults", { results: [{ sessionId: "s3", pseudo: "zoe", hasAccount: true, away: false, gender: "woman", age: 30, city: "Lyon", rooms: [] }] }));
+    await user.click(within(dialog()).getByRole("button", { name: STRINGS.pseudoButton("zoe") }));
+    await user.click(screen.getByRole("menuitem", { name: STRINGS.privateMessage }));
+
+    await fromServer(msg("codeSent", {}));
+
+    expect(screen.getAllByRole("alert", { hidden: true })).toHaveLength(1);
+    expect(within(screen.getByRole("dialog", { name: STRINGS.accountTitle })).getByRole("alert")).toBeTruthy();
   });
 
   it("shows a notice raised meanwhile inside the search dialog (#111)", async () => {

@@ -600,6 +600,24 @@ describe("private windows, ignore and search (web-ui/07)", () => {
   });
 });
 
+describe("chatReducer: search dialog (#185)", () => {
+  const inRoom: ChatState = { ...initialState, screen: "room", searchOpen: true };
+
+  it("opens and closes the search dialog, and keeps it open on clearSearch", () => {
+    expect(chatReducer({ ...inRoom, searchOpen: false }, { type: "openSearch" }).searchOpen).toBe(true);
+    expect(chatReducer(inRoom, { type: "closeSearch" }).searchOpen).toBe(false);
+    expect(chatReducer(inRoom, { type: "clearSearch" }).searchOpen).toBe(true);
+  });
+
+  it("closes it whenever the screen leaves the room", () => {
+    expect(chatReducer(inRoom, { type: "showRooms" }).searchOpen).toBe(false);
+    const oneRoom: ChatState = { ...inRoom, open: { r1: { members: [], lines: [] } }, active: "r1" };
+    expect(chatReducer(oneRoom, { type: "closeRoom", roomId: "r1" }).searchOpen).toBe(false);
+    expect(server(inRoom, { type: "resumed", seq: 0, payload: { sessionId: "me1", pseudo: "ana", resumeToken: "t2", rooms: [], windows: [], buffered: [] } }).searchOpen).toBe(false);
+    expect(chatReducer(inRoom, { type: "notice", code: "flood" }).searchOpen).toBe(true);
+  });
+});
+
 describe("chatReducer: notice lifetime (#68)", () => {
   const warn = (state: ChatState, code: string) => server(state, { type: "warning", seq: 0, payload: { code, message: "m" } });
 

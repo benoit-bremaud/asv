@@ -39,6 +39,7 @@ stateDiagram-v2
     [*] --> DialogClosed
     DialogClosed --> DialogOpen: "rechercher" in a room (modal, focus on the field)
     DialogOpen --> DialogClosed: "fermer", Escape (menu closed), close request or "message privé" picked in a result
+    DialogOpen --> DialogClosed: the screen leaves the room (showRooms, last room closed, resumed without rooms, left, resumeRefused)
   }
   state SearchPanel {
     [*] --> Idle
@@ -93,7 +94,7 @@ stateDiagram-v2
   "message privé" in a result while signed in closes it, so the new private window is not left inert behind
   the backdrop; picking it without an account opens the account dialog on top. The query and results stay in
   the state, so reopening shows them. Escape on an open pseudo menu in a result closes the menu only and gives
-  the focus back to the pseudo. A notice raised while it is open shows inside it (the page behind is inert). On a screen at most 500 px high it starts at the top, so "fermer"
+  the focus back to the pseudo. A notice raised while it is open shows inside it only (the page behind is inert and hides it, #185); with the account dialog on top, an account notice shows there only. On a screen at most 500 px high it starts at the top, so "fermer"
   stays in view; its links are 44 px high on a touch screen. On the rooms screen the panel stays in the page flow.
 - **Strings** in `strings.ts`, French; notices for the new codes: `self`, `tooManyWindows`, `targetBusy`, `offline`,
   `accountRequired`, and `invalidText` (BR-090, room and private).

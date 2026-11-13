@@ -3,7 +3,7 @@ import { createConnection, type CodeRequest, type Connection, type ConnectionDep
 import { chatReducer, initialState, type Action, type ChatState } from "./store";
 
 /** The only local actions screens may dispatch; server actions come from the connection manager. */
-export type LocalAction = Extract<Action, { type: "showRooms" | "showRoom" | "dismissNotice" | "expireNotice" | "holdNotice" | "releaseNotice" | "openAccount" | "closeAccount" | "accountStep" | "openPrivate" | "togglePrivate" | "clearSearch" }>;
+export type LocalAction = Extract<Action, { type: "showRooms" | "showRoom" | "dismissNotice" | "expireNotice" | "holdNotice" | "releaseNotice" | "openAccount" | "closeAccount" | "accountStep" | "openPrivate" | "togglePrivate" | "clearSearch" | "openSearch" | "closeSearch" }>;
 
 /** What screens may do; only the connection manager touches the socket (`web-ui/03`). */
 export interface Commands {

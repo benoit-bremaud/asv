@@ -36,6 +36,7 @@ classDiagram
     +Record~ConversationId, PrivateView~ windows
     +SessionId[] ignored
     +SearchView search
+    +Boolean searchOpen
     +Number nextLineId
   }
   class PrivateView {
@@ -121,6 +122,8 @@ classDiagram
     togglePrivate(conversationId)
     searching(query)
     clearSearch()
+    openSearch()
+    closeSearch()
   }
   class chatReducer {
     <<pure function>>
@@ -208,8 +211,8 @@ classDiagram
   that is not an account notice (the next success ends a stale refusal); `accountLinked` keeps clearing an
   account notice (#136). "fermer" (`dismissNotice`) still clears it at once. The timer stops while the pointer or
   the focus is on the notice, so it never vanishes under a reader or takes the focus away (WCAG 2.2.1, 2.4.3).
-  The hold lives in the store (#199), so a notice held in a dialog is held for every `Notice` rendering it, the
-  inert page behind included: `NoticeCopy` only renders and dispatches `holdNotice(by, copy)` / `releaseNotice(by, copy)`
+  The hold lives in the store (#199), so a notice held in a dialog is held for every `Notice` rendering it, a dialog's copy, then the
+  page's once the dialog closes: `NoticeCopy` only renders and dispatches `holdNotice(by, copy)` / `releaseNotice(by, copy)`
   (`by` is `focus` or `pointer`, `copy` the rendered copy's `useId`, local actions). `noticeHold.focus` names the
   holding copy and is cleared with the notice; `noticeHold.pointer` keeps the copy and the `noticeSeq` it was set on,
   so a notice removed under the pointer never holds the next one. A release only drops a hold its own copy set, and
@@ -316,7 +319,7 @@ classDiagram
   trap, the inert background and the top layer (above the private dock, #84). Escape (a key handler on the
   dialog) and `cancel` (Android back) dispatch
   `closeAccount`; "fermer" does the same. Its height fits the viewport and it scrolls, so "fermer" stays
-  reachable on a phone in landscape. Its right edge lines up with the page column's (`right: max(var(--gap), calc((100% - 1100px) / 2 + var(--gap)))`, where `100%` is the viewport without its scrollbar, #136), so on a wide screen it sits under "quitter", not against the window edge; the search dialog shares the rule. Only account notices show inside it (#136, option A 445/500): the codes of `ACCOUNT_NOTICES` in `store.ts` (the `ACCOUNT_WARNINGS` codes plus `codeSent`, `accountUnlinked`, `accountRequired`, `deviceNotSaved`, `notSignedIn`, and `unavailable` and `notConnected`, the feedback on its own actions); any other notice stays in the page, so it does not move the header on open or close. `accountLinked` clears an account notice ("code envoyé" no longer outlives the sign-in). On unmount the focus returns to the element
+  reachable on a phone in landscape. Its right edge lines up with the page column's (`right: max(var(--gap), calc((100% - 1100px) / 2 + var(--gap)))`, where `100%` is the viewport without its scrollbar, #136; its width `min(340px, calc(100% - 2 * var(--gap)))` uses the same `100%`, #185), so on a wide screen it sits under "quitter", not against the window edge; the search dialog shares the rule. Only account notices show inside it (#136, option A 445/500): the codes of `ACCOUNT_NOTICES` in `store.ts` (the `ACCOUNT_WARNINGS` codes plus `codeSent`, `accountUnlinked`, `accountRequired`, `deviceNotSaved`, `notSignedIn`, and `unavailable` and `notConnected`, the feedback on its own actions); any other notice stays in the page, so it does not move the header on open or close. `accountLinked` clears an account notice ("code envoyé" no longer outlives the sign-in). On unmount the focus returns to the element
   that had it when the panel opened ("Mon compte", the pseudo whose "message privé" opened it, or the room
   field when the server opened it); "Mon compte" focuses itself on click, since Safari and Firefox on
   macOS do not (#130); nothing gets it if that element left the page. The background being inert, no screen change can come from the user
@@ -328,7 +331,7 @@ classDiagram
   Search dialog (#111, option A 460/500): in a room the search panel is a modal `dialog` built like the
   account dialog (`.overlay`, `showModal()` on mount, `close()` and focus return on unmount, Escape and
   `cancel` close it, "fermer"); "rechercher" focuses itself on click (#130). Escape on an open pseudo menu
-  inside it closes the menu only. Every notice raised while it is open shows inside it (unlike the account dialog, which keeps only account notices, #136). Rules in `web-ui/07`.
+  inside it closes the menu only. Every notice raised while it is open shows inside it only (unlike the account dialog, which keeps only account notices, #136): `searchOpen` lives in the store (#185, option A 480/500), set by `openSearch` and cleared by `closeSearch` and whenever the screen leaves `room` (a reducer rule, not an unmount effect, which `StrictMode` would replay), so `Banners` hides its notice while the dialog shows it and the notice renders and is announced once; with the account dialog stacked on top, an account notice shows in the account dialog only. `clearSearch` ("annuler") keeps the dialog open. Rules in `web-ui/07`.
   Small controls (#105, A11Y-05, option A 480/500; smileys added after review round 1, option A 450/500): the
   glyph-only buttons that close a room tab ("×"), minimise or close a private window ("_", "×") and insert a
   smiley in the room composer carry the class `icon-button` next to `link`. It gives them `min-width` and

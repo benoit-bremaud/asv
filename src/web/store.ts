@@ -92,6 +92,8 @@ export interface ChatState {
   readonly windows: Readonly<Record<string, PrivateView>>;
   readonly ignored: readonly string[];
   readonly search: SearchView;
+  /** The room's search dialog is open; it then shows every notice itself (#185). */
+  readonly searchOpen: boolean;
   /** Monotonic key for `Line.id`, never reused. */
   readonly nextLineId: number;
 }
@@ -121,7 +123,9 @@ export type Action =
   | { readonly type: "closePrivate"; readonly conversationId: string }
   | { readonly type: "togglePrivate"; readonly conversationId: string }
   | { readonly type: "searching"; readonly query: string }
-  | { readonly type: "clearSearch" };
+  | { readonly type: "clearSearch" }
+  | { readonly type: "openSearch" }
+  | { readonly type: "closeSearch" };
 
 /** BR-034: only the newest lines stay in memory, nothing is kept elsewhere. */
 export const MAX_LINES = 200;
@@ -139,6 +143,7 @@ export const initialState: ChatState = {
   windows: {},
   ignored: [],
   search: { query: "", pending: false, results: [] },
+  searchOpen: false,
   noticeSeq: 0,
   noticeHold: {},
   nextLineId: 0,
@@ -419,7 +424,9 @@ const onServer = (state: ChatState, message: ServerMessage): ChatState => {
 
 /** The client reducer: pure, so screens and tests share one behaviour. */
 export const chatReducer = (state: ChatState, action: Action): ChatState => {
-  const next = reduce(state, action);
+  const reduced = reduce(state, action);
+  // The search dialog belongs to the room screen: leaving it, whatever the action, closes it (#185).
+  const next = reduced.searchOpen && reduced.screen !== "room" ? { ...reduced, searchOpen: false } : reduced;
   if (next.notice === undefined) return next.noticeHold.focus === undefined ? next : { ...next, noticeHold: { pointer: next.noticeHold.pointer } };
   return raisesNotice(action) ? { ...next, noticeSeq: state.noticeSeq + 1 } : next;
 };
@@ -477,5 +484,9 @@ const reduce = (state: ChatState, action: Action): ChatState => {
       return { ...state, search: { ...state.search, query: action.query, pending: true } };
     case "clearSearch":
       return { ...state, search: initialState.search };
+    case "openSearch":
+      return { ...state, searchOpen: true };
+    case "closeSearch":
+      return { ...state, searchOpen: false };
   }
 };
