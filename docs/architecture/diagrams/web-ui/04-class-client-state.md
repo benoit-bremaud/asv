@@ -28,6 +28,7 @@ classDiagram
     +Record~SessionId, Gender~ known
     +Code notice
     +Number noticeSeq
+    +NoticeHold noticeHold
     +Code entryError
     +String refusedPseudo
     +Number refusedSeq
@@ -44,6 +45,10 @@ classDiagram
     +Number unread
     +String presence : here, away, gone
     +Number focusRequest
+  }
+  class NoticeHold {
+    +Boolean focus
+    +Number pointerSeq
   }
   class SearchView {
     +String query
@@ -102,6 +107,8 @@ classDiagram
     notice(code)
     dismissNotice()
     expireNotice(seq)
+    holdNotice(by)
+    releaseNotice(by)
     openAccount()
     closeAccount()
     accountStep(step)
@@ -189,12 +196,17 @@ classDiagram
   Notices and entry errors stay codes in the state; screens translate them through `strings.ts`.
 - **Notice lifetime** (#68, batch option A 420/500): every action that sets `notice` also stamps a fresh
   `noticeSeq` (monotonic, never reused), so the same code raised twice counts as a new notice (the notice remounts, so
-  it is announced again). While shown, `Notice` runs an 8 s timer for its `noticeSeq` (moving between page and
-  dialog restarts it) and then dispatches `expireNotice(seq)`, which clears the notice only when
+  it is announced again). While a notice is set and not held, `Banners` (always mounted)
+  runs the one 8 s timer for its `noticeSeq` and then dispatches `expireNotice(seq)`, which clears the notice only when
   `noticeSeq` still equals `seq` (a newer notice is never cut short). `entered` and `roomJoined` clear a notice
   that is not an account notice (the next success ends a stale refusal); `accountLinked` keeps clearing an
   account notice (#136). "fermer" (`dismissNotice`) still clears it at once. The timer stops while the pointer or
-  the focus is on the notice, so it never vanishes under a reader or takes the focus away (WCAG 2.2.1, 2.4.3). Unit tests check the stamp, the
+  the focus is on the notice, so it never vanishes under a reader or takes the focus away (WCAG 2.2.1, 2.4.3).
+  The hold lives in the store (#199), so a notice held in a dialog is held for every `Notice` rendering it, the
+  inert page behind included: `Notice` only renders and dispatches `holdNotice(by)` / `releaseNotice(by)`
+  (`by` is `focus` or `pointer`, local actions). `noticeHold.focus` is a flag cleared with the notice;
+  `noticeHold.pointerSeq` holds only the `noticeSeq` it was set on, so a notice removed under the pointer (no
+  `mouseleave`) never holds the next one. Unit tests check the stamp, the
   expiry, the stale `expireNotice`, the clear on `entered` and `roomJoined`, and the 8 s timer in `Notice`.
 - **Known profiles** (D4): every connected member seen fills `known[sessionId] = gender` in memory. An
   away member is shown with its known gender's `-away` colour, else the unspecified one, in italics, followed
