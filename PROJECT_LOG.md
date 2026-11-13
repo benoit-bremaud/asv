@@ -709,3 +709,20 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   pinned reference SHA. Out of scope noted: design pack "stacked tab bar" wording, missing SD/DL/AD codes.
 - Merged 2026-11-12: PR #188 squash 7c234b4 with owner approval (no attestation); verify, gitleaks, audit
   and SonarQube green on e4577d4. Next: P2 batch #130, #106, #67.
+
+## 2026-11-13 — #106, #67 private composer name and focus (#130 already fixed)
+
+- #130 ("Mon compte" focus on Safari macOS) was already fixed and tested by #129; closed with a comment.
+  Owner chose one batch PR for the rest (440/500 over one PR per issue).
+- #106: the private composer is named "message privé à <pseudo>", so composer names are unique. #67: an
+  incoming private window no longer steals the focus. Owner option A (480/500, a store flag) became a
+  `focusRequest` counter after review (A 445/500), so "message privé" also focuses an already open window.
+  Study first: `web-ui/07`, `web-ui/04` class diagram and reducer rules.
+- QA FS (JRN-29a…e) on the prod build of 7828fe5, Playwright Chromium (Chrome DevTools MCP profile held by
+  another session, owner OK), two members: 320, 390 × 844, 844 × 390, 1024 × 768, 1440, light and dark.
+  Gotcha: one context first ran a cached old bundle; disable the cache and check the served bundle name.
+- Adversarial review: 2 rounds; Must fixed: `web-ui/04` lacked the field, ledger legend; Should fixed: the
+  open-window focus gap, unasserted transitions. Accepted: FS rows rewritten before the first push.
+- Merged 2026-11-13: PR #192 squash 1618e0e with owner approval (no attestation); verify, gitleaks and
+  SonarQube green on a879c43; `pnpm audit --prod` shows 7 hono advisories already on `main`. Next: forms and
+  notices batch #60, #68, #148, #110.
