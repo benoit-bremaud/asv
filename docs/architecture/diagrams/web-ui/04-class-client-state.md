@@ -47,8 +47,12 @@ classDiagram
     +Number focusRequest
   }
   class NoticeHold {
-    +Boolean focus
-    +Number pointerSeq
+    +String focus
+    +PointerHold pointer
+  }
+  class PointerHold {
+    +String copy
+    +Number seq
   }
   class SearchView {
     +String query
@@ -107,8 +111,8 @@ classDiagram
     notice(code)
     dismissNotice()
     expireNotice(seq)
-    holdNotice(by)
-    releaseNotice(by)
+    holdNotice(by, copy)
+    releaseNotice(by, copy)
     openAccount()
     closeAccount()
     accountStep(step)
@@ -159,6 +163,8 @@ classDiagram
   ChatState *-- PrivateView
   PrivateView *-- Line
   ChatState *-- SearchView
+  ChatState *-- NoticeHold
+  NoticeHold *-- PointerHold
 ```
 
 ## Rules the code applies
@@ -184,7 +190,7 @@ classDiagram
 - **D6**: one pure `chatReducer`, held by `useReducer` in `App` and shared through a React context. The
   connection manager lives outside React; it dispatches actions and screens call its commands. Screens
   never touch the socket (`web-ui/03`). Screens call `Commands`; their only local actions are the `LocalAction`
-  set of `chat-context.tsx` (navigation, account dialog, private windows, search, `dismissNotice`, `expireNotice`),
+  set of `chat-context.tsx` (navigation, account dialog, private windows, search, `dismissNotice`, `expireNotice`, `holdNotice`, `releaseNotice`),
   never `server` or `link`.
 - **Reducer**: `entered` → screen `rooms`, `me` set; `entryRefused` → `entryError` (the reason code) and `refusedPseudo` (from `pendingPseudo`), `entering` and `entered` clear both;
   `roomList` → list; `roomJoined` → room opened with its members and active, screen `room`; `memberJoined`,
@@ -204,10 +210,12 @@ classDiagram
   the focus is on the notice, so it never vanishes under a reader or takes the focus away (WCAG 2.2.1, 2.4.3).
   The hold lives in the store (#199), so a notice held in a dialog is held for every `Notice` rendering it, the
   inert page behind included: `Notice` only renders and dispatches `holdNotice(by)` / `releaseNotice(by)`
-  (`by` is `focus` or `pointer`, local actions). `noticeHold.focus` is a flag cleared with the notice;
-  `noticeHold.pointerSeq` holds only the `noticeSeq` it was set on, so a notice removed under the pointer (no
-  `mouseleave`) never holds the next one. Unit tests check the stamp, the
-  expiry, the stale `expireNotice`, the clear on `entered` and `roomJoined`, and the 8 s timer in `Notice`.
+  (`by` is `focus` or `pointer`, `copy` the rendered copy's `useId`, local actions). `noticeHold.focus` names the
+  holding copy and is cleared with the notice; `noticeHold.pointer` keeps the copy and the `noticeSeq` it was set on,
+  so a notice removed under the pointer never holds the next one. A release only drops a hold its own copy set, and
+  a copy releases its holds when it unmounts, since a copy removed under the pointer or the focus (dialog closed,
+  filter changed) gets no `mouseleave` or `blur`. Unit tests check the stamp, the
+  expiry, the stale `expireNotice`, the clear on `entered` and `roomJoined`, and the 8 s timer in `Banners` (`useNoticeTimer`).
 - **Known profiles** (D4): every connected member seen fills `known[sessionId] = gender` in memory. An
   away member is shown with its known gender's `-away` colour, else the unspecified one, in italics, followed
   by "(absent)". Never written to storage.

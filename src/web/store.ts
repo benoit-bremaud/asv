@@ -80,8 +80,8 @@ export interface ChatState {
   readonly notice?: string;
   /** Stamped by every action that sets `notice`, so `expireNotice` only clears the notice it timed (#68). */
   readonly noticeSeq: number;
-  /** Who holds the shown notice: the focus (cleared with the notice) or the pointer for one `noticeSeq` (#199). */
-  readonly noticeHold: { readonly focus: boolean; readonly pointerSeq?: number };
+  /** Which rendered copy holds the shown notice: by the focus (cleared with the notice) or by the pointer for one `noticeSeq` (#199). */
+  readonly noticeHold: { readonly focus?: string; readonly pointer?: { readonly copy: string; readonly seq: number } };
   readonly entryError?: string;
   /** Pseudo the server refused with `entryError` (NFC, trimmed), so the entry field can be marked (#154). */
   readonly refusedPseudo?: string;
@@ -115,8 +115,8 @@ export type Action =
   | { readonly type: "verifyingCode" }
   | { readonly type: "dismissNotice" }
   | { readonly type: "expireNotice"; readonly seq: number }
-  | { readonly type: "holdNotice"; readonly by: "focus" | "pointer" }
-  | { readonly type: "releaseNotice"; readonly by: "focus" | "pointer" }
+  | { readonly type: "holdNotice"; readonly by: "focus" | "pointer"; readonly copy: string }
+  | { readonly type: "releaseNotice"; readonly by: "focus" | "pointer"; readonly copy: string }
   | { readonly type: "openPrivate"; readonly other: OtherChatter }
   | { readonly type: "closePrivate"; readonly conversationId: string }
   | { readonly type: "togglePrivate"; readonly conversationId: string }
@@ -140,7 +140,7 @@ export const initialState: ChatState = {
   ignored: [],
   search: { query: "", pending: false, results: [] },
   noticeSeq: 0,
-  noticeHold: { focus: false },
+  noticeHold: {},
   nextLineId: 0,
 };
 
@@ -170,7 +170,14 @@ export const isAccountNotice = (code: string | undefined): boolean => code !== u
 const withoutPageNotice = (state: ChatState): ChatState => (isAccountNotice(state.notice) ? state : { ...state, notice: undefined });
 
 /** True while the focus or the pointer is on the shown notice, wherever it renders (#68, #199). */
-export const isNoticeHeld = (state: ChatState): boolean => state.noticeHold.focus || state.noticeHold.pointerSeq === state.noticeSeq;
+export const isNoticeHeld = (state: ChatState): boolean => state.noticeHold.focus !== undefined || state.noticeHold.pointer?.seq === state.noticeSeq;
+
+/** Drops a hold only when `copy` set it, so a copy that unmounts never frees another copy's hold (#199). */
+const releaseNotice = (state: ChatState, by: "focus" | "pointer", copy: string): ChatState => {
+  const { focus, pointer } = state.noticeHold;
+  if (by === "focus") return focus === copy ? { ...state, noticeHold: { pointer } } : state;
+  return pointer?.copy === copy ? { ...state, noticeHold: { focus } } : state;
+};
 
 /** Server messages and local actions that raise a notice (#68). */
 const raisesNotice = (action: Action): boolean =>
@@ -330,7 +337,7 @@ const onServer = (state: ChatState, message: ServerMessage): ChatState => {
     case "resumed":
       return onResumed(state, message.payload);
     case "resumeRefused":
-      return { ...initialState, link: state.link, lastPseudo: state.me?.pseudo, noticeSeq: state.noticeSeq, noticeHold: state.noticeHold };
+      return { ...initialState, link: state.link, lastPseudo: state.me?.pseudo, noticeSeq: state.noticeSeq };
     case "roomList":
       return { ...state, roomList: message.payload.rooms };
     case "roomJoined": {
@@ -403,7 +410,7 @@ const onServer = (state: ChatState, message: ServerMessage): ChatState => {
 /** The client reducer: pure, so screens and tests share one behaviour. */
 export const chatReducer = (state: ChatState, action: Action): ChatState => {
   const next = reduce(state, action);
-  if (next.notice === undefined) return next.noticeHold.focus ? { ...next, noticeHold: { ...next.noticeHold, focus: false } } : next;
+  if (next.notice === undefined) return next.noticeHold.focus === undefined ? next : { ...next, noticeHold: { pointer: next.noticeHold.pointer } };
   return raisesNotice(action) ? { ...next, noticeSeq: state.noticeSeq + 1 } : next;
 };
 
@@ -417,7 +424,7 @@ const reduce = (state: ChatState, action: Action): ChatState => {
     case "entering":
       return { ...state, pendingPseudo: action.pseudo, entryError: undefined, refusedPseudo: undefined };
     case "left":
-      return { ...initialState, link: state.link, lastPseudo: state.me?.pseudo, noticeSeq: state.noticeSeq, noticeHold: state.noticeHold };
+      return { ...initialState, link: state.link, lastPseudo: state.me?.pseudo, noticeSeq: state.noticeSeq };
     case "showRooms":
       return { ...state, screen: "rooms" };
     case "showRoom":
@@ -433,9 +440,9 @@ const reduce = (state: ChatState, action: Action): ChatState => {
     case "expireNotice":
       return action.seq === state.noticeSeq && !isNoticeHeld(state) ? { ...state, notice: undefined } : state;
     case "holdNotice":
-      return { ...state, noticeHold: action.by === "focus" ? { ...state.noticeHold, focus: true } : { ...state.noticeHold, pointerSeq: state.noticeSeq } };
+      return { ...state, noticeHold: action.by === "focus" ? { ...state.noticeHold, focus: action.copy } : { ...state.noticeHold, pointer: { copy: action.copy, seq: state.noticeSeq } } };
     case "releaseNotice":
-      return { ...state, noticeHold: action.by === "focus" ? { ...state.noticeHold, focus: false } : { focus: state.noticeHold.focus } };
+      return releaseNotice(state, action.by, action.copy);
     case "openAccount":
       return { ...state, account: { ...state.account, open: true, step: state.account.step === "signedOut" ? "askEmail" : state.account.step } };
     case "closeAccount":

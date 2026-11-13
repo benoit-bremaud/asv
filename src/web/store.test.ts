@@ -639,28 +639,37 @@ describe("chatReducer: notice lifetime (#68)", () => {
     const shown = warn(initialState, "flood");
 
     for (const by of ["focus", "pointer"] as const) {
-      const held = chatReducer(shown, { type: "holdNotice", by });
+      const held = chatReducer(shown, { type: "holdNotice", by, copy: "a" });
       expect(isNoticeHeld(held)).toBe(true);
       expect(chatReducer(held, { type: "expireNotice", seq: 1 }).notice).toBe("flood");
-      expect(isNoticeHeld(chatReducer(held, { type: "releaseNotice", by }))).toBe(false);
+      expect(isNoticeHeld(chatReducer(held, { type: "releaseNotice", by, copy: "a" }))).toBe(false);
     }
   });
 
   it("drops the focus hold with the notice, keeps it for a new notice under the focus (#199)", () => {
-    const focused = chatReducer(warn(initialState, "flood"), { type: "holdNotice", by: "focus" });
+    const focused = chatReducer(warn(initialState, "flood"), { type: "holdNotice", by: "focus", copy: "a" });
 
     expect(isNoticeHeld(warn(focused, "full"))).toBe(true);
-    expect(chatReducer(focused, { type: "dismissNotice" }).noticeHold.focus).toBe(false);
+    expect(chatReducer(focused, { type: "dismissNotice" }).noticeHold.focus).toBeUndefined();
+  });
+
+  it("lets only the copy that holds the notice release it (#199)", () => {
+    const shown = warn(initialState, "flood");
+
+    for (const by of ["focus", "pointer"] as const) {
+      const held = chatReducer(shown, { type: "holdNotice", by, copy: "a" });
+      expect(chatReducer(held, { type: "releaseNotice", by, copy: "b" })).toBe(held);
+    }
   });
 
   it("holds by the pointer only the notice it was set on (#199)", () => {
-    const pointed = chatReducer(warn(initialState, "flood"), { type: "holdNotice", by: "pointer" });
+    const pointed = chatReducer(warn(initialState, "flood"), { type: "holdNotice", by: "pointer", copy: "a" });
     const next = warn(chatReducer(pointed, { type: "dismissNotice" }), "full");
 
     expect(isNoticeHeld(next)).toBe(false);
-    expect(isNoticeHeld(chatReducer(pointed, { type: "releaseNotice", by: "focus" }))).toBe(true);
-    const both = chatReducer(pointed, { type: "holdNotice", by: "focus" });
-    expect(isNoticeHeld(chatReducer(both, { type: "releaseNotice", by: "pointer" }))).toBe(true);
+    expect(isNoticeHeld(chatReducer(pointed, { type: "releaseNotice", by: "focus", copy: "a" }))).toBe(true);
+    const both = chatReducer(pointed, { type: "holdNotice", by: "focus", copy: "a" });
+    expect(isNoticeHeld(chatReducer(both, { type: "releaseNotice", by: "pointer", copy: "a" }))).toBe(true);
   });
 
   it("keeps the stamp across a leave, so a stamp is never reused", () => {

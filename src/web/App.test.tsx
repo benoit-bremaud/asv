@@ -2193,10 +2193,28 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
   };
   const searchClosed = () => screen.queryByRole("dialog", { name: STRINGS.searchTitle }) === null;
 
-  it.each([
+  const holds = [
     ["focus", (notice: HTMLElement) => act(async () => within(notice).getByRole("button", { name: STRINGS.dismiss }).focus())],
     ["pointer", (notice: HTMLElement) => act(async () => fireEvent.mouseEnter(notice))],
-  ])("keeps a notice held by the %s in the search dialog, the page behind included (#199)", async (_by, hold) => {
+  ] as const;
+
+  it.each(holds)("expires a notice held by the %s once the search dialog closes under it (#199)", async (_by, hold) => {
+    const { dialog } = await openSearch();
+
+    vi.useFakeTimers();
+    try {
+      await fire({ type: "notice", code: "flood" });
+      await hold(within(dialog()).getByRole("alert"));
+      await act(async () => fireEvent.keyDown(dialog(), { key: "Escape" }));
+      expect(searchClosed()).toBe(true);
+      await act(async () => vi.advanceTimersByTime(NOTICE_MS));
+      expect(screen.queryByRole("alert")).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it.each(holds)("keeps a notice held by the %s in the search dialog, the page behind included (#199)", async (_by, hold) => {
     const { dialog } = await openSearch();
 
     vi.useFakeTimers();
