@@ -172,6 +172,12 @@ const withoutPageNotice = (state: ChatState): ChatState => (isAccountNotice(stat
 /** True while the focus or the pointer is on the shown notice, wherever it renders (#68, #199). */
 export const isNoticeHeld = (state: ChatState): boolean => state.noticeHold.focus !== undefined || state.noticeHold.pointer?.seq === state.noticeSeq;
 
+/** Records which copy holds the notice; the pointer only for the shown `noticeSeq` (#199). */
+const holdNotice = (state: ChatState, by: "focus" | "pointer", copy: string): ChatState => ({
+  ...state,
+  noticeHold: by === "focus" ? { ...state.noticeHold, focus: copy } : { ...state.noticeHold, pointer: { copy, seq: state.noticeSeq } },
+});
+
 /** Drops a hold only when `copy` set it, so a copy that unmounts never frees another copy's hold (#199). */
 const releaseNotice = (state: ChatState, by: "focus" | "pointer", copy: string): ChatState => {
   const { focus, pointer } = state.noticeHold;
@@ -440,7 +446,7 @@ const reduce = (state: ChatState, action: Action): ChatState => {
     case "expireNotice":
       return action.seq === state.noticeSeq && !isNoticeHeld(state) ? { ...state, notice: undefined } : state;
     case "holdNotice":
-      return { ...state, noticeHold: action.by === "focus" ? { ...state.noticeHold, focus: action.copy } : { ...state.noticeHold, pointer: { copy: action.copy, seq: state.noticeSeq } } };
+      return holdNotice(state, action.by, action.copy);
     case "releaseNotice":
       return releaseNotice(state, action.by, action.copy);
     case "openAccount":
