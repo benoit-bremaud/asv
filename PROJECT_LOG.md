@@ -817,3 +817,25 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
 - Adversarial review: 1 round, gate open (Should: commit message named the wrong versions, fixed).
 - Merged 2026-11-13: PR #216 squash 180f859 with owner approval (no attestation); verify, audit, gitleaks
   and SonarQube green on 446a63a; Codex found nothing. Next: brick 8b (passkeys, ADR-0008).
+
+## 2026-11-13 — #210 brick 8b: moderator passkeys on Node
+
+- Study first (PR #218, owner choices: encrypted file store 425, CLI→HTTP owner secret 440, entry link
+  plus queue 425): `moderation/02f`, `web-ui/09`, BR-093 to BR-099; BR-091 and the interim token removed.
+- Code (PR #219): WebAuthn with SimpleWebAuthn v14; encrypted moderator store (`ASV_MODERATOR_FILE`,
+  atomic `enrollModerator` write rolled back on failure); owner routes on loopback guarded by
+  `ASV_OWNER_SECRET` with scripts `pnpm mod:invite` and `pnpm mod:revoke`; enrolment page from the
+  `#mod/enroll/` fragment; "connexion modérateur" gives a 60 s single-use HMAC grant (nonce spent only on
+  `entered`); queue titled with the moderator name, also after a resume. Every `/mod` route answers 404
+  behind the tunnel.
+- Gotchas: the Vite proxy lacked `/mod`, and its HTML fallback looked like "enabled" (now JSON
+  `{enabled: true}` only); the BR-098 start check first broke the local QA launch (now fatal only when
+  moderation is configured); the RP ID must be a domain, never an IP.
+- Studies `02f`, `04c`, `04-class`, `web-ui/09` and BR-098 aligned with the code, owner validated.
+- Adversarial review: 5 rounds (Must 4 + 1 regression + 1 study gap fixed). SonarQube first FAILED (10
+  issues, fixed). Codex: 2 P2 on #219 (IP-host origin, parallel sign-in counter → per-credential lock, 409)
+  and 2 P1 on #218, all handled; replies inline, threads open.
+- Merged 2026-11-13: PR #219 squash c19c9f6 with owner approval (no attestation); verify (1077 tests,
+  98.6 % statements), gitleaks, audit and SonarQube green on 1120591. QA JRN-37/38 with a virtual
+  authenticator still to run. Follow-ups #220 (rate text), #221 (body limit), #222 (challenge cap).
+  Next: brick 8c (#211).
