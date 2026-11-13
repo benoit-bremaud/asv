@@ -21,14 +21,14 @@ sequenceDiagram
   participant H as Hub
   participant D as Domain
   O->>W: entry form + "accès modération" field (token)
-  W->>H: enter(pseudo, profile, moderatorToken)
+  W->>H: enter(pseudo, profile, moderatorGrant = token)
   alt Token configured, no tunnel, constant-time match
     H->>D: enter(state, ..., isModerator = true, moderatorName = "owner")
     D-->>H: Session with isModerator
     H-->>W: entered(isModerator = true)
     W-->>O: room screen + "signalements" button
   else No token configured, tunnel on, or mismatch
-    H-->>W: error(notModerator), no session created
+    H-->>W: entryRefused(notModerator), no session created
   end
 ```
 

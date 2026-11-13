@@ -98,7 +98,7 @@ flowchart LR
 **UC16i — Sign in as moderator, interim** (brick 8a, removed by 8b)
 - Primary actor: Owner. Main scenario: 1. Owner opens "modération" on the entry form and types the
   server token. 2. System checks it (BR-091) and enters the owner with moderator rights. Sequence 02e.
-- Extensions: 2a. No token configured, tunnel on, or mismatch → refused, no session.
+- Extensions: 2a. No token configured, tunnel on, or mismatch → refused (`entryRefused`), no session.
 
 ## Brick 8a scope (#209, 2026-11-13)
 

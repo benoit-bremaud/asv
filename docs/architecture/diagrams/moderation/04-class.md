@@ -136,23 +136,18 @@ classDiagram
 
 ## Protocol (brick 8a)
 
-| Direction | Message | Payload | Rule |
-|---|---|---|---|
-| client → server | `enter` | adds optional `moderatorToken` | BR-091 |
-| client → server | `report` | `targetKind`, `targetPseudo`, `roomId` or private window, `reason`, `excerpt` ≤ 500, `context` ≤ 20 lines | BR-050 to BR-052 |
-| server → client | `reportSent` | `reportId` | UC9 |
-| client → server | `listOpenReports` | — | BR-054 |
-| server → client | `openReports` | reports with `hasAccount`, `connected`, `activeStrikes` | BR-092 |
-| client → server | `expel` | `reportId`, `duration` (`1h`, `24h`, `7d`) | BR-053, BR-055 |
-| server → client | `expelled` | `until` | BR-008 |
-| client → server | `closeReport` | `reportId`, `outcome` (`noAction`, `warned`, `expelled`) | BR-057 |
-| server → client | `warned` | `reason`, `activeStrikes` | BR-074 |
-| server → client | `suspensionProposed` | `reportId`, `activeStrikes` | BR-075 |
-| client → server | `confirmSuspension` / `declineSuspension` | `reportId` | BR-075 to BR-077 |
-| server → client | `reportClosed` | `reportId`, `outcome` | BR-057 |
+The contract stays `platform/04-class-protocol`. Brick 8a uses it as follows:
 
-- Every moderation command from a session without `isModerator` gets `error(notModerator)` (BR-054).
+- `enter.moderatorGrant` carries the interim token (BR-091); brick 8b puts the passkey grant there.
+- `report` → `reportSent`; `listOpenReports` → `openReports`, each report adding `hasAccount`,
+  `connected` and `activeStrikes` of its captured target.
+- `expel` takes `reportId` and `duration`: it acts on the report's captured target (keyed IP hash,
+  pseudo, live session if any), so the moderator never types a pseudo or an IP. `targetSessionId` is
+  dropped from `expel`.
+- `closeReport` with `noAction`, `warned` or `expelled`; `warned` may answer `suspensionProposed`, then
+  `confirmSuspension` or `declineSuspension` (02d); every close answers `reportClosed`.
+- `warn` (chat warning without a report), `removeRoom`, `expel.severe` and the outcomes `severeDeleted`
+  and `roomRemoved` answer `error(invalid, notAvailable)` until brick 8c (BR-092).
+- Every moderation command from a session without `isModerator` gets `error(forbidden)` (BR-054).
 - Excerpt, context and pseudos of a report and the pseudo of a ban are encrypted at rest (ADR-0017);
   the keyed IP hash stays a HMAC.
-- `expel` targets the report's captured target, so the moderator never types a pseudo or an IP.
-
