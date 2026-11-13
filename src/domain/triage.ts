@@ -48,7 +48,12 @@ const labelAt = (index: number): string => {
 const WORD = new RegExp(`[${PSEUDO_CHARS}]+`, "gu");
 const AUTHOR = new RegExp(`^([${PSEUDO_CHARS}]{3,20}): `, "u");
 const EDGE = new Set([".", "_", "-"]);
-const EMAIL = /[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+/gu;
+const RUN = /\S+/gu;
+/** A run of non-space characters with one `@`, text before it and a dotted domain after it. */
+const isEmail = (run: string): boolean => {
+  const [local, domain, extra] = run.split("@");
+  return extra === undefined && local !== "" && domain !== undefined && domain.split(".").length > 1 && !domain.split(".").includes("");
+};
 /** International or French numbers: 8 to 15 digits, optionally `+` or `00` first, up to 3 of space, `.`, `/`, `-` between digits. */
 const PHONE = /(?:\+|\b00)?\d(?:[\s./-]{0,3}\d){7,14}/gu;
 
@@ -92,7 +97,7 @@ export const pseudonymise = (report: Report, known: readonly string[]): { input:
     const [before, core, after] = [word.slice(0, start), word.slice(start, end), word.slice(end)];
     return core !== word && core.length > 0 && isName(core) ? before + labelOf(core) + after : word;
   };
-  const mask = (text: string): string => text.replace(WORD, replaceWord).replace(EMAIL, "[e-mail]").replace(PHONE, "[téléphone]");
+  const mask = (text: string): string => text.replace(WORD, replaceWord).replace(RUN, (run) => (isEmail(run) ? "[e-mail]" : run)).replace(PHONE, "[téléphone]");
   const line = (author: string | undefined, text: string): string => (author === undefined ? mask(text) : `${labelOf(author)}: ${mask(text)}`);
 
   if (report.targetPseudo !== undefined) labelOf(report.targetPseudo);
