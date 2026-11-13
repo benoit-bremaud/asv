@@ -726,3 +726,23 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
 - Merged 2026-11-13: PR #192 squash 1618e0e with owner approval (no attestation); verify, gitleaks and
   SonarQube green on a879c43; `pnpm audit --prod` shows 7 hono advisories already on `main`. Next: forms and
   notices batch #60, #68, #148, #110.
+
+## 2026-11-13 — #60, #68, #148, #110 forms and notices
+
+- None was fully fixed on `main`; #136 had already cleared "Mauvais code." on sign-in. Owner chose one batch
+  PR (420/500) and kept the header "âge ? sexe ? ville ?" as the brand slogan (410/500 over showing the
+  profile). Study first: `web-ui/04`, `05`, `06`.
+- #60: ENTRER describes the missing fields ("Il manque : …"); the "Membres" hint falls back to the city's
+  invisible characters, then the lost link, so no click is silent. #68: `noticeSeq` stamp, `expireNotice`
+  after 8 s, clear on `entered` and `roomJoined`, hold while the focus or pointer is on the notice. #148:
+  every field has an `id` or a `name`; age and city `autoComplete="off"`. #110: retention sentence (ADR-0014)
+  under both e-mail fields and in the deletion confirmation.
+- QA FN (JRN-30a…i) on the prod build, Playwright Chromium: 320, 390 × 844, 844 × 390, 1024 × 768, 1440,
+  light and dark, viewport sizes without touch emulation.
+- Adversarial review: 4 rounds. Must fixed: a silent "Membres" click; a hold that outlived a notice dismissed
+  under the pointer, so later notices never expired. Should fixed: focus loss on expiry, age and city form
+  history, stale D6 list. Gotcha: `setState` in an effect fails lint, reset during render instead.
+  Follow-ups: #195, #196, #197.
+- Merged 2026-11-13: PR #194 squash 6f88edb with owner approval (no attestation); verify, gitleaks and
+  SonarQube green on 5242640; `pnpm audit --prod` shows the 7 hono advisories already on `main`. Next:
+  Permissions-Policy #69, then #185, then brick 8 moderation (study first).
