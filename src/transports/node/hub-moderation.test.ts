@@ -125,6 +125,53 @@ describe("interim moderator access (UC16i, BR-091)", () => {
     expect(only(await send("9b", "listOpenReports", {}), "openReports").payload.reports).toEqual([]);
   });
 
+  it("names the moderator on entered from the grant (BR-055, BR-095)", async () => {
+    const { owner } = await setup();
+
+    expect(await owner()).toMatchObject({ isModerator: true, moderatorName: "Marc" });
+  });
+
+  it("gives a chatter no moderatorName", async () => {
+    const { enterAs } = await setup();
+
+    expect(await enterAs("1", "Lola")).not.toHaveProperty("moderatorName");
+  });
+
+  it("refuses a grant that was already used to enter (single use, BR-095)", async () => {
+    const { enter, enterAs, grant } = await setup();
+    const used = await grant();
+    await enterAs("8", "Patron", { moderatorGrant: used });
+
+    const out = await enter("9", "Patron2", { moderatorGrant: used });
+
+    expect(only(out, "entryRefused").payload).toEqual({ reason: "notModerator" });
+  });
+
+  it("does not spend the nonce on a refused entry, so the same grant still works", async () => {
+    const { enter, enterAs, grant } = await setup();
+    const fresh = await grant();
+    expect(only(await enter("8", "Patron", { moderatorGrant: fresh, adultConfirmed: false }), "entryRefused").payload).not.toEqual({ reason: "notModerator" });
+
+    expect(await enterAs("9", "Patron", { moderatorGrant: fresh })).toMatchObject({ isModerator: true });
+  });
+
+  it("refuses an expired grant, and still accepts it just before the 60 s limit", async () => {
+    const { enter, hub, grant } = await setup();
+    const stale = await grant(later(-60_000));
+    const nearlyStale = await grant(later(-59_000));
+
+    expect(only(await enter("8", "Patron", { moderatorGrant: stale }), "entryRefused").payload).toEqual({ reason: "notModerator" });
+    expect(only(await enter("9", "Patron", { moderatorGrant: nearlyStale }), "entered").payload.isModerator).toBe(true);
+    expect(hub.stats().connected).toBe(1);
+  });
+
+  it("refuses a grant signed under another key", async () => {
+    const { enter } = await setup();
+    const forged = await signGrant(await createGrantKey(), "Marc", T0);
+
+    expect(only(await enter("9", "Patron", { moderatorGrant: forged }), "entryRefused").payload).toEqual({ reason: "notModerator" });
+  });
+
   it("keeps a chatter without the grant as a chatter", async () => {
     const { enterAs } = await setup();
 
