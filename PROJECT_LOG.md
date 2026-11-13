@@ -775,3 +775,18 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   legend missing PP and SN.
 - Merged 2026-11-13: PR #203 squash 35da9f8 with owner approval (no attestation); verify, gitleaks and
   SonarQube green on a6d5b0a; Codex found nothing. Next: #185, then brick 8 moderation (study first).
+
+## 2026-11-13 — #185 notice once with the search dialog
+
+- Adversarial review of #136 found the notice rendered twice while the search dialog is open (dialog and
+  inert page), and `.overlay` sized with `100vw`. Owner chose option A (480/500): `searchOpen` in the
+  store (`openSearch`/`closeSearch`), `Banners` hides its notice while it is set. Study first: `web-ui/04`, `07`.
+- Gotcha: `StrictMode` replays effect cleanups, so the dialog is not closed from an unmount effect; the
+  reducer clears `searchOpen` whenever the screen leaves `room`. With the account dialog stacked on the
+  search dialog, an account notice shows in the account dialog only. `.overlay` width now uses `100%`.
+- QA NO (JRN-32a…b) on the prod build at the 5 sizes, light and dark: one notice, in the dialog; at 320 a
+  classic scrollbar shows and the dialog stays inside the client width. Stacked dialogs: unit only.
+- Adversarial review: 2 rounds. Must fixed: the stacked account dialog duplicate, stale "page behind" docs.
+  #202 closed as a duplicate; follow-up #205 (`100vw` in `.privates` and `.legal-page`).
+- Merged 2026-11-13: PR #206 squash a9625cb with owner approval (no attestation); verify, gitleaks and SonarQube
+  green on 35d7314; Codex found nothing. Next: brick 8 moderation (study first).
