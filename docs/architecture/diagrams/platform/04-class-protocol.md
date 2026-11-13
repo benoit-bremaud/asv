@@ -98,7 +98,7 @@ Client to server:
 | report | targetKind, targetPseudo?, targetRoomId?, reason, excerpt, context (≤ 20 lines) |
 | listOpenReports | — |
 | warn | targetSessionId, text (chat warning only, no strike; strikes come from `closeReport` with outcome warned, BR-074) |
-| expel | targetSessionId, duration (1h, 24h, 7d), severe?, reportId? |
+| expel | reportId, duration (1h, 24h, 7d), severe? (acts on the report's captured target, `moderation/04`) |
 | closeReport | reportId, outcome |
 | confirmSuspension / declineSuspension | accountId, reportId |
 | removeRoom | roomId |
@@ -111,9 +111,9 @@ Server to client:
 
 | Type | Payload |
 |---|---|
-| entered | sessionId, resumeToken, roomList, isModerator, accountId?, staleDevice? |
-| entryRefused | reason (rate, banned until, pseudo invalid, pseudo taken, age) |
-| resumed | sessionId, pseudo, resumeToken, rooms, windows, buffered, accountId? (identity sent back because the browser stores only token and profile, ADR-0011) |
+| entered | sessionId, resumeToken, roomList, isModerator, canReport, accountId?, staleDevice? |
+| entryRefused | reason (rate, banned until, pseudo invalid, pseudo taken, age, notModerator: wrong or disabled moderator grant, BR-091) |
+| resumed | sessionId, pseudo, resumeToken, rooms, windows, buffered, accountId?, canReport, isModerator? (a moderator session keeps its rights, BR-091; identity sent back because the browser stores only token and profile, ADR-0011) |
 | resumeRefused | — |
 | roomList | rooms (id, name, kind, count) |
 | roomJoined | roomId, members (member: see "Away member shape") |
@@ -125,7 +125,7 @@ Server to client:
 | ignoreUpdated | ignored (session ids) |
 | searchResults | results (member + rooms) |
 | reportSent | reportId |
-| openReports | reports (with triage) |
+| openReports | reports (with triage, hasAccount, connected, activeStrikes, struck) |
 | warned | rule, text, activeStrikes |
 | expelled | until |
 | reportClosed | reportId |

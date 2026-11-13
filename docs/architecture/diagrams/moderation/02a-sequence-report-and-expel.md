@@ -62,3 +62,5 @@ sequenceDiagram
 - The AI never sanctions (ADR-0010). Pseudos are replaced by neutral labels before triage.
 - The connection line is closed only if the target is connected. An away target has no open line (closed on socket loss, `entry/02b`).
 - The ban key is an HMAC of the IP with a server secret: pseudonymised, not anonymised.
+- Brick 8a (#209): `Report triage` is the no-AI adapter, urgency `unknown`, list oldest first (BR-092).
+  Moderator rights come from the interim token (02e) until brick 8b.

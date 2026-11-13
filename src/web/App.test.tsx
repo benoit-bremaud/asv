@@ -52,7 +52,7 @@ const setup = async () => {
 const goOnline = () => fire({ type: "link", link: "online" });
 const enterChat = async (pseudo = "ana") => {
   await fire({ type: "entering", pseudo });
-  await fromServer(msg("entered", { sessionId: "me", resumeToken: "t", roomList: rooms, isModerator: false }));
+  await fromServer(msg("entered", { sessionId: "me", resumeToken: "t", roomList: rooms, isModerator: false, canReport: true }));
 };
 const joinRoom = (roomId: string, members: Member[] = [man("s2", "bob")]) =>
   fromServer(msg("roomJoined", { roomId, members }));
@@ -821,7 +821,7 @@ describe("rooms screen", () => {
   it("says when there is no user room", async () => {
     await setup();
 
-    await fromServer(msg("entered", { sessionId: "me", resumeToken: "t", roomList: [rooms[0] as (typeof rooms)[0]], isModerator: false }));
+    await fromServer(msg("entered", { sessionId: "me", resumeToken: "t", roomList: [rooms[0] as (typeof rooms)[0]], isModerator: false, canReport: true }));
 
     expect(screen.getByText(STRINGS.noUserRoom)).toBeTruthy();
   });
@@ -1059,7 +1059,7 @@ describe("room screen", () => {
     await userEvent.click(pseudo);
 
     const items = screen.getAllByRole("menuitem");
-    expect(items).toHaveLength(2);
+    expect(items).toHaveLength(3);
     for (const item of items) expect(item.matches(".menu .link")).toBe(true);
   });
 
@@ -1233,7 +1233,7 @@ describe("room screen", () => {
     await fromServer(message("r1", "salut :) <b>x</b>"));
 
     const line = within(screen.getByRole("log")).getByRole("listitem");
-    expect(line.textContent).toBe("bob: salut 🙂 <b>x</b>");
+    expect(line.textContent).toBe("bob: salut 🙂 <b>x</b>⚑");
     expect(line.querySelector("b")).toBeNull();
     expect(within(line).getByRole("img").getAttribute("aria-label")).toBe(":)");
   });
@@ -1717,7 +1717,7 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
   const signedIn = async () => {
     await goOnline();
     await fire({ type: "entering", pseudo: "ana" });
-    await fromServer(msg("entered", { sessionId: "me", resumeToken: "t", roomList: rooms, isModerator: false, accountId: "a1" }));
+    await fromServer(msg("entered", { sessionId: "me", resumeToken: "t", roomList: rooms, isModerator: false, canReport: true, accountId: "a1" }));
   };
   const member = (hasAccount: boolean): Member => ({ ...man("s2", "bob"), hasAccount });
   const openMenu = (user: ReturnType<typeof userEvent.setup>) => user.click(screen.getByRole("button", { name: STRINGS.pseudoButton("bob") }));

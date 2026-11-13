@@ -66,6 +66,8 @@ Values are owned here. Rationale lives in the ADRs.
 | BR-055 | Every moderation action records the moderator name and time. |
 | BR-056 | A moderator invitation is single use and expires after 24 hours. |
 | BR-057 | A report is closed with one outcome: no action, warned, expelled, suspended, severe deletion, room removed. The AI triage never closes a report (ADR-0010). |
+| BR-091 | Brick 8a only (#209): a session gets `isModerator` when its `enter` carries a token equal, in constant time, to the server's `ASV_MODERATOR_TOKEN` (32 characters or more, generated with `openssl rand -hex 32`). After 5 wrong tokens from one IP within 10 minutes, every grant from that IP answers `entryRefused(rate)` until the window slides. The server refuses to start with the token and `ASV_TUNNEL=1` together. Actions record the name `owner`. Removed by brick 8b (passkeys, ADR-0008). |
+| BR-092 | Brick 8a only: without AI triage, open reports are listed oldest first. Severe deletion, room removal and the decision e-mail to the reporter are not offered before brick 8c (#211). |
 
 ## Accounts and strikes (ADR-0012, ADR-0013, ADR-0014)
 

@@ -41,6 +41,56 @@ export interface StoredAccount {
   readonly strikes: readonly { readonly expiresAt: Date }[];
 }
 
+/**
+ * A report as stored (`moderation/04`): excerpt, context and pseudos are ciphertext, the target IP a keyed
+ * hash (ADR-0017). Ids, reason, kinds and dates stay clear.
+ */
+export interface StoredReport {
+  readonly id: string;
+  readonly reason: "harassment" | "seemsMinor" | "spam" | "illegalContent" | "other";
+  readonly targetKind: "chatter" | "message" | "room";
+  readonly targetPseudo?: string;
+  readonly targetRoomId?: string;
+  readonly targetSessionId?: string;
+  readonly targetAccountId?: string;
+  readonly targetIpKeyedHash?: string;
+  readonly excerpt: string;
+  /** Ciphertext of the JSON array of context lines. */
+  readonly context: string;
+  readonly authorPseudo: string;
+  readonly createdAt: Date;
+  /** Set once a warning on this report gave its strike, so a repeated `warned` adds none (BR-074). */
+  readonly struckAt?: Date;
+  readonly closed?: {
+    readonly outcome: "noAction" | "warned" | "expelled" | "suspended";
+    readonly by: string;
+    readonly at: Date;
+  };
+}
+
+/** A ban as stored: keyed hashes of the IP and of the folded pseudo (BR-053, BR-055, ADR-0017). */
+export interface StoredBan {
+  readonly id: string;
+  readonly ipKeyedHash?: string;
+  /** Keyed hash of the folded pseudo, to match at entry. */
+  readonly pseudoKeyedHash?: string;
+  readonly until: Date;
+  readonly decidedBy: string;
+  readonly decidedAt: Date;
+}
+
+/** Reports and bans (`moderation/04`); every call may fail. */
+export interface ModerationStore {
+  saveReport(report: StoredReport): Promise<void>;
+  findReport(id: string): Promise<StoredReport | undefined>;
+  openReports(): Promise<readonly StoredReport[]>;
+  saveBan(ban: StoredBan): Promise<void>;
+  /** The latest-ending ban matching either key and still running at `now`. */
+  activeBan(ipKeyedHash: string, pseudoKeyedHash: string, now: Date): Promise<StoredBan | undefined>;
+  /** BR-061: closed reports after 6 months; BR-062: bans 30 days after their end. */
+  purgeExpired(now: Date): Promise<void>;
+}
+
 /** A sign-in code waiting for its session (BR-070); e-mail encrypted, code keyed-hashed. */
 export interface StoredCode {
   readonly sessionId: string;
@@ -85,7 +135,8 @@ export interface AccountStore {
   accountForDevice(tokenHash: string, now: Date): Promise<StoredAccount | undefined>;
   deleteDevice(tokenHash: string): Promise<void>;
   deleteAllDevices(accountId: string): Promise<void>;
-  /** Blocks are written by moderation (brick 8); sign-in only reads them (BR-077). */
+  /** Written by a suspension (BR-077); sign-in reads it. */
+  blockEmail(emailKeyedHash: string, until: Date): Promise<void>;
   isBlocked(emailKeyedHash: string, now: Date): Promise<boolean>;
   loadCarryOver(emailKeyedHash: string): Promise<readonly Date[] | undefined>;
   saveCarryOver(emailKeyedHash: string, strikeExpiries: readonly Date[]): Promise<void>;

@@ -2,7 +2,7 @@
  * Client state (`web-ui/04`, owner choice D6): one pure reducer over server messages and local actions.
  * Nothing here is stored in the browser except by the connection manager.
  */
-import type { Gender, Member, ServerMessage } from "../shared/protocol";
+import { CAPS, type Gender, type Member, type ServerMessage } from "../shared/protocol";
 
 /** The screen shown (`web-ui/03`). */
 export type Screen = "entry" | "rooms" | "room";
@@ -63,6 +63,24 @@ export interface AccountView {
   readonly pendingVerify?: boolean;
 }
 
+/** What a report dialog sends besides the reason (UC9, BR-051). */
+export interface ReportDraft {
+  readonly targetKind: "chatter" | "message";
+  readonly targetPseudo: string;
+  readonly excerpt: string;
+  readonly context: readonly string[];
+}
+
+/** One row of the moderator queue (`web-ui/08`). */
+export type QueuedReport = Extract<ServerMessage, { type: "openReports" }>["payload"]["reports"][number];
+
+/** The moderator queue dialog; `proposal` names the report waiting for a suspension decision (BR-075). */
+export interface QueueView {
+  readonly loading: boolean;
+  readonly reports: readonly QueuedReport[];
+  readonly proposal?: { readonly accountId: string; readonly reportId: string; readonly activeStrikes: number };
+}
+
 /** Everything the screens render; `notice` and `entryError` are codes the screens translate. */
 export interface ChatState {
   readonly screen: Screen;
@@ -96,6 +114,18 @@ export interface ChatState {
   readonly searchOpen: boolean;
   /** Monotonic key for `Line.id`, never reused. */
   readonly nextLineId: number;
+  /** The session entered with the moderator grant (BR-091). */
+  readonly moderator: boolean;
+  /** Reporting is on; off behind the tester tunnel until brick 8c (`moderation/01`). */
+  readonly canReport: boolean;
+  /** End of the ban or expulsion the entry screen names (BR-008). */
+  readonly bannedUntil?: string;
+  /** The open report dialog (UC9). */
+  readonly report?: ReportDraft;
+  /** The open queue dialog, moderators only (UC12). */
+  readonly queue?: QueueView;
+  /** The last warning a moderator gave this chatter, named by the `warned` notice (BR-074). */
+  readonly warning?: { readonly rule: string; readonly activeStrikes: number };
 }
 
 /** Server messages and local actions the reducer handles. */
@@ -125,7 +155,17 @@ export type Action =
   | { readonly type: "searching"; readonly query: string }
   | { readonly type: "clearSearch" }
   | { readonly type: "openSearch" }
-  | { readonly type: "closeSearch" };
+  | { readonly type: "closeSearch" }
+  | { readonly type: "openReport"; readonly draft: ReportDraft }
+  | { readonly type: "closeReport" }
+  | { readonly type: "openQueue" }
+  | { readonly type: "closeQueue" };
+
+/** BR-051: the last 20 lines the reporter saw, up to the reported one, each within the transport cap. */
+export const reportContext = (lines: readonly Line[], upToId?: number): string[] => {
+  const end = upToId === undefined ? lines.length : lines.findIndex((line) => line.id === upToId) + 1;
+  return lines.slice(0, end).slice(-CAPS.contextLines).map((line) => `${line.pseudo}: ${line.text}`.slice(0, CAPS.contextLine));
+};
 
 /** BR-034: only the newest lines stay in memory, nothing is kept elsewhere. */
 export const MAX_LINES = 200;
@@ -147,6 +187,8 @@ export const initialState: ChatState = {
   noticeSeq: 0,
   noticeHold: {},
   nextLineId: 0,
+  moderator: false,
+  canReport: false,
 };
 
 
@@ -196,7 +238,7 @@ const releaseNotice = (state: ChatState, by: "focus" | "pointer", copy: string):
 
 /** Server messages and local actions that raise a notice (#68). */
 const raisesNotice = (action: Action): boolean =>
-  action.type === "notice" || (action.type === "server" && ["warning", "error", "codeSent", "accountUnlinked"].includes(action.message.type));
+  action.type === "notice" || (action.type === "server" && ["warning", "error", "codeSent", "accountUnlinked", "reportSent", "warned"].includes(action.message.type));
 
 const signedOut = (account: AccountView): AccountView => ({ ...account, step: "signedOut", accountId: undefined, triesLeft: undefined, pendingRequest: false });
 /** BR-087: a resume keeps a code step in memory, since the server keeps the code under the session id. */
@@ -303,7 +345,7 @@ const onResumed = (state: ChatState, payload: Extract<ServerMessage, { type: "re
   const active = state.active && open[state.active] ? state.active : Object.keys(open)[0];
   const screen = state.screen === "room" && active ? "room" : "rooms";
   const me = { sessionId: payload.sessionId, pseudo: payload.pseudo };
-  const next: ChatState = { ...state, me, open, known, active, screen, account: resumedTo(state.account, payload.accountId) };
+  const next: ChatState = { ...state, me, open, known, active, screen, account: resumedTo(state.account, payload.accountId), moderator: payload.isModerator ?? false, canReport: payload.canReport };
   return onResumedWindows(next, payload);
 };
 
@@ -334,6 +376,21 @@ const togglePrivate = (state: ChatState, conversationId: string): ChatState => {
   return { ...state, windows: { ...state.windows, [conversationId]: { ...window, minimised, unread: minimised ? window.unread : 0, focusRequest: minimised ? window.focusRequest : window.focusRequest + 1 } } };
 };
 
+type ModerationMessage = Extract<ServerMessage, { type: "reportSent" | "warned" | "openReports" | "reportClosed" | "suspensionProposed" }>;
+
+/** Brick 8a messages (web-ui/08): report notices and the moderator queue. */
+const onModeration = (state: ChatState, message: ModerationMessage): ChatState => {
+  if (message.type === "reportSent") return { ...state, notice: "reportSent", report: undefined };
+  if (message.type === "warned") return { ...state, notice: "warned", warning: { rule: message.payload.rule, activeStrikes: message.payload.activeStrikes } };
+  const { queue } = state;
+  if (!queue) return state;
+  if (message.type === "openReports") return { ...state, queue: { ...queue, loading: false, reports: message.payload.reports } };
+  if (message.type === "suspensionProposed") return { ...state, queue: { ...queue, proposal: message.payload } };
+  const { reportId } = message.payload;
+  const proposal = queue.proposal?.reportId === reportId ? undefined : queue.proposal;
+  return { ...state, queue: { ...queue, proposal, reports: queue.reports.filter((report) => report.id !== reportId) } };
+};
+
 const onServer = (state: ChatState, message: ServerMessage): ChatState => {
   switch (message.type) {
     case "entered":
@@ -346,9 +403,21 @@ const onServer = (state: ChatState, message: ServerMessage): ChatState => {
         refusedPseudo: undefined,
         roomList: message.payload.roomList,
         account: linkedTo(state.account, message.payload.accountId),
+        moderator: message.payload.isModerator,
+        canReport: message.payload.canReport,
+        bannedUntil: undefined,
       };
     case "entryRefused":
-      return { ...state, pendingPseudo: undefined, entryError: message.payload.reason, refusedPseudo: state.pendingPseudo };
+      return { ...state, pendingPseudo: undefined, entryError: message.payload.reason, refusedPseudo: state.pendingPseudo, bannedUntil: message.payload.bannedUntil };
+    case "expelled":
+      // UC11: the session is gone; the entry screen names the end of the expulsion (BR-008).
+      return { ...initialState, link: state.link, lastPseudo: state.me?.pseudo, noticeSeq: state.noticeSeq, entryError: "expelled", bannedUntil: message.payload.until };
+    case "reportSent":
+    case "warned":
+    case "openReports":
+    case "reportClosed":
+    case "suspensionProposed":
+      return onModeration(state, message);
     case "resumed":
       return onResumed(state, message.payload);
     case "resumeRefused":
@@ -488,5 +557,14 @@ const reduce = (state: ChatState, action: Action): ChatState => {
       return { ...state, searchOpen: true };
     case "closeSearch":
       return { ...state, searchOpen: false };
+    case "openReport":
+      // One modal at a time: the report dialog replaces the search dialog it may come from.
+      return { ...state, report: action.draft, searchOpen: false };
+    case "closeReport":
+      return { ...state, report: undefined };
+    case "openQueue":
+      return state.moderator ? { ...state, queue: { loading: true, reports: [] } } : state;
+    case "closeQueue":
+      return { ...state, queue: undefined };
   }
 };

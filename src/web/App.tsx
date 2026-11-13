@@ -1,6 +1,7 @@
 import { ChatProvider, browserConnection, useChat, type ConnectionFactory } from "./chat-context";
 import { AccountPanel } from "./screens/AccountPanel";
 import { EntryScreen } from "./screens/EntryScreen";
+import { QueueDialog, ReportDialog } from "./screens/ModerationDialogs";
 import { Notice, useNoticeTimer } from "./screens/Notice";
 import { PrivateWindows } from "./screens/PrivateWindows";
 import { RoomScreen } from "./screens/RoomScreen";
@@ -16,8 +17,8 @@ const Banners = () => {
     <>
       {state.link === "reconnecting" && <output className="banner">{STRINGS.reconnecting}</output>}
       {state.link === "offline" && state.screen === "entry" && <output className="banner">{STRINGS.offline}</output>}
-      {/* The modal account dialog shows the account notices itself (#63, #136), the search dialog every notice (#185). */}
-      <Notice show={(code) => !state.searchOpen && !(state.account.open && state.screen !== "entry" && isAccountNotice(code))} />
+      {/* The modal account dialog shows the account notices itself (#63, #136), the search, report and queue dialogs every notice (#185). */}
+      <Notice show={(code) => !state.searchOpen && !state.report && !state.queue && !(state.account.open && state.screen !== "entry" && isAccountNotice(code))} />
     </>
   );
 };
@@ -27,6 +28,8 @@ const InChatOverlays = () =>
     <>
       <PrivateWindows />
       <AccountPanel />
+      <ReportDialog />
+      <QueueDialog />
     </>
   );
 

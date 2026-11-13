@@ -95,6 +95,21 @@ flowchart LR
   grant. 5. The moderator completes the entry form (UC1) and enters with moderator rights.
 - Extensions: 4a. Unknown or revoked credential → refused.
 
+**UC16i — Sign in as moderator, interim** (brick 8a, removed by 8b)
+- Primary actor: Owner. Main scenario: 1. Owner opens "modération" on the entry form and types the
+  server token. 2. System checks it (BR-091) and enters the owner with moderator rights. Sequence 02e.
+- Extensions: 2a. No token configured, tunnel on, or mismatch → refused (`entryRefused`), no session.
+
+## Brick 8a scope (#209, 2026-11-13)
+
+- In: UC9 without AI (urgency `unknown`), UC12 sorted oldest first (BR-092), UC11 timed expel, warn,
+  third strike and suspension (02d), UC16i.
+- Out, brick 8b (#210): UC14, UC15, UC16. Out, brick 8c (#211): AI triage, severe variant of UC11 and
+  the authority channel, room removal, the decision e-mail to the reporter, the impact assessment.
+- Behind the tester tunnel the server sends `canReport = false`, refuses `report` and refuses the
+  moderator token at start (BR-091), so UC9 to UC12 stay closed to testers.
+- Brick 8a is not exposed to testers before 8c: the impact assessment comes first (`security-and-rgpd.md`).
+
 ## Notes
 
 - The generalization means a Moderator, once signed in (UC16), has every Chatter goal too.

@@ -60,7 +60,8 @@ export const urgency = z.enum(["unknown", "low", "medium", "high"]);
 /** Expulsion lengths a moderator may pick. */
 export const expelDuration = z.enum(["1h", "24h", "7d"]);
 /** Why an entry was refused; `banned` comes with `bannedUntil`. */
-export const entryRefusal = z.enum(["rate", "banned", "pseudoInvalid", "pseudoTaken", "age"]);
+/** `notModerator`: a moderator grant was sent but refused (BR-091). */
+export const entryRefusal = z.enum(["rate", "banned", "pseudoInvalid", "pseudoTaken", "age", "notModerator"]);
 /**
  * Codes of the `error` message; `offline` means the private message target is gone,
  * `logUnavailable` that the connection log could not be written (BR-060).
@@ -119,12 +120,8 @@ export const clientMessage = z.discriminatedUnion("type", [
   message("warn", z.object({ targetSessionId: id, text })),
   message(
     "expel",
-    z.object({
-      targetSessionId: id,
-      duration: expelDuration,
-      severe: z.optional(z.boolean()),
-      reportId: z.optional(id),
-    }),
+    // Acts on the report's captured target (`moderation/04`); `severe` waits for brick 8c.
+    z.object({ reportId: id, duration: expelDuration, severe: z.optional(z.boolean()) }),
   ),
   message("closeReport", z.object({ reportId: id, outcome: reportOutcome })),
   message("confirmSuspension", suspensionTarget),
@@ -187,6 +184,8 @@ export const serverMessage = z.discriminatedUnion("type", [
       resumeToken: id,
       roomList: z.array(roomSummary),
       isModerator: z.boolean(),
+      // Brick 8a stays off for testers until the impact assessment of 8c (`moderation/01`).
+      canReport: z.boolean(),
       accountId: z.optional(id),
       staleDevice: z.optional(z.boolean()),
     }),
@@ -204,6 +203,9 @@ export const serverMessage = z.discriminatedUnion("type", [
       // BR-013: only private messages are buffered while away, never room messages.
       buffered: z.array(privateMessage),
       accountId: z.optional(id),
+      // BR-091: a moderator session keeps its rights across a resume.
+      isModerator: z.optional(z.boolean()),
+      canReport: z.boolean(),
     }),
   ),
   message("resumeRefused", empty),
@@ -244,6 +246,12 @@ export const serverMessage = z.discriminatedUnion("type", [
           context: z.array(z.string()),
           authorPseudo: z.string(),
           createdAt: isoDate,
+          // The captured target as it is now (brick 8a, `moderation/04`).
+          hasAccount: z.boolean(),
+          connected: z.boolean(),
+          activeStrikes: z.int().check(z.nonnegative()),
+          // BR-074: the report already gave its strike; a new `warned` only asks the suspension again.
+          struck: z.boolean(),
           // Set once the AI triage ran; a human decides (ADR-0010).
           triage: z.optional(z.object({ category: z.string(), urgency, summary: z.string() })),
         }),

@@ -153,6 +153,8 @@ export const createAccountIo = ({ store, vault, crypto }: AccountIoDeps) => {
     saveDevice: (tokenHash: string, accountId: string, expiresAt: Date) => store.saveDevice({ tokenHash, accountId, expiresAt }),
     deleteDevice: (tokenHash: string) => store.deleteDevice(tokenHash),
     deleteAllDevices: (accountId: string) => store.deleteAllDevices(accountId),
+    /** BR-077: the suspended e-mail cannot sign in again before `until`. */
+    blockEmail: (emailKeyedHash: string, until: Date) => store.blockEmail(emailKeyedHash, until),
 
     /**
      * UC19, BR-081: the vault record is written first; if it fails nothing is deleted. Brick 9 runs both in

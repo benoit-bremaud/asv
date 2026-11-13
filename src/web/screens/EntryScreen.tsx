@@ -63,6 +63,9 @@ export const EntryScreen = () => {
   const [email, setEmail] = useState("");
   const [remember, setRemember] = useState(true);
   const [hint, setHint] = useState(false);
+  // BR-091: the interim moderator token, kept in this field only, never saved.
+  const [moderatorField, setModeratorField] = useState(false);
+  const [token, setToken] = useState("");
   // BR-090, checked on the trimmed city as the server does.
   const cityInvisible = hasForbiddenChar(city.trim());
   const pseudoRefused = PSEUDO_REFUSALS.has(state.entryError) && pseudo.trim().normalize("NFC") === state.refusedPseudo;
@@ -85,6 +88,7 @@ export const EntryScreen = () => {
       ...(city.trim() ? { city: city.trim() } : {}),
       adultConfirmed: adult,
       termsAccepted: terms,
+      ...(moderatorField && token !== "" ? { moderatorGrant: token } : {}),
   });
   const submit = (event: SubmitEvent) => {
     event.preventDefault();
@@ -138,7 +142,14 @@ export const EntryScreen = () => {
           {state.entryError && (
             <p id={ENTRY_ERROR_ID} role="alert" className="error">
               {STRINGS.entryRefused[state.entryError as keyof typeof STRINGS.entryRefused]}
+              {state.bannedUntil && STRINGS.until(state.bannedUntil)}
             </p>
+          )}
+          {moderatorField && (
+            <label>
+              {STRINGS.moderatorToken}
+              <input name="moderatorGrant" type="password" autoComplete="off" maxLength={512} value={token} onChange={(e) => setToken(e.target.value)} />
+            </label>
           )}
           <button type="submit" className="bevel primary big" disabled={!ready} aria-describedby={missing.length > 0 ? MISSING_ID : undefined}>{STRINGS.enter}</button>
           {missing.length > 0 && <p id={MISSING_ID} className="small">{STRINGS.missing(missing)}</p>}
@@ -161,7 +172,7 @@ export const EntryScreen = () => {
         </form>
       </main>
       <footer className="footer">
-        <span>{STRINGS.moderatorSignIn}</span>
+        <button type="button" className="link" aria-expanded={moderatorField} onClick={() => setModeratorField(!moderatorField)}>{STRINGS.moderatorSignIn}</button>
         {LEGAL_TOPICS.map((topic) => (
           <button key={topic} type="button" className="link" onClick={(event) => openLegal(event, topic)}>{STRINGS.legal[topic]}</button>
         ))}

@@ -46,9 +46,9 @@ const saved = { resumeToken: "tok1", profile };
 const form: EnterForm = { pseudo: "ana", gender: "woman", age: 30, city: "Lyon", adultConfirmed: true, termsAccepted: true };
 
 const entered = (resumeToken = "tok1") =>
-  JSON.stringify({ type: "entered", seq: 0, payload: { sessionId: "s1", resumeToken, roomList: [], isModerator: false } });
+  JSON.stringify({ type: "entered", seq: 0, payload: { sessionId: "s1", resumeToken, roomList: [], isModerator: false, canReport: true } });
 const resumed = (resumeToken = "tok2") =>
-  JSON.stringify({ type: "resumed", seq: 0, payload: { sessionId: "s1", pseudo: "ana", resumeToken, rooms: [], windows: [], buffered: [] } });
+  JSON.stringify({ type: "resumed", seq: 0, payload: { sessionId: "s1", pseudo: "ana", resumeToken, rooms: [], windows: [], buffered: [], canReport: true } });
 const simple = (type: string, payload: object = {}) => JSON.stringify({ type, seq: 0, payload });
 
 describe("createConnection", () => {
@@ -541,7 +541,7 @@ describe("createConnection", () => {
     it("clears a stale device cookie silently", () => {
       const socket = start();
       socket.open();
-      socket.receive(JSON.stringify({ type: "entered", seq: 0, payload: { sessionId: "s1", resumeToken: "t", roomList: [], isModerator: false, staleDevice: true } }));
+      socket.receive(JSON.stringify({ type: "entered", seq: 0, payload: { sessionId: "s1", resumeToken: "t", roomList: [], isModerator: false, canReport: true, staleDevice: true } }));
 
       expect(posted()).toEqual([["/account/sign-out", "{}"]]);
       expect(fetchStub.mock.calls[0]?.[1]).toMatchObject({ method: "POST", credentials: "same-origin" });
@@ -583,7 +583,7 @@ describe("createConnection", () => {
   describe("pending code across a resume (BR-087)", () => {
     const CODE_KEY = "asv.codeUntil";
     const resumedAs = (accountId?: string) =>
-      JSON.stringify({ type: "resumed", seq: 0, payload: { sessionId: "s1", pseudo: "ana", resumeToken: "tok2", rooms: [], windows: [], buffered: [], accountId } });
+      JSON.stringify({ type: "resumed", seq: 0, payload: { sessionId: "s1", pseudo: "ana", resumeToken: "tok2", rooms: [], windows: [], buffered: [], canReport: true, accountId } });
     const restored = { type: "codeStepRestored" };
     const resumeAfterReload = (message: string) => {
       store.set(KEY, JSON.stringify(saved));

@@ -1,9 +1,13 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, useRef, type ReactNode } from "react";
-import { createConnection, type CodeRequest, type Connection, type ConnectionDeps, type EnterForm } from "./connection";
-import { chatReducer, initialState, type Action, type ChatState } from "./store";
+import type { reportReason } from "../shared/protocol";
+import { createConnection, type CodeRequest, type Command, type Connection, type ConnectionDeps, type EnterForm } from "./connection";
+import { chatReducer, initialState, type Action, type ChatState, type ReportDraft } from "./store";
 
 /** The only local actions screens may dispatch; server actions come from the connection manager. */
-export type LocalAction = Extract<Action, { type: "showRooms" | "showRoom" | "dismissNotice" | "expireNotice" | "holdNotice" | "releaseNotice" | "openAccount" | "closeAccount" | "accountStep" | "openPrivate" | "togglePrivate" | "clearSearch" | "openSearch" | "closeSearch" }>;
+export type LocalAction = Extract<Action, { type: "showRooms" | "showRoom" | "dismissNotice" | "expireNotice" | "holdNotice" | "releaseNotice" | "openAccount" | "closeAccount" | "accountStep" | "openPrivate" | "togglePrivate" | "clearSearch" | "openSearch" | "closeSearch" | "openReport" | "closeReport" | "closeQueue" }>;
+
+/** The queue actions a moderator sends from the queue dialog (`web-ui/08`). */
+export type ModerationCommand = Extract<Command, { type: "expel" | "closeReport" | "confirmSuspension" | "declineSuspension" }>;
 
 /** What screens may do; only the connection manager touches the socket (`web-ui/03`). */
 export interface Commands {
@@ -31,6 +35,11 @@ export interface Commands {
   unignore(sessionId: string): void;
   search(query: string): void;
   leave(): void;
+  /** UC9: sends the open report with its reason; the dialog closes on `reportSent`. */
+  report(draft: ReportDraft, reason: (typeof reportReason.options)[number]): void;
+  /** UC12: opens the queue dialog and asks for the open reports. */
+  openQueue(): void;
+  moderate(command: ModerationCommand): void;
   local(action: LocalAction): void;
 }
 
@@ -96,6 +105,12 @@ export const ChatProvider = ({ connect, children }: { connect: ConnectionFactory
         if (sent({ type: "search", payload: { query } })) dispatch({ type: "searching", query });
       },
       leave: () => connection.current?.leave(),
+      report: ({ targetKind, targetPseudo, excerpt, context }, reason) =>
+        send({ type: "report", payload: { targetKind, targetPseudo, excerpt, context: [...context], reason } }),
+      openQueue: () => {
+        if (sent({ type: "listOpenReports", payload: {} })) dispatch({ type: "openQueue" });
+      },
+      moderate: (command) => send(command),
       newCode: () => {
         connection.current?.forgetCode();
         dispatch({ type: "accountStep", step: "askEmail" });

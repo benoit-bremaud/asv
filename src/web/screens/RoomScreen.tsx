@@ -3,7 +3,7 @@ import type { Gender, Member } from "../../shared/protocol";
 import { hasForbiddenChar } from "../../domain/text";
 import { useChat } from "../chat-context";
 import { renderText, SMILEYS } from "../render";
-import { MAX_TEXT } from "../store";
+import { MAX_TEXT, reportContext } from "../store";
 import { STRINGS } from "../strings";
 import { Header } from "./Header";
 import { Pseudo } from "./Pseudo";
@@ -108,6 +108,13 @@ export const RoomScreen = () => {
             {room.lines.filter((line) => !state.ignored.includes(line.authorSessionId)).map((line) => (
               <li key={line.id}>
                 <Pseudo pseudo={line.pseudo} gender={line.gender} />: {renderText(line.text)}
+                {state.canReport && line.authorSessionId !== state.me?.sessionId && (
+                  // UC9: a message is reported with the lines up to it (BR-051).
+                  <button type="button" className="link icon-button report-line" aria-label={STRINGS.reportMessage(line.pseudo)} onClick={() => commands.local({
+                    type: "openReport",
+                    draft: { targetKind: "message", targetPseudo: line.pseudo, excerpt: line.text, context: reportContext(room.lines, line.id) },
+                  })}>⚑</button>
+                )}
               </li>
             ))}
           </ol>

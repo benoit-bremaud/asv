@@ -11,6 +11,8 @@ import { cryptoKeysFromEnv } from "../../server/crypto/keys";
 import { createHub, type Outgoing } from "../../server/hub";
 import { createMemoryAccountStore, createMemoryVault } from "./memory-accounts";
 import { createMemoryLog } from "./memory-log";
+import { createModerationIo } from "../../server/moderation-io";
+import { createMemoryModerationStore } from "./memory-moderation";
 import { createNodeRandom } from "./random";
 
 afterEach(() => vi.restoreAllMocks());
@@ -41,6 +43,7 @@ const setup = async () => {
     accounts: createAccountIo({ store, vault, crypto }),
     mailer,
     onStoreError,
+    moderation: createModerationIo({ store: createMemoryModerationStore(), crypto }),
   });
   let seq = 0;
   const send = (key: string, type: string, payload: object, now = T0) =>
@@ -116,7 +119,7 @@ describe("request a code (UC17 steps 1–3)", () => {
     only(await ask(later(180_000)), "codeSent");
     expect(sent).toHaveLength(3);
 
-    store.block(await crypto.keyedHash("blocked@example.org"), later(10_000_000));
+    await store.blockEmail(await crypto.keyedHash("blocked@example.org"), later(10_000_000));
     only(await ask(T0, "blocked@example.org"), "codeSent");
     expect(sent).toHaveLength(3);
   });
@@ -270,7 +273,7 @@ describe("verify the code (UC17 steps 4–6)", () => {
     const { enterAs, send, sent, store, crypto } = await setup();
     await enterAs("1", "Lola");
     await send("1", "requestCode", { email: EMAIL, remember: false });
-    store.block(await crypto.keyedHash(EMAIL), later(10_000));
+    await store.blockEmail(await crypto.keyedHash(EMAIL), later(10_000));
 
     expect(warningOf(await send("1", "verifyCode", { code: sent[0]?.code ?? "" }))).toMatchObject({ code: "blocked" });
     expect(store.dump().accounts).toEqual([]);

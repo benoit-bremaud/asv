@@ -95,6 +95,7 @@ classDiagram
     +saveTriage(reportId, triage)
     +openReports() Report[]
     +closeReport(id, outcome, by, at)
+    +markStruck(id, at)
     +saveBan(ban)
     +activeBan(ipKeyedHash, pseudo, now) Ban
     +purgeExpired(now)
@@ -133,3 +134,30 @@ classDiagram
 - Strikes and e-mail blocks live with accounts (see `accounts/04-class`). `targetAccountId` and
   `targetIpKeyedHash` are captured when the report is filed, so a strike or a suspension ban can be
   applied after the target has left.
+
+## Protocol (brick 8a)
+
+The contract stays `platform/04-class-protocol`. Brick 8a uses it as follows:
+
+- `enter.moderatorGrant` carries the interim token (BR-091); brick 8b puts the passkey grant there.
+- `report` → `reportSent`; `listOpenReports` → `openReports`, each report adding `hasAccount`,
+  `connected` and `activeStrikes` of its captured target.
+- `expel` takes `reportId` and `duration`: it acts on the report's captured target (keyed IP hash,
+  pseudo, live session if any), so the moderator never types a pseudo or an IP. `targetSessionId` is
+  dropped from `expel`.
+- `closeReport` with `noAction` or `warned`; outcome `expelled` is set by `expel` only, so
+  `closeReport(expelled)` answers `error(invalid, notAvailable)`. `warned` may answer
+  `suspensionProposed`, then `confirmSuspension` or `declineSuspension` (02d); every close answers
+  `reportClosed`. One report gives one strike at most (BR-074): the store keeps `struckAt`, and a
+  second `warned` on a struck report only proposes the suspension again (or closes it below three
+  strikes). `openReports` items carry `struck`. `declineSuspension` needs a struck report of that account.
+- `expel` and `warned` on a room report answer `warning(reportInvalid)`.
+- `entered` and `resumed` carry `canReport`: false behind the tester tunnel, where `report` answers
+  `error(invalid, notAvailable)` and the client hides every report entry point (`01-use-case`).
+- `warn` (chat warning without a report), `removeRoom`, `expel.severe` and the outcomes `severeDeleted`
+  and `roomRemoved` answer `error(invalid, notAvailable)` until brick 8c (BR-092).
+- Every moderation command from a session without `isModerator` gets `error(forbidden)` (BR-054).
+- Excerpt, context and pseudos of a report are encrypted at rest (ADR-0017). A ban keeps only keyed
+  hashes (HMAC) of the IP and of the folded pseudo, so the entry check compares hashes and never
+  decrypts.
+- `resumed.isModerator` carries the rights back to a moderator session after a resume (BR-091).
