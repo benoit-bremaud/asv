@@ -174,7 +174,7 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
   // Fatal only when moderation is configured; a plain local run (QA of other journeys) just warns.
   if (!behindTunnel && (URL.parse(publicOrigin)?.origin !== publicOrigin || !options.allowedOrigins.includes(publicOrigin))) {
     const problem = `publicOrigin ${publicOrigin} must be a bare origin listed in allowedOrigins (BR-098)`;
-    if (options.ownerSecret !== undefined || options.moderatorFile !== undefined) throw new Error(problem);
+    if (ownerSecret !== undefined || options.moderatorFile !== undefined) throw new Error(problem);
     console.warn(`${problem}; moderator passkeys will fail`);
   }
   const grantKey = await createGrantKey();

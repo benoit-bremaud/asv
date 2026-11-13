@@ -407,9 +407,12 @@ describe("moderator wiring (moderation/02f)", () => {
   it("only warns on a mismatched public origin when moderation is not configured (local QA)", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
 
-    await start({ allowedOrigins: ["http://127.0.0.1:8790"] });
+    try {
+      await start({ allowedOrigins: ["http://127.0.0.1:8790"], ownerSecret: "" });
 
-    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/BR-098/));
-    warn.mockRestore();
+      expect(warn).toHaveBeenCalledWith(expect.stringMatching(/BR-098/));
+    } finally {
+      warn.mockRestore();
+    }
   });
 });
