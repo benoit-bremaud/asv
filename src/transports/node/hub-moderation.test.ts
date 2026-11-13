@@ -237,8 +237,16 @@ describe("expel (UC11, BR-008, BR-053, BR-055)", () => {
     const reportId = await reportMax();
     await owner();
 
+    // The socket closes only once the whole command answered, so `expelled` reaches it first (QA 2026-11-13).
+    const saveReport = moderationStore.saveReport;
+    let closedBeforeAnswer = false;
+    moderationStore.saveReport = async (report) => {
+      closedBeforeAnswer = closeSocket.mock.calls.length > 0;
+      return saveReport(report);
+    };
     const out = await send("9", "expel", { reportId, duration: "1h" });
 
+    expect(closedBeforeAnswer).toBe(false);
     expect(only(out, "expelled")).toMatchObject({ payload: { until: later(HOUR).toISOString() } });
     expect(find(out, "expelled")[0]?.to).toEqual(["2"]);
     expect(only(out, "memberLeft").payload).toMatchObject({ roomId: "lyon", sessionId: max.sessionId });

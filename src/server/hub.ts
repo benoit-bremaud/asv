@@ -352,13 +352,15 @@ export const createHub = (deps: HubDeps): Hub => {
   };
 
   /** UC11: the target learns the end of its ban, its socket closes, and its rooms see it leave. */
+  /** Sockets an expel closes once the whole command has answered, so `expelled` leaves first (UC11). */
+  let closeAfter: string[] = [];
   const evict = async (sessionId: string, until: Date, now: Date): Promise<Outgoing[]> => {
     const key = socketOfSession.get(sessionId);
     const socket = key === undefined ? undefined : sockets.get(key);
     const told = key === undefined ? [] : [send([key], "expelled", { until: until.toISOString() })];
     if (socket?.bound) {
       await onLeave(socket, socket.bound, now).then((left) => told.push(...left));
-      deps.closeSocket(socket.key);
+      closeAfter.push(socket.key);
       return told;
     }
     const result = leave(state, sessionId);
@@ -468,7 +470,10 @@ export const createHub = (deps: HubDeps): Hub => {
         const parsed = clientMessage.safeParse(json.data);
         if (!parsed.success) return invalid(socket, out.error(socket.key, "invalid", seqOf(json.data)));
         socket.invalid = 0;
-        return dispatch(socket, parsed.data, now);
+        const answer = await dispatch(socket, parsed.data, now);
+        for (const key of closeAfter) deps.closeSocket(key);
+        closeAfter = [];
+        return answer;
       }),
 
     close: (socketKey, now) =>
