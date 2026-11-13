@@ -22,8 +22,8 @@ interface Saved {
 }
 
 type Profile = Extract<ClientMessage, { type: "resume" }>["payload"]["profile"];
-/** The entry form as screens send it; the moderator grant is never sent from the web client. */
-export type EnterForm = Omit<Extract<ClientMessage, { type: "enter" }>["payload"], "moderatorGrant">;
+/** The entry form as screens send it; the moderator grant is sent once and never saved (BR-091). */
+export type EnterForm = Extract<ClientMessage, { type: "enter" }>["payload"];
 type Outbound<M = ClientMessage> = M extends { type: infer T; payload: infer P } ? { type: T; payload: P } : never;
 /** What screens may send, without `seq` (the manager numbers it); enter, resume and leave have their own methods. */
 export type Command = Exclude<Outbound, { type: "enter" | "resume" | "leave" }>;

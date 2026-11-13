@@ -27,7 +27,7 @@ export const Notice = ({ show = () => true }: { readonly show?: (code: string) =
 
 /** One rendered copy of the notice; it holds the notice for every copy while the pointer or the focus is on it (#199). */
 const NoticeCopy = ({ notice, noticeSeq }: { readonly notice: string; readonly noticeSeq: number }) => {
-  const { commands } = useChat();
+  const { commands, state: { warning } } = useChat();
   const copy = useId();
   // A copy removed under the pointer or the focus gets no mouseleave or blur (dialog closed, filter changed).
   useEffect(
@@ -47,7 +47,7 @@ const NoticeCopy = ({ notice, noticeSeq }: { readonly notice: string; readonly n
       onBlur={() => commands.local({ type: "releaseNotice", by: "focus", copy })}
     >
       {/* Only the text is keyed by the stamp: a repeated code is announced again and the focus stays on "fermer". */}
-      <span key={noticeSeq}>{STRINGS.notices[notice] ?? STRINGS.genericNotice}</span>
+      <span key={noticeSeq}>{notice === "warned" ? STRINGS.warned(warning?.activeStrikes ?? 0) : STRINGS.notices[notice] ?? STRINGS.genericNotice}</span>
       <button type="button" className="link" onClick={() => commands.local({ type: "dismissNotice" })}>
         {STRINGS.dismiss}
       </button>

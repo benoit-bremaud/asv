@@ -328,6 +328,7 @@ export const createHub = (deps: HubDeps): Hub => {
           windows: windows.windows,
           buffered: windows.buffered,
           ...(session.accountId ? { accountId: session.accountId } : {}),
+          ...(session.isModerator ? { isModerator: true } : {}),
         }),
         send([socket.key], "roomList", { rooms: roomList(state) }),
         ...ignoresOf(socket.key, state.ignores.get(session.id)),

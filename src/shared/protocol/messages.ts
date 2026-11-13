@@ -201,6 +201,8 @@ export const serverMessage = z.discriminatedUnion("type", [
       // BR-013: only private messages are buffered while away, never room messages.
       buffered: z.array(privateMessage),
       accountId: z.optional(id),
+      // BR-091: a moderator session keeps its rights across a resume.
+      isModerator: z.optional(z.boolean()),
     }),
   ),
   message("resumeRefused", empty),

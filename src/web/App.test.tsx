@@ -1059,7 +1059,7 @@ describe("room screen", () => {
     await userEvent.click(pseudo);
 
     const items = screen.getAllByRole("menuitem");
-    expect(items).toHaveLength(2);
+    expect(items).toHaveLength(3);
     for (const item of items) expect(item.matches(".menu .link")).toBe(true);
   });
 
@@ -1233,7 +1233,7 @@ describe("room screen", () => {
     await fromServer(message("r1", "salut :) <b>x</b>"));
 
     const line = within(screen.getByRole("log")).getByRole("listitem");
-    expect(line.textContent).toBe("bob: salut 🙂 <b>x</b>");
+    expect(line.textContent).toBe("bob: salut 🙂 <b>x</b>⚑");
     expect(line.querySelector("b")).toBeNull();
     expect(within(line).getByRole("img").getAttribute("aria-label")).toBe(":)");
   });

@@ -289,3 +289,10 @@ input { font: inherit; padding: 4px; min-height: 32px; }
   .privates { position: fixed; right: var(--gap); bottom: 0; z-index: 15; margin-top: 0; max-width: calc(100vw - 2 * var(--gap)); }
   .private-window { max-height: var(--dock-height); }
 }
+
+/* Brick 8a (`web-ui/08`): report flag on message lines, the queue rows and their actions. */
+.report-line { margin-left: 4px; font-size: 0.8em; color: var(--text); }
+.overlay blockquote { margin: 4px 0; padding-left: 8px; border-left: 2px solid var(--bevel-dark); overflow-wrap: anywhere; }
+.queue { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.queue > li { border-top: 1px solid var(--bevel-dark); padding-top: 8px; }
+.queue-actions, .queue-proposal { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }

@@ -101,6 +101,21 @@ describe("interim moderator access (UC16i, BR-091)", () => {
     expect(hub.stats().connected).toBe(0);
   });
 
+  it("keeps the rights across a resume, and a chatter's resume carries none", async () => {
+    const { hub, send, owner, enterAs } = await setup();
+    const moderator = await owner();
+    const chatter = await enterAs("1", "Lola");
+    const resume = async (key: string, sessionResumeToken: string) => {
+      await hub.close(key, T0);
+      hub.open(`${key}b`, `10.0.0.${key}`, 4000);
+      return only(await send(`${key}b`, "resume", { resumeToken: sessionResumeToken, profile: { gender: "unspecified", age: 30 } }), "resumed").payload;
+    };
+
+    expect((await resume("9", moderator.resumeToken)).isModerator).toBe(true);
+    expect(await resume("1", chatter.resumeToken)).not.toHaveProperty("isModerator");
+    expect(only(await send("9b", "listOpenReports", {}), "openReports").payload.reports).toEqual([]);
+  });
+
   it("keeps a chatter without the grant as a chatter", async () => {
     const { enterAs } = await setup();
 

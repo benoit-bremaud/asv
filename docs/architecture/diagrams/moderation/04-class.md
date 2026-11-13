@@ -149,5 +149,7 @@ The contract stays `platform/04-class-protocol`. Brick 8a uses it as follows:
 - `warn` (chat warning without a report), `removeRoom`, `expel.severe` and the outcomes `severeDeleted`
   and `roomRemoved` answer `error(invalid, notAvailable)` until brick 8c (BR-092).
 - Every moderation command from a session without `isModerator` gets `error(forbidden)` (BR-054).
-- Excerpt, context and pseudos of a report and the pseudo of a ban are encrypted at rest (ADR-0017);
-  the keyed IP hash stays a HMAC.
+- Excerpt, context and pseudos of a report are encrypted at rest (ADR-0017). A ban keeps only keyed
+  hashes (HMAC) of the IP and of the folded pseudo, so the entry check compares hashes and never
+  decrypts.
+- `resumed.isModerator` carries the rights back to a moderator session after a resume (BR-091).

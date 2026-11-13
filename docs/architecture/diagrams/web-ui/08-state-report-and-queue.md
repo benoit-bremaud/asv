@@ -40,7 +40,7 @@ stateDiagram-v2
 - The client builds the context from what it shows: the excerpt (the reported line, or empty for a
   pseudo) and up to the last 20 lines of that room or private window (BR-051), sent with `report`.
 - Queue actions: "aucune suite" (`noAction`), "avertir" (`warned`, members only), "expulser" with
-  1 h / 24 h / 7 j (`expel` then `closeReport expelled`). Each row shows reason, date, excerpt, context,
+  1 h / 24 h / 7 j (`expel`, which closes the report as `expelled` on the server). Each row shows reason, date, excerpt, context,
   pseudos, whether the target has an account and is connected, and its active strikes.
 - The queue is sorted oldest first while there is no triage (BR-092); urgency columns arrive in 8c.
 - An `expelled` target sees the expel screen with the end time, then the entry screen (BR-008).

@@ -17,6 +17,12 @@ export const Header = ({ connected }: { connected?: number }) => {
               event.currentTarget.focus();
               commands.local({ type: "openAccount" });
             }}>{STRINGS.myAccount}</button>
+            {state.moderator && (
+              <button type="button" className="bevel" aria-haspopup="dialog" onClick={(event) => {
+                event.currentTarget.focus();
+                commands.openQueue();
+              }}>{STRINGS.queue}</button>
+            )}
             <button type="button" className="bevel" onClick={commands.leave}>{STRINGS.quit}</button>
           </>
         ) : (
