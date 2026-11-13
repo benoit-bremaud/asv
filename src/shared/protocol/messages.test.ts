@@ -125,6 +125,14 @@ describe("openReports triage (BR-100, BR-102)", () => {
     expect(serverMessage.safeParse(list(triage)).success).toBe(true);
   });
 
+  it.each([
+    ["summary", (n: number) => ({ ...triage, summary: "x".repeat(n) }), CAPS.triageSummary],
+    ["label", (n: number) => ({ ...triage, labels: [{ label: "x".repeat(n), pseudo: "bob" }] }), CAPS.triageLabel],
+  ] as const)("caps the triage %s at the limit and refuses one over", (_name, build, cap) => {
+    expect(serverMessage.safeParse(list(build(cap))).success).toBe(true);
+    expect(serverMessage.safeParse(list(build(cap + 1))).success).toBe(false);
+  });
+
   it("refuses a category outside BR-101 and a list without its total", () => {
     expect(serverMessage.safeParse(list({ ...triage, category: "insult" })).success).toBe(false);
     expect(serverMessage.safeParse({ ...list(triage), payload: { reports: list(triage).payload.reports } }).success).toBe(false);

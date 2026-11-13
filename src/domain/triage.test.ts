@@ -42,6 +42,38 @@ describe("pseudonymise (BR-100)", () => {
     expect(input.lines).toEqual(["[B]: écris à [e-mail] ou au [téléphone] ou [téléphone]"]);
   });
 
+  it("labels a departed author named before their own line (no leak)", () => {
+    const { input, labels } = pseudonymise(report({ targetPseudo: "Max", context: ["Lola: salut bob", "bob: salut"] }), ["Lola", "Max"]);
+
+    expect(input.lines).toEqual(["[B]: salut [C]", "[C]: salut"]);
+    expect(labels).toEqual([
+      { label: "[A]", pseudo: "Max" },
+      { label: "[B]", pseudo: "Lola" },
+      { label: "[C]", pseudo: "bob" },
+    ]);
+  });
+
+  it.each([
+    ["06/12/34/56/78"],
+    ["０６１２３４５６７８"],
+    ["06 - 12 - 34 - 56 - 78"],
+    ["06.12.34.56.78"],
+  ])("masks the phone number %s", (phone) => {
+    expect(pseudonymise(report({ context: [`appelle ${phone} vite`] }), []).input.lines).toEqual(["appelle [téléphone] vite"]);
+  });
+
+  it("finds a pseudo inside leading or trailing punctuation and keeps it around the label", () => {
+    expect(pseudonymise(report({ context: ["_max_ et -max et max."] }), ["Max"]).input.lines).toEqual(["_[A]_ et -[A] et [A]."]);
+  });
+
+  it("turns brackets in the text into parentheses, so no line forges a label", () => {
+    expect(pseudonymise(report({ context: ["[A] est [B] max"] }), ["Max"]).input.lines).toEqual(["(A) est (B) [A]"]);
+  });
+
+  it("skips the excerpt when it repeats the last context line", () => {
+    expect(pseudonymise(report({ targetKind: "message", excerpt: "nul", context: ["Max: nul"] }), []).input.lines).toEqual(["[A]: nul"]);
+  });
+
   it("adds the excerpt as the target's line on a message report, and as plain text otherwise", () => {
     expect(pseudonymise(report({ targetKind: "message", excerpt: "lola !" }), ["Lola"]).input.lines).toEqual(["[A]: [B] !"]);
     expect(pseudonymise(report({ targetKind: "room", targetPseudo: undefined, targetRoomId: "lyon", excerpt: "texte" }), []).input.lines).toEqual(["texte"]);

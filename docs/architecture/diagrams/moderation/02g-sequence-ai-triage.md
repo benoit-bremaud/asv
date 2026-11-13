@@ -52,9 +52,14 @@ sequenceDiagram
 
 - Pseudonymisation is a pure domain function (no I/O), so it is unit-tested without the adapter. The
   target gets `[A]` when it has a pseudo; then labels follow first appearance in the context lines
-  (author prefix `pseudo: ` as the web client writes it, then whole words). The excerpt of a message
-  report is sent last as the target's line. A word with a trailing `.`, `-` or `_` also matches the
-  pseudo without it (`bob.` ends a sentence).
+  (author prefix `pseudo: ` as the web client writes it, then whole words). Every line author counts as
+  a known pseudo even after leaving, so a name met before its own line is labelled too. The excerpt of a
+  message report is sent last as the target's line, skipped when it repeats the last context line. A
+  word with leading or trailing `.`, `-` or `_` also matches the pseudo inside it (`bob.`, `_bob_`), the
+  punctuation kept around the label (BR-100).
+- The text is NFKC-normalised (full-width digits become ASCII for the phone mask) and `[` `]` become
+  `(` `)` before labelling, so a reported line cannot forge `[A]`. Phone numbers allow up to three
+  separators (space, `.`, `/`, `-`) between digits.
 - `unavailable` keeps the report as filed: urgency `unknown`, no summary. Nothing is retried.
 - A triage arriving after the report closed is dropped (`saveTriage` ignores a closed report).
 - The reported lines are untrusted input to the model: the adapter sends them as a JSON array inside a

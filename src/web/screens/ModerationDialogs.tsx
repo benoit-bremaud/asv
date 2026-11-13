@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type SubmitEvent, type SyntheticEvent } from "react";
-import { expelDuration, reportReason } from "../../shared/protocol";
+import { CAPS, expelDuration, reportReason } from "../../shared/protocol";
 import { useChat } from "../chat-context";
 import type { QueuedReport } from "../store";
 import { STRINGS } from "../strings";
@@ -115,7 +115,7 @@ export const QueueDialog = () => {
   const { state, commands } = useChat();
   const { queue } = state;
   // Closing a report frees a row: the next one is asked once the page is short (BR-102).
-  const short = queue !== undefined && !queue.loading && queue.reports.length < queue.total;
+  const short = queue !== undefined && !queue.loading && queue.reports.length < Math.min(queue.total, CAPS.queuePage);
   const shown = queue?.reports.length ?? 0;
   useEffect(() => {
     if (short) commands.refreshQueue();

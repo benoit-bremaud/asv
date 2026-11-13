@@ -28,6 +28,8 @@ Sensitivity (protection 35, privacy 20): A 435, B 415, C 355. A stays first by 2
 
 - The `ReportTriage` port gets a Mistral adapter calling the chat completions API with a JSON answer,
   model set by `ASV_TRIAGE_MODEL` (default a small Mistral model), key in `ASV_MISTRAL_API_KEY`.
+- `ASV_TRIAGE_MODEL` must name a chat model whose answer `content` is a plain string (no reasoning model
+  answering in chunks); any other shape counts as unavailable.
 - Without the key the no-AI adapter stays (urgency `unknown`): development, tests and the tester tunnel.
 - The answer is validated against a closed schema (BR-101); anything else counts as unavailable.
 - The processing agreement, EU location, paid tier (the free tier may train on inputs) and zero data

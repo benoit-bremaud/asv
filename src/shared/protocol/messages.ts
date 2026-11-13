@@ -25,6 +25,9 @@ export const CAPS = {
   contextLine: 1_000,
   contextLines: 20,
   triageSummary: 400,
+  triageLabel: 64,
+  /** Open reports per `openReports` (`platform/04-class-protocol`, `web-ui/08`). */
+  queuePage: 50,
 } as const;
 
 const capped = (max: number) => z.string().check(z.maxLength(max));
@@ -264,7 +267,7 @@ export const serverMessage = z.discriminatedUnion("type", [
               category: triageCategory,
               urgency,
               summary: capped(CAPS.triageSummary),
-              labels: z.array(z.object({ label: capped(CAPS.id), pseudo })),
+              labels: z.array(z.object({ label: capped(CAPS.triageLabel), pseudo })),
             }),
           ),
         }),

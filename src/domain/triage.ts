@@ -47,18 +47,29 @@ const labelAt = (index: number): string => {
 
 const WORD = new RegExp(`[${PSEUDO_CHARS}]+`, "gu");
 const AUTHOR = new RegExp(`^([${PSEUDO_CHARS}]{3,20}): `, "u");
+const EDGES = /^([._-]*)(.*?)([._-]*)$/su;
 const EMAIL = /[^\s@]+@[^\s@]+\.[^\s@]+/gu;
-/** International or French numbers: 8 to 15 digits, optionally `+` or `00` first, spaces, dots or dashes between. */
-const PHONE = /(?:\+|\b00)?\d(?:[\s.-]?\d){7,14}/gu;
+/** International or French numbers: 8 to 15 digits, optionally `+` or `00` first, up to 3 of space, `.`, `/`, `-` between digits. */
+const PHONE = /(?:\+|\b00)?\d(?:[\s./-]{0,3}\d){7,14}/gu;
+
+/** NFKC folds full-width digits and letters; brackets become parentheses so no text can forge a label. */
+const normalise = (text: string): string => text.normalize("NFKC").replaceAll("[", "(").replaceAll("]", ")");
 
 /**
- * BR-100: labels the target, each line's author and every known pseudo written as a whole word (ignoring
- * case and accents, BR-002), in order of first appearance, target first; then masks e-mails and phones.
- * `known` holds the connected and away pseudos when the report was filed. A context line reads `pseudo: text`
- * as the web client builds it; the excerpt of a message report is the target's line.
+ * BR-100: labels the target first when it has a pseudo, then each line's author and every known pseudo
+ * written as a whole word (ignoring case and accents, BR-002), in order of first appearance; then masks
+ * e-mails and phones. `known` holds the connected and away pseudos when the report was filed; every line
+ * author is known too, even one who left. A context line reads `pseudo: text` as the web client builds it;
+ * the excerpt of a message report is the target's line, skipped when it repeats the last context line.
  */
 export const pseudonymise = (report: Report, known: readonly string[]): { input: TriageInput; labels: TriageLabel[] } => {
-  const names = new Map(known.map((pseudo) => [foldPseudo(pseudo), pseudo] as const));
+  const parsed = report.context.map((raw) => {
+    const text = normalise(raw);
+    const match = AUTHOR.exec(text);
+    return match ? { author: match[1], text: text.slice(match[0].length) } : { author: undefined, text };
+  });
+  const authors = parsed.flatMap(({ author }) => (author === undefined ? [] : [author]));
+  const names = new Map([...known, ...authors].map((pseudo) => [foldPseudo(pseudo), pseudo] as const));
   const labels: TriageLabel[] = [];
   const byFolded = new Map<string, string>();
   const labelOf = (pseudo: string): string => {
@@ -71,24 +82,21 @@ export const pseudonymise = (report: Report, known: readonly string[]): { input:
     return label;
   };
   const isName = (word: string) => byFolded.has(foldPseudo(word)) || names.has(foldPseudo(word));
-  /** A word ending a sentence keeps its dot: `bob.` is `bob` when `bob.` is nobody. */
+  /** `bob.`, `_bob_` or `-bob` is `bob` when the whole word is nobody; the punctuation around stays. */
   const replaceWord = (word: string): string => {
     if (isName(word)) return labelOf(word);
-    const trimmed = word.replace(/[.\-_]+$/u, "");
-    return trimmed !== word && trimmed.length > 0 && isName(trimmed) ? labelOf(trimmed) + word.slice(trimmed.length) : word;
+    const [, before = "", core = "", after = ""] = EDGES.exec(word) ?? [];
+    return core !== word && core.length > 0 && isName(core) ? before + labelOf(core) + after : word;
   };
-  const mask = (text: string): string =>
-    text.normalize("NFC").replace(WORD, replaceWord).replace(EMAIL, "[e-mail]").replace(PHONE, "[téléphone]");
-  const line = (raw: string, author?: string): string => {
-    const match = author === undefined ? AUTHOR.exec(raw.normalize("NFC")) : null;
-    const who = author ?? match?.[1];
-    const text = match ? raw.normalize("NFC").slice(match[0].length) : raw;
-    return who === undefined ? mask(text) : `${labelOf(who)}: ${mask(text)}`;
-  };
+  const mask = (text: string): string => text.replace(WORD, replaceWord).replace(EMAIL, "[e-mail]").replace(PHONE, "[téléphone]");
+  const line = (author: string | undefined, text: string): string => (author === undefined ? mask(text) : `${labelOf(author)}: ${mask(text)}`);
 
   if (report.targetPseudo !== undefined) labelOf(report.targetPseudo);
-  const lines = report.context.map((raw) => line(raw));
-  if (report.excerpt !== "") lines.push(line(report.excerpt, report.targetKind === "message" ? report.targetPseudo : undefined));
+  const lines = parsed.map(({ author, text }) => line(author, text));
+  if (report.excerpt !== "") {
+    const last = line(report.targetKind === "message" ? report.targetPseudo : undefined, normalise(report.excerpt));
+    if (last !== lines.at(-1)) lines.push(last);
+  }
   return { input: { reason: report.reason, targetKind: report.targetKind, lines }, labels };
 };
 

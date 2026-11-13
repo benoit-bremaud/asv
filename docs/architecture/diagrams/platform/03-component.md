@@ -29,14 +29,14 @@ flowchart LR
   end
   subgraph NodeT ["src/transports/node — dev and tests"]
     NodeMain["Node entry: builds Hono app, ws upgrade, heartbeat, tick"]
-    NodeStore["In-memory stores, no-AI triage"]
+    NodeStore["In-memory stores"]
   end
   subgraph CfT ["src/transports/cloudflare — production"]
     WorkerEntry["Worker entry: builds Hono app"]
     HubDO["Hub Durable Object"]
     Sqlite["Durable Object SQLite stores"]
   end
-  AIAdapter["AI triage adapter, chosen in brick 8"]
+  AIAdapter["src/server/triage: Mistral adapter (ADR-0019) and no-AI adapter"]
   Conn -->|"one WebSocket"| NodeMain
   Conn -->|"one WebSocket, production"| WorkerEntry
   Conn -->|"GET /api/stats"| Routes
@@ -59,11 +59,16 @@ flowchart LR
   NodeMain -->|"wires"| MailAdapter
   HubDO -->|"wires"| MailAdapter
   NodeMain --> NodeStore
+  NodeMain -->|"wires: Mistral with a key outside the tunnel, no-AI otherwise"| AIAdapter
   HubDO --> Sqlite
   HubDO --> AIAdapter
 ```
 
 ## Notes
+
+- Brick 8c: the triage adapters live in `src/server/triage` (global `fetch` only). Node wires the Mistral
+  adapter when `ASV_MISTRAL_API_KEY` is set and the tester tunnel is off, the no-AI adapter otherwise
+  (ADR-0019, BR-108).
 
 - Brick 5: the Brevo mailer and the crypto module live in `src/server` because both use only `fetch` and
   WebCrypto, available on Node and Workers. Each transport wires them with its secrets. Stores stay in

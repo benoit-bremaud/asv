@@ -430,12 +430,13 @@ describe("report triage wiring (ADR-0019, BR-108)", () => {
 
   it("calls Mistral with the key and the configured model, the default one when empty", async () => {
     const triageFetch = vi.fn<typeof fetch>().mockResolvedValue(new Response("{}", { status: 500 }));
-    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const quiet = vi.spyOn(console, "error").mockImplementation(() => undefined);
 
     await reportTriage({ mistralApiKey: "key", triageModel: "", triageFetch }, false).triage(input);
     await reportTriage({ mistralApiKey: "key", triageModel: "mistral-large-latest", triageFetch }, false).triage(input);
 
     const models = triageFetch.mock.calls.map(([, init]) => (JSON.parse(String(init?.body)) as { model: string }).model);
     expect(models).toEqual(["mistral-small-latest", "mistral-large-latest"]);
+    quiet.mockRestore();
   });
 });

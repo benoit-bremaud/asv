@@ -365,6 +365,22 @@ describe("queue dialog (UC12, web-ui/08)", () => {
     expect(connection.send).toHaveBeenCalledWith({ type: "listOpenReports", payload: {} });
   });
 
+  it("asks the next page once per close when more than 50 are open, never on open", async () => {
+    const user = await setup();
+    await enterChat(true);
+    await user.click(screen.getByRole("button", { name: STRINGS.queue }));
+    const page = Array.from({ length: 50 }, (_, n) => queued(`r${n}`));
+    connection.send.mockClear();
+
+    await msg("openReports", { reports: page, total: 60 });
+    expect(connection.send).not.toHaveBeenCalled();
+    await msg("reportClosed", { reportId: "r0" });
+    await msg("reportClosed", { reportId: "r1" });
+
+    const lists = connection.send.mock.calls.filter(([command]) => (command as { type: string }).type === "listOpenReports");
+    expect(lists).toHaveLength(2);
+  });
+
   it("asks for the suspension at the third strike, both ways", async () => {
     const user = await setup();
     await enterChat(true);

@@ -26,7 +26,7 @@ import {
   type ReportTriage,
   type TriageQuota,
 } from "../domain";
-import type { ClientMessage } from "../shared/protocol";
+import { CAPS, type ClientMessage } from "../shared/protocol";
 import type { AccountIo } from "./account-io";
 import type { LoadedReport, ModerationIo } from "./moderation-io";
 import type { Outgoing, OutgoingModule, Payload } from "./outgoing";
@@ -51,8 +51,6 @@ export interface ModerationDeps {
   readonly triage?: ReportTriage;
 }
 
-/** BR-102: the queue shows the first 50 open reports and the open count. */
-export const QUEUE_PAGE = 50;
 
 /** What the moderation handlers share with the hub. */
 export interface ModerationContext {
@@ -159,11 +157,11 @@ export const createModerationHandlers = (ctx: ModerationContext) => {
     ...(report.triage ? { triage: { ...report.triage, labels: [...report.triage.labels] } } : {}),
   });
 
-  /** UC12 step 2: the first 50 in BR-102 order, and the open count. */
+  /** UC12 step 2: the first `CAPS.queuePage` (`platform/04-class-protocol`, `web-ui/08`) in BR-102 order, and the open count. */
   const onList: ModerationHandler<"listOpenReports"> = async (caller, command, now) => {
     if (!isModerator(ctx.state(), caller.sessionId)) return forbidden(caller, command.seq);
     const open = sortForQueue(await deps.moderation.openReports());
-    const reports = await Promise.all(open.slice(0, QUEUE_PAGE).map((report) => toPayload(report, now)));
+    const reports = await Promise.all(open.slice(0, CAPS.queuePage).map((report) => toPayload(report, now)));
     return [out.send([caller.key], "openReports", { reports, total: open.length })];
   };
 

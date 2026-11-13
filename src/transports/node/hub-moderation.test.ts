@@ -216,8 +216,8 @@ describe("report (UC9)", () => {
   });
 });
 
-describe("queue (UC12, BR-054, BR-092)", () => {
-  it("lists open reports oldest first with the target's state, to a moderator only", async () => {
+describe("queue (UC12, BR-054, BR-102)", () => {
+  it("lists open reports of equal urgency oldest first with the target's state, to a moderator only", async () => {
     const { enterAs, send, owner, reportMax, signIn } = await setup();
     await enterAs("1", "Lola");
     await enterAs("2", "Max");
@@ -561,6 +561,8 @@ describe("AI triage of a report (moderation/02g, BR-100 to BR-102)", () => {
     };
     return { triage, inputs };
   };
+  /** Lets every pending triage (keyed hash, call, save) settle. */
+  const flush = () => new Promise((done) => setTimeout(done, 20));
   const listed = async (send: (key: string, type: string, payload: object, now?: Date) => Promise<Outgoing[]>) =>
     only(await send("9", "listOpenReports", {}, later(5)), "openReports").payload;
 
@@ -574,7 +576,7 @@ describe("AI triage of a report (moderation/02g, BR-100 to BR-102)", () => {
 
     expect(find(out, "reportSent")).toHaveLength(1);
     await vi.waitFor(() => expect(moderationStore.dump().reports[0]?.triage).toBeDefined());
-    expect(inputs).toEqual([{ reason: "harassment", targetKind: "message", lines: ["[B]: salut [A]", "[A]: [B] tu es nulle", "[A]: [B] tu es nulle"] }]);
+    expect(inputs).toEqual([{ reason: "harassment", targetKind: "message", lines: ["[B]: salut [A]", "[A]: [B] tu es nulle"] }]);
     const stored = JSON.stringify(moderationStore.dump().reports);
     expect(stored).not.toContain("insulte [B]");
     expect(stored).not.toContain("Lola");
@@ -620,25 +622,35 @@ describe("AI triage of a report (moderation/02g, BR-100 to BR-102)", () => {
     await owner();
     await send("9", "closeReport", { reportId, outcome: "noAction" });
 
+    const saved = vi.spyOn(moderationStore, "saveTriage");
+
     resolve(answer);
 
-    await vi.waitFor(() => expect(moderationStore.dump().reports[0]?.closed).toBeDefined());
-    await new Promise((done) => setTimeout(done, 0));
+    await vi.waitFor(() => expect(saved).toHaveBeenCalledOnce());
+    await saved.mock.results[0]?.value;
+    expect(moderationStore.dump().reports[0]?.closed).toBeDefined();
     expect(moderationStore.dump().reports[0]?.triage).toBeUndefined();
   });
 
   it("stops calling after 20 reports from one reporter in a UTC day, and starts again the next day (BR-101)", async () => {
     const { triage, inputs } = fakeTriage("unavailable");
-    const { enterAs, send } = await setup({ triage });
+    const ctx = await setup({ triage });
+    const { enterAs, send } = ctx;
     await enterAs("1", "Lola");
     await enterAs("2", "Max");
     // BR-052 allows 5 reports per 10 minutes: space them out.
+    const { moderationStore } = ctx;
     for (let n = 0; n < 21; n++) await send("1", "report", { targetKind: "chatter", targetPseudo: "Max", reason: "spam", excerpt: "", context: [] }, later(n * 11 * 60_000));
+    expect(moderationStore.dump().reports).toHaveLength(21);
     await vi.waitFor(() => expect(inputs).toHaveLength(20));
+    await flush();
+    expect(inputs).toHaveLength(20);
 
     await send("1", "report", { targetKind: "chatter", targetPseudo: "Max", reason: "spam", excerpt: "", context: [] }, later(DAY));
 
     await vi.waitFor(() => expect(inputs).toHaveLength(21));
+    await flush();
+    expect(inputs).toHaveLength(21);
   });
 
   it("lists by urgency then oldest, the first 50 only, with the open count (BR-102)", async () => {
