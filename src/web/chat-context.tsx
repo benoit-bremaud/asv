@@ -39,6 +39,8 @@ export interface Commands {
   report(draft: ReportDraft, reason: (typeof reportReason.options)[number]): void;
   /** UC12: opens the queue dialog and asks for the open reports. */
   openQueue(): void;
+  /** Asks the open reports again, keeping the dialog as it is: closing one brings the next (BR-102). */
+  refreshQueue(): void;
   moderate(command: ModerationCommand): void;
   local(action: LocalAction): void;
 }
@@ -110,6 +112,7 @@ export const ChatProvider = ({ connect, children }: { connect: ConnectionFactory
       openQueue: () => {
         if (sent({ type: "listOpenReports", payload: {} })) dispatch({ type: "openQueue" });
       },
+      refreshQueue: () => send({ type: "listOpenReports", payload: {} }),
       moderate: (command) => send(command),
       newCode: () => {
         connection.current?.forgetCode();

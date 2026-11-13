@@ -22,6 +22,8 @@ const server = await startNodeServer({
   cryptoEnv: env,
   brevoApiKey: env.BREVO_API_KEY,
   mailFrom: env.ASV_MAIL_FROM,
+  mistralApiKey: env.ASV_MISTRAL_API_KEY,
+  triageModel: env.ASV_TRIAGE_MODEL,
   logFile: env.ASV_LOG_FILE,
   vaultFile: env.ASV_VAULT_FILE,
   behindTunnel: tunnel,

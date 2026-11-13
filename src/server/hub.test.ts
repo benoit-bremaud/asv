@@ -62,6 +62,7 @@ const quietModeration: ModerationStore = {
   saveReport: unused,
   findReport: unused,
   openReports: unused,
+  saveTriage: unused,
   saveBan: unused,
   activeBan: () => Promise.resolve(undefined),
   purgeExpired: () => Promise.resolve(),

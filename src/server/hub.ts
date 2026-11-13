@@ -24,6 +24,7 @@ import {
   type ConnectionLogStore,
   type HubState,
   type Mailer,
+  type ReportTriage,
   type OfficialRoom,
   type RoomsResult,
 } from "../domain";
@@ -63,6 +64,8 @@ export interface HubDeps {
   readonly onStoreError: (error: unknown) => void;
   /** Reports and bans behind the crypto of ADR-0017 (`moderation/04`). */
   readonly moderation: ModerationIo;
+  /** AI triage of reports (ADR-0019, BR-101); the no-AI adapter when absent. */
+  readonly triage?: ReportTriage;
   /** Key of the passkey grants, drawn at start (BR-095); absent, no session can be a moderator. */
   readonly grantKey?: CryptoKey;
   /** False behind the tester tunnel: `report` answers `notAvailable` until brick 8c (`moderation/01`). */

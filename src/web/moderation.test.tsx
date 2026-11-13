@@ -329,7 +329,7 @@ describe("queue dialog (UC12, web-ui/08)", () => {
     expect(connection.send).toHaveBeenCalledWith({ type: "listOpenReports", payload: {} });
     const dialog = screen.getByRole("dialog", { name: STRINGS.queueTitle });
     expect(within(dialog).getByText(STRINGS.queueLoading)).toBeTruthy();
-    await msg("openReports", { reports: [queued("a")] });
+    await msg("openReports", { reports: [queued("a")], total: 1 });
     expect(within(dialog).getByText(STRINGS.queueTarget(true, true, 1))).toBeTruthy();
 
     await user.click(within(dialog).getByRole("button", { name: STRINGS.noAction }));
@@ -343,11 +343,33 @@ describe("queue dialog (UC12, web-ui/08)", () => {
     expect(within(dialog).getByText(STRINGS.queueEmpty)).toBeTruthy();
   });
 
+  it("shows the urgency, the AI triage as text with its legend, and asks the next report once one closes (BR-100, BR-102)", async () => {
+    const user = await setup();
+    await enterChat(true);
+    await user.click(screen.getByRole("button", { name: STRINGS.queue }));
+    const dialog = screen.getByRole("dialog", { name: STRINGS.queueTitle });
+    const triage = { category: "threat", urgency: "high", summary: "<b>[A]</b> menace [B]", labels: [{ label: "[A]", pseudo: "bob" }, { label: "[B]", pseudo: "ana" }] };
+
+    await msg("openReports", { reports: [queued("a", { triage }), queued("b")], total: 3 });
+
+    expect(within(dialog).getByText(STRINGS.urgency(STRINGS.urgencies.high))).toBeTruthy();
+    expect(within(dialog).getByText(STRINGS.urgency(STRINGS.urgencies.unknown))).toBeTruthy();
+    expect(within(dialog).getByText(`: ${STRINGS.categories.threat} — <b>[A]</b> menace [B]`, { exact: false })).toBeTruthy();
+    expect(within(dialog).getByText("[A] = bob, [B] = ana")).toBeTruthy();
+    expect(within(dialog).getByText(STRINGS.queueCount(2, 3))).toBeTruthy();
+    expect(dialog.querySelector("b")).toBeNull();
+    connection.send.mockClear();
+
+    await msg("reportClosed", { reportId: "a" });
+
+    expect(connection.send).toHaveBeenCalledWith({ type: "listOpenReports", payload: {} });
+  });
+
   it("asks for the suspension at the third strike, both ways", async () => {
     const user = await setup();
     await enterChat(true);
     await user.click(screen.getByRole("button", { name: STRINGS.queue }));
-    await msg("openReports", { reports: [queued("a")] });
+    await msg("openReports", { reports: [queued("a")], total: 1 });
 
     await msg("suspensionProposed", { accountId: "acc", reportId: "a", activeStrikes: 3 });
     await user.click(screen.getByRole("button", { name: STRINGS.suspend }));
@@ -362,7 +384,7 @@ describe("queue dialog (UC12, web-ui/08)", () => {
     const user = await setup();
     await enterChat(true);
     await user.click(screen.getByRole("button", { name: STRINGS.queue }));
-    await msg("openReports", { reports: [queued("a", { struck: true, activeStrikes: 3 })] });
+    await msg("openReports", { reports: [queued("a", { struck: true, activeStrikes: 3 })], total: 1 });
     const dialog = screen.getByRole("dialog", { name: STRINGS.queueTitle });
 
     await user.click(within(dialog).getByRole("button", { name: STRINGS.askSuspension }));

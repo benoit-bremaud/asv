@@ -11,6 +11,7 @@ export * from "./private";
 export * from "./entry";
 export * from "./ports";
 export * from "./pseudo";
+export * from "./triage";
 export {
   countMessage,
   createRoom,

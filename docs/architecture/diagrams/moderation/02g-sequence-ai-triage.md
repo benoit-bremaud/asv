@@ -50,7 +50,11 @@ sequenceDiagram
 
 ## Notes
 
-- Pseudonymisation is a pure domain function (no I/O), so it is unit-tested without the adapter.
+- Pseudonymisation is a pure domain function (no I/O), so it is unit-tested without the adapter. The
+  target gets `[A]` when it has a pseudo; then labels follow first appearance in the context lines
+  (author prefix `pseudo: ` as the web client writes it, then whole words). The excerpt of a message
+  report is sent last as the target's line. A word with a trailing `.`, `-` or `_` also matches the
+  pseudo without it (`bob.` ends a sentence).
 - `unavailable` keeps the report as filed: urgency `unknown`, no summary. Nothing is retried.
 - A triage arriving after the report closed is dropped (`saveTriage` ignores a closed report).
 - The reported lines are untrusted input to the model: the adapter sends them as a JSON array inside a

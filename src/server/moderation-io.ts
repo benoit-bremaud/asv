@@ -2,7 +2,16 @@
  * Moderation storage seen through the crypto of ADR-0017 (`moderation/04`, `06`): the hub hands clear
  * reports to the domain; only ciphertext and keyed hashes reach the store.
  */
-import { foldPseudo, type BanDecision, type ModerationStore, type Report, type ReportOutcome, type StoredReport } from "../domain";
+import {
+  foldPseudo,
+  type BanDecision,
+  type ModerationStore,
+  type Report,
+  type ReportOutcome,
+  type StoredReport,
+  type Triage,
+  type TriageLabel,
+} from "../domain";
 import type { Crypto } from "./crypto/cipher";
 
 export interface ModerationIoDeps {
@@ -10,8 +19,17 @@ export interface ModerationIoDeps {
   readonly crypto: Crypto;
 }
 
-/** A stored report decrypted, with its closing if any. */
-export type LoadedReport = Report & Pick<StoredReport, "closed" | "struckAt">;
+/** A triage decrypted with its label map (BR-100). */
+export interface LoadedTriage extends Triage {
+  readonly labels: readonly TriageLabel[];
+}
+
+/** A stored report decrypted, with its closing and triage if any. */
+export type LoadedReport = Report & Pick<StoredReport, "closed" | "struckAt"> & { readonly triage?: LoadedTriage };
+
+const isLabel = (value: unknown): value is TriageLabel =>
+  typeof value === "object" && value !== null && typeof (value as Record<string, unknown>).label === "string" &&
+  typeof (value as Record<string, unknown>).pseudo === "string";
 
 const field = (id: string, name: string) => `report:${id}:${name}`;
 
@@ -39,8 +57,21 @@ export const createModerationIo = ({ store, crypto }: ModerationIoDeps) => {
     createdAt: report.createdAt,
   });
 
+  const toTriage = async (stored: StoredReport): Promise<LoadedTriage | undefined> => {
+    if (!stored.triage) return undefined;
+    const { category, urgency, summary, labels } = stored.triage;
+    const map: unknown = JSON.parse(await crypto.decrypt(labels, field(stored.id, "triageLabels")));
+    return {
+      category,
+      urgency,
+      summary: await crypto.decrypt(summary, field(stored.id, "triageSummary")),
+      labels: Array.isArray(map) ? map.filter(isLabel) : [],
+    };
+  };
+
   const toReport = async (stored: StoredReport): Promise<LoadedReport> => {
     const context: unknown = JSON.parse(await crypto.decrypt(stored.context, field(stored.id, "context")));
+    const triage = await toTriage(stored);
     return {
       id: stored.id,
       reason: stored.reason,
@@ -55,6 +86,7 @@ export const createModerationIo = ({ store, crypto }: ModerationIoDeps) => {
       createdAt: stored.createdAt,
       ...(stored.struckAt ? { struckAt: stored.struckAt } : {}),
       ...(stored.closed ? { closed: stored.closed } : {}),
+      ...(triage ? { triage } : {}),
     };
   };
 
@@ -77,6 +109,17 @@ export const createModerationIo = ({ store, crypto }: ModerationIoDeps) => {
     async openReports(): Promise<LoadedReport[]> {
       return Promise.all((await store.openReports()).map(toReport));
     },
+    /** BR-100, BR-101: summary and label map encrypted; the store ignores a closed report. */
+    async saveTriage(id: string, triage: Triage, labels: readonly TriageLabel[]): Promise<void> {
+      await store.saveTriage(id, {
+        category: triage.category,
+        urgency: triage.urgency,
+        summary: await crypto.encrypt(triage.summary, field(id, "triageSummary")),
+        labels: await crypto.encrypt(JSON.stringify(labels), field(id, "triageLabels")),
+      });
+    },
+    /** BR-101: the reporter's IP is counted by its keyed hash only. */
+    ipKeyedHash: (ip: string) => ipHash(ip),
     /** BR-055, BR-057: one outcome, the moderator and the time. */
     async closeReport(report: Report, outcome: ReportOutcome, by: string, at: Date): Promise<void> {
       await update(report.id, { closed: { outcome, by, at } });

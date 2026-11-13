@@ -7,7 +7,8 @@ import type { IncomingMessage } from "node:http";
 import { createConnection } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { clientAddress, startNodeServer, type NodeServer } from "./server";
+import { noAiTriage } from "../../server/triage/no-ai";
+import { clientAddress, reportTriage, startNodeServer, type NodeServer } from "./server";
 
 const ORIGIN = "http://localhost:5173";
 const FRAME_MS = 2000;
@@ -416,5 +417,25 @@ describe("moderator wiring (moderation/02f)", () => {
     } finally {
       warn.mockRestore();
     }
+  });
+});
+
+describe("report triage wiring (ADR-0019, BR-108)", () => {
+  const input = { reason: "spam" as const, targetKind: "chatter" as const, lines: [] };
+
+  it("uses no AI without a key or behind the tunnel", () => {
+    expect(reportTriage({}, false)).toBe(noAiTriage);
+    expect(reportTriage({ mistralApiKey: "key" }, true)).toBe(noAiTriage);
+  });
+
+  it("calls Mistral with the key and the configured model, the default one when empty", async () => {
+    const triageFetch = vi.fn<typeof fetch>().mockResolvedValue(new Response("{}", { status: 500 }));
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    await reportTriage({ mistralApiKey: "key", triageModel: "", triageFetch }, false).triage(input);
+    await reportTriage({ mistralApiKey: "key", triageModel: "mistral-large-latest", triageFetch }, false).triage(input);
+
+    const models = triageFetch.mock.calls.map(([, init]) => (JSON.parse(String(init?.body)) as { model: string }).model);
+    expect(models).toEqual(["mistral-small-latest", "mistral-large-latest"]);
   });
 });

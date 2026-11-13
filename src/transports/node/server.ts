@@ -18,9 +18,11 @@ import { createBrevoMailer } from "../../server/mailer/brevo";
 import { createFrameBudget, POLICY_CLOSE, type PolicyReason } from "../../server/frame-budget";
 import { OFFICIAL_ROOMS } from "../../server/official-rooms";
 import { createUpgradeLimiter, UPGRADE_LIMITS, type UpgradeVerdict } from "../../server/upgrade-limit";
-import type { ConnectionLogStore, LegalVaultStore, Mailer } from "../../domain";
+import type { ConnectionLogStore, LegalVaultStore, Mailer, ReportTriage } from "../../domain";
 import { CAPS } from "../../shared/protocol";
 import { createModerationIo } from "../../server/moderation-io";
+import { createMistralTriage } from "../../server/triage/mistral";
+import { noAiTriage } from "../../server/triage/no-ai";
 import { createModeratorOps } from "../../server/hub-moderators";
 import { createGrantKey } from "../../server/moderator-grant";
 import { createModeratorIo } from "../../server/moderator-io";
@@ -57,6 +59,11 @@ export interface NodeServerOptions {
   /** Brevo key and sender (ADR-0013); without a key, codes are logged (development). */
   readonly brevoApiKey?: string;
   readonly mailFrom?: string;
+  /** `ASV_MISTRAL_API_KEY` and `ASV_TRIAGE_MODEL` (ADR-0019); without a key, or behind the tunnel, no AI triage. */
+  readonly mistralApiKey?: string;
+  readonly triageModel?: string;
+  /** Injected in tests; the global `fetch` of the Mistral adapter otherwise. */
+  readonly triageFetch?: typeof fetch;
   /** Injected in tests to read the codes; Brevo otherwise. */
   readonly mailer?: Mailer;
   /** JSONL connection log and legal vault (BR-084); memory when absent (development and tests). */
@@ -129,6 +136,17 @@ const deviceCookie = (header: string | undefined): string | undefined => {
 
 // The default `binaryType` ("nodebuffer") delivers one Buffer; the other shapes are typed, never sent.
 const toText = (data: RawData): string => (Array.isArray(data) ? Buffer.concat(data) : Buffer.from(data as ArrayBuffer)).toString();
+
+/** ADR-0019, BR-108: Mistral only with a key and outside the tester tunnel, the no-AI adapter otherwise. */
+export const reportTriage = (options: Pick<NodeServerOptions, "mistralApiKey" | "triageModel" | "triageFetch">, behindTunnel: boolean): ReportTriage =>
+  options.mistralApiKey && !behindTunnel
+    ? createMistralTriage({
+      apiKey: options.mistralApiKey,
+      model: options.triageModel || undefined,
+      fetch: options.triageFetch,
+      log: (fields) => console.error("triage", fields),
+    })
+    : noAiTriage;
 
 /** BR-098: the Vite origin of development. */
 export const DEFAULT_PUBLIC_ORIGIN = "http://localhost:5173";
@@ -219,6 +237,7 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
     mailer,
     onStoreError: (error) => console.error("account store failed", error),
     moderation: createModerationIo({ store: moderation, crypto }),
+    triage: reportTriage(options, behindTunnel),
     grantKey,
     canReport: !behindTunnel,
   });

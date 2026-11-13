@@ -1,29 +1,36 @@
 /**
- * Brick 8a commands of the hub (`moderation/02a`, `02d`, `04`): report, the queue, expel, warn by closing
- * a report, and the three-strike suspension. No AI triage (BR-092); a human decides every sanction
- * (ADR-0010).
+ * Moderation commands of the hub (`moderation/02a`, `02d`, `02g`, `04`): report and its AI triage (brick 8c,
+ * BR-100 to BR-102), the queue, expel, warn by closing a report, and the three-strike suspension. The AI
+ * only sorts; a human decides every sanction (ADR-0010).
  */
 import {
   activeStrikes,
   addStrike,
+  applyFloor,
+  emptyTriageQuota,
   canSuspend,
   closeAccount,
   decideExpel,
   fileReport,
   isModerator,
   liveTarget,
+  pseudonymise,
   sessionsOfAccount,
-  sortOpenReports,
+  sortForQueue,
   suspensionUntil,
+  takeTriageSlot,
   type HubState,
   type Mailer,
   type Random,
   type Report,
+  type ReportTriage,
+  type TriageQuota,
 } from "../domain";
 import type { ClientMessage } from "../shared/protocol";
 import type { AccountIo } from "./account-io";
 import type { LoadedReport, ModerationIo } from "./moderation-io";
 import type { Outgoing, OutgoingModule, Payload } from "./outgoing";
+import { noAiTriage } from "./triage/no-ai";
 
 type Command<T extends ClientMessage["type"]> = Extract<ClientMessage, { type: T }>;
 
@@ -40,7 +47,12 @@ export interface ModerationDeps {
   readonly accounts: AccountIo;
   readonly mailer: Mailer;
   readonly onStoreError: (error: unknown) => void;
+  /** The AI triage (ADR-0019); the no-AI adapter when absent. */
+  readonly triage?: ReportTriage;
 }
+
+/** BR-102: the queue shows the first 50 open reports and the open count. */
+export const QUEUE_PAGE = 50;
 
 /** What the moderation handlers share with the hub. */
 export interface ModerationContext {
@@ -82,17 +94,45 @@ interface PendingStatement {
 export const createModerationHandlers = (ctx: ModerationContext) => {
   const { deps, out } = ctx;
   let pending: PendingStatement[] = [];
+  let quota: TriageQuota = emptyTriageQuota;
+  const triage = deps.triage ?? noAiTriage;
 
   const forbidden = (caller: ModerationCaller, seq: number): Outgoing[] => [out.error(caller.key, "forbidden", seq)];
   const notAvailable = (caller: ModerationCaller, seq: number): Outgoing[] => [out.error(caller.key, "invalid", seq, "notAvailable")];
 
-  /** UC9 (`moderation/02a`): stored before `reportSent`. */
+  /**
+   * `moderation/02g`: both daily caps are checked before the call (BR-101); the triage of a report closed
+   * meanwhile is dropped by the store. Never rejects: errors go to `onStoreError`.
+   */
+  const runTriage = async (report: Report, known: readonly string[], reporter: { ip?: string; accountId?: string }, now: Date) => {
+    try {
+      const keys = [
+        ...(reporter.ip === undefined ? [] : [`ip:${await deps.moderation.ipKeyedHash(reporter.ip)}`]),
+        ...(reporter.accountId === undefined ? [] : [`account:${reporter.accountId}`]),
+      ];
+      const slot = takeTriageSlot(quota, keys, now);
+      if (!slot) return;
+      quota = slot;
+      const { input, labels } = pseudonymise(report, known);
+      const answer = await triage.triage(input);
+      if (answer === "unavailable") return;
+      await deps.moderation.saveTriage(report.id, applyFloor(report.reason, answer), labels);
+    } catch (cause) {
+      deps.onStoreError(cause);
+    }
+  };
+
+  /** UC9 (`moderation/02a`): stored before `reportSent`; the triage follows without delaying it (`02g`). */
   const onReport: ModerationHandler<"report"> = async (caller, command, now) => {
     const { payload } = command;
-    const result = fileReport(ctx.state(), { sessionId: caller.sessionId, ...payload }, now, deps.random);
+    const state = ctx.state();
+    const result = fileReport(state, { sessionId: caller.sessionId, ...payload }, now, deps.random);
     if (result.kind === "refused") return [out.warning(caller.key, result.reason === "rate" ? "reportRate" : "reportInvalid", command.seq)];
     await deps.moderation.saveReport(result.report);
     ctx.setState(result.state);
+    const reporter = state.sessions.get(caller.sessionId);
+    const known = [...state.sessions.values()].map((session) => session.pseudo);
+    void runTriage(result.report, known, { ip: reporter?.status === "connected" ? reporter.ip : undefined, accountId: reporter?.accountId }, now);
     return [out.send([caller.key], "reportSent", { reportId: result.report.id })];
   };
 
@@ -116,13 +156,15 @@ export const createModerationHandlers = (ctx: ModerationContext) => {
     connected: liveTarget(ctx.state(), report)?.status === "connected",
     activeStrikes: await strikesOf(report, now),
     struck: report.struckAt !== undefined,
+    ...(report.triage ? { triage: { ...report.triage, labels: [...report.triage.labels] } } : {}),
   });
 
-  /** UC12 step 2, oldest first (BR-092). */
+  /** UC12 step 2: the first 50 in BR-102 order, and the open count. */
   const onList: ModerationHandler<"listOpenReports"> = async (caller, command, now) => {
     if (!isModerator(ctx.state(), caller.sessionId)) return forbidden(caller, command.seq);
-    const reports = sortOpenReports(await deps.moderation.openReports());
-    return [out.send([caller.key], "openReports", { reports: await Promise.all(reports.map((report) => toPayload(report, now))) })];
+    const open = sortForQueue(await deps.moderation.openReports());
+    const reports = await Promise.all(open.slice(0, QUEUE_PAGE).map((report) => toPayload(report, now)));
+    return [out.send([caller.key], "openReports", { reports, total: open.length })];
   };
 
   /** The open report a moderator acts on, or the answer to send instead. */
@@ -263,7 +305,7 @@ export const createModerationHandlers = (ctx: ModerationContext) => {
     closeReport: guarded(onCloseReport),
     confirmSuspension: guarded(onConfirm),
     declineSuspension: guarded(onDecline),
-    /** `warn` and `removeRoom` wait for brick 8c (BR-092). */
+    /** `warn` and `removeRoom` wait for brick 8c-2. */
     later: (caller: ModerationCaller, command: ClientMessage): Promise<Outgoing[]> =>
       Promise.resolve(isModerator(ctx.state(), caller.sessionId) ? notAvailable(caller, command.seq) : forbidden(caller, command.seq)),
     /** Called from the hub tick, never awaited there; one retry round every `STATEMENT_RETRY_MS` (BR-076). */

@@ -2,6 +2,7 @@
  * Ports the hub calls; transports implement them (`platform/03`, `platform/04c`).
  * Types only, so the domain stays pure.
  */
+import type { Triage, TriageInput } from "./triage";
 
 /** One line per socket connection, opened on entry or resume (BR-060). */
 export interface ConnectionLine {
@@ -61,11 +62,22 @@ export interface StoredReport {
   readonly createdAt: Date;
   /** Set once a warning on this report gave its strike, so a repeated `warned` adds none (BR-074). */
   readonly struckAt?: Date;
+  /** The AI triage (BR-100, BR-101): category and urgency clear, summary and label map ciphertext. */
+  readonly triage?: StoredTriage;
   readonly closed?: {
     readonly outcome: "noAction" | "warned" | "expelled" | "suspended";
     readonly by: string;
     readonly at: Date;
   };
+}
+
+/** A triage as stored with its report (`moderation/04`, ADR-0017). */
+export interface StoredTriage {
+  readonly category: Triage["category"];
+  readonly urgency: Triage["urgency"];
+  readonly summary: string;
+  /** Ciphertext of the JSON label map `[{ label, pseudo }]` (BR-100). */
+  readonly labels: string;
 }
 
 /** A ban as stored: keyed hashes of the IP and of the folded pseudo (BR-053, BR-055, ADR-0017). */
@@ -84,11 +96,21 @@ export interface ModerationStore {
   saveReport(report: StoredReport): Promise<void>;
   findReport(id: string): Promise<StoredReport | undefined>;
   openReports(): Promise<readonly StoredReport[]>;
+  /** Sets the triage of an open report; a closed or missing report is left as it is (`moderation/05`). */
+  saveTriage(id: string, triage: StoredTriage): Promise<void>;
   saveBan(ban: StoredBan): Promise<void>;
   /** The latest-ending ban matching either key and still running at `now`. */
   activeBan(ipKeyedHash: string, pseudoKeyedHash: string, now: Date): Promise<StoredBan | undefined>;
   /** BR-061: closed reports after 6 months; BR-062: bans 30 days after their end. */
   purgeExpired(now: Date): Promise<void>;
+}
+
+/**
+ * The third-party AI behind ADR-0010 and ADR-0019: takes lines already pseudonymised (BR-100) and never
+ * rejects; a refused, late or invalid answer is `unavailable` (BR-101).
+ */
+export interface ReportTriage {
+  triage(input: TriageInput): Promise<Triage | "unavailable">;
 }
 
 /** An enrolled moderator (`moderation/04`, BR-099): name, credential id and key encrypted, looked up by keyed hash. */

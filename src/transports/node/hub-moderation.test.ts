@@ -3,7 +3,7 @@
  * stores of the Node transport. Only the mailer, the boundary, is a fake.
  */
 import { describe, expect, it, vi } from "vitest";
-import type { Mailer } from "../../domain";
+import type { Mailer, ReportTriage, Triage, TriageInput } from "../../domain";
 import type { ServerMessage } from "../../shared/protocol";
 import { createAccountIo } from "../../server/account-io";
 import { createCrypto } from "../../server/crypto/cipher";
@@ -22,7 +22,7 @@ const later = (ms: number) => new Date(T0.getTime() + ms);
 const HOUR = 60 * 60_000;
 const DAY = 24 * HOUR;
 
-const setup = async (options: { mailAccepted?: boolean; canReport?: boolean } = {}) => {
+const setup = async (options: { mailAccepted?: boolean; canReport?: boolean; triage?: ReportTriage } = {}) => {
   const grantKey = await createGrantKey();
   /** A fresh passkey grant for "Marc" (BR-095). */
   const grant = (at: Date = T0) => signGrant(grantKey, "Marc", at);
@@ -59,6 +59,7 @@ const setup = async (options: { mailAccepted?: boolean; canReport?: boolean } = 
     moderation: createModerationIo({ store: moderationStore, crypto }),
     grantKey,
     canReport: options.canReport,
+    triage: options.triage,
   });
   let seq = 0;
   const send = (key: string, type: string, payload: object, now = T0) => hub.receive(key, JSON.stringify({ type, seq: ++seq, payload }), now);
@@ -544,5 +545,121 @@ describe("hardening (review round 1)", () => {
 
     expect(only(await enter("1", "Lola"), "warning").payload).toMatchObject({ code: "unavailable" });
     expect(onStoreError).toHaveBeenCalled();
+  });
+});
+
+describe("AI triage of a report (moderation/02g, BR-100 to BR-102)", () => {
+  const answer: Triage = { category: "harassment", urgency: "high", summary: "[A] insulte [B]" };
+  /** A fake of the provider boundary that records what left asv. */
+  const fakeTriage = (result: Triage | "unavailable" | Error = answer) => {
+    const inputs: TriageInput[] = [];
+    const triage: ReportTriage = {
+      triage: (input) => {
+        inputs.push(input);
+        return result instanceof Error ? Promise.reject(result) : Promise.resolve(result);
+      },
+    };
+    return { triage, inputs };
+  };
+  const listed = async (send: (key: string, type: string, payload: object, now?: Date) => Promise<Outgoing[]>) =>
+    only(await send("9", "listOpenReports", {}, later(5)), "openReports").payload;
+
+  it("sends only labelled lines, stores the triage encrypted, and shows it with its legend", async () => {
+    const { triage, inputs } = fakeTriage();
+    const { enterAs, send, owner, moderationStore } = await setup({ triage });
+    await enterAs("1", "Lola");
+    await enterAs("2", "Max");
+
+    const out = await send("1", "report", { targetKind: "message", targetPseudo: "Max", reason: "harassment", excerpt: "lola tu es nulle", context: ["Lola: salut max", "Max: lola tu es nulle"] });
+
+    expect(find(out, "reportSent")).toHaveLength(1);
+    await vi.waitFor(() => expect(moderationStore.dump().reports[0]?.triage).toBeDefined());
+    expect(inputs).toEqual([{ reason: "harassment", targetKind: "message", lines: ["[B]: salut [A]", "[A]: [B] tu es nulle", "[A]: [B] tu es nulle"] }]);
+    const stored = JSON.stringify(moderationStore.dump().reports);
+    expect(stored).not.toContain("insulte [B]");
+    expect(stored).not.toContain("Lola");
+    await owner();
+    expect((await listed(send)).reports[0]?.triage).toEqual({
+      ...answer,
+      labels: [{ label: "[A]", pseudo: "Max" }, { label: "[B]", pseudo: "Lola" }],
+    });
+  });
+
+  it("raises a low urgency to medium on a seemsMinor report (BR-101)", async () => {
+    const { triage } = fakeTriage({ ...answer, urgency: "low" });
+    const { enterAs, send, owner, moderationStore } = await setup({ triage });
+    await enterAs("1", "Lola");
+    await enterAs("2", "Max");
+    await send("1", "report", { targetKind: "chatter", targetPseudo: "Max", reason: "seemsMinor", excerpt: "", context: [] });
+    await vi.waitFor(() => expect(moderationStore.dump().reports[0]?.triage).toBeDefined());
+    await owner();
+
+    expect((await listed(send)).reports[0]?.triage?.urgency).toBe("medium");
+  });
+
+  it("leaves the report unknown when the triage is unavailable or fails, never delaying reportSent", async () => {
+    const failing = fakeTriage(new Error("down"));
+    const { enterAs, send, owner, onStoreError, reportMax } = await setup({ triage: failing.triage });
+    await enterAs("1", "Lola");
+    await enterAs("2", "Max");
+
+    await reportMax();
+
+    await vi.waitFor(() => expect(onStoreError).toHaveBeenCalledWith(new Error("down")));
+    await owner();
+    expect((await listed(send)).reports[0]).not.toHaveProperty("triage");
+  });
+
+  it("drops a triage arriving after the report closed (moderation/05)", async () => {
+    let resolve: (value: Triage) => void = () => undefined;
+    const triage: ReportTriage = { triage: () => new Promise((done) => (resolve = done)) };
+    const { enterAs, send, owner, moderationStore, reportMax } = await setup({ triage });
+    await enterAs("1", "Lola");
+    await enterAs("2", "Max");
+    const reportId = await reportMax();
+    await owner();
+    await send("9", "closeReport", { reportId, outcome: "noAction" });
+
+    resolve(answer);
+
+    await vi.waitFor(() => expect(moderationStore.dump().reports[0]?.closed).toBeDefined());
+    await new Promise((done) => setTimeout(done, 0));
+    expect(moderationStore.dump().reports[0]?.triage).toBeUndefined();
+  });
+
+  it("stops calling after 20 reports from one reporter in a UTC day, and starts again the next day (BR-101)", async () => {
+    const { triage, inputs } = fakeTriage("unavailable");
+    const { enterAs, send } = await setup({ triage });
+    await enterAs("1", "Lola");
+    await enterAs("2", "Max");
+    // BR-052 allows 5 reports per 10 minutes: space them out.
+    for (let n = 0; n < 21; n++) await send("1", "report", { targetKind: "chatter", targetPseudo: "Max", reason: "spam", excerpt: "", context: [] }, later(n * 11 * 60_000));
+    await vi.waitFor(() => expect(inputs).toHaveLength(20));
+
+    await send("1", "report", { targetKind: "chatter", targetPseudo: "Max", reason: "spam", excerpt: "", context: [] }, later(DAY));
+
+    await vi.waitFor(() => expect(inputs).toHaveLength(21));
+  });
+
+  it("lists by urgency then oldest, the first 50 only, with the open count (BR-102)", async () => {
+    let calls = 0;
+    // Only the first report gets a triage, a low one: it sorts after every unknown spam report.
+    const triage: ReportTriage = { triage: () => Promise.resolve(++calls === 1 ? { ...answer, urgency: "low" } : "unavailable") };
+    const { enterAs, send, owner, moderationStore } = await setup({ triage });
+    await enterAs("1", "Lola");
+    await enterAs("2", "Max");
+    for (let n = 0; n < 52; n++) await send("1", "report", { targetKind: "chatter", targetPseudo: "Max", reason: "spam", excerpt: "", context: [] }, later(n * 11 * 60_000));
+    await send("1", "report", { targetKind: "chatter", targetPseudo: "Max", reason: "illegalContent", excerpt: "", context: [] }, later(53 * 11 * 60_000));
+    await vi.waitFor(() => expect(moderationStore.dump().reports[0]?.triage).toBeDefined());
+    const [first, second] = moderationStore.dump().reports;
+    await owner();
+
+    const { reports, total } = await listed(send);
+
+    expect(total).toBe(53);
+    expect(reports).toHaveLength(50);
+    expect(reports[0]?.reason).toBe("illegalContent");
+    expect(reports[1]?.id).toBe(second?.id);
+    expect(reports.map((report) => report.id)).not.toContain(first?.id);
   });
 });

@@ -107,6 +107,30 @@ describe("serverMessage", () => {
   });
 });
 
+describe("openReports triage (BR-100, BR-102)", () => {
+  const list = (triage: object) => ({
+    type: "openReports",
+    seq: 1,
+    payload: {
+      total: 1,
+      reports: [{
+        id: "r", reason: "spam", targetKind: "chatter", excerpt: "", context: [], authorPseudo: "ana", createdAt: "2026-11-13T10:00:00.000Z",
+        hasAccount: false, connected: true, activeStrikes: 0, struck: false, triage,
+      }],
+    },
+  });
+  const triage = { category: "spam", urgency: "low", summary: "[A] spamme", labels: [{ label: "[A]", pseudo: "bob" }] };
+
+  it("carries the category, urgency, summary and label legend", () => {
+    expect(serverMessage.safeParse(list(triage)).success).toBe(true);
+  });
+
+  it("refuses a category outside BR-101 and a list without its total", () => {
+    expect(serverMessage.safeParse(list({ ...triage, category: "insult" })).success).toBe(false);
+    expect(serverMessage.safeParse({ ...list(triage), payload: { reports: list(triage).payload.reports } }).success).toBe(false);
+  });
+});
+
 describe("transport caps (issue #13)", () => {
   const ok = (msg: unknown) => clientMessage.safeParse(msg).success;
   const x = (n: number) => "x".repeat(n);

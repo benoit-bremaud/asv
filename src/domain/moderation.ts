@@ -31,7 +31,7 @@ export type ExpelDuration = keyof typeof EXPEL_DURATIONS_MS;
 /** BR-050. */
 export type ReportReason = "harassment" | "seemsMinor" | "spam" | "illegalContent" | "other";
 export type ReportTargetKind = "chatter" | "message" | "room";
-/** The outcomes brick 8a offers (BR-057, BR-092). */
+/** The outcomes offered until brick 8c-2 (BR-057). */
 export type ReportOutcome = "noAction" | "warned" | "expelled" | "suspended";
 
 /** A report as the domain sees it, values in clear (`moderation/04`). */
@@ -179,7 +179,3 @@ export const suspensionUntil = (now: Date): Date => new Date(now.getTime() + MOD
 /** Sessions of an account, connected or away, that a suspension closes (BR-077). */
 export const sessionsOfAccount = (state: HubState, accountId: string): Session[] =>
   [...state.sessions.values()].filter((session) => session.accountId === accountId);
-
-/** Open reports oldest first (BR-092). */
-export const sortOpenReports = <R extends { readonly createdAt: Date }>(reports: readonly R[]): R[] =>
-  [...reports].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
