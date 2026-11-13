@@ -37,14 +37,11 @@ sequenceDiagram
       M->>H: confirmSuspension(accountId, reportId)
       H->>D: suspend(state, account, moderator, now)
       D-->>H: Statement + block until now + 7 days + all sessions and away records + IP and pseudo ban
-      H->>ML: send statement of reasons
-      alt Mail accepted
-        H->>AS: blockEmail, deleteAccount + vault record, same transaction (BR-081)
-      else Mail failed
-        H->>AS: blockEmail, deleteAccount + vault record, same transaction, keep pending statement for retry
-      end
-      H->>ST: save ban, close report with outcome suspended
+      H->>ST: save ban (keyed IP and pseudo hashes)
+      H->>AS: blockEmail, deleteAccount + vault record, same transaction (BR-081)
+      H-)ML: send statement of reasons, not awaited (refused: retried every 10 min, BR-076)
       H-->>T: expelled(until) then close every socket of the account
+      H->>ST: close report with outcome suspended
       H-->>M: reportClosed
     else Moderator declines
       M->>H: declineSuspension(accountId, reportId)
@@ -58,6 +55,9 @@ sequenceDiagram
 
 - A second `closeReport(warned)` on the same report adds no strike (`struckAt`, BR-074): it proposes
   the suspension again at three active strikes, otherwise closes the report as `warned`.
+- Write order on `confirmSuspension`: a failure before the account deletion leaves the report open
+  to retry on; after it, the statement and the evictions still happen and only the report stays open
+  (`warning(unavailable)` to the moderator, #212).
 - The report is closed once the final choice is known: outcome `warned` or `suspended` (BR-057).
 - If the moderator leaves before choosing, the proposal is shown again next time: it is derived from
   the active strikes, not stored (BR-075).
