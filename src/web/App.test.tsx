@@ -2193,6 +2193,23 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
   };
   const searchClosed = () => screen.queryByRole("dialog", { name: STRINGS.searchTitle }) === null;
 
+  it.each([
+    ["focus", (notice: HTMLElement) => act(async () => within(notice).getByRole("button", { name: STRINGS.dismiss }).focus())],
+    ["pointer", (notice: HTMLElement) => act(async () => fireEvent.mouseEnter(notice))],
+  ])("keeps a notice held by the %s in the search dialog, the page behind included (#199)", async (_by, hold) => {
+    const { dialog } = await openSearch();
+
+    vi.useFakeTimers();
+    try {
+      await fire({ type: "notice", code: "flood" });
+      await hold(within(dialog()).getByRole("alert"));
+      await act(async () => vi.advanceTimersByTime(NOTICE_MS * 2));
+      expect(screen.getAllByRole("alert", { hidden: true })).toHaveLength(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("opens the search of a room as a modal dialog (#111)", async () => {
     const { dialog } = await openSearch();
 
