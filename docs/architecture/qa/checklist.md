@@ -8,14 +8,14 @@ latest evidence are in [test-plan.md](test-plan.md)).
 > **Rule: every QA pass appends all its steps here**, in the same PR as its report: each manipulation (server
 > start, accounts, e-mail codes, toggles such as offline), each case with its exact keys, viewport and tool, each
 > console and network read, each issue filed. Never edit or drop an earlier row; a later pass that supersedes a
-> row adds its own. Last updated: 2026-11-13 (FN, #60, #68, #148, #110).
+> row adds its own. Last updated: 2026-11-13 (PP, #69).
 
 Report codes: **FP** `2026-10-24-full-pass` · **RS** `2026-10-24-tester-runbook-smoke` · **PD** `2026-11-02-65-private-dock`
 · **CS** `2026-11-02-code-step-resume` · **TS** `2026-11-02-test-plan-smoke` · **FL** `2026-11-03-89-frame-limit-full`
 · **SA** `2026-11-03-security-audit` (static review, findings only) · **SC** `2026-11-05-23-socket-caps-full` · **OH**
 `2026-11-05-64-one-h1-pass` · **BI** `2026-11-05-91-invisible-chars-pass` · **SZ** `2026-11-06-105-target-size-pass`
 · **AR** `2026-11-06-121-aria-invalid-pass` · **LS** `2026-11-06-126-legal-scroll-pass` · **AM**
-`2026-11-06-63-account-modal-pass` · **PF** `2026-11-12-131-private-focus-pass` · **CQ** `2026-11-12-147-crowd-campaign` · **PL** #153 label-in-name check (rows only) · **PI** #154 refused pseudo check (rows only) · **TT** #142 text target check (rows only) · **HW** #143 header wrap check (rows only) · **PM** #168 pseudo menu touch check (rows only) · **BT** #170 header button touch check (rows only) · **BB** #176 bevel button touch check (rows only) · **MF** #171 mobile-first stylesheet check (rows only) · **FN** #60, #68, #148 and #110 forms and notices check (rows only; Playwright Chromium, owner OK 2026-11-13) · **FS** #67 and #106 focus and composer name check (rows only; Playwright Chromium, owner OK 2026-11-13).
+`2026-11-06-63-account-modal-pass` · **PF** `2026-11-12-131-private-focus-pass` · **CQ** `2026-11-12-147-crowd-campaign` · **PL** #153 label-in-name check (rows only) · **PI** #154 refused pseudo check (rows only) · **TT** #142 text target check (rows only) · **HW** #143 header wrap check (rows only) · **PM** #168 pseudo menu touch check (rows only) · **BT** #170 header button touch check (rows only) · **BB** #176 bevel button touch check (rows only) · **MF** #171 mobile-first stylesheet check (rows only) · **FN** #60, #68, #148 and #110 forms and notices check (rows only; Playwright Chromium, owner OK 2026-11-13) · **FS** #67 and #106 focus and composer name check (rows only; Playwright Chromium, owner OK 2026-11-13) · **SN** #199 notice held in the search dialog check (rows only; Playwright Chromium) · **PP** #69 Permissions-Policy and `object-src` check (rows only; curl and Playwright Chromium).
 
 Seeding note: rows dated before 2026-11-12 are compressed from the reports' own result tables (action = the check
 column, observed = the evidence column cut at about 400 characters, evidence = screenshots, issues and head SHA);

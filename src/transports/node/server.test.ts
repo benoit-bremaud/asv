@@ -360,6 +360,7 @@ describe("tester exposure (ADR-0018)", () => {
       expect(page.headers.get("strict-transport-security")).toBe("max-age=15552000");
       expect(page.headers.get("content-security-policy")).toContain("default-src 'self'");
       expect(page.headers.get("x-content-type-options")).toBe("nosniff");
+      expect(page.headers.get("permissions-policy")).toContain("camera=()");
       expect(readFileSync(logFile, "utf8")).not.toContain('"old"');
 
       const client = await connect(port);
