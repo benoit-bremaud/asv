@@ -64,9 +64,9 @@ stateDiagram-v2
 - **Incoming window** (#67, WCAG 3.2.2 / 2.4.3, owner choice A 480/500): a window opened by the other
   chatter's first message shows as usual but never takes the focus; the chatter keeps typing where they were
   and the window's `aria-live` log announces the line. Only the chatter's own actions focus the composer:
-  "message privé" (Opening) and restoring a minimised tab. The store marks each window `focusOnOpen`
-  (true from `openPrivate` and the restore of `togglePrivate`, false from `privateWindow` with no pending window), and the composer
-  takes `autoFocus` from it.
+  "message privé" (a new, open or minimised window) and restoring a minimised tab (owner choice A 445/500
+  after review: also on an already open window). The store keeps a `focusRequest` count per window
+  (`web-ui/04`) and the composer takes the focus each time it grows.
 - **Windows**: at most 3 open (BR-043; the server enforces it). Each window holds its last 200 lines in
   memory only (BR-034), its own draft, the 500 code point counter and the BR-090 check of the room composer (BR-020, BR-090), with its refused-field marking (`web-ui/04`, #121), and an
   unread count while minimised. Lines render through the same `Renderer` (smileys, never HTML).

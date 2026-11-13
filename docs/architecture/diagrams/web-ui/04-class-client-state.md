@@ -42,6 +42,7 @@ classDiagram
     +Boolean minimised
     +Number unread
     +String presence : here, away, gone
+    +Number focusRequest
   }
   class SearchView {
     +String query
@@ -165,7 +166,10 @@ classDiagram
   the windows with that session; `ignoreUpdated` → `ignored`; `searchResults` → `search.results`, `pending`
   off; `resumed` → `windows` rebuilt minimised from `resumed.windows`, `buffered` appended with unread counts;
   `accountUnlinked` → `windows` emptied. A pending window (`openPrivate`, before the first message) is keyed
-  by the other session id until `privateWindow` gives its conversation id. The connection manager gains
+  by the other session id until `privateWindow` gives its conversation id. `focusRequest` (#67): `openPrivate`
+  (new or existing window) and a restore add 1, a new incoming `privateWindow` and `resumed` start at 0, a
+  minimise and a `privateWindow` for an existing or pending window keep it; the composer takes the focus on
+  each increase, never on an incoming window. The connection manager gains
   `sendPrivate`, `closePrivate`, `ignore`, `unignore` and `search`. Nothing of this is stored in the browser.
 
 - **D6**: one pure `chatReducer`, held by `useReducer` in `App` and shared through a React context. The

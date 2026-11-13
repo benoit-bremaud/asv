@@ -1815,6 +1815,23 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
       expect(document.activeElement).toBe(screen.getByRole("textbox", { name: STRINGS.privateMessageTo("bob") }));
     });
 
+    it("focuses an incoming window's composer, open or minimised, when the chatter picks \"message privé\"", async () => {
+      const user = await setup();
+      await signedIn();
+      await joinRoom("r1", [member(true)]);
+      await incoming();
+      const composer = () => screen.getByRole("textbox", { name: STRINGS.privateMessageTo("bob") });
+
+      await user.click(screen.getAllByRole("button", { name: STRINGS.pseudoButton("bob") })[0]!); // the members list, before the window title
+      await user.click(screen.getByRole("menuitem", { name: STRINGS.privateMessage }));
+      expect(document.activeElement).toBe(composer());
+
+      await user.click(within(screen.getByRole("dialog", { name: STRINGS.privateWith("bob") })).getByRole("button", { name: STRINGS.minimise }));
+      await user.click(screen.getAllByRole("button", { name: STRINGS.pseudoButton("bob") })[0]!); // the members list, before the window title
+      await user.click(screen.getByRole("menuitem", { name: STRINGS.privateMessage }));
+      expect(document.activeElement).toBe(composer());
+    });
+
     it("focuses the composer of an incoming window once the chatter restores it", async () => {
       const user = await setup();
       await signedIn();
