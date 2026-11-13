@@ -167,8 +167,9 @@ export const createModerationHandlers = (ctx: ModerationContext) => {
     }
     const strike = found ? addStrike(found.account.strikes, now) : undefined;
     if (found && strike) {
-      await deps.accounts.saveAccount({ ...found.account, strikes: strike.strikes }, found.emailKeyedHash, false);
+      // Mark first: a failure in between leaves a mark without strike, never a second strike on retry.
       await deps.moderation.markStruck(report.id, now);
+      await deps.accounts.saveAccount({ ...found.account, strikes: strike.strikes }, found.emailKeyedHash, false);
     }
     const to = found ? sessionsOfAccount(ctx.state(), found.account.id).map((session) => session.id) : target ? [target.id] : [];
     const warned = out.send(out.keysOf(to), "warned", { rule: report.reason, text: "", activeStrikes: strike?.active ?? 0 });
@@ -211,11 +212,11 @@ export const createModerationHandlers = (ctx: ModerationContext) => {
     const until = suspensionUntil(now);
     const decision = decideExpel(ctx.state(), report, "7d", INTERIM_MODERATOR, now);
     const closure = closeAccount(found.account, now);
-    // Ban, block and report first, the account deletion last: a failure in between leaves the account to retry on.
+    // Ban, block and delete the account before closing the report: a failure in between leaves the report open to retry on.
     await deps.moderation.saveBan({ ...decision.ban, until }, report.id, deps.random.id(), now);
     await deps.accounts.blockEmail(found.emailKeyedHash, until);
-    const closed = await close(caller, report, "suspended", now);
     await deps.accounts.close(closure.vault, found.emailKeyedHash, closure.carryOver);
+    const closed = await close(caller, report, "suspended", now);
     // Not awaited: the hub queue must not wait for the provider (ADR-0013 amendment).
     void trySend({ email: found.account.email, statement: suspensionStatement(until), giveUpAt: suspensionUntil(now) });
     const evicted: Outgoing[] = [];

@@ -10,8 +10,8 @@
 `src/server/hub.ts` holds the live hub state, validates incoming messages, calls the pure domain, writes
 the connection log and maps domain effects to protocol messages for the right sockets. It knows no socket
 API: transports give it socket keys and send what it returns. Written once, used by the Node transport
-(brick 7a) and wrapped by the Hub Durable Object (brick 9). Does not cover private conversations
-or moderation: those bricks add their commands to the handler map.
+(brick 7a) and wrapped by the Hub Durable Object (brick 9). Private conversations
+(`hub-private.ts`) and moderation (`hub-moderation.ts`) add their commands to the handler map.
 
 ## Diagram
 
@@ -147,6 +147,9 @@ The hub is split by command group, all behind the same `createHub(HubDeps)`:
 |---|---|
 | `src/server/hub.ts` | live state, sockets, serial queue, `receive`/`close`/`tick`, entry commands (`enter`, `resume`, `leave`), rooms commands, and the **handler map** |
 | `src/server/outgoing.ts` | effect mapping: `sessionOf`, `toMember`, `send`, `error`, `warning`, `keysOf`, `roomJoined`, `roomOutgoing` (with the `roomList` broadcast), `memberAwayInRooms`, `memberBackInRooms` |
+| `src/server/hub-moderation.ts` | brick 8a commands (`report`, `listOpenReports`, `expel`, `closeReport`, `confirmSuspension`, `declineSuspension`), the 8c `notAvailable` handler and the statement retry of the tick |
+| `src/server/moderation-io.ts` | encryption at rest of reports and keyed hashes of bans around the `ModerationStore` port (ADR-0017) |
+| `src/server/moderator-token.ts` | digest and constant-time check of the interim moderator token (BR-091) |
 | `src/server/hub-private.ts` | brick 6 commands (`sendPrivate`, `closePrivate`, `ignore`, `unignore`, `search`), contribution first for `sendPrivate`, and the private presence of `close`, away and resume |
 | `src/server/hub-accounts.ts` | account commands (`requestCode`, `verifyCode`, `signOutEverywhere`, `deleteAccount`) and their `warning unavailable` guard (`platform/04d`) |
 
@@ -191,7 +194,7 @@ classDiagram
 
 - **Handler map**: every `ClientMessage['type']` except `enter` and `resume` has an entry, so the type
   checker refuses a missing command. `enter` and `resume` are handled before the map because they need a
-  socket without session. Commands of later bricks map to one `notAvailable` handler.
+  socket without session. The brick 8c commands map to one `notAvailable` handler in `hub-moderation.ts`.
 - **Error text** defaults to the code (`error(key, "forbidden")` sends `message: "forbidden"`); only
   `frameTooLarge` and `notAvailable` pass a different text.
 - Each account handler is wrapped in the same guard: a store failure answers `warning unavailable` and
@@ -215,10 +218,10 @@ classDiagram
   `leave`; a socket without `bound` has no session.
 - **Socket without session**: only `enter` and `resume` are accepted; anything else → `error forbidden`.
   `enter` or `resume` on a socket that already has a session → `error invalid`.
-- **Commands of later bricks** (`report` and moderation commands) → `error invalid` with message `notAvailable` until their brick wires them.
-- **enter** (`entry/02a`): `activeBan` and `accountId` are absent until bricks 8 and 5. On `entered` the hub
+- **Moderation commands** (brick 8a): a chatter gets `error forbidden`; `report` answers `error invalid` with message `notAvailable` when `canReport` is false; the 8c commands always answer `notAvailable`.
+- **enter** (`entry/02a`): `activeBan` comes from `moderation.activeBan` (brick 8a), `accountId` from the device cookie (brick 5). On `entered` the hub
   draws a connection id (`random.id()`), awaits `log.open`, stores session id and connection id on the
-  socket, then sends `entered { sessionId, resumeToken, roomList, isModerator: false }`. If `log.open`
+  socket, then sends `entered { sessionId, resumeToken, roomList, isModerator, canReport }`. If `log.open`
   fails, the new state is dropped (the pseudo stays free) and the sender gets `error logUnavailable`; a
   failed resume likewise leaves the session away.
 - **resume** (`entry/02b`): the hub hashes the token with `hashToken` and passes `accountStillExists: true`
