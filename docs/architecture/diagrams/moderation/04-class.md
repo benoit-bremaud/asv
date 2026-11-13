@@ -1,8 +1,8 @@
 # Class diagram — moderation — reports, bans, moderators
 
 > **Feature**: moderation
-> **Business rules**: BR-050 to BR-057, BR-061, BR-062
-> **Related ADRs**: ADR-0008, ADR-0010, ADR-0011
+> **Business rules**: BR-050 to BR-057, BR-061, BR-062, BR-100 to BR-107
+> **Related ADRs**: ADR-0008, ADR-0010, ADR-0011, ADR-0019
 
 ## Context
 
@@ -24,12 +24,14 @@ classDiagram
     +String excerpt
     +String[] context
     +String authorPseudo
+    +AccountId reporterAccountId
     +Date createdAt
     +ReportStatus status
     +Triage triage
     +ReportOutcome outcome
     +String handledBy
     +Date handledAt
+    +AuthorityAlert alert
   }
   class ReportReason {
     <<enumeration>>
@@ -60,9 +62,33 @@ classDiagram
     roomRemoved
   }
   class Triage {
-    +String category
+    +TriageCategory category
     +Urgency urgency
     +String summary
+  }
+  class TriageCategory {
+    <<enumeration>>
+    harassment
+    sexualMinor
+    threat
+    hate
+    spam
+    illegalOther
+    none
+  }
+  class AuthorityAlert {
+    +String offenceCategory
+    +String raisedBy
+    +Date raisedAt
+    +AlertStatus status
+    +String channel
+    +String reference
+    +Date filedAt
+  }
+  class AlertStatus {
+    <<enumeration>>
+    pending
+    filed
   }
   class Urgency {
     <<enumeration>>
@@ -97,6 +123,8 @@ classDiagram
     +markStruck(id, at)
     +saveBan(ban)
     +activeBan(ipKeyedHash, pseudo, now) Ban
+    +saveAuthorityAlert(reportId, alert)
+    +recordFiling(reportId, channel, reference, at) Boolean
     +purgeExpired(now)
   }
   class ModeratorStore {
@@ -117,7 +145,7 @@ classDiagram
   }
   class ReportTriage {
     <<interface>>
-    +triage(context) Triage
+    +triage(input) Triage
   }
   Report --> ReportReason
   Report --> ReportTarget
@@ -125,6 +153,9 @@ classDiagram
   Report --> ReportOutcome
   Report *-- Triage
   Triage --> Urgency
+  Triage --> TriageCategory
+  Report *-- AuthorityAlert
+  AuthorityAlert --> AlertStatus
   ModerationStore ..> Report
   ModerationStore ..> Ban
   ModeratorStore ..> Moderator
@@ -179,3 +210,15 @@ The contract stays `platform/04-class-protocol`. Brick 8a uses it as follows:
 - `src/server/moderator-grant.ts` (BR-095) replaces `moderator-token.ts`. `enter.moderatorGrant` carries its serialised form.
 - The WebAuthn ceremonies sit in `src/server/moderator-routes.ts`, the only module importing
   `@simplewebauthn/server`; the web client uses `@simplewebauthn/browser`.
+
+## Brick 8c (#211)
+
+- `ReportTriage.triage` takes `{reason, targetKind, lines}` already pseudonymised by the domain (BR-100)
+  and resolves a `Triage` or `unavailable`; adapters: no-AI (unchanged) and Mistral (ADR-0019, BR-101).
+- `saveTriage` ignores a closed report. `purgeExpired` keeps a report with an alert 1 year (BR-105).
+- `Mailer` gains `sendAuthorityAlert(reportId, category)` and `sendReportDecision(email, decision)`,
+  both resolving `true` only when the provider accepted the mail, retried like BR-076.
+- Protocol: `expel` gains `severe` and `alertAuthorities`; `closeReport` gains `alertAuthorities`;
+  `removeRoom(reportId)` answers `reportClosed` or `warning(reportInvalid)`; `openReports` items gain
+  `triage` and `alert`. Outcomes `severeDeleted` and `roomRemoved` become available.
+- Owner route `POST /mod/authority-filings` (BR-093 guard, BR-097) and script `pnpm mod:filed`.

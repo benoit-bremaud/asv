@@ -60,3 +60,7 @@ because scanning private messages needs an impact assessment; C is reconsidered 
 The constraints above were read in the official texts: DSA arts. 14 and 16(6) (describe automated tools,
 mention them in decisions) and GDPR art. 22. An impact assessment (GDPR art. 35) is planned in brick 8.
 The decision stands. See `security-and-rgpd.md` §1.
+
+## Provider (brick 8c, 2026-11-13)
+
+Mistral, EU-hosted, chosen in ADR-0019. Impact assessment: `dpia/2026-11-13-moderation-dpia.md`.

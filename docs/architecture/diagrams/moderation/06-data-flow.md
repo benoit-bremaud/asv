@@ -15,7 +15,8 @@ flowchart LR
   Reporter(("Reporter"))
   Mod(("Moderator"))
   Owner(("Owner"))
-  AIProvider(("AI provider, processor"))
+  AIProvider(("Mistral, EU processor"))
+  Brevo(("Brevo, EU processor"))
   subgraph asv ["asv"]
     Hub["Hub"]
     Rep[("Reports with triage")]
@@ -24,12 +25,15 @@ flowchart LR
   end
   Reporter -->|"PII: reason, excerpt, context lines, author and target pseudo"| Hub
   Hub --> Rep
-  Hub -->|"context with neutral labels, no pseudos"| AIProvider
+  Hub -->|"labelled lines, e-mails and phones masked (BR-100)"| AIProvider
   AIProvider -->|"category, urgency, summary"| Hub
   Rep -->|"PII: excerpt, context, pseudos, summary"| Mod
   Mod -->|"expel decision"| Hub
   Hub -->|"PII: keyed IP hash, pseudo"| Bans
   Owner -->|"PII: moderator name"| Mods
+  Hub -->|"owner alert: report id, category"| Brevo
+  Hub -->|"PII: reporter e-mail, decision in general terms"| Brevo
+  Owner -->|"filing channel and reference"| Rep
   Mod -->|"public key"| Mods
 ```
 
@@ -46,3 +50,5 @@ flowchart LR
 - Brick 8a (#209): no flow to the AI provider and no moderator store yet; reports and bans are
   encrypted at rest (ADR-0017) in an in-memory store of the Node transport, lost at restart until a
   file or database store lands (8b).
+- Brick 8c (#211): the AI flow goes live with Mistral (ADR-0019); impact assessment
+  `dpia/2026-11-13-moderation-dpia.md`.

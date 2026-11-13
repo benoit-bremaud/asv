@@ -15,11 +15,12 @@ Links requirements to use cases and every use case to its realisations. All path
 | UC6 | Open a private conversation | F-008, F-020 | BR-013, BR-020, BR-021, BR-090, BR-040, BR-041, BR-043 | private-conversations/02 | private-conversations/04, private-conversations/07 | private-conversations/05, web-ui/07 | — |
 | UC7 | Find a chatter by pseudo or city | F-009 | BR-006, BR-042 | Spec | entry/04, directory/07 | web-ui/07 | directory/06 |
 | UC8 | Ignore a chatter | F-010 | BR-042, BR-044 | rooms/02, private-conversations/02 | private-conversations/04, private-conversations/07 | web-ui/07 | — |
-| UC9 | Report a chatter, a message or a room | F-011, F-019 | BR-050 to BR-052 | moderation/02a | moderation/04 | moderation/05, web-ui/08 | moderation/06 |
+| UC9 | Report a chatter, a message or a room | F-011, F-019 | BR-050 to BR-052, BR-100, BR-101, BR-107 | moderation/02a, moderation/02g | moderation/04 | moderation/05, web-ui/08 | moderation/06 |
 | UC10 | Leave the chat | F-017 | BR-015 | entry/02b (same closing steps) | entry/04, entry/07, rooms/07 | entry/05 | entry/06 |
-| UC11 | Expel a chatter | F-012, F-022, F-023 | BR-053 to BR-055, BR-076 to BR-078, BR-080, BR-081 | moderation/02a, moderation/02d | moderation/04, accounts/04 | entry/05, rooms/05, accounts/05 | moderation/06, accounts/06 |
-| UC12 | Review reports | F-013, F-019, F-022 | BR-054, BR-055, BR-057, BR-074, BR-075 | moderation/02a, moderation/02d | moderation/04, accounts/04 | moderation/05, accounts/05, web-ui/08 | moderation/06 |
+| UC11 | Expel a chatter | F-012, F-022, F-023 | BR-053 to BR-055, BR-076 to BR-078, BR-080, BR-081, BR-103, BR-104, BR-106 | moderation/02a, moderation/02d, moderation/02h, moderation/02i | moderation/04, accounts/04 | entry/05, rooms/05, accounts/05 | moderation/06, accounts/06 |
+| UC12 | Review reports | F-013, F-019, F-022 | BR-054, BR-055, BR-057, BR-074, BR-075, BR-102, BR-105, BR-107 | moderation/02a, moderation/02d, moderation/02g, moderation/02i | moderation/04, accounts/04 | moderation/05, accounts/05, web-ui/08 | moderation/06 |
 | UC13 | Resume my session after a disconnection | F-014 | BR-010 to BR-015, BR-090 | entry/02b | entry/04, entry/07, rooms/07 | entry/05 | entry/06 |
+| UC17 | File a severe case with the authorities | F-012 | BR-093, BR-097, BR-104, BR-105 | moderation/02h | moderation/04 | web-ui/08 | moderation/06 |
 | UC14 | Invite a moderator | F-015 | BR-056, BR-093 | moderation/02b, moderation/02f | moderation/04 | — | moderation/06 |
 | UC15 | Enroll as moderator | F-015 | BR-056, BR-094, BR-097 to BR-099 | moderation/02b, moderation/02f | moderation/04 | web-ui/09 | moderation/06 |
 | UC16 | Sign in as moderator | F-016 | BR-054, BR-095 to BR-098 | moderation/02c, moderation/02f | moderation/04 | web-ui/09 | — |

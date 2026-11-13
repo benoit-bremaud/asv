@@ -64,3 +64,4 @@ sequenceDiagram
 - The ban key is an HMAC of the IP with a server secret: pseudonymised, not anonymised.
 - Brick 8a (#209): `Report triage` is the no-AI adapter, urgency `unknown`, list oldest first (BR-092).
   Moderator rights come from the interim token (02e) until brick 8b.
+- Brick 8c (#211): triage detail in 02g, severe expel in 02h, room removal and decision e-mail in 02i.

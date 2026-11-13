@@ -2,8 +2,8 @@
 
 > **Feature**: moderation (roadmap brick 8)
 > **Requirements**: ASV-F-011 to F-013, F-015, F-016, F-019, F-022, F-023
-> **Business rules**: BR-050 to BR-057, BR-074 to BR-078, BR-091 to BR-099
-> **Related ADRs**: ADR-0004, ADR-0005, ADR-0008, ADR-0010, ADR-0012
+> **Business rules**: BR-050 to BR-057, BR-074 to BR-078, BR-091 to BR-108
+> **Related ADRs**: ADR-0004, ADR-0005, ADR-0008, ADR-0010, ADR-0012, ADR-0019
 
 ## Context
 
@@ -26,6 +26,7 @@ flowchart LR
     subgraph Handling ["Handling"]
       UC12(("UC12 Review reports"))
       UC11(("UC11 Expel a chatter"))
+      UC17(("UC17 File a severe case with the authorities"))
     end
     subgraph Access ["Moderator access"]
       UC14(("UC14 Invite a moderator"))
@@ -38,6 +39,8 @@ flowchart LR
   Moderator --> UC11
   Moderator --> UC16
   Owner --> UC14
+  Owner --> UC17
+  UC17 -.-> Authorities
   Invitee --> UC15
   UC11 -.->|"alerted in severe cases"| Authorities
   Moderator -.->|"generalizes"| Chatter
@@ -72,9 +75,8 @@ flowchart LR
   1. Moderator marks the expel as severe. 2. System deletes the account at once, without strikes, and
   blocks its e-mail hash for the longer period (BR-078); a chatter without an account gets the longest
   IP and pseudo ban. 3. System sends the statement of reasons. 4. When life or safety is threatened, the
-  moderator alerts the owner, who informs the authorities through the official channel (DSA art. 18 and LCEN art. 6 IV,
-  checked 2026-10-22; channel documented in brick 8). Authorities are a secondary actor of UC11.
-- Variant: remove a user room → its members get `roomClosed`.
+  moderator raises an authority alert (BR-104), and the owner files (UC17). Sequence 02h (brick 8c).
+- Variant: remove a user room → its members get `roomClosed` (BR-106, sequence 02i).
 - Closing the related report is a separate `closeReport` command.
 
 **UC14 — Invite a moderator** (brick 8b)
@@ -126,3 +128,19 @@ flowchart LR
 - The generalization means a Moderator, once signed in (UC16), has every Chatter goal too.
   UML draws it with a solid line and a hollow triangle, Mermaid cannot.
 - Revoking a moderator is an owner maintenance script (`deleteModerator`).
+
+**UC17 — File a severe case with the authorities** (brick 8c)
+- Primary actor: Owner. Secondary actor: Authorities. Trigger: an authority alert e-mail (BR-104).
+- Main scenario: 1. Owner opens the report in the queue. 2. Owner files through the official channel
+  (`security-and-rgpd.md` §6). 3. Owner runs `pnpm mod:filed <reportId> <channel> <reference>`.
+  4. System marks the alert `filed` with channel and reference.
+- Extensions: 3a. Wrong secret, non-loopback peer or tunnel → refused (BR-093, BR-097). 3b. Unknown
+  report or no alert → `404`.
+
+## Brick 8c scope (#211, 2026-11-13)
+
+- In, code PR 8c-1: AI triage of UC9 (Mistral, ADR-0019, sequence 02g), queue by urgency (BR-102), the
+  impact assessment (`dpia/2026-11-13-moderation-dpia.md`). BR-092 removed.
+- In, code PR 8c-2: severe variant of UC11 and the authority alert (02h, BR-103 to BR-105), UC17, room
+  removal (02i, BR-106), decision e-mail to a member reporter (BR-107).
+- Out: `warn` without a report stays `notAvailable`; tester exposure stays closed (BR-108).

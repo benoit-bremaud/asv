@@ -2,7 +2,7 @@
 
 > **Feature**: moderation
 > **Use cases**: UC9, UC12, UC11
-> **Business rules**: BR-057, BR-061
+> **Business rules**: BR-057, BR-061, BR-105
 
 ## Context
 
@@ -24,3 +24,5 @@ stateDiagram-v2
 - An open report is never deleted automatically: every report gets a human decision. This follows the
   DSA notice-and-action duty (art. 16(6), checked 2026-10-22, see `security-and-rgpd.md`).
 - The 6-month retention (BR-061) is an owner decision: no binding text sets it.
+- Brick 8c: triage may arrive while open only; a closed report ignores it. A report with an authority
+  alert is deleted 1 year after closing (BR-105).
