@@ -15,9 +15,8 @@ export const Notice = ({ show = () => true }: { readonly show?: (code: string) =
   const [heldSeq, setHeldSeq] = useState<number>();
   // The focus holds every notice shown while it stays on the (stable) notice, a new one included.
   const [focused, setFocused] = useState(false);
-  useEffect(() => {
-    if (!shown) setFocused(false);
-  }, [shown]);
+  // A notice removed under the focus sends no blur: reset during render (React's "adjust state on prop change").
+  if (!shown && focused) setFocused(false);
   const held = focused || heldSeq === noticeSeq;
   useEffect(() => {
     if (!shown || held) return;
