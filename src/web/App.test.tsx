@@ -759,6 +759,24 @@ describe("banners", () => {
     }
   });
 
+  it("lets the next notice expire after one cleared under the focus (#68)", async () => {
+    await setup();
+    await goOnline();
+    await enterChat();
+    await fromServer(msg("warning", { code: "flood", message: "m" }));
+    await act(async () => screen.getByRole("button", { name: STRINGS.dismiss }).focus());
+    await joinRoom("r1");
+
+    vi.useFakeTimers();
+    try {
+      await fire({ type: "notice", code: "full" });
+      await act(async () => vi.advanceTimersByTime(NOTICE_MS));
+      expect(screen.queryByRole("alert")).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("clears a stale refusal on the next room joined (#68)", async () => {
     await setup();
     await goOnline();
