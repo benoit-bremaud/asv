@@ -790,3 +790,19 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   #202 closed as a duplicate; follow-up #205 (`100vw` in `.privates` and `.legal-page`).
 - Merged 2026-11-13: PR #206 squash a9625cb with owner approval (no attestation); verify, gitleaks and SonarQube
   green on 35d7314; Codex found nothing. Next: brick 8 moderation (study first).
+
+## 2026-11-13 — #209 brick 8a: reports, human queue, expel and strikes
+
+- Study first (`moderation/01`–`06`, `platform/04`, `04c`, `web-ui/08`), then code: `report` (UC9),
+  interim owner access by `ASV_MODERATOR_TOKEN` (BR-091, refused with the tunnel, 5 wrong tokens per IP
+  per 10 min), queue (`listOpenReports`), `closeReport` noAction/warned, `expel` 1 h/24 h/7 d, strikes
+  (90 days, one per report via `struckAt`), suspension proposal at 3 strikes, statement of reasons sent
+  without blocking the hub and retried every 10 min. Reports and bans encrypted at rest (keyed hashes for
+  bans); in-memory store for now, lost at restart. Behind the tunnel `canReport` is false.
+- Gotcha: an expelled socket closed before `expelled` left (blank entry screen in QA); fixed by closing
+  after the command answers (`closeAfter`).
+- QA JRN-33…36 on the prod build (checklist MQ rows). Adversarial review: 5 rounds (4 Must fixed, owner
+  chose A for the tunnel). Codex P1 fixed (suspension finishes when the report close fails); P2 deferred.
+- Merged 2026-11-13: PR #214 squash 69c873c with owner approval (no attestation); verify (900 tests),
+  gitleaks and SonarQube green on 3659fd5. Follow-ups #212 (review leftovers, atomic strike write),
+  #213 (hono audit). Next: brick 8b (passkeys, ADR-0008).
