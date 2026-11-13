@@ -86,5 +86,8 @@ sequenceDiagram
 - The client reads the token from the fragment, then removes it from the address bar
   (`history.replaceState`) before any network call.
 - The challenge taken back is the one the browser signed, read from `clientDataJSON`.
+- `POST /mod/sign-in` verifies one assertion per credential at a time, so the stored counter is read and
+  updated in one step (clone detection, `04-class`); a parallel one answers 409 after spending its
+  challenge, and the client shows "clé refusée".
 - `GET /mod/status` answers 200 outside the tunnel; the entry screen shows the link only then (BR-097).
 - Actions record the moderator name, never `owner` (BR-055).

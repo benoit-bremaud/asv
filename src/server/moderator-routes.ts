@@ -25,7 +25,8 @@ export const OWNER_WINDOW_MS = 10 * 60_000;
 const CEREMONY_BUCKET = { capacity: 10, perSecond: 1 / 6 } as const;
 const LOOPBACK = new Set(["127.0.0.1", "::1"]);
 /** An IPv4 peer on a dual-stack socket reads `::ffff:127.0.0.1`. */
-const isLoopback = (peer: string) => LOOPBACK.has(peer.replace(/^::ffff:/, ""));
+const unmapped = (peer: string) => peer.replace(/^::ffff:/, "");
+const isLoopback = (peer: string) => LOOPBACK.has(unmapped(peer));
 const NO_STORE = { "Cache-Control": "no-store" };
 const MAX_TOKEN = 64;
 
@@ -119,12 +120,13 @@ export const addModeratorRoutes = (app: Hono, deps: ModeratorRouteDeps): void =>
     const peer = deps.peerAddress(c);
     if (deps.ownerSecret === undefined || peer === undefined || !isLoopback(peer)) return c.body(null, 404, NO_STORE);
     const nowMs = now().getTime();
-    const failures = (ownerFailures.get(peer) ?? []).filter((at) => nowMs - at < OWNER_WINDOW_MS);
+    const key = unmapped(peer);
+    const failures = (ownerFailures.get(key) ?? []).filter((at) => nowMs - at < OWNER_WINDOW_MS);
     if (failures.length >= OWNER_FAILURES_MAX) return c.body(null, 429, { ...NO_STORE, "Retry-After": "600" });
     const header = c.req.header("authorization") ?? "";
     const given = header.startsWith("Bearer ") ? header.slice("Bearer ".length) : "";
     if (!(await sameSecret(deps.ownerSecret, given))) {
-      ownerFailures.set(peer, [...failures, nowMs]);
+      ownerFailures.set(key, [...failures, nowMs]);
       return c.body(null, 401, NO_STORE);
     }
     return undefined;
@@ -241,7 +243,7 @@ export const addModeratorRoutes = (app: Hono, deps: ModeratorRouteDeps): void =>
     if (response === undefined || challenge === undefined) return c.body(null, 400, NO_STORE);
     if (!ops.takeChallenge(challenge, { kind: "authenticate" }, now())) return c.body(null, 401, NO_STORE);
     // One sign-in per credential at a time: read, verify and counter update form one step, or two parallel
-    // assertions could both pass on the same stored counter (clone detection, BR-096).
+    // assertions could both pass on the same stored counter (signCount clone detection, `moderation/04-class`).
     if (signingIn.has(response.id)) return c.body(null, 409, NO_STORE);
     signingIn.add(response.id);
     try {

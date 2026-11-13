@@ -194,6 +194,15 @@ describe("owner routes (BR-093, BR-096)", () => {
     expect((await context.owner("/mod/invitations", { method: "POST", body: { name: "Marc" } })).status).toBe(201);
   });
 
+  it("counts an IPv4-mapped loopback peer in the same window as 127.0.0.1", async () => {
+    const context = await setup();
+    context.peer.address = "::ffff:127.0.0.1";
+    for (let index = 0; index < OWNER_FAILURES_MAX; index += 1) await context.owner("/mod/invitations", { method: "POST", body: {}, secret: "wrong" });
+    context.peer.address = "127.0.0.1";
+
+    expect((await context.owner("/mod/invitations", { method: "POST", body: { name: "Marc" } })).status).toBe(429);
+  });
+
   it("does not count successes toward the rate limit", async () => {
     const context = await setup();
     for (let index = 0; index < OWNER_FAILURES_MAX + 2; index += 1) {
