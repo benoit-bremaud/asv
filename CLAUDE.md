@@ -13,8 +13,8 @@ Retro web chat inspired by Caramail. Product and technical decisions live in the
 
 ## Status
 
-Brick 8a done: reports, moderator queue, expel, strikes and suspension, interim owner token (BR-091). Brick 6: private conversations (members only, 3 windows), ignore both ways and directory search, with their web overlays. Brick 5: member accounts (e-mail code by Brevo, HttpOnly device cookie, encryption at rest in `src/server/crypto/`, account dialog). Brick 7a: Node WebSocket transport (`src/transports/node/`), transport-neutral hub (`src/server/hub.ts`) and retro web UI for entry and rooms (`src/web/`). Brick 4: pure domain for rooms and posting. Brick 3: entry, away, resume, leave and pseudo rules. Brick 2: tooling
-(Vite, Hono, Vitest, ESLint dependency rule, protocol schemas, CodeQL, local SonarQube gate). Checks: `pnpm verify`, then `pnpm sonar` after push. Next: brick 8b, moderator passkeys (see roadmap); no tester exposure of moderation before 8c.
+Brick 8b done: moderator passkeys on Node (`src/server/moderator-*.ts`, `/mod` routes, owner scripts `pnpm mod:invite` and `pnpm mod:revoke`, enrolment page), replacing the interim token (BR-093 to BR-099). Brick 8a: reports, moderator queue, expel, strikes and suspension. Brick 6: private conversations (members only, 3 windows), ignore both ways and directory search, with their web overlays. Brick 5: member accounts (e-mail code by Brevo, HttpOnly device cookie, encryption at rest in `src/server/crypto/`, account dialog). Brick 7a: Node WebSocket transport (`src/transports/node/`), transport-neutral hub (`src/server/hub.ts`) and retro web UI for entry and rooms (`src/web/`). Brick 4: pure domain for rooms and posting. Brick 3: entry, away, resume, leave and pseudo rules. Brick 2: tooling
+(Vite, Hono, Vitest, ESLint dependency rule, protocol schemas, CodeQL, local SonarQube gate). Checks: `pnpm verify`, then `pnpm sonar` after push. Next: brick 8c (see roadmap); no tester exposure of moderation before 8c.
 
 ## Project invariants
 
