@@ -211,8 +211,8 @@ classDiagram
   that is not an account notice (the next success ends a stale refusal); `accountLinked` keeps clearing an
   account notice (#136). "fermer" (`dismissNotice`) still clears it at once. The timer stops while the pointer or
   the focus is on the notice, so it never vanishes under a reader or takes the focus away (WCAG 2.2.1, 2.4.3).
-  The hold lives in the store (#199), so a notice held in a dialog is held for every `Notice` rendering it, the
-  inert page behind included: `NoticeCopy` only renders and dispatches `holdNotice(by, copy)` / `releaseNotice(by, copy)`
+  The hold lives in the store (#199), so a notice held in a dialog is held for every `Notice` rendering it, a dialog's copy, then the
+  page's once the dialog closes: `NoticeCopy` only renders and dispatches `holdNotice(by, copy)` / `releaseNotice(by, copy)`
   (`by` is `focus` or `pointer`, `copy` the rendered copy's `useId`, local actions). `noticeHold.focus` names the
   holding copy and is cleared with the notice; `noticeHold.pointer` keeps the copy and the `noticeSeq` it was set on,
   so a notice removed under the pointer never holds the next one. A release only drops a hold its own copy set, and
@@ -331,7 +331,7 @@ classDiagram
   Search dialog (#111, option A 460/500): in a room the search panel is a modal `dialog` built like the
   account dialog (`.overlay`, `showModal()` on mount, `close()` and focus return on unmount, Escape and
   `cancel` close it, "fermer"); "rechercher" focuses itself on click (#130). Escape on an open pseudo menu
-  inside it closes the menu only. Every notice raised while it is open shows inside it only (unlike the account dialog, which keeps only account notices, #136): `searchOpen` lives in the store (#185, option A 480/500), set by `openSearch` and cleared by `closeSearch` and whenever the screen leaves `room` (a reducer rule, not an unmount effect, which `StrictMode` would replay), so `Banners` hides its notice while the dialog shows it and the notice renders and is announced once. `clearSearch` ("annuler") keeps the dialog open. Rules in `web-ui/07`.
+  inside it closes the menu only. Every notice raised while it is open shows inside it only (unlike the account dialog, which keeps only account notices, #136): `searchOpen` lives in the store (#185, option A 480/500), set by `openSearch` and cleared by `closeSearch` and whenever the screen leaves `room` (a reducer rule, not an unmount effect, which `StrictMode` would replay), so `Banners` hides its notice while the dialog shows it and the notice renders and is announced once; with the account dialog stacked on top, an account notice shows in the account dialog only. `clearSearch` ("annuler") keeps the dialog open. Rules in `web-ui/07`.
   Small controls (#105, A11Y-05, option A 480/500; smileys added after review round 1, option A 450/500): the
   glyph-only buttons that close a room tab ("×"), minimise or close a private window ("_", "×") and insert a
   smiley in the room composer carry the class `icon-button` next to `link`. It gives them `min-width` and

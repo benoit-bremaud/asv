@@ -2335,6 +2335,19 @@ describe("pseudo menu, private windows and search (web-ui/07)", () => {
     expect(document.activeElement).toBe(pseudo);
   });
 
+  it("shows an account notice once, in the account dialog stacked on the search dialog (#185)", async () => {
+    const { user, dialog } = await openSearch(async () => { await enterChat(); });
+    await user.type(within(dialog()).getByLabelText(STRINGS.searchLabel), "zo{Enter}");
+    await fromServer(msg("searchResults", { results: [{ sessionId: "s3", pseudo: "zoe", hasAccount: true, away: false, gender: "woman", age: 30, city: "Lyon", rooms: [] }] }));
+    await user.click(within(dialog()).getByRole("button", { name: STRINGS.pseudoButton("zoe") }));
+    await user.click(screen.getByRole("menuitem", { name: STRINGS.privateMessage }));
+
+    await fromServer(msg("codeSent", {}));
+
+    expect(screen.getAllByRole("alert", { hidden: true })).toHaveLength(1);
+    expect(within(screen.getByRole("dialog", { name: STRINGS.accountTitle })).getByRole("alert")).toBeTruthy();
+  });
+
   it("shows a notice raised meanwhile inside the search dialog (#111)", async () => {
     const { dialog } = await openSearch();
 

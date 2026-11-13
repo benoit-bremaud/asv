@@ -611,7 +611,9 @@ describe("chatReducer: search dialog (#185)", () => {
 
   it("closes it whenever the screen leaves the room", () => {
     expect(chatReducer(inRoom, { type: "showRooms" }).searchOpen).toBe(false);
-    expect(chatReducer(inRoom, { type: "left" }).searchOpen).toBe(false);
+    const oneRoom: ChatState = { ...inRoom, open: { r1: { members: [], lines: [] } }, active: "r1" };
+    expect(chatReducer(oneRoom, { type: "closeRoom", roomId: "r1" }).searchOpen).toBe(false);
+    expect(server(inRoom, { type: "resumed", seq: 0, payload: { sessionId: "me1", pseudo: "ana", resumeToken: "t2", rooms: [], windows: [], buffered: [] } }).searchOpen).toBe(false);
     expect(chatReducer(inRoom, { type: "notice", code: "flood" }).searchOpen).toBe(true);
   });
 });

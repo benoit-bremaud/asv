@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState, type KeyboardEvent, type SubmitEvent, type SyntheticEvent } from "react";
 import { useChat } from "../chat-context";
+import { isAccountNotice } from "../store";
 import { STRINGS } from "../strings";
 import { Notice } from "./Notice";
 import { PseudoMenu } from "./PseudoMenu";
@@ -53,6 +54,7 @@ export const SearchPanel = ({ onPrivate }: { onPrivate?: () => void }) => {
 
 /** The search panel of a room as a modal dialog (`web-ui/07`, #111, the #59/#63 pattern); "message privé" closes it. */
 export const SearchDialog = ({ onClose }: { onClose: () => void }) => {
+  const accountOpen = useChat().state.account.open;
   const dialog = useRef<HTMLDialogElement>(null);
   // Layout effect: its cleanup runs while the dialog is still in the page, so `close()` and the focus return happen.
   useLayoutEffect(() => {
@@ -80,8 +82,8 @@ export const SearchDialog = ({ onClose }: { onClose: () => void }) => {
   return (
     <dialog ref={dialog} className="panel overlay" aria-labelledby="search-title" onCancel={cancel} onKeyDown={keyDown}>
       <SearchPanel onPrivate={onClose} />
-      {/* The page behind is inert: every notice raised meanwhile shows here only, reachable (`Banners` hides it, #185; the account dialog shows only account notices, #136). */}
-      <Notice />
+      {/* The page behind is inert: every notice raised meanwhile shows here only (`Banners` hides it, #185), except an account notice while the account dialog is on top, which shows there only (#136). */}
+      <Notice show={(code) => !(accountOpen && isAccountNotice(code))} />
       <button type="button" className="link" onClick={onClose}>{STRINGS.close}</button>
     </dialog>
   );
