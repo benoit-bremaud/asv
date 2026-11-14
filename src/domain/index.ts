@@ -6,6 +6,7 @@ export * from "./accounts";
 export * from "./authority";
 export * from "./directory";
 export * from "./ignore";
+export * from "./ip-key";
 export * from "./moderation";
 export * from "./moderators";
 export * from "./private";

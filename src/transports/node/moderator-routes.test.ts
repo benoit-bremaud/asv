@@ -1,5 +1,5 @@
 /**
- * `/mod/*` routes of brick 8b through `app.request`. Real hub operations, crypto and memory store; only the
+ * `/mod/*` and `/owner/*` routes of brick 8b through `app.request`. Real hub operations, crypto and memory store; only the
  * SimpleWebAuthn verify functions (browser-signed proofs we cannot forge here), the clock and the peer are doubles.
  */
 import { verifyAuthenticationResponse, verifyRegistrationResponse } from "@simplewebauthn/server";

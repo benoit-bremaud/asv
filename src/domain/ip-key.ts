@@ -16,19 +16,19 @@ const isIpv4 = (text: string): boolean => {
 const hextets = (address: string): string[] | undefined => {
   const halves = address.split("::");
   if (halves.length > 2) return undefined;
-  const expand = (half: string): string[] | undefined => {
+  const expand = (half: string, last: boolean): string[] | undefined => {
     if (half === "") return [];
     const parts = half.split(":");
-    const last = parts[parts.length - 1] ?? "";
-    if (last.includes(".")) {
-      if (!isIpv4(last)) return undefined;
-      const [a = 0, b = 0, c = 0, d = 0] = last.split(".").map(Number);
+    const tail = parts[parts.length - 1] ?? "";
+    if (tail.includes(".")) {
+      if (!last || !isIpv4(tail)) return undefined;
+      const [a = 0, b = 0, c = 0, d = 0] = tail.split(".").map(Number);
       parts.splice(-1, 1, ((a << 8) | b).toString(16), ((c << 8) | d).toString(16));
     }
     return parts.every((part) => HEXTET.test(part)) ? parts : undefined;
   };
-  const head = expand(halves[0] ?? "");
-  const tail = halves.length === 2 ? expand(halves[1] ?? "") : [];
+  const head = expand(halves[0] ?? "", halves.length === 1);
+  const tail = halves.length === 2 ? expand(halves[1] ?? "", true) : [];
   if (head === undefined || tail === undefined) return undefined;
   if (halves.length === 1) return head.length === 8 ? head : undefined;
   const missing = 8 - head.length - tail.length;

@@ -37,7 +37,7 @@ import { readGrant, type GrantClaims } from "./moderator-grant";
 import { createOutgoing, sessionOf, type Outgoing } from "./outgoing";
 import { FRAME_LIMITS, type PolicyReason } from "./frame-budget";
 import { UPGRADE_LIMITS } from "./upgrade-limit";
-import { quotaKey } from "../domain/ip-key";
+import { quotaKey } from "../domain";
 import { CAPS, clientMessage, type ClientMessage } from "../shared/protocol";
 
 export type { Outgoing } from "./outgoing";

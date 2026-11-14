@@ -17,14 +17,42 @@ describe("runOwnerCommand (moderation/02f)", () => {
     expect(init).toMatchObject({ method: "POST", body: JSON.stringify({ name: "Marc" }), headers: { Authorization: `Bearer ${SECRET}` } });
   });
 
-  it("targets ASV_OWNER_URL, without a trailing slash, and sends no Access header unless both halves are set", async () => {
+  it("targets ASV_OWNER_URL, without a trailing slash, and sends no Access header without a token", async () => {
     const fetchFn = answer(204);
-    const env = { ASV_OWNER_SECRET: SECRET, ASV_OWNER_URL: "https://staging.asvchat.fr/", ASV_ACCESS_CLIENT_ID: "id" };
+    const env = { ASV_OWNER_SECRET: SECRET, ASV_OWNER_URL: "https://staging.asvchat.fr/" };
 
     await runOwnerCommand(["revoke", "Marc"], env, fetchFn);
 
     expect(fetchFn.mock.calls[0]?.[0]).toBe("https://staging.asvchat.fr/owner/moderators/Marc");
     expect(Object.keys(fetchFn.mock.calls[0]?.[1].headers ?? {})).not.toContain("CF-Access-Client-Id");
+  });
+
+  it.each([
+    [{ ASV_ACCESS_CLIENT_ID: "id" }],
+    [{ ASV_ACCESS_CLIENT_SECRET: "shh" }],
+  ])("refuses half an Access token %j and sends nothing", async (env) => {
+    const fetchFn = answer(204);
+
+    await expect(runOwnerCommand(["revoke", "Marc"], { ASV_OWNER_SECRET: SECRET, ...env }, fetchFn)).rejects.toThrow("set both ASV_ACCESS_CLIENT_ID and ASV_ACCESS_CLIENT_SECRET, or neither");
+    expect(fetchFn).not.toHaveBeenCalled();
+  });
+
+  it.each(["http://staging.asvchat.fr", "ftp://127.0.0.1", "not a url"])("refuses ASV_OWNER_URL %s", async (url) => {
+    const fetchFn = answer(204);
+
+    await expect(runOwnerCommand(["revoke", "Marc"], { ASV_OWNER_SECRET: SECRET, ASV_OWNER_URL: url }, fetchFn)).rejects.toThrow(/ASV_OWNER_URL/);
+    expect(fetchFn).not.toHaveBeenCalled();
+  });
+
+  it.each(["http://localhost:8787", "http://[::1]:8787", "http://127.0.0.1:8787"])("accepts the local http URL %s", async (url) => {
+    expect(await runOwnerCommand(["revoke", "Marc"], { ASV_OWNER_SECRET: SECRET, ASV_OWNER_URL: url }, answer(204))).toBe("Moderator Marc revoked");
+  });
+
+  it("does not follow redirects and reports a 3xx plainly", async () => {
+    const fetchFn = answer(302);
+
+    await expect(runOwnerCommand(["invite", "Marc"], { ASV_OWNER_SECRET: SECRET }, fetchFn)).rejects.toThrow("answered a redirect (HTTP 302)");
+    expect(fetchFn.mock.calls[0]?.[1]).toMatchObject({ redirect: "manual" });
   });
 
   it("sends the Access service token headers when both ASV_ACCESS_CLIENT_ID and ASV_ACCESS_CLIENT_SECRET are set", async () => {

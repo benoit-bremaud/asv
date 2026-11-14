@@ -1,6 +1,6 @@
 /** WebSocket upgrade limits per IP and in total (BR-089, `platform/02`), checked before any socket exists. */
 
-import { quotaKey } from "../domain/ip-key";
+import { quotaKey } from "../domain";
 import { createTokenBucket, type TokenBucket } from "./token-bucket";
 
 /** BR-089 limits; shared by every transport. */

@@ -12,7 +12,6 @@ export const config = defineConfig({
       "/api": "http://127.0.0.1:8787",
       "/account": "http://127.0.0.1:8787",
       "/mod/": "http://127.0.0.1:8787",
-      "/owner/": "http://127.0.0.1:8787",
     },
   },
   test: {

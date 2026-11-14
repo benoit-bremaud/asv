@@ -239,7 +239,7 @@ The contract stays `platform/04-class-protocol`. Brick 8a uses it as follows:
   opens all but `warn`.
 - Every moderation command from a session without `isModerator` gets `error(forbidden)` (BR-054).
 - Excerpt, context and pseudos of a report are encrypted at rest (ADR-0017). A ban keeps only keyed
-  hashes (HMAC) of the IP and of the folded pseudo, so the entry check compares hashes and never
+  hashes (HMAC) of the IP quota key (/64 for IPv6, BR-112) and of the folded pseudo, so the entry check compares hashes and never
   decrypts.
 - `resumed.isModerator` carries the rights back to a moderator session after a resume (BR-095 since brick 8b).
 

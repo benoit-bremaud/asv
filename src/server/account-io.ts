@@ -14,7 +14,7 @@ import {
   type VaultRecord,
 } from "../domain";
 import type { Crypto } from "./crypto/cipher";
-import { quotaKey } from "../domain/ip-key";
+import { quotaKey } from "../domain";
 
 /** The ports `AccountIo` wraps: the store and the vault never see a clear e-mail or code. */
 export interface AccountIoDeps {

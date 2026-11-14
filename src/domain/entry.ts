@@ -172,7 +172,7 @@ const withoutSession = <S extends EntryState>(state: S, session: Session): S => 
   return { ...state, sessions, pseudoIndex };
 };
 
-/** BR-007: keeps the last minute of attempts from `ip`, this one included. */
+/** BR-007: keeps the last minute of attempts from the quota key of `address` (BR-112), this one included. */
 const recordAttempt = <S extends EntryState>(state: S, address: string, now: Date): { state: S; earlier: number } => {
   const ip = quotaKey(address);
   const since = now.getTime() - ENTRY_LIMITS.attemptWindowMs;

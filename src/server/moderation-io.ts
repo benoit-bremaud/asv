@@ -21,7 +21,7 @@ import {
   type TriageLabel,
 } from "../domain";
 import type { Crypto } from "./crypto/cipher";
-import { quotaKey } from "../domain/ip-key";
+import { quotaKey } from "../domain";
 
 export interface ModerationIoDeps {
   readonly store: ModerationStore;

@@ -15,7 +15,7 @@ import { isFilingReference, isModeratorName, parseFilingChannel, type AlertChann
 import { fromBase64, toBase64Url } from "./crypto/keys";
 import type { ModeratorOps } from "./hub-moderators";
 import { signGrant } from "./moderator-grant";
-import { quotaKey } from "../domain/ip-key";
+import { quotaKey } from "../domain";
 import { createTokenBucket, type TokenBucket } from "./token-bucket";
 
 /** BR-093: shorter owner secrets stop the server at start. */
@@ -125,7 +125,7 @@ export const addModeratorRoutes = (app: Hono, deps: ModeratorRouteDeps): void =>
     const peer = deps.peerAddress(c);
     if (deps.ownerSecret === undefined || peer === undefined || !isLoopback(peer)) return c.body(null, 404, NO_STORE);
     const nowMs = now().getTime();
-    const key = unmapped(peer);
+    const key = quotaKey(peer);
     const failures = (ownerFailures.get(key) ?? []).filter((at) => nowMs - at < OWNER_WINDOW_MS);
     if (failures.length >= OWNER_FAILURES_MAX) return c.body(null, 429, { ...NO_STORE, "Retry-After": "600" });
     const header = c.req.header("authorization") ?? "";
