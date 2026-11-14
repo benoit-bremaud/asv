@@ -80,3 +80,12 @@ sequenceDiagram
   `blockConcurrencyWhile`; migrations are additive only (`platform/10`).
 - Away records, room state, the grant key, pending challenges, triage counters and flood counters are in memory
   and lost on a deploy (BR-109). On Node, pending statements of reasons are in memory only: a known gap, follow-up #234.
+- Implementation precisions (brick 9b): the stores are written against a minimal `SqlStorage` interface
+  (`sql.exec`, `transactionSync`), so they are tested on `node:sqlite`; every multi-row write runs in one
+  `transactionSync`, and a storage error reaches the caller as a rejected promise. The connection line keeps
+  IP, port, pseudo and account id in one ciphertext bound to the connection id; dates and protocols stay clear.
+  The daily purge time is kept in a `meta` row (`lastPurgeAt`) with the schema version. The hub gains
+  `maintain(now, purge)` and `maintenanceInTick: false`, so purges and retry rounds run from the alarm only.
+  The `/owner/*` loopback check is off on Cloudflare (`ownerLoopbackOnly: false`, BR-093), and the peer
+  address there is `CF-Connecting-IP`. A refused or silent socket is closed with no code or 1008, then the
+  hub's close runs at once, as on Node.
