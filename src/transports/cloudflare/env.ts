@@ -84,6 +84,8 @@ const TEAM_DOMAIN = /^[a-z0-9-]+\.cloudflareaccess\.com$/;
 export const checkConfig = async (env: Env): Promise<Config | { readonly problem: string }> => {
   const missing = REQUIRED.filter((name) => !env[name] || env[name] === PLACEHOLDER);
   if (missing.length > 0) return { problem: `missing: ${missing.join(", ")}` };
+  // BR-108: a typo must not silently turn moderation off.
+  if (env.ASV_MODERATION !== "on" && env.ASV_MODERATION !== "off") return { problem: "ASV_MODERATION must be on or off" };
   const ownerSecret = env.ASV_OWNER_SECRET ?? "";
   if (ownerSecret.length < MIN_OWNER_SECRET_LENGTH) return { problem: `ASV_OWNER_SECRET shorter than ${MIN_OWNER_SECRET_LENGTH}` };
   const teamDomain = env.ASV_ACCESS_TEAM_DOMAIN ?? "";

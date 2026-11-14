@@ -8,6 +8,7 @@
 import {
   ACCOUNT_LIMITS,
   AUTHORITY_LIMITS,
+  LOG_RETENTION_MS,
   MODERATION_LIMITS,
   type AccountClosing,
   type AccountStore,
@@ -40,9 +41,6 @@ import {
   type SqlRow,
   type SqlStorage,
 } from "./sql";
-
-/** Connection and contribution lines are kept 1 year (BR-060). */
-export const LOG_RETENTION_MS = 365 * 24 * 60 * 60_000;
 
 /**
  * Schema steps, applied in order once each; a step is never edited after a deploy, only appended

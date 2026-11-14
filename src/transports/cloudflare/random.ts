@@ -1,8 +1,11 @@
 import { createHmac, randomBytes, randomInt, randomUUID } from "node:crypto";
 import type { CodeRandom } from "../../domain";
 
-/** Domain separation: the device-token key is derived from `ASV_HMAC_KEY`, never used as is. */
-const DEVICE_TOKEN_INFO = "asv-device-token-v1";
+/**
+ * Domain separation: the device-token key is derived from `ASV_HMAC_KEY`, never used as is. The leading NUL
+ * byte keeps the label out of reach of every keyed hash input (e-mails, `ip:`, `pseudo:` and other prefixes).
+ */
+const DEVICE_TOKEN_INFO = "\u0000asv-device-token-v1";
 
 /**
  * Session ids, resume and device tokens, and sign-in codes on Cloudflare (`node:crypto` through the

@@ -14,7 +14,6 @@ describe("start checks (BR-111)", () => {
 
     expect(on).toMatchObject({ moderation: true, publicOrigin: "https://staging.asvchat.fr", allowedOrigins: ["https://staging.asvchat.fr", "https://asvchat.fr"], accessAudOwner: "aud-owner" });
     expect(off).toMatchObject({ moderation: false });
-    expect(await checkConfig(validEnv({ ASV_MODERATION: undefined }))).toMatchObject({ moderation: false });
   });
 
   it("names missing and placeholder values, never a value", async () => {
@@ -23,6 +22,8 @@ describe("start checks (BR-111)", () => {
   });
 
   it.each([
+    [{ ASV_MODERATION: undefined }, /ASV_MODERATION must be on or off/],
+    [{ ASV_MODERATION: "On" }, /ASV_MODERATION must be on or off/],
     [{ ASV_OWNER_SECRET: "short" }, /ASV_OWNER_SECRET shorter/],
     [{ ASV_ACCESS_TEAM_DOMAIN: "evil.example.com" }, /ASV_ACCESS_TEAM_DOMAIN/],
     [{ ASV_PUBLIC_ORIGIN: "http://staging.asvchat.fr", ASV_ALLOWED_ORIGINS: "http://staging.asvchat.fr" }, /https origin/],

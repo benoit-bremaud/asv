@@ -185,9 +185,10 @@ security near 0). Owner choice B on 2026-11-14.
     Non-secret variables in `wrangler.jsonc`: `ASV_ALLOWED_ORIGINS`, `ASV_PUBLIC_ORIGIN`, `ASV_MAIL_FROM`,
     `ASV_TRIAGE_MODEL`, `ASV_ACCESS_AUD_SITE`, `ASV_ACCESS_AUD_OWNER`, `ASV_ACCESS_TEAM_DOMAIN`
     (`<team>.cloudflareaccess.com`: issuer and JWKS host of the Access tokens, BR-113) and `ASV_MODERATION`
-    (`on` in staging, `off` in production until the impact assessment is signed: D5, BR-108). Without the Mistral key the no-AI adapter runs (ADR-0019). Each token gets a descriptive
+    (`on` in staging, `off` in production until the impact assessment is signed: D5, BR-108; any other value
+    is refused with 503, BR-111). Without the Mistral key the no-AI adapter runs (ADR-0019). Each token gets a descriptive
     name and an expiry at creation. On Cloudflare the device-token hash key is derived from `ASV_HMAC_KEY`
-    (HMAC with the label `asv-device-token-v1`), so a device cookie still signs its member back in after a
+    (HMAC with the label `asv-device-token-v1` preceded by a NUL byte, which no keyed hash input contains), so a device cookie still signs its member back in after a
     deploy (BR-109); the Worker uses the `nodejs_compat` flag for it.
 11. **Deploy procedure** (`platform/10`): green gate on `main`, deploy to staging, QA pass on staging (JRN-43 to
     JRN-45), signed release tag `vX.Y.Z`, deploy to production from the tag at a quiet hour; a rollback is allowed

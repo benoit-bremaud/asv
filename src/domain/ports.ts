@@ -24,6 +24,9 @@ export interface ContributionLine {
   readonly at: Date;
 }
 
+/** Connection and contribution lines are kept 1 year (BR-060), on every transport. */
+export const LOG_RETENTION_MS = 365 * 24 * 60 * 60_000;
+
 /** Legal connection and contribution log (BR-060, ADR-0014); every write may fail. */
 export interface ConnectionLogStore {
   open(line: ConnectionLine): Promise<void>;

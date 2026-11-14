@@ -512,6 +512,9 @@ describe("warn, strikes and suspension (`moderation/02d`, BR-074 to BR-077)", ()
     await vi.waitFor(() => expect(ctx.statements).toHaveLength(2));
     await ctx.hub.tick(later(STATEMENT_RETRY_MS));
     await flush();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    // No resend before 10 minutes after the last attempt.
+    expect(ctx.statements).toHaveLength(2);
     await ctx.hub.tick(later(1000 + STATEMENT_RETRY_MS));
     await vi.waitFor(() => expect(ctx.statements).toHaveLength(3));
   });

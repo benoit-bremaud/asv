@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ACCOUNT_LIMITS, MODERATION_LIMITS, type StoredAccount, type StoredModerator, type StoredReport } from "../../domain";
+import { ACCOUNT_LIMITS, LOG_RETENTION_MS, MODERATION_LIMITS, type StoredAccount, type StoredModerator, type StoredReport } from "../../domain";
 import { createCrypto } from "../../server/crypto/cipher";
 import { cryptoKeysFromEnv } from "../../server/crypto/keys";
 import { MAIL_GIVE_UP_MS } from "../../server/moderation-mail";
@@ -14,7 +14,6 @@ import {
   createSqlModeratorStore,
   createSqlVault,
   hasPendingMail,
-  LOG_RETENTION_MS,
   migrate,
   MIGRATIONS,
   readMeta,
