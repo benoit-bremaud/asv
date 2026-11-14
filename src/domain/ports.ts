@@ -102,6 +102,17 @@ export interface PendingDecisionMail {
   readonly createdAt: Date;
 }
 
+/**
+ * A statement of reasons not yet accepted by the provider (BR-076, BR-109): address and text ciphertext,
+ * given up at `giveUpAt`. Stored on Cloudflare so a deploy never drops it; in memory on Node (#234).
+ */
+export interface PendingStatement {
+  readonly id: string;
+  readonly email: string;
+  readonly text: string;
+  readonly giveUpAt: Date;
+}
+
 /** A triage as stored with its report (`moderation/04`, ADR-0017). */
 export interface StoredTriage {
   readonly category: Triage["category"];
@@ -146,6 +157,9 @@ export interface ModerationStore {
   savePendingDecisionMail(mail: PendingDecisionMail): Promise<void>;
   pendingDecisionMails(): Promise<readonly PendingDecisionMail[]>;
   deletePendingDecisionMail(id: string): Promise<void>;
+  savePendingStatement(statement: PendingStatement): Promise<void>;
+  pendingStatements(): Promise<readonly PendingStatement[]>;
+  deletePendingStatement(id: string): Promise<void>;
   saveBan(ban: StoredBan): Promise<void>;
   /** The latest-ending ban matching either key and still running at `now`. */
   activeBan(ipKeyedHash: string, pseudoKeyedHash: string, now: Date): Promise<StoredBan | undefined>;

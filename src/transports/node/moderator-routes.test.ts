@@ -29,6 +29,7 @@ const T0 = new Date("2026-11-13T10:00:00Z");
 interface Options {
   ownerSecret?: string | null;
   behindTunnel?: boolean;
+  ownerLoopbackOnly?: boolean;
 }
 
 const setup = async (options: Options = {}) => {
@@ -49,6 +50,7 @@ const setup = async (options: Options = {}) => {
     allowedOrigins: [ORIGIN],
     ownerSecret: options.ownerSecret === null ? undefined : (options.ownerSecret ?? SECRET),
     behindTunnel: options.behindTunnel ?? false,
+    ownerLoopbackOnly: options.ownerLoopbackOnly,
     recordFiling,
     peerAddress: () => peer.address,
     now: () => clock.now,
@@ -189,6 +191,15 @@ describe("owner routes (BR-093, BR-096)", () => {
     context.peer.address = address;
 
     expect((await context.owner("/owner/invitations", { method: "POST", body: { name: "Marc" } })).status).toBe(201);
+  });
+
+  it("accepts any known peer when loopback is not required (Cloudflare, behind Access, BR-093)", async () => {
+    const context = await setup({ ownerLoopbackOnly: false });
+    context.peer.address = "203.0.113.5";
+    expect((await context.owner("/owner/invitations", { method: "POST", body: { name: "Marc" } })).status).toBe(201);
+
+    context.peer.address = undefined;
+    expect((await context.owner("/owner/invitations", { method: "POST", body: { name: "Léa" } })).status).toBe(404);
   });
 
   it("answers 404 when no owner secret is set", async () => {

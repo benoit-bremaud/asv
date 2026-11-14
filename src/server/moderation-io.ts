@@ -45,6 +45,14 @@ export interface LoadedDecisionMail {
   readonly createdAt: Date;
 }
 
+/** A statement of reasons decrypted for sending (BR-076). */
+export interface LoadedStatement {
+  readonly id: string;
+  readonly email: string;
+  readonly text: string;
+  readonly giveUpAt: Date;
+}
+
 const isLabel = (value: unknown): value is TriageLabel =>
   typeof value === "object" && value !== null && typeof (value as Record<string, unknown>).label === "string" &&
   typeof (value as Record<string, unknown>).pseudo === "string";
@@ -200,6 +208,24 @@ export const createModerationIo = ({ store, crypto }: ModerationIoDeps) => {
       })));
     },
     deletePendingDecisionMail: (id: string) => store.deletePendingDecisionMail(id),
+    /** BR-076, BR-109: a statement of reasons kept encrypted until the provider accepts it. */
+    async savePendingStatement(statement: LoadedStatement): Promise<void> {
+      await store.savePendingStatement({
+        id: statement.id,
+        email: await crypto.encrypt(statement.email, `statement:${statement.id}:email`),
+        text: await crypto.encrypt(statement.text, `statement:${statement.id}:text`),
+        giveUpAt: statement.giveUpAt,
+      });
+    },
+    async pendingStatements(): Promise<LoadedStatement[]> {
+      return Promise.all((await store.pendingStatements()).map(async (statement) => ({
+        id: statement.id,
+        email: await crypto.decrypt(statement.email, `statement:${statement.id}:email`),
+        text: await crypto.decrypt(statement.text, `statement:${statement.id}:text`),
+        giveUpAt: statement.giveUpAt,
+      })));
+    },
+    deletePendingStatement: (id: string) => store.deletePendingStatement(id),
     /** BR-100, BR-101: summary and label map encrypted; the store ignores a closed report. */
     async saveTriage(id: string, triage: Triage, labels: readonly TriageLabel[]): Promise<void> {
       await store.saveTriage(id, {

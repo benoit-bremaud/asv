@@ -2,6 +2,7 @@ import {
   MODERATION_LIMITS,
   type ModerationStore,
   type PendingDecisionMail,
+  type PendingStatement,
   type StoredBan,
   type StoredReport,
 } from "../../domain";
@@ -20,6 +21,7 @@ export const createMemoryModerationStore = (): ModerationStore & {
   const reports = new Map<string, StoredReport>();
   const bans = new Map<string, StoredBan>();
   const mails = new Map<string, PendingDecisionMail>();
+  const statements = new Map<string, PendingStatement>();
   const done = () => Promise.resolve();
   return {
     saveReport: (report) => {
@@ -71,6 +73,15 @@ export const createMemoryModerationStore = (): ModerationStore & {
     pendingDecisionMails: () => Promise.resolve([...mails.values()]),
     deletePendingDecisionMail: (id) => {
       mails.delete(id);
+      return done();
+    },
+    savePendingStatement: (statement) => {
+      statements.set(statement.id, statement);
+      return done();
+    },
+    pendingStatements: () => Promise.resolve([...statements.values()]),
+    deletePendingStatement: (id) => {
+      statements.delete(id);
       return done();
     },
     saveBan: (ban) => {

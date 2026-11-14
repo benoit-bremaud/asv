@@ -71,6 +71,11 @@ export interface HubDeps {
   readonly grantKey?: CryptoKey;
   /** False behind the tester tunnel: `report` answers `notAvailable` until brick 8c (`moderation/01`). */
   readonly canReport?: boolean;
+  /**
+   * True (default, Node): every `tick` purges the stores and starts a mail retry round. False (Cloudflare,
+   * BR-110): the transport calls `maintain` from its alarm instead.
+   */
+  readonly maintenanceInTick?: boolean;
 }
 
 /** BR-096: at most 5 refused moderator grants per IP within 10 minutes, then `entryRefused(rate)`. */
@@ -98,6 +103,8 @@ export interface Hub {
   receive(socketKey: string, raw: string, now: Date): Promise<Outgoing[]>;
   close(socketKey: string, now: Date): Promise<Outgoing[]>;
   tick(now: Date): Promise<Outgoing[]>;
+  /** Store purges when `purge`, then one mail retry round, awaited (BR-110); errors go to `onStoreError`. */
+  maintain(now: Date, purge: boolean): Promise<void>;
   /** `POST /account/device`: exchanges a device claim for a token, or `undefined` (BR-073). */
   redeemDeviceClaim(claim: string, now: Date): Promise<DeviceToken | undefined>;
   /** `POST /account/sign-out`: forgets this device and unlinks its sessions (UC18). */
@@ -410,6 +417,11 @@ export const createHub = (deps: HubDeps): Hub => {
     return [...told, ...out.roomOutgoing(result.effects)];
   };
   const moderation = createModerationHandlers({ deps, out, state: () => state, setState, evict });
+  /** Store purges (BR-060 to BR-062, BR-081, BR-105): in every tick on Node, in the alarm on Cloudflare (BR-110). */
+  const purgeStores = async (now: Date): Promise<void> => {
+    await deps.accounts.purgeExpired(now);
+    await deps.moderation.purgeExpired(now);
+  };
 
   /** Rooms commands; content creation is logged before anything is kept or sent (`rooms/02`, BR-060). */
   const roomCommand = <K extends BoundType>(compute: (sessionId: string, command: Command<K>, now: Date) => RoomsResult): BoundHandler<K> =>
@@ -543,16 +555,29 @@ export const createHub = (deps: HubDeps): Hub => {
           if (recent.length === 0) grantFailures.delete(ip);
           else grantFailures.set(ip, recent);
         }
-        try {
-          await deps.accounts.purgeExpired(now);
-          await deps.moderation.purgeExpired(now);
-          // Outside the queue: a slow provider must not hold the chat (ADR-0013 amendment).
-          void moderation.retryMails(now);
-        } catch (cause) {
-          deps.onStoreError(cause);
+        if (deps.maintenanceInTick ?? true) {
+          try {
+            await purgeStores(now);
+            // Outside the queue: a slow provider must not hold the chat (ADR-0013 amendment).
+            void moderation.retryMails(now);
+          } catch (cause) {
+            deps.onStoreError(cause);
+          }
         }
         return out.roomOutgoing(expired.effects);
       }),
+
+    async maintain(now, purge) {
+      if (purge) {
+        try {
+          await serial(() => purgeStores(now));
+        } catch (cause) {
+          deps.onStoreError(cause);
+        }
+      }
+      // Awaited by the alarm, but outside the queue: a slow provider must not hold the chat.
+      await moderation.retryMails(now);
+    },
 
     redeemDeviceClaim: (claim, now) =>
       serial(async () => {

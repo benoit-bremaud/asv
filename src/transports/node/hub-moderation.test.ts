@@ -405,7 +405,8 @@ describe("warn, strikes and suspension (`moderation/02d`, BR-074 to BR-077)", ()
     only(out, "reportClosed");
     expect(ctx.store.dump().accounts).toEqual([]);
     expect(ctx.vault.entries()).toHaveLength(1);
-    expect(ctx.statements).toEqual([{ email: "max@example.org", statement: expect.stringContaining("aucun outil automatique") }]);
+    // The statement is stored encrypted first, then sent outside the hub queue (BR-109).
+    await vi.waitFor(() => expect(ctx.statements).toEqual([{ email: "max@example.org", statement: expect.stringContaining("aucun outil automatique") }]));
     const sentBefore = ctx.codes.length;
     only(await ctx.send("1", "requestCode", { email: "max@example.org", remember: false }, later(DAY)), "codeSent");
     expect(ctx.codes).toHaveLength(sentBefore);
@@ -416,11 +417,14 @@ describe("warn, strikes and suspension (`moderation/02d`, BR-074 to BR-077)", ()
     const ctx = await setup({ mailAccepted: false });
     const { accountId, reportId } = await threeStrikes(ctx);
     await ctx.send("9", "confirmSuspension", { accountId, reportId });
+    await vi.waitFor(() => expect(ctx.statements).toHaveLength(1));
 
     await ctx.hub.tick(later(1000));
+    await vi.waitFor(() => expect(ctx.statements).toHaveLength(2));
     await ctx.hub.tick(later(7 * DAY));
     ctx.setMailAccepted(true);
-    await ctx.hub.tick(later(7 * DAY + 1));
+    await ctx.hub.tick(later(7 * DAY + STATEMENT_RETRY_MS));
+    await new Promise((resolve) => setTimeout(resolve, 20));
 
     expect(ctx.statements).toHaveLength(2);
   });
@@ -429,10 +433,13 @@ describe("warn, strikes and suspension (`moderation/02d`, BR-074 to BR-077)", ()
     const ctx = await setup({ mailAccepted: false });
     const { accountId, reportId } = await threeStrikes(ctx);
     await ctx.send("9", "confirmSuspension", { accountId, reportId });
+    await vi.waitFor(() => expect(ctx.statements).toHaveLength(1));
     ctx.setMailAccepted(true);
 
     await ctx.hub.tick(later(1000));
-    await ctx.hub.tick(later(2000));
+    await vi.waitFor(() => expect(ctx.statements).toHaveLength(2));
+    await ctx.hub.tick(later(1000 + STATEMENT_RETRY_MS));
+    await new Promise((resolve) => setTimeout(resolve, 20));
 
     expect(ctx.statements).toHaveLength(2);
   });
@@ -496,16 +503,15 @@ describe("warn, strikes and suspension (`moderation/02d`, BR-074 to BR-077)", ()
     only(await ctx.send("1", "joinRoom", { roomId: "lyon" }), "roomJoined");
     release();
     ctx.setMailDelay(undefined);
+    await vi.waitFor(() => expect(ctx.statements).toHaveLength(1));
     const flush = () => new Promise((resolve) => setImmediate(resolve));
     await ctx.hub.tick(later(1000));
     await flush();
+    await vi.waitFor(() => expect(ctx.statements).toHaveLength(2));
     await ctx.hub.tick(later(STATEMENT_RETRY_MS));
     await flush();
-    expect(ctx.statements).toHaveLength(2);
-
-    await ctx.hub.tick(later(STATEMENT_RETRY_MS + 1000));
-    await flush();
-    expect(ctx.statements).toHaveLength(3);
+    await ctx.hub.tick(later(1000 + STATEMENT_RETRY_MS));
+    await vi.waitFor(() => expect(ctx.statements).toHaveLength(3));
   });
 });
 
@@ -802,7 +808,7 @@ describe("severe expel (moderation/02h, BR-103)", () => {
 
     await ctx.send("9", "expel", { reportId, duration: "1h", severe: true });
 
-    expect(ctx.statements[0]?.statement).toContain("Un tri automatique");
+    await vi.waitFor(() => expect(ctx.statements[0]?.statement).toContain("Un tri automatique"));
   });
 });
 

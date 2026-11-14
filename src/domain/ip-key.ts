@@ -52,3 +52,7 @@ export const quotaKey = (ip: string): string => {
   }
   return `${a}:${b}:${c}:${d}::/64`;
 };
+
+/** A bare IPv4 or IPv6 address, without zone or port (BR-111: the `CF-Connecting-IP` check). */
+export const isIpAddress = (text: string): boolean =>
+  isIpv4(text) || (text.includes(":") && !text.includes("%") && hextets(text.toLowerCase()) !== undefined);

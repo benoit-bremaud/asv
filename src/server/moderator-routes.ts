@@ -42,6 +42,11 @@ export interface ModeratorRouteDeps {
   /** Unset: invitation and revocation answer 404 (BR-093). */
   readonly ownerSecret?: string;
   readonly behindTunnel: boolean;
+  /**
+   * BR-093: owner routes accept only a loopback peer; true by default (Node). Cloudflare sets false: the
+   * peer is the client IP, and Access plus the owner secret guard the routes (BR-113).
+   */
+  readonly ownerLoopbackOnly?: boolean;
   /** UC20: records the owner's filing of an authority alert (BR-104). */
   readonly recordFiling: (reportId: string, channel: AlertChannel, reference: string, at: Date) => Promise<FilingResult>;
   /** Socket address of the HTTP peer, for the loopback check and the rate limits. */
@@ -123,7 +128,8 @@ export const addModeratorRoutes = (app: Hono, deps: ModeratorRouteDeps): void =>
   /** BR-093, BR-096: the owner guard; `undefined` when the request may go on. */
   const ownerRefusal = async (c: Context): Promise<Response | undefined> => {
     const peer = deps.peerAddress(c);
-    if (deps.ownerSecret === undefined || peer === undefined || !isLoopback(peer)) return c.body(null, 404, NO_STORE);
+    const loopbackOnly = deps.ownerLoopbackOnly ?? true;
+    if (deps.ownerSecret === undefined || peer === undefined || (loopbackOnly && !isLoopback(peer))) return c.body(null, 404, NO_STORE);
     const nowMs = now().getTime();
     const key = quotaKey(peer);
     const failures = (ownerFailures.get(key) ?? []).filter((at) => nowMs - at < OWNER_WINDOW_MS);

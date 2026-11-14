@@ -5,7 +5,7 @@
  */
 import { type Mailer, type OffenceCategory, type Random, type ReportOutcome } from "../domain";
 import type { AccountIo } from "./account-io";
-import type { LoadedReport, ModerationIo } from "./moderation-io";
+import type { LoadedReport, LoadedStatement, ModerationIo } from "./moderation-io";
 
 /** Time between two retry rounds (BR-076, BR-104, BR-107). */
 export const STATEMENT_RETRY_MS = 10 * 60_000;
@@ -60,16 +60,8 @@ export interface ModerationMailDeps {
   readonly onStoreError: (error: unknown) => void;
 }
 
-/** A statement not yet accepted by the provider, retried until `giveUpAt` (BR-076). */
-interface PendingStatement {
-  readonly email: string;
-  readonly statement: string;
-  readonly giveUpAt: Date;
-}
-
 /** Sending and retrying; every method resolves, errors go to `onStoreError`. */
 export const createModerationMail = (deps: ModerationMailDeps) => {
-  let statements: PendingStatement[] = [];
   let lastRetry = 0;
   let retrying = false;
   /** Mails on their way to the provider: a retry round never sends one a second time meanwhile. */
@@ -89,10 +81,29 @@ export const createModerationMail = (deps: ModerationMailDeps) => {
     }
   };
 
-  /** Tries one statement; a refused or failed one is kept for a retry until `giveUpAt` (BR-076). */
-  const sendStatement = async (entry: PendingStatement): Promise<void> => {
-    const sent = await accepted(`statement:${entry.email}:${entry.giveUpAt.getTime()}`, () => deps.mailer.sendStatementOfReasons(entry.email, entry.statement));
-    if (!sent) statements.push(entry);
+  /**
+   * Tries one statement; it stays stored, encrypted, until the provider accepts it or `giveUpAt` passes
+   * (BR-076, BR-109).
+   */
+  const sendStatement = async (entry: LoadedStatement): Promise<void> => {
+    if (!(await accepted(`statement:${entry.id}`, () => deps.mailer.sendStatementOfReasons(entry.email, entry.text)))) return;
+    try {
+      await deps.moderation.deletePendingStatement(entry.id);
+    } catch (cause) {
+      deps.onStoreError(cause);
+    }
+  };
+
+  /** BR-076: statements younger than 7 days; older ones are deleted. */
+  const retryStatements = async (now: Date): Promise<void> => {
+    try {
+      const statements = await deps.moderation.pendingStatements();
+      const expired = statements.filter((entry) => entry.giveUpAt.getTime() <= now.getTime());
+      await Promise.all(expired.map((entry) => deps.moderation.deletePendingStatement(entry.id)));
+      await Promise.all(statements.filter((entry) => !expired.includes(entry)).map(sendStatement));
+    } catch (cause) {
+      deps.onStoreError(cause);
+    }
   };
 
   /** BR-104: `notifiedAt` is set once the provider accepted; until then the retry round sends it again. */
@@ -158,8 +169,16 @@ export const createModerationMail = (deps: ModerationMailDeps) => {
 
   return {
     /** BR-076: tried now, kept 7 days for the retries. */
-    statement: (email: string, statement: string, now: Date): Promise<void> =>
-      sendStatement({ email, statement, giveUpAt: new Date(now.getTime() + MAIL_GIVE_UP_MS) }),
+    async statement(email: string, text: string, now: Date): Promise<void> {
+      const entry = { id: deps.random.id(), email, text, giveUpAt: new Date(now.getTime() + MAIL_GIVE_UP_MS) };
+      try {
+        await deps.moderation.savePendingStatement(entry);
+      } catch (cause) {
+        // Not stored: still tried once now, never retried.
+        deps.onStoreError(cause);
+      }
+      await sendStatement(entry);
+    },
     alert: sendAlert,
     notifyReporter,
     /** Called from the hub tick, never awaited there; one retry round every `STATEMENT_RETRY_MS`. */
@@ -167,10 +186,8 @@ export const createModerationMail = (deps: ModerationMailDeps) => {
       if (retrying || now.getTime() - lastRetry < STATEMENT_RETRY_MS) return;
       retrying = true;
       lastRetry = now.getTime();
-      const due = statements.filter((entry) => entry.giveUpAt.getTime() > now.getTime());
-      statements = [];
       try {
-        await Promise.all([...due.map(sendStatement), retryAlerts(now), retryDecisions(now)]);
+        await Promise.all([retryStatements(now), retryAlerts(now), retryDecisions(now)]);
       } finally {
         retrying = false;
       }

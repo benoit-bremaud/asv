@@ -25,3 +25,72 @@ describe("createModerationMail in-flight guard", () => {
     release(true);
   });
 });
+
+describe("createModerationMail statements (BR-076, BR-109)", () => {
+  const setup = (overrides: Partial<Record<"savePendingStatement" | "deletePendingStatement" | "pendingStatements", () => Promise<unknown>>> = {}, accepted = true) => {
+    const sendStatementOfReasons = vi.fn(async () => accepted);
+    const onStoreError = vi.fn();
+    const moderation = {
+      savePendingStatement: vi.fn(async () => undefined),
+      deletePendingStatement: vi.fn(async () => undefined),
+      pendingStatements: vi.fn(async () => []),
+      pendingAlerts: async () => ({ alerts: [], failures: [] }),
+      pendingDecisionMails: async () => [],
+      ...overrides,
+    };
+    const mail = createModerationMail({
+      mailer: { sendStatementOfReasons } as unknown as Mailer,
+      moderation: moderation as unknown as ModerationIo,
+      accounts: {} as AccountIo,
+      random: { id: () => "st1", token: () => ({ value: "t", hash: "h" }) },
+      onStoreError,
+    });
+    return { mail, moderation, sendStatementOfReasons, onStoreError };
+  };
+
+  it("stores the statement encrypted before sending, and deletes it once accepted", async () => {
+    const { mail, moderation, sendStatementOfReasons } = setup();
+    await mail.statement("a@b.fr", "text", T0);
+
+    expect(moderation.savePendingStatement).toHaveBeenCalledWith({ id: "st1", email: "a@b.fr", text: "text", giveUpAt: new Date(T0.getTime() + 7 * 86_400_000) });
+    expect(sendStatementOfReasons).toHaveBeenCalledWith("a@b.fr", "text");
+    expect(moderation.deletePendingStatement).toHaveBeenCalledWith("st1");
+  });
+
+  it("still sends once when the store refuses the statement, and reports the error", async () => {
+    const failure = new Error("disk");
+    const { mail, sendStatementOfReasons, onStoreError } = setup({ savePendingStatement: () => Promise.reject(failure) });
+    await mail.statement("a@b.fr", "text", T0);
+
+    expect(sendStatementOfReasons).toHaveBeenCalledTimes(1);
+    expect(onStoreError).toHaveBeenCalledWith(failure);
+  });
+
+  it("keeps a refused statement, and reports a failed delete", async () => {
+    const kept = setup({}, false);
+    await kept.mail.statement("a@b.fr", "text", T0);
+    expect(kept.moderation.deletePendingStatement).not.toHaveBeenCalled();
+
+    const failure = new Error("disk");
+    const broken = setup({ deletePendingStatement: () => Promise.reject(failure) });
+    await broken.mail.statement("a@b.fr", "text", T0);
+    expect(broken.onStoreError).toHaveBeenCalledWith(failure);
+  });
+
+  it("retries younger statements, deletes expired ones, and reports a failed read", async () => {
+    const statements = [
+      { id: "old", email: "o@b.fr", text: "o", giveUpAt: T0 },
+      { id: "new", email: "n@b.fr", text: "n", giveUpAt: new Date(T0.getTime() + 1) },
+    ];
+    const { mail, moderation, sendStatementOfReasons } = setup({ pendingStatements: async () => statements });
+    await mail.retry(T0);
+
+    expect(moderation.deletePendingStatement).toHaveBeenCalledWith("old");
+    expect(sendStatementOfReasons).toHaveBeenCalledExactlyOnceWith("n@b.fr", "n");
+
+    const failure = new Error("disk");
+    const broken = setup({ pendingStatements: () => Promise.reject(failure) });
+    await broken.mail.retry(T0);
+    expect(broken.onStoreError).toHaveBeenCalledWith(failure);
+  });
+});

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { quotaKey } from "./ip-key";
+import { isIpAddress, quotaKey } from "./ip-key";
 
 describe("quotaKey (BR-112)", () => {
   it("keeps an IPv4 address as is", () => {
@@ -39,4 +39,14 @@ describe("quotaKey (BR-112)", () => {
       expect(quotaKey(input)).toBe(input);
     },
   );
+});
+
+describe("isIpAddress (BR-111)", () => {
+  it.each(["203.0.113.7", "0.0.0.0", "2001:db8::1", "2001:DB8::1", "::1", "::ffff:203.0.113.7", "1:2:3:4:5:6:7:8"])("accepts %j", (input) => {
+    expect(isIpAddress(input)).toBe(true);
+  });
+
+  it.each(["", "unknown", "1.2.3", "999.1.1.1", " 1.2.3.4", "1.2.3.4, 5.6.7.8", "fe80::1%eth0", "2001:db8::1::2", "1.2.3.4:80"])("refuses %j", (input) => {
+    expect(isIpAddress(input)).toBe(false);
+  });
 });
