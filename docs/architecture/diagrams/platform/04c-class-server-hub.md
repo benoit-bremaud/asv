@@ -23,7 +23,7 @@ classDiagram
     +receive(socketKey, raw, now) Promise~Outgoing[]~
     +close(socketKey, now) Promise~Outgoing[]~
     +tick(now) Promise~Outgoing[]~
-    +maintain(now, purge) Promise~void~
+    +maintain(now, purge) Promise~boolean~
     +stats() Stats
   }
   class HubDeps {
@@ -142,7 +142,8 @@ classDiagram
 
 ## Notes
 
-- `maintain(now, purge)` (BR-110): the store purges when `purge` is true, then one mail retry round.
+- `maintain(now, purge)` (BR-110): the store purges when `purge` is true, then one mail retry round;
+  it resolves `false` when a requested purge failed, so the alarm leaves `lastPurgeAt` unchanged and retries.
   `HubDeps.maintenanceInTick` defaults to `true`: the Node transport keeps both in `tick`. The Hub Durable
   Object sets it to `false` and calls `maintain` from its alarm instead (`platform/09`).
 - `ModeratorRouteDeps.ownerLoopbackOnly` defaults to `true` (Node: `/owner/*` from loopback only); the

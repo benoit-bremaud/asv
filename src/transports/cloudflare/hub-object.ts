@@ -169,6 +169,8 @@ export class HubObject {
       every(() => void this.tick(), this.options.tickMs ?? 1000),
       every(() => this.sweep(), this.options.sweepMs ?? SWEEP_MS),
     ];
+    // One tick at once: away sessions that expired while no socket was open leave before the first count.
+    void this.tick();
   }
 
   private stopTimers(): void {
@@ -359,14 +361,16 @@ export class HubObject {
       try {
         await running.log.purge(now);
         await running.moderators.purge(now);
-        writeMeta(storage, LAST_PURGE, String(now.getTime()));
       } catch (error) {
         failed = true;
         console.error("daily purge failed", error);
       }
     }
     // Accounts, vault and moderation purges on the daily run only, then one retry round.
-    await running.hub.maintain(now, purge);
+    const purged = await running.hub.maintain(now, purge);
+    if (!purged) failed = true;
+    // `lastPurgeAt` moves only when every purge succeeded (BR-110).
+    if (purge && !failed) writeMeta(storage, LAST_PURGE, String(now.getTime()));
     // A failed purge is retried with the mail round, not every second.
     const next = this.nextAlarm();
     await this.armAlarm(failed ? Math.max(next, now.getTime() + STATEMENT_RETRY_MS) : next);

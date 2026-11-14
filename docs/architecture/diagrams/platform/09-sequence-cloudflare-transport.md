@@ -89,9 +89,10 @@ sequenceDiagram
   The `/owner/*` loopback check is off on Cloudflare (`ownerLoopbackOnly: false`, BR-093), and the peer
   address there is `CF-Connecting-IP`. A refused or silent socket is closed with no code or 1008, then the
   hub's close runs at once, as on Node, even when the runtime throws on `close()`. The tick and the sweep start
-  with the first accepted socket and stop with the last close; an alarm wake starts neither. An oversize frame
+  with the first accepted socket, which also runs one tick at once (away sessions expired meanwhile), and stop
+  with the last close; an alarm wake starts neither. An oversize frame
   goes to `hub.receive`, which counts it as invalid (`frameTooLarge`), so the fifth in a row closes the socket
-  (BR-088). After a failed daily purge the alarm is re-armed no sooner than 10 minutes. The daily moderation
+  (BR-088). After a failed daily purge (log, moderator, account, vault or moderation store) `lastPurgeAt` is left unchanged and the alarm is re-armed no sooner than 10 minutes. The daily moderation
   purge also drops `pending_statements` past `give_up_at` and `pending_mails` past the 7-day give-up window.
   Closing an account (UC19, BR-081) writes the vault row, the account and device deletes and the carry-over in
   one `transactionSync`.

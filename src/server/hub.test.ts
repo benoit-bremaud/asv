@@ -766,7 +766,7 @@ describe("hub maintenance (BR-110)", () => {
     expect(pendingStatements).toHaveBeenCalledTimes(1);
 
     // One retry round every 10 minutes at most (BR-110).
-    await hub.maintain(later(10 * 60_000), true);
+    expect(await hub.maintain(later(10 * 60_000), true)).toBe(true);
     expect(purgeExpired).toHaveBeenCalledTimes(1);
     expect(pendingStatements).toHaveBeenCalledTimes(2);
   });
@@ -774,7 +774,7 @@ describe("hub maintenance (BR-110)", () => {
   it("reports a failed purge and still retries", async () => {
     const { pendingStatements, moderation, onStoreError } = spied(true);
     const { hub } = setup(undefined, {}, { moderation, onStoreError, maintenanceInTick: false });
-    await hub.maintain(T0, true);
+    expect(await hub.maintain(T0, true)).toBe(false);
     expect(onStoreError).toHaveBeenCalledWith(expect.any(Error));
     expect(pendingStatements).toHaveBeenCalled();
   });

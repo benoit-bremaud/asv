@@ -322,7 +322,28 @@ describe("Hub Durable Object alarm (BR-110)", () => {
     await object.alarm();
 
     expect(error).toHaveBeenCalledWith("daily purge failed", expect.any(Error));
+    expect(readMeta(storage, "lastPurgeAt")).toBeUndefined();
     expect(storage.alarms.at(-1)).toBe(T0 + STATEMENT_RETRY_MS);
+    error.mockRestore();
+  });
+
+  it("retries a failed account, vault or moderation purge at the next alarm, 10 minutes later", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { object, storage, advance } = await setup();
+    storage.sql.exec("ALTER TABLE vault RENAME TO vault_away");
+
+    await object.alarm();
+
+    expect(error).toHaveBeenCalledWith("store failed", expect.any(Error));
+    expect(readMeta(storage, "lastPurgeAt")).toBeUndefined();
+    expect(storage.alarms.at(-1)).toBe(T0 + STATEMENT_RETRY_MS);
+
+    storage.sql.exec("ALTER TABLE vault_away RENAME TO vault");
+    advance(STATEMENT_RETRY_MS);
+    await object.alarm();
+
+    expect(readMeta(storage, "lastPurgeAt")).toBe(String(T0 + STATEMENT_RETRY_MS));
+    expect(storage.alarms.at(-1)).toBe(T0 + STATEMENT_RETRY_MS + PURGE_EVERY_MS);
     error.mockRestore();
   });
 
@@ -350,5 +371,101 @@ describe("Hub Durable Object alarm (BR-110)", () => {
 
     expect(rows(storage, "SELECT id FROM pending_statements")).toEqual([{ id: "st1" }]);
     expect(storage.alarms.at(-1)).toBe(T0 + 2 * STATEMENT_RETRY_MS);
+  });
+});
+
+describe("Hub Durable Object first tick (BR-110)", () => {
+  it("runs one tick at once on the first socket only", async () => {
+    const { object, upgrade } = await setup();
+    const tick = vi.spyOn(object, "tick");
+
+    await upgrade();
+    expect(tick).toHaveBeenCalledTimes(1);
+    await upgrade();
+    expect(tick).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("Hub Durable Object accounts and owner routes (UC18, UC19, UC20)", () => {
+  const ORIGIN = "https://staging.asvchat.fr";
+  const signedIn = async () => {
+    const codes: string[] = [];
+    const mailer: Mailer = { ...quietMailer, sendCode: (_email, code) => Promise.resolve(void codes.push(code)) };
+    const context = await setup(validEnv(), undefined, mailer);
+    const { upgrade, sockets } = context;
+    await upgrade();
+    const socket = sockets[0];
+    if (!socket) throw new Error("no socket");
+    let seq = 0;
+    const answer = async (type: string, payload: object, expected: string) => {
+      const before = socket.sent.length;
+      socket.emit("message", JSON.stringify({ type, seq: ++seq, payload }));
+      let found: { type: string; payload: Record<string, unknown> } | undefined;
+      await vi.waitFor(() => {
+        found = socket.sent
+          .slice(before)
+          .map((text) => JSON.parse(text) as { type: string; payload: Record<string, unknown> })
+          .find((message) => message.type === expected);
+        expect(found).toBeDefined();
+      });
+      return found?.payload ?? {};
+    };
+    await answer("enter", { pseudo: "Lola", age: 30, adultConfirmed: true, termsAccepted: true }, "entered");
+    await answer("requestCode", { email: "nath@example.org", remember: true }, "codeSent");
+    const linked = await answer("verifyCode", { code: codes.at(-1) ?? "" }, "accountLinked");
+    const post = (path: string, init: RequestInit = {}) =>
+      context.object.fetch(new Request(`${ORIGIN}${path}`, { method: "POST", ...init, headers: { origin: ORIGIN, ...init.headers } }));
+    const device = await post("/account/device", { body: JSON.stringify({ claim: linked.deviceClaim }), headers: { "Content-Type": "application/json" } });
+    return { ...context, answer, post, device };
+  };
+
+  it("redeems a device claim, then signs that device out (BR-073, UC18)", async () => {
+    const { storage, post, device } = await signedIn();
+    expect(device.status).toBe(204);
+    const cookie = /asv_device=([^;]+)/.exec(device.headers.get("set-cookie") ?? "")?.[1];
+    expect(rows(storage, "SELECT account_id FROM devices")).toHaveLength(1);
+
+    const out = await post("/account/sign-out", { headers: { cookie: `asv_device=${cookie ?? ""}` } });
+
+    expect(out.status).toBe(204);
+    expect(rows(storage, "SELECT account_id FROM devices")).toEqual([]);
+  });
+
+  it("deletes nothing when the device delete fails, through the one-transaction closing (BR-081)", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { storage, answer } = await signedIn();
+    const exec = storage.sql.exec;
+    storage.sql.exec = (query, ...bindings) => {
+      if (query.startsWith("DELETE FROM devices")) throw new Error("disk");
+      return exec.call(storage.sql, query, ...bindings);
+    };
+
+    expect(await answer("deleteAccount", {}, "warning")).toMatchObject({ code: "unavailable" });
+    storage.sql.exec = exec;
+
+    expect(rows(storage, "SELECT * FROM vault")).toEqual([]);
+    expect(rows(storage, "SELECT id FROM accounts")).toHaveLength(1);
+    expect(rows(storage, "SELECT account_id FROM devices")).toHaveLength(1);
+    error.mockRestore();
+  });
+
+  it("answers 404 to a filing for an unknown report and 503 when an owner route fails (UC20, BR-093)", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { object, storage } = await setup();
+    const owner = (path: string, body: object) =>
+      object.fetch(
+        new Request(`${ORIGIN}${path}`, {
+          method: "POST",
+          headers: { "cf-connecting-ip": "198.51.100.9", Authorization: `Bearer ${"o".repeat(32)}`, "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        }),
+      );
+
+    expect((await owner("/owner/authority-filings", { reportId: "nope", channel: "PHAROS", reference: "ref-1" })).status).toBe(404);
+
+    storage.sql.exec("DROP TABLE invitations");
+    expect((await owner("/owner/invitations", { name: "Marc" })).status).toBe(503);
+    expect(error).toHaveBeenCalledWith("moderator route failed", expect.any(Error));
+    error.mockRestore();
   });
 });

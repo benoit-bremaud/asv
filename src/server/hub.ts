@@ -103,8 +103,11 @@ export interface Hub {
   receive(socketKey: string, raw: string, now: Date): Promise<Outgoing[]>;
   close(socketKey: string, now: Date): Promise<Outgoing[]>;
   tick(now: Date): Promise<Outgoing[]>;
-  /** Store purges when `purge`, then one mail retry round, awaited (BR-110); errors go to `onStoreError`. */
-  maintain(now: Date, purge: boolean): Promise<void>;
+  /**
+   * Store purges when `purge`, then one mail retry round, awaited (BR-110); errors go to `onStoreError`.
+   * Resolves `false` when a requested purge failed, so the alarm retries it.
+   */
+  maintain(now: Date, purge: boolean): Promise<boolean>;
   /** `POST /account/device`: exchanges a device claim for a token, or `undefined` (BR-073). */
   redeemDeviceClaim(claim: string, now: Date): Promise<DeviceToken | undefined>;
   /** `POST /account/sign-out`: forgets this device and unlinks its sessions (UC18). */
@@ -568,15 +571,18 @@ export const createHub = (deps: HubDeps): Hub => {
       }),
 
     async maintain(now, purge) {
+      let purged = true;
       if (purge) {
         try {
           await serial(() => purgeStores(now));
         } catch (cause) {
+          purged = false;
           deps.onStoreError(cause);
         }
       }
       // Awaited by the alarm, but outside the queue: a slow provider must not hold the chat.
       await moderation.retryMails(now);
+      return purged;
     },
 
     redeemDeviceClaim: (claim, now) =>
