@@ -23,7 +23,7 @@ type Command<T extends ClientMessage["type"]> = Extract<ClientMessage, { type: T
 /** The socket asking, as the account handlers see it. */
 export interface Caller {
   readonly key: string;
-  /** Key of the per-IP code quota (BR-071). */
+  /** Key of the per-IP code quota (BR-072). */
   readonly ip: string;
   readonly sessionId: string;
 }

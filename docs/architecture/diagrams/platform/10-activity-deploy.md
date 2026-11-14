@@ -49,4 +49,4 @@ flowchart TD
   repository holds no personal data.
 - One-time setup sets `workers_dev: false` and `preview_urls: false` per environment, and creates
   two Access applications per environment (site, `/owner`) whose AUD tags the Worker checks in
-  `Cf-Access-Jwt-Assertion` (`ASV_ACCESS_AUD_SITE`, `ASV_ACCESS_AUD_OWNER`; BR-113).
+  `Cf-Access-Jwt-Assertion` (`ASV_ACCESS_AUD_SITE`, `ASV_ACCESS_AUD_OWNER`; BR-113). The owner CLI reaches `/owner/*` with `ASV_OWNER_URL` and the Service Auth token in `ASV_ACCESS_CLIENT_ID` and `ASV_ACCESS_CLIENT_SECRET` (BR-093).

@@ -155,8 +155,9 @@ The hub is split by command group, all behind the same `createHub(HubDeps)`:
 | `src/server/moderation-mail.ts` | brick 8c-2: texts of the statements and decision e-mail, sending without waiting and the 10-minute retry round, 7 days at most (BR-076, BR-104, BR-107) |
 | `src/server/moderation-io.ts` | encryption at rest of reports and keyed hashes of bans around the `ModerationStore` port (ADR-0017) |
 | `src/server/moderator-grant.ts` | build and check of the passkey grant (BR-095); replaces the 8a `moderator-token.ts` (BR-091); the used-nonce set lives in `hub.ts`, which runs entries one at a time |
-| `src/server/hub-moderators.ts` | brick 8b operations for the `/mod` routes: `createInvitation`, `keepChallenge`, `takeChallenge` (5 min, single use, bound to its purpose and invitation, 200 at most, BR-096), `purge`, and `io` (the `ModeratorIo`) |
-| `src/server/moderator-routes.ts` | Hono `/mod/*` routes and the SimpleWebAuthn ceremonies (`moderation/02f`), owner-secret guard (BR-093), 404 behind the tunnel (BR-097) |
+| `src/server/hub-moderators.ts` | brick 8b operations for the `/mod` and `/owner` routes: `createInvitation`, `keepChallenge`, `takeChallenge` (5 min, single use, bound to its purpose and invitation, 200 at most, BR-096), `purge`, and `io` (the `ModeratorIo`) |
+| `src/domain/ip-key.ts` | `quotaKey(ip)`: the IPv6 /64 prefix (IPv4 and IPv4-mapped as IPv4) keying every per-IP quota, cap and ban hash (BR-112); imported by the server modules and `entry.ts` |
+| `src/server/moderator-routes.ts` | Hono `/mod/*` and `/owner/*` routes and the SimpleWebAuthn ceremonies (`moderation/02f`), owner-secret guard (BR-093), 404 behind the tunnel (BR-097) |
 | `src/server/moderator-io.ts` | encryption at rest around the `ModeratorStore` port (BR-099) |
 | `src/server/hub-private.ts` | brick 6 commands (`sendPrivate`, `closePrivate`, `ignore`, `unignore`, `search`), contribution first for `sendPrivate`, and the private presence of `close`, away and resume |
 | `src/server/hub-accounts.ts` | account commands (`requestCode`, `verifyCode`, `signOutEverywhere`, `deleteAccount`) and their `warning unavailable` guard (`platform/04d`) |

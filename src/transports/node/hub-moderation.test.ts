@@ -543,6 +543,16 @@ describe("hardening (review round 1)", () => {
     expect(only(await hub.receive("31", JSON.stringify({ type: "enter", seq: 1, payload: { pseudo: "Patron", age: 30, adultConfirmed: true, termsAccepted: true, moderatorGrant: await grant(later(GRANT_WINDOW_MS)) } }), later(GRANT_WINDOW_MS)), "entered").payload.isModerator).toBe(true);
   });
 
+  it("counts the refused grants of one IPv6 /64 together (BR-112)", async () => {
+    const { enter } = await setup();
+    for (let index = 0; index < GRANT_FAILURES_MAX; index += 1) {
+      expect(only(await enter(`${20 + index}`, "Patron", { moderatorGrant: "wrong" }, "2001:db8:0:1::1"), "entryRefused").payload).toEqual({ reason: "notModerator" });
+    }
+
+    expect(only(await enter("30", "Patron", { moderatorGrant: "wrong" }, "2001:db8:0:1:ffff::2"), "entryRefused").payload).toEqual({ reason: "rate" });
+    expect(only(await enter("31", "Patron", { moderatorGrant: "wrong" }, "2001:db8:0:2::1"), "entryRefused").payload).toEqual({ reason: "notModerator" });
+  });
+
   it("keeps reporting off behind the tester tunnel (`moderation/01`)", async () => {
     const { enterAs, send } = await setup({ canReport: false });
 

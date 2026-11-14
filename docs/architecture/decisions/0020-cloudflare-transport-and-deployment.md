@@ -178,7 +178,7 @@ security near 0). Owner choice B on 2026-11-14.
    `/owner/moderators/:name` and `/owner/authority-filings` on every transport (BR-093, BR-104). On Cloudflare
    `/owner/*` has its own Access policy with a Service Auth policy; the owner CLI targets `ASV_OWNER_URL`
    (default `http://127.0.0.1:<port>` on Node) and sends `CF-Access-Client-Id` and `CF-Access-Client-Secret` from
-   the environment when set. The service token is named and has an expiry.
+   `ASV_ACCESS_CLIENT_ID` and `ASV_ACCESS_CLIENT_SECRET` (both or neither) when set. The service token is named and has an expiry.
 10. **Secrets** (Wrangler secrets per environment, never in the repo): `ASV_DATA_KEYS`, `ASV_HMAC_KEY`,
     `ASV_VAULT_PUBLIC_KEY`, `ASV_OWNER_SECRET`, `BREVO_API_KEY`, `ASV_MISTRAL_API_KEY` and the legal identity
     fields `ASV_OWNER_NAME`, `ASV_OWNER_ADDRESS`, `ASV_OWNER_PHONE`, `ASV_CONTACT_EMAIL`, `ASV_BREVO_LOCATION`.

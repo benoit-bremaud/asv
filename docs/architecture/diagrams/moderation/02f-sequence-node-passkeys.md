@@ -21,7 +21,7 @@ guarded by an owner secret and limited to loopback (choice A, 440/500). Replaces
 sequenceDiagram
   actor OW as Owner
   participant CLI as pnpm mod:invite
-  participant R as Hono /mod routes
+  participant R as Hono /mod and /owner routes
   participant O as Moderator ops
   participant MS as File moderator store
   participant H as Hub
