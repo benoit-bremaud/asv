@@ -63,6 +63,6 @@ sequenceDiagram
   the active strikes, not stored (BR-075).
 - The statement of reasons lists the facts, the terms clause, whether AI triage was used, and how to
   contest by replying to the contact address (DSA art. 17). It is retried until sent, for at most 7 days.
-- Every account deletion, including this one, writes the legal retention record to the vault in the same
-  transaction (ADR-0014). The vault holds no reason, strike or report.
+- Every account deletion, including this one, writes the legal retention record to the vault (BR-081: one
+  transaction on Cloudflare, vault first on Node; ADR-0014). The vault holds no reason, strike or report.
 - A warning itself restricts nothing, so it is notified in the chat only.
