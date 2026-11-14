@@ -324,7 +324,9 @@ describe("expel (UC11, BR-008, BR-053, BR-055)", () => {
     expect(only(out, "memberLeft").payload).toMatchObject({ roomId: "lyon", sessionId: max.sessionId });
     only(out, "reportClosed");
     expect(closeSocket).toHaveBeenCalledWith("2");
-    expect(moderationStore.dump().bans[0]).toMatchObject({ decidedBy: "Marc", until: later(HOUR) });
+    expect(moderationStore.dump().bans[0]).toMatchObject({ until: later(HOUR) });
+    // ADR-0017: the moderator's name reaches the store as ciphertext only.
+    expect(JSON.stringify(moderationStore.dump())).not.toContain("Marc");
     expect(only(await enter("3", "MAX", {}, "10.0.0.50"), "entryRefused").payload).toEqual({ reason: "banned", bannedUntil: later(HOUR).toISOString() });
     expect(only(await enter("4", "Autre", {}, "10.0.0.2"), "entryRefused").payload).toMatchObject({ reason: "banned" });
     expect(only(await send("4", "enter", { pseudo: "Autre", age: 30, adultConfirmed: true, termsAccepted: true }, later(HOUR)), "entered")).toBeDefined();
@@ -736,7 +738,9 @@ describe("severe expel (moderation/02h, BR-103)", () => {
     expect(ctx.vault.entries()).toHaveLength(1);
     expect(ctx.statements).toEqual([{ email: "max@example.org", statement: expect.stringContaining(later(183 * DAY).toISOString().slice(0, 10)) }]);
     expect(ctx.statements[0]?.statement).toContain("aucun outil automatique");
-    expect(ctx.moderationStore.dump().reports[0]?.closed).toMatchObject({ outcome: "severeDeleted", by: "Marc" });
+    expect(ctx.moderationStore.dump().reports[0]?.closed).toMatchObject({ outcome: "severeDeleted" });
+    expect(ctx.moderationStore.dump().reports[0]?.closed?.by).not.toBe("Marc");
+    expect((await ctx.moderationIo.findReport(ctx.moderationStore.dump().reports[0]?.id ?? ""))?.closed?.by).toBe("Marc");
     expect(ctx.moderationStore.dump().bans[0]).toMatchObject({ until: later(7 * DAY) });
     // BR-078: the e-mail stays blocked, so no new code is sent.
     await ctx.enterAs("3", "Neuf", {}, "10.0.0.77");

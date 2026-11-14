@@ -3,6 +3,7 @@ import { ACCOUNT_LIMITS, MODERATION_LIMITS, type StoredAccount, type StoredModer
 import { createCrypto } from "../../server/crypto/cipher";
 import { cryptoKeysFromEnv } from "../../server/crypto/keys";
 import { MAIL_GIVE_UP_MS } from "../../server/moderation-mail";
+import { createModerationIo } from "../../server/moderation-io";
 import { rows } from "./sql";
 import {
   closeOpenLines,
@@ -383,6 +384,34 @@ describe("moderation store (moderation/04)", () => {
     await moderation.purgeExpired(at(MODERATION_LIMITS.alertedReportMs));
     expect(rows(store, "SELECT id FROM reports")).toEqual([{ id: "open" }]);
     expect(rows(store, "SELECT * FROM alerts")).toEqual([]);
+  });
+
+  it("drops pending statements past their give-up time and decision e-mails past the give-up window (BR-076, BR-107)", async () => {
+    const store = storage();
+    const moderation = createSqlModerationStore(store);
+    await moderation.savePendingStatement({ id: "old", email: "v1.m", text: "v1.t", giveUpAt: at(DAY) });
+    await moderation.savePendingStatement({ id: "young", email: "v1.m", text: "v1.t", giveUpAt: at(3 * DAY) });
+    await moderation.savePendingDecisionMail({ id: "old", reportId: "r1", email: "v1.m", text: "v1.t", createdAt: T0 });
+    await moderation.savePendingDecisionMail({ id: "young", reportId: "r1", email: "v1.m", text: "v1.t", createdAt: at(2 * DAY) });
+
+    await moderation.purgeExpired(at(2 * DAY));
+    expect((await moderation.pendingStatements()).map((one) => one.id)).toEqual(["young"]);
+    expect((await moderation.pendingDecisionMails()).map((one) => one.id)).toEqual(["old", "young"]);
+
+    await moderation.purgeExpired(at(MAIL_GIVE_UP_MS));
+    expect((await moderation.pendingDecisionMails()).map((one) => one.id)).toEqual(["young"]);
+  });
+
+  it("stores no moderator name in clear: closed reports and bans (ADR-0017)", async () => {
+    const store = storage();
+    const io = createModerationIo({ store: createSqlModerationStore(store), crypto });
+    const clear = { id: "r1", reason: "harassment" as const, targetKind: "chatter" as const, targetPseudo: "Max", targetIp: "203.0.113.9", excerpt: "x", context: [], authorPseudo: "Lola", createdAt: T0 };
+    await io.saveReport(clear);
+    await io.closeReport(clear, "expelled", "Marcelline", at(1));
+    await io.saveBan({ ip: "203.0.113.9", pseudo: "Max", until: at(DAY), decidedBy: "Marcelline" }, "r1", "b1", at(1));
+
+    expect(JSON.stringify([...rows(store, "SELECT * FROM reports"), ...rows(store, "SELECT * FROM bans")])).not.toContain("Marcelline");
+    expect((await io.findReport("r1"))?.closed).toEqual({ outcome: "expelled", by: "Marcelline", at: at(1) });
   });
 
   it("rolls an interrupted patch back (atomic write)", async () => {

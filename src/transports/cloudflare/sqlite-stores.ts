@@ -1,7 +1,8 @@
 /**
  * SQLite stores of the Hub Durable Object (ADR-0020 §4, `platform/09`): one table set per port, the Durable
- * Object twin of the Node stores. Values arrive encrypted or keyed-hashed (ADR-0017, BR-083); the connection
- * log, which gets clear lines from the hub, encrypts its personal fields itself. Gender, age and city never
+ * Object twin of the Node stores. Personal values (e-mails, pseudos, moderator names, texts, IPs) arrive
+ * encrypted or keyed-hashed (ADR-0017, BR-083); ids, dates, counters, categories and outcomes stay clear. The
+ * connection log, which gets clear lines from the hub, encrypts its personal fields itself. Gender, age and city never
  * reach a store. Migrations are additive only (`platform/10`).
  */
 import {
@@ -796,6 +797,17 @@ export const createSqlModerationStore = (
           "DELETE FROM bans WHERE until + ? <= ?",
           MODERATION_LIMITS.expiredBanMs,
           time,
+        );
+        // BR-076, BR-107: a mail past its give-up time goes even when a retry round cannot read it.
+        run(
+          storage,
+          "DELETE FROM pending_statements WHERE give_up_at <= ?",
+          time,
+        );
+        run(
+          storage,
+          "DELETE FROM pending_mails WHERE created_at <= ?",
+          time - MAIL_GIVE_UP_MS,
         );
       });
       return done();

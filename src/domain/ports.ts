@@ -72,6 +72,7 @@ export interface StoredReport {
   readonly triage?: StoredTriage;
   readonly closed?: {
     readonly outcome: ReportOutcome;
+    /** Ciphertext of the moderator's name (ADR-0017). */
     readonly by: string;
     readonly at: Date;
   };
@@ -129,6 +130,7 @@ export interface StoredBan {
   /** Keyed hash of the folded pseudo, to match at entry. */
   readonly pseudoKeyedHash?: string;
   readonly until: Date;
+  /** Ciphertext of the moderator's name (ADR-0017). */
   readonly decidedBy: string;
   readonly decidedAt: Date;
 }

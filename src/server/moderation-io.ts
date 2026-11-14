@@ -134,7 +134,9 @@ export const createModerationIo = ({ store, crypto }: ModerationIoDeps) => {
       createdAt: stored.createdAt,
       ...(stored.alert ? { alert: await toAlert(stored.id, stored.alert) } : {}),
       ...(stored.struckAt ? { struckAt: stored.struckAt } : {}),
-      ...(stored.closed ? { closed: stored.closed } : {}),
+      ...(stored.closed
+        ? { closed: { ...stored.closed, by: await crypto.decrypt(stored.closed.by, field(stored.id, "closedBy")) } }
+        : {}),
       ...(triage ? { triage } : {}),
     };
   };
@@ -237,9 +239,9 @@ export const createModerationIo = ({ store, crypto }: ModerationIoDeps) => {
     },
     /** BR-101: the reporter's IP is counted by its keyed hash only. */
     ipKeyedHash: (ip: string) => ipHash(ip),
-    /** BR-055, BR-057: one outcome, the moderator and the time. */
+    /** BR-055, BR-057: one outcome, the moderator (encrypted, ADR-0017) and the time. */
     async closeReport(report: Report, outcome: ReportOutcome, by: string, at: Date): Promise<void> {
-      await update(report.id, { closed: { outcome, by, at } });
+      await update(report.id, { closed: { outcome, by: await crypto.encrypt(by, field(report.id, "closedBy")), at } });
     },
     /** BR-074: the strike of this report is given, once. */
     async markStruck(id: string, at: Date): Promise<void> {
@@ -252,7 +254,8 @@ export const createModerationIo = ({ store, crypto }: ModerationIoDeps) => {
         ipKeyedHash: ban.ip === undefined ? await ipHashOf(reportId) : await ipHash(ban.ip),
         pseudoKeyedHash: ban.pseudo === undefined ? undefined : await pseudoHash(ban.pseudo),
         until: ban.until,
-        decidedBy: ban.decidedBy,
+        // ADR-0017: moderator data is encrypted; never read back by the hub.
+        decidedBy: await crypto.encrypt(ban.decidedBy, `ban:${id}:decidedBy`),
         decidedAt: now,
       });
     },
