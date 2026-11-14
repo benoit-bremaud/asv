@@ -11,7 +11,7 @@ import { cryptoKeysFromEnv, toBase64Url } from "../../server/crypto/keys";
 import { createModeratorOps } from "../../server/hub-moderators";
 import { createGrantKey, readGrant } from "../../server/moderator-grant";
 import { createModeratorIo } from "../../server/moderator-io";
-import { addModeratorRoutes, checkOwnerSecret, OWNER_FAILURES_MAX, OWNER_WINDOW_MS } from "../../server/moderator-routes";
+import { addModeratorRoutes, checkOwnerSecret, OWNER_FAILURES_MAX, OWNER_WINDOW_MS, type ModeratorRouteDeps } from "../../server/moderator-routes";
 
 vi.mock("@simplewebauthn/server", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@simplewebauthn/server")>()),
@@ -40,6 +40,7 @@ const setup = async (options: Options = {}) => {
   const ops = createModeratorOps(io);
   const grantKey = await createGrantKey();
   const onError = vi.fn();
+  const recordFiling = vi.fn<ModeratorRouteDeps["recordFiling"]>().mockResolvedValue("filed");
   const app = new Hono();
   addModeratorRoutes(app, {
     ops,
@@ -48,6 +49,7 @@ const setup = async (options: Options = {}) => {
     allowedOrigins: [ORIGIN],
     ownerSecret: options.ownerSecret === null ? undefined : (options.ownerSecret ?? SECRET),
     behindTunnel: options.behindTunnel ?? false,
+    recordFiling,
     peerAddress: () => peer.address,
     now: () => clock.now,
     onError,
@@ -61,7 +63,7 @@ const setup = async (options: Options = {}) => {
       headers: { "content-type": "application/json", authorization: `Bearer ${init.secret ?? SECRET}` },
     });
   const browser = (path: string, body: unknown) => post(path, body, { origin: ORIGIN });
-  return { app, io, ops, store, grantKey, onError, clock, peer, post, owner, browser };
+  return { app, io, ops, store, grantKey, onError, recordFiling, clock, peer, post, owner, browser };
 };
 
 type Context = Awaited<ReturnType<typeof setup>>;
@@ -543,6 +545,78 @@ describe("sign-in (BR-095)", () => {
     const response = await context.browser("/mod/sign-in", { response: credentialResponse("cred1", challenge) });
 
     expect(response.status).toBe(503);
+    expect(context.onError).toHaveBeenCalled();
+  });
+});
+
+describe("POST /mod/authority-filings (UC20, BR-093, BR-104)", () => {
+  const filing = { reportId: "r1", channel: "PHAROS", reference: "PHA-2026-0001" };
+
+  it.each([
+    ["PHAROS", "PHAROS"],
+    ["17", "police17"],
+    ["112", "emergency112"],
+    ["PointDeContact", "PointDeContact"],
+  ])("records channel %s as %s and answers 204", async (typed, channel) => {
+    const context = await setup();
+
+    const response = await context.owner("/mod/authority-filings", { method: "POST", body: { ...filing, channel: typed } });
+
+    expect(response.status).toBe(204);
+    expect(context.recordFiling).toHaveBeenCalledWith("r1", channel, "PHA-2026-0001", T0);
+  });
+
+  it.each([
+    ["alreadyFiled", 409],
+    ["noAlert", 404],
+  ] as const)("answers %s with %i", async (result, status) => {
+    const context = await setup();
+    context.recordFiling.mockResolvedValueOnce(result);
+
+    expect((await context.owner("/mod/authority-filings", { method: "POST", body: filing })).status).toBe(status);
+  });
+
+  it.each([
+    ["an unknown channel", { ...filing, channel: "police" }],
+    ["an inherited key as channel", { ...filing, channel: "toString" }],
+    ["an empty reference", { ...filing, reference: "   " }],
+    ["a reference of 101 characters", { ...filing, reference: "a".repeat(101) }],
+    ["a reference with a control character", { ...filing, reference: "ref\u0007" }],
+    ["no report id", { channel: "PHAROS", reference: "x" }],
+    ["a report id too long", { ...filing, reportId: "r".repeat(65) }],
+  ])("answers 400 on %s", async (_label, body) => {
+    const context = await setup();
+
+    expect((await context.owner("/mod/authority-filings", { method: "POST", body })).status).toBe(400);
+    expect(context.recordFiling).not.toHaveBeenCalled();
+  });
+
+  it("accepts a reference of exactly 100 characters", async () => {
+    const context = await setup();
+
+    expect((await context.owner("/mod/authority-filings", { method: "POST", body: { ...filing, reference: "a".repeat(100) } })).status).toBe(204);
+  });
+
+  it("refuses a wrong secret with 401 and a remote peer with 404", async () => {
+    const context = await setup();
+
+    expect((await context.owner("/mod/authority-filings", { method: "POST", body: filing, secret: "x".repeat(32) })).status).toBe(401);
+    context.peer.address = "203.0.113.5";
+    expect((await context.owner("/mod/authority-filings", { method: "POST", body: filing })).status).toBe(404);
+    expect(context.recordFiling).not.toHaveBeenCalled();
+  });
+
+  it("answers 404 behind the tunnel (BR-097)", async () => {
+    const context = await setup({ behindTunnel: true });
+
+    expect((await context.owner("/mod/authority-filings", { method: "POST", body: filing })).status).toBe(404);
+  });
+
+  it("answers 503 when the store fails", async () => {
+    const context = await setup();
+    context.recordFiling.mockRejectedValueOnce(new Error("down"));
+
+    expect((await context.owner("/mod/authority-filings", { method: "POST", body: filing })).status).toBe(503);
     expect(context.onError).toHaveBeenCalled();
   });
 });

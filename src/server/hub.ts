@@ -457,7 +457,8 @@ export const createHub = (deps: HubDeps): Hub => {
     confirmSuspension: (socket, bound, command, now) => moderation.confirmSuspension(modCaller(socket, bound), command, now),
     declineSuspension: (socket, bound, command, now) => moderation.declineSuspension(modCaller(socket, bound), command, now),
     warn: (socket, bound, command) => moderation.later(modCaller(socket, bound), command),
-    removeRoom: (socket, bound, command) => moderation.later(modCaller(socket, bound), command),
+    listAlertedReports: (socket, bound, command, now) => moderation.listAlertedReports(modCaller(socket, bound), command, now),
+    removeRoom: (socket, bound, command, now) => moderation.removeRoom(modCaller(socket, bound), command, now),
   };
   const runBound = <K extends BoundType>(type: K, socket: Socket, bound: Bound, command: Command<K>, now: Date): Promise<Outgoing[]> => {
     // Accepted by TypeScript's correlated-union rule: `handlers[K]` is `BoundHandler<K>`.
@@ -545,7 +546,7 @@ export const createHub = (deps: HubDeps): Hub => {
           await deps.accounts.purgeExpired(now);
           await deps.moderation.purgeExpired(now);
           // Outside the queue: a slow provider must not hold the chat (ADR-0013 amendment).
-          void moderation.retryStatements(now);
+          void moderation.retryMails(now);
         } catch (cause) {
           deps.onStoreError(cause);
         }

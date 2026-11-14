@@ -787,3 +787,26 @@ describe("reportContext (BR-051)", () => {
     expect(reportContext([line(0, "x".repeat(2_000))])[0]).toHaveLength(CAPS.contextLine);
   });
 });
+
+describe("chatReducer: brick 8c-2 (web-ui/08, BR-106)", () => {
+  const closed = (roomId: string): ServerMessage => ({ type: "roomClosed", seq: 0, payload: { roomId } });
+
+  it("roomClosed of an inactive room only removes its tab, with the notice", () => {
+    const state = { ...withRoom("r1"), open: { r1: { members: [], lines: [] }, u1: { members: [], lines: [] } } };
+
+    const next = server(state, closed("u1"));
+
+    expect(Object.keys(next.open)).toEqual(["r1"]);
+    expect(next.active).toBe("r1");
+    expect(next.notice).toBe("roomClosed");
+  });
+
+  it("roomClosed of the last active room goes back to the list", () => {
+    expect(server(withRoom("u1"), closed("u1"))).toMatchObject({ screen: "rooms", active: undefined, open: {} });
+  });
+
+  it("ignores the alerts tab and alertedReports with no queue open", () => {
+    expect(act(initialState, { type: "showQueueTab", tab: "alerts" })).toBe(initialState);
+    expect(server(initialState, { type: "alertedReports", seq: 0, payload: { reports: [] } })).toBe(initialState);
+  });
+});

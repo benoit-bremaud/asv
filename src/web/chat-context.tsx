@@ -4,10 +4,10 @@ import { createConnection, type CodeRequest, type Command, type Connection, type
 import { chatReducer, initialState, type Action, type ChatState, type ReportDraft } from "./store";
 
 /** The only local actions screens may dispatch; server actions come from the connection manager. */
-export type LocalAction = Extract<Action, { type: "showRooms" | "showRoom" | "dismissNotice" | "expireNotice" | "holdNotice" | "releaseNotice" | "openAccount" | "closeAccount" | "accountStep" | "openPrivate" | "togglePrivate" | "clearSearch" | "openSearch" | "closeSearch" | "openReport" | "closeReport" | "closeQueue" }>;
+export type LocalAction = Extract<Action, { type: "showRooms" | "showRoom" | "dismissNotice" | "expireNotice" | "holdNotice" | "releaseNotice" | "openAccount" | "closeAccount" | "accountStep" | "openPrivate" | "togglePrivate" | "clearSearch" | "openSearch" | "closeSearch" | "openReport" | "closeReport" | "showQueueTab" | "closeQueue" }>;
 
 /** The queue actions a moderator sends from the queue dialog (`web-ui/08`). */
-export type ModerationCommand = Extract<Command, { type: "expel" | "closeReport" | "confirmSuspension" | "declineSuspension" }>;
+export type ModerationCommand = Extract<Command, { type: "expel" | "closeReport" | "confirmSuspension" | "declineSuspension" | "removeRoom" }>;
 
 /** What screens may do; only the connection manager touches the socket (`web-ui/03`). */
 export interface Commands {
@@ -41,6 +41,8 @@ export interface Commands {
   openQueue(): void;
   /** Asks the open reports again, keeping the dialog as it is: closing one brings the next (BR-102). */
   refreshQueue(): void;
+  /** Brick 8c: the "alertes" tab, asked again each time it opens (BR-104). */
+  showAlerts(): void;
   moderate(command: ModerationCommand): void;
   local(action: LocalAction): void;
 }
@@ -107,12 +109,20 @@ export const ChatProvider = ({ connect, children }: { connect: ConnectionFactory
         if (sent({ type: "search", payload: { query } })) dispatch({ type: "searching", query });
       },
       leave: () => connection.current?.leave(),
-      report: ({ targetKind, targetPseudo, excerpt, context }, reason) =>
-        send({ type: "report", payload: { targetKind, targetPseudo, excerpt, context: [...context], reason } }),
+      report: ({ targetKind, targetPseudo, targetRoomId, excerpt, context }, reason) =>
+        send({
+          type: "report",
+          payload: targetKind === "room"
+            ? { targetKind, targetRoomId, excerpt, context: [...context], reason }
+            : { targetKind, targetPseudo, excerpt, context: [...context], reason },
+        }),
       openQueue: () => {
         if (sent({ type: "listOpenReports", payload: {} })) dispatch({ type: "openQueue" });
       },
       refreshQueue: () => send({ type: "listOpenReports", payload: {} }),
+      showAlerts: () => {
+        if (sent({ type: "listAlertedReports", payload: {} })) dispatch({ type: "showQueueTab", tab: "alerts" });
+      },
       moderate: (command) => send(command),
       newCode: () => {
         connection.current?.forgetCode();

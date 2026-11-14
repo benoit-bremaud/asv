@@ -33,6 +33,8 @@ const setup = async (options: { mailAccepted?: boolean; canReport?: boolean; tri
   const crypto = createCrypto(await cryptoKeysFromEnv({}, false, () => undefined));
   const codes: string[] = [];
   const statements: { email: string; statement: string }[] = [];
+  const alerts: { reportId: string; category: string }[] = [];
+  const decisions: { email: string; text: string }[] = [];
   let accept = options.mailAccepted ?? true;
   let mailDelay: Promise<void> | undefined;
   const mailer: Mailer = {
@@ -42,9 +44,18 @@ const setup = async (options: { mailAccepted?: boolean; canReport?: boolean; tri
       statements.push({ email, statement });
       return accept;
     },
+    sendAuthorityAlert: async (reportId, category) => {
+      alerts.push({ reportId, category });
+      return accept;
+    },
+    sendReportDecision: async (email, text) => {
+      decisions.push({ email, text });
+      return accept;
+    },
   };
   const closeSocket = vi.fn();
   const onStoreError = vi.fn();
+  const moderationIo = createModerationIo({ store: moderationStore, crypto });
   const hub = createHub({
     officialRooms: [{ id: "lyon", name: "Lyon", kind: "regional" }],
     random,
@@ -56,7 +67,7 @@ const setup = async (options: { mailAccepted?: boolean; canReport?: boolean; tri
     accounts: createAccountIo({ store, vault, crypto }),
     mailer,
     onStoreError,
-    moderation: createModerationIo({ store: moderationStore, crypto }),
+    moderation: moderationIo,
     grantKey,
     canReport: options.canReport,
     triage: options.triage,
@@ -84,7 +95,7 @@ const setup = async (options: { mailAccepted?: boolean; canReport?: boolean; tri
   const setMailDelay = (value: Promise<void> | undefined) => {
     mailDelay = value;
   };
-  return { hub, store, vault, moderationStore, codes, send, enter, enterAs, owner, signIn, reportMax, statements, setMailAccepted, setMailDelay, closeSocket, onStoreError, grant };
+  return { hub, store, vault, moderationStore, moderationIo, codes, send, enter, enterAs, owner, signIn, reportMax, statements, alerts, decisions, setMailAccepted, setMailDelay, closeSocket, onStoreError, grant };
 };
 
 const find = <T extends ServerMessage["type"]>(out: Outgoing[], type: T) =>
@@ -258,8 +269,9 @@ describe("queue (UC12, BR-054, BR-102)", () => {
   it.each([
     ["closeReport", { outcome: "suspended" }],
     ["closeReport", { outcome: "roomRemoved" }],
-    ["expel", { duration: "1h", severe: true }],
-  ])("answers %s %j with notAvailable until brick 8c", async (type, extra) => {
+    ["closeReport", { outcome: "severeDeleted" }],
+    ["closeReport", { outcome: "expelled" }],
+  ])("answers %s %j with notAvailable: set by its own command only", async (type, extra) => {
     const { owner, send } = await setup();
     await owner();
 
@@ -268,7 +280,6 @@ describe("queue (UC12, BR-054, BR-102)", () => {
 
   it.each([
     ["warn", { targetSessionId: "s", text: "stop" }],
-    ["removeRoom", { roomId: "lyon" }],
   ])("answers %s from a moderator with notAvailable", async (type, payload) => {
     const { owner, send } = await setup();
     await owner();
@@ -673,5 +684,399 @@ describe("AI triage of a report (moderation/02g, BR-100 to BR-102)", () => {
     expect(reports[0]?.reason).toBe("illegalContent");
     expect(reports[1]?.id).toBe(second?.id);
     expect(reports.map((report) => report.id)).not.toContain(first?.id);
+  });
+});
+
+type Ctx = Awaited<ReturnType<typeof setup>>;
+/** Lets the mails sent without waiting (crypto, store, provider) settle. */
+const settle = () => new Promise((resolve) => setTimeout(resolve, 20));
+
+/** Lola (member when `lolaEmail`) reports Max (member when `maxEmail`); the owner enters as moderator. */
+const reported = async (ctx: Ctx, options: { maxEmail?: string; lolaEmail?: string } = {}) => {
+  await ctx.enterAs("1", "Lola");
+  const max = await ctx.enterAs("2", "Max");
+  const lolaAccount = options.lolaEmail === undefined ? undefined : await ctx.signIn("1", options.lolaEmail);
+  const maxAccount = options.maxEmail === undefined ? undefined : await ctx.signIn("2", options.maxEmail);
+  await ctx.owner();
+  const reportId = await ctx.reportMax();
+  return { max, maxAccount, lolaAccount, reportId };
+};
+
+describe("severe expel (moderation/02h, BR-103)", () => {
+  it("deletes a member at once, blocks the e-mail 6 months, bans 7 days, mails the statement and closes every session", async () => {
+    const ctx = await setup();
+    const { reportId } = await reported(ctx, { maxEmail: "max@example.org" });
+    await ctx.send("2", "joinRoom", { roomId: "lyon" });
+
+    const out = await ctx.send("9", "expel", { reportId, duration: "1h", severe: true });
+    await settle();
+
+    expect(only(out, "expelled").payload).toEqual({ until: later(7 * DAY).toISOString() });
+    expect(find(out, "expelled")[0]?.to).toEqual(["2"]);
+    only(out, "reportClosed");
+    expect(ctx.store.dump().accounts).toEqual([]);
+    expect(ctx.vault.entries()).toHaveLength(1);
+    expect(ctx.statements).toEqual([{ email: "max@example.org", statement: expect.stringContaining(later(183 * DAY).toISOString().slice(0, 10)) }]);
+    expect(ctx.statements[0]?.statement).toContain("aucun outil automatique");
+    expect(ctx.moderationStore.dump().reports[0]?.closed).toMatchObject({ outcome: "severeDeleted", by: "Marc" });
+    expect(ctx.moderationStore.dump().bans[0]).toMatchObject({ until: later(7 * DAY) });
+    // BR-078: the e-mail stays blocked, so no new code is sent.
+    await ctx.enterAs("3", "Neuf", {}, "10.0.0.77");
+    const codes = ctx.codes.length;
+    only(await ctx.send("3", "requestCode", { email: "max@example.org", remember: false }, later(10 * DAY)), "codeSent");
+    expect(ctx.codes).toHaveLength(codes);
+  });
+
+  it("closes the away session of the pseudo too, and bans a guest on IP and pseudo only", async () => {
+    const ctx = await setup();
+    const { reportId } = await reported(ctx);
+    await ctx.hub.close("2", T0);
+
+    const out = await ctx.send("9", "expel", { reportId, duration: "1h", severe: true });
+
+    only(out, "reportClosed");
+    expect(ctx.statements).toEqual([]);
+    expect(ctx.hub.stats().connected).toBe(2);
+    expect(only(await ctx.enter("5", "Max", {}, "10.0.0.88"), "entryRefused").payload).toMatchObject({ reason: "banned" });
+    expect(only(await ctx.enter("6", "Autre", {}, "10.0.0.2"), "entryRefused").payload).toMatchObject({ reason: "banned" });
+  });
+
+  it("only bans when the member deleted their account before the decision (accepted limit)", async () => {
+    const ctx = await setup();
+    const { reportId } = await reported(ctx, { maxEmail: "max@example.org" });
+    await ctx.send("2", "deleteAccount", {});
+
+    only(await ctx.send("9", "expel", { reportId, duration: "1h", severe: true }), "reportClosed");
+    expect(ctx.statements).toEqual([]);
+    expect(ctx.moderationStore.dump().bans).toHaveLength(1);
+  });
+
+  it("refuses a severe expel on a room report", async () => {
+    const ctx = await setup();
+    await ctx.enterAs("1", "Lola");
+    await ctx.owner();
+    const reportId = only(await ctx.send("1", "report", { targetKind: "room", targetRoomId: "lyon", reason: "spam", excerpt: "", context: [] }), "reportSent").payload.reportId;
+
+    expect(only(await ctx.send("9", "expel", { reportId, duration: "1h", severe: true }), "warning").payload).toMatchObject({ code: "reportInvalid" });
+  });
+
+  it("leaves the report open when the ban cannot be written", async () => {
+    const ctx = await setup();
+    const { reportId } = await reported(ctx, { maxEmail: "max@example.org" });
+    vi.spyOn(ctx.moderationStore, "saveBan").mockRejectedValueOnce(new Error("down"));
+
+    expect(only(await ctx.send("9", "expel", { reportId, duration: "1h", severe: true }), "warning").payload).toMatchObject({ code: "unavailable" });
+    expect(ctx.store.dump().accounts).toHaveLength(1);
+    expect(only(await ctx.send("9", "listOpenReports", {}), "openReports").payload.total).toBe(1);
+  });
+
+  it("still evicts and answers unavailable when only the close fails after the deletion", async () => {
+    const ctx = await setup();
+    const { reportId } = await reported(ctx, { maxEmail: "max@example.org" });
+    ctx.moderationStore.saveReport = async () => {
+      throw new Error("disk");
+    };
+
+    const out = await ctx.send("9", "expel", { reportId, duration: "1h", severe: true });
+
+    expect(find(out, "expelled").map((o) => o.to)).toEqual([["2"]]);
+    expect(only(out, "warning").payload).toMatchObject({ code: "unavailable" });
+  });
+
+  it("mentions the automated triage in the statement when the report was triaged", async () => {
+    const ctx = await setup({ triage: { triage: () => Promise.resolve({ category: "threat", urgency: "high", summary: "[A] menace" }) } });
+    const { reportId } = await reported(ctx, { maxEmail: "max@example.org" });
+    await settle();
+
+    await ctx.send("9", "expel", { reportId, duration: "1h", severe: true });
+
+    expect(ctx.statements[0]?.statement).toContain("Un tri automatique");
+  });
+});
+
+describe("authority alert (moderation/02h, BR-104, BR-105, UC20)", () => {
+  it("stores one pending alert, mails the owner the id and category only, and lists it in the alertes tab", async () => {
+    const ctx = await setup();
+    const { reportId } = await reported(ctx);
+
+    only(await ctx.send("9", "expel", { reportId, duration: "1h", severe: true, alertAuthorities: "threatToLife" }), "reportClosed");
+    await settle();
+
+    expect(ctx.alerts).toEqual([{ reportId, category: "threatToLife" }]);
+    const stored = ctx.moderationStore.dump().reports[0]?.alert;
+    expect(stored).toMatchObject({ offenceCategory: "threatToLife", status: "pending", notifiedAt: T0 });
+    expect(stored?.raisedBy).not.toContain("Marc");
+    const [row] = only(await ctx.send("9", "listAlertedReports", {}), "alertedReports").payload.reports;
+    expect(row).toMatchObject({
+      id: reportId,
+      targetPseudo: "Max",
+      authorPseudo: "Lola",
+      excerpt: "insulte",
+      closedAt: T0.toISOString(),
+      alert: { offenceCategory: "threatToLife", raisedBy: "Marc", status: "pending" },
+    });
+  });
+
+  it("shows the filing with its channel and reference once recorded, and refuses a second filing", async () => {
+    const ctx = await setup();
+    const { reportId } = await reported(ctx);
+    await ctx.send("9", "closeReport", { reportId, outcome: "noAction", alertAuthorities: "harassment" });
+
+    expect(await ctx.moderationIo.recordFiling(reportId, "police17", "appel 2026-11-13T22:10", later(HOUR))).toBe("filed");
+    expect(await ctx.moderationIo.recordFiling(reportId, "PHAROS", "x", later(HOUR))).toBe("alreadyFiled");
+    expect(await ctx.moderationIo.recordFiling("unknown", "PHAROS", "x", later(HOUR))).toBe("noAlert");
+    expect(JSON.stringify(ctx.moderationStore.dump().reports)).not.toContain("appel");
+    const [row] = only(await ctx.send("9", "listAlertedReports", {}), "alertedReports").payload.reports;
+    expect(row?.alert).toMatchObject({ status: "filed", channel: "police17", reference: "appel 2026-11-13T22:10", filedAt: later(HOUR).toISOString() });
+  });
+
+  it("answers noAlert for a report without alert", async () => {
+    const ctx = await setup();
+    const { reportId } = await reported(ctx);
+
+    expect(await ctx.moderationIo.recordFiling(reportId, "PHAROS", "x", T0)).toBe("noAlert");
+  });
+
+  it("keeps the first alert when a later command raises another one (one per report)", async () => {
+    const ctx = await setup();
+    await ctx.enterAs("1", "Lola");
+    await ctx.enterAs("2", "Max");
+    await ctx.signIn("2", "max@example.org");
+    await ctx.owner();
+    for (let index = 0; index < 2; index += 1) {
+      await ctx.send("9", "closeReport", { reportId: await ctx.reportMax(), outcome: "warned" });
+    }
+    const reportId = await ctx.reportMax();
+    const proposal = only(await ctx.send("9", "closeReport", { reportId, outcome: "warned", alertAuthorities: "harassment" }), "suspensionProposed").payload;
+    // An open row with an alert shows it (`web-ui/08`).
+    expect(only(await ctx.send("9", "listOpenReports", {}), "openReports").payload.reports[0]?.alert).toMatchObject({ status: "pending", offenceCategory: "harassment" });
+
+    only(await ctx.send("9", "confirmSuspension", { ...proposal, alertAuthorities: "terrorism" }), "reportClosed");
+    await settle();
+
+    expect(ctx.alerts).toEqual([{ reportId, category: "harassment" }]);
+  });
+
+  it("raises an alert on an ordinary expel and on room removal", async () => {
+    const ctx = await setup();
+    const { reportId } = await reported(ctx);
+
+    only(await ctx.send("9", "expel", { reportId, duration: "1h", alertAuthorities: "otherListed" }), "reportClosed");
+    await settle();
+
+    expect(ctx.alerts).toEqual([{ reportId, category: "otherListed" }]);
+  });
+
+  it("retries a refused owner alert every 10 minutes until accepted, for at most 7 days", async () => {
+    const ctx = await setup({ mailAccepted: false });
+    const { reportId } = await reported(ctx);
+    await ctx.send("9", "closeReport", { reportId, outcome: "noAction", alertAuthorities: "childAbuse" });
+    await settle();
+    expect(ctx.alerts).toHaveLength(1);
+
+    await ctx.hub.tick(later(1000));
+    await settle();
+    expect(ctx.alerts).toHaveLength(2);
+    await ctx.hub.tick(later(2000));
+    await settle();
+    expect(ctx.alerts).toHaveLength(2);
+
+    ctx.setMailAccepted(true);
+    await ctx.hub.tick(later(1000 + STATEMENT_RETRY_MS));
+    await settle();
+    expect(ctx.alerts).toHaveLength(3);
+    await ctx.hub.tick(later(1000 + 2 * STATEMENT_RETRY_MS));
+    await settle();
+    expect(ctx.alerts).toHaveLength(3);
+  });
+
+  it("gives up the owner alert after 7 days", async () => {
+    const ctx = await setup({ mailAccepted: false });
+    const { reportId } = await reported(ctx);
+    await ctx.send("9", "closeReport", { reportId, outcome: "noAction", alertAuthorities: "childAbuse" });
+    await settle();
+
+    await ctx.hub.tick(later(7 * DAY));
+    await settle();
+
+    expect(ctx.alerts).toHaveLength(1);
+  });
+
+  it("lists at most 50 alerted reports, pending first then the most recently filed", async () => {
+    const ctx = await setup();
+    await ctx.owner();
+    const add = async (index: number, filedAt?: Date) => {
+      const id = `r${index}`;
+      await ctx.moderationIo.saveReport({ id, reason: "spam", targetKind: "chatter", targetPseudo: "Max", excerpt: "", context: [], authorPseudo: "Lola", createdAt: T0 });
+      await ctx.moderationIo.saveAuthorityAlert(id, "otherListed", "Marc", later(index * 1000));
+      const report = await ctx.moderationIo.findReport(id);
+      if (report) await ctx.moderationIo.closeReport(report, "noAction", "Marc", T0);
+      if (filedAt) await ctx.moderationIo.recordFiling(id, "PHAROS", "ref", filedAt);
+    };
+    for (let index = 0; index < 49; index += 1) await add(index, later(DAY + index * 1000));
+    await add(100);
+    await add(101);
+
+    const { reports } = only(await ctx.send("9", "listAlertedReports", {}), "alertedReports").payload;
+
+    expect(reports).toHaveLength(50);
+    expect(reports.slice(0, 3).map((report) => report.id)).toEqual(["r100", "r101", "r48"]);
+    expect(reports.at(-1)?.id).toBe("r1");
+  });
+
+  it("keeps an alerted report 1 year after closing, an ordinary one 6 months (BR-061, BR-105)", async () => {
+    const ctx = await setup();
+    const first = await reported(ctx);
+    await ctx.send("9", "closeReport", { reportId: first.reportId, outcome: "noAction", alertAuthorities: "harassment" });
+    const second = await ctx.reportMax();
+    await ctx.send("9", "closeReport", { reportId: second, outcome: "noAction" });
+
+    await ctx.hub.tick(later(200 * DAY));
+    expect(ctx.moderationStore.dump().reports.map((report) => report.id)).toEqual([first.reportId]);
+    await ctx.hub.tick(later(365 * DAY));
+    expect(ctx.moderationStore.dump().reports).toEqual([]);
+  });
+});
+
+describe("room removal (moderation/02i, BR-106)", () => {
+  const roomReport = async (ctx: Ctx, roomId: string) =>
+    only(await ctx.send("1", "report", { targetKind: "room", targetRoomId: roomId, reason: "illegalContent", excerpt: "", context: [] }), "reportSent").payload.reportId;
+
+  it("closes a user room, tells its members, frees its name and closes the report", async () => {
+    const ctx = await setup();
+    await ctx.enterAs("1", "Lola");
+    await ctx.enterAs("2", "Max");
+    await ctx.owner();
+    const list = only(await ctx.send("2", "createRoom", { name: "Les Viennois" }), "roomList").payload.rooms;
+    const viennois = list.find((room) => room.name === "Les Viennois")?.id ?? "";
+    await ctx.send("1", "joinRoom", { roomId: viennois });
+    const reportId = await roomReport(ctx, viennois);
+
+    const out = await ctx.send("9", "removeRoom", { reportId, alertAuthorities: "hateOrViolence" });
+
+    expect(only(out, "roomClosed").payload).toEqual({ roomId: viennois });
+    expect(find(out, "roomClosed")[0]?.to.toSorted()).toEqual(["1", "2"]);
+    expect(only(out, "roomList").payload.rooms.map((room) => room.name)).not.toContain("Les Viennois");
+    only(out, "reportClosed");
+    expect(ctx.moderationStore.dump().reports[0]?.closed).toMatchObject({ outcome: "roomRemoved" });
+    expect(only(await ctx.send("9", "createRoom", { name: "Les Viennois" }), "roomList").payload.rooms.map((room) => room.name)).toContain("Les Viennois");
+  });
+
+  it.each([
+    ["an official room", "lyon"],
+    ["a room already gone", "gone"],
+  ])("answers reportInvalid on %s and keeps the report open", async (_label, roomId) => {
+    const ctx = await setup();
+    await ctx.enterAs("1", "Lola");
+    await ctx.owner();
+    const reportId = await roomReport(ctx, roomId);
+
+    expect(only(await ctx.send("9", "removeRoom", { reportId }), "warning").payload).toMatchObject({ code: "reportInvalid" });
+    expect(only(await ctx.send("9", "listOpenReports", {}), "openReports").payload.total).toBe(1);
+  });
+
+  it("answers reportInvalid on a chatter report, and reportGone on a closed one", async () => {
+    const ctx = await setup();
+    const { reportId } = await reported(ctx);
+
+    expect(only(await ctx.send("9", "removeRoom", { reportId }), "warning").payload).toMatchObject({ code: "reportInvalid" });
+    await ctx.send("9", "closeReport", { reportId, outcome: "noAction" });
+    expect(only(await ctx.send("9", "removeRoom", { reportId }), "warning").payload).toMatchObject({ code: "reportGone" });
+  });
+});
+
+describe("decision e-mail to a member reporter (moderation/02i, BR-107)", () => {
+  it.each([
+    ["noAction", "aucune mesure"],
+    ["warned", "une mesure a été prise"],
+  ] as const)("mails the reporter the decision in general terms on %s", async (outcome, words) => {
+    const ctx = await setup();
+    const { reportId } = await reported(ctx, { lolaEmail: "lola@example.org" });
+
+    await ctx.send("9", "closeReport", { reportId, outcome });
+    await settle();
+
+    expect(ctx.decisions).toHaveLength(1);
+    expect(ctx.decisions[0]?.email).toBe("lola@example.org");
+    expect(ctx.decisions[0]?.text).toContain(words);
+    expect(ctx.decisions[0]?.text).not.toContain("Max");
+    expect(ctx.decisions[0]?.text).toContain("aucun outil automatique");
+    expect(ctx.moderationStore.dump().mails).toEqual([]);
+  });
+
+  it("says automated means were used when the report was triaged", async () => {
+    const ctx = await setup({ triage: { triage: () => Promise.resolve({ category: "spam", urgency: "low", summary: "spam" }) } });
+    const { reportId } = await reported(ctx, { lolaEmail: "lola@example.org" });
+    await settle();
+
+    await ctx.send("9", "expel", { reportId, duration: "1h" });
+    await settle();
+
+    expect(ctx.decisions[0]?.text).toContain("Un tri automatique");
+  });
+
+  it("sends nothing to a guest reporter, or to a reporter whose account is gone", async () => {
+    const ctx = await setup();
+    const { reportId } = await reported(ctx);
+    await ctx.send("9", "closeReport", { reportId, outcome: "noAction" });
+
+    const other = await setup();
+    const second = await reported(other, { lolaEmail: "lola@example.org" });
+    await other.send("1", "deleteAccount", {});
+    await other.send("9", "closeReport", { reportId: second.reportId, outcome: "noAction" });
+    await settle();
+
+    expect(ctx.decisions).toEqual([]);
+    expect(other.decisions).toEqual([]);
+  });
+
+  it("keeps a refused mail encrypted, retries it, deletes it once accepted", async () => {
+    const ctx = await setup({ mailAccepted: false });
+    const { reportId } = await reported(ctx, { lolaEmail: "lola@example.org" });
+    await ctx.send("9", "closeReport", { reportId, outcome: "noAction" });
+    await settle();
+
+    const [kept] = ctx.moderationStore.dump().mails;
+    expect(kept?.reportId).toBe(reportId);
+    expect(JSON.stringify(kept)).not.toContain("lola@");
+    ctx.setMailAccepted(true);
+    await ctx.hub.tick(later(1000));
+    await settle();
+
+    expect(ctx.decisions).toHaveLength(2);
+    expect(ctx.moderationStore.dump().mails).toEqual([]);
+  });
+
+  it("gives up and deletes the address after 7 days", async () => {
+    const ctx = await setup({ mailAccepted: false });
+    const { reportId } = await reported(ctx, { lolaEmail: "lola@example.org" });
+    await ctx.send("9", "closeReport", { reportId, outcome: "noAction" });
+    await settle();
+
+    await ctx.hub.tick(later(7 * DAY));
+    await settle();
+
+    expect(ctx.decisions).toHaveLength(1);
+    expect(ctx.moderationStore.dump().mails).toEqual([]);
+  });
+
+  it("still closes the report when the decision mail cannot be stored", async () => {
+    const ctx = await setup();
+    const { reportId } = await reported(ctx, { lolaEmail: "lola@example.org" });
+    vi.spyOn(ctx.moderationStore, "savePendingDecisionMail").mockRejectedValueOnce(new Error("down"));
+
+    only(await ctx.send("9", "closeReport", { reportId, outcome: "noAction" }), "reportClosed");
+    expect(ctx.onStoreError).toHaveBeenCalled();
+  });
+
+  it("reports a failing retry round to onStoreError without throwing", async () => {
+    const ctx = await setup();
+    await ctx.owner();
+    vi.spyOn(ctx.moderationStore, "pendingDecisionMails").mockRejectedValueOnce(new Error("down"));
+
+    await ctx.hub.tick(later(1000));
+    await settle();
+
+    expect(ctx.onStoreError).toHaveBeenCalled();
   });
 });

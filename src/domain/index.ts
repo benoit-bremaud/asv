@@ -3,6 +3,7 @@
  * the rule is enforced by ESLint (`platform/03-component`).
  */
 export * from "./accounts";
+export * from "./authority";
 export * from "./directory";
 export * from "./ignore";
 export * from "./moderation";
@@ -20,6 +21,7 @@ export {
   leaveRoom,
   postRoom,
   pruneFlood,
+  removeRoom,
   restoreHubState,
   ROOM_LIMITS,
   roomList,
@@ -28,6 +30,7 @@ export {
   type HubState,
   type OfficialRoom,
   type PostRoomCommand,
+  type RoomRemoval,
   type Room,
   type RoomEffect,
   type RoomKind,

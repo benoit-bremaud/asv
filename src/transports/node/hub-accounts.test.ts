@@ -30,6 +30,8 @@ const setup = async () => {
   const mailer: Mailer = {
     sendCode: async (email, code) => void sent.push({ email, code }),
     sendStatementOfReasons: async () => true,
+    sendAuthorityAlert: async () => true,
+    sendReportDecision: async () => true,
   };
   const onStoreError = vi.fn();
   const hub = createHub({

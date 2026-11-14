@@ -420,3 +420,147 @@ describe("queue dialog (UC12, web-ui/08)", () => {
     expect(screen.queryByRole("dialog", { name: STRINGS.queueTitle })).toBeNull();
   });
 });
+
+describe("brick 8c-2 in the web client (web-ui/08, BR-103 to BR-106)", () => {
+  const userRoom = { id: "u1", name: "Apéro", kind: "user" as const, count: 2 };
+  const alert = { offenceCategory: "threatToLife" as const, raisedBy: "Marc", raisedAt: "2026-11-13T10:00:00.000Z", status: "pending" as const };
+  const openQueue = async (user: ReturnType<typeof userEvent.setup>, reports: object[]) => {
+    await enterChat(true);
+    await user.click(screen.getByRole("button", { name: STRINGS.queue }));
+    await msg("openReports", { reports: reports as Extract<ServerMessage, { type: "openReports" }>["payload"]["reports"], total: reports.length });
+    return screen.getByRole("dialog", { name: STRINGS.queueTitle });
+  };
+
+  it("reports a user room from its header with the last lines, never an official room", async () => {
+    const user = await setup();
+    await enterChat();
+    expect(screen.queryByRole("button", { name: STRINGS.reportRoom })).toBeNull();
+    await msg("roomList", { rooms: [{ id: "r1", name: "Paris", kind: "regional", count: 2 }, userRoom] });
+    await msg("roomJoined", { roomId: "u1", members: [bob] });
+    await msg("roomMessage", { roomId: "u1", authorSessionId: "s2", pseudo: "bob", gender: "man", text: "pub", sentAt: "2026-11-13T10:00:00.000Z" });
+
+    await user.click(screen.getByRole("button", { name: STRINGS.reportRoom }));
+    const dialog = screen.getByRole("dialog", { name: STRINGS.reportRoomTitle("Apéro") });
+    await user.click(within(dialog).getByLabelText(STRINGS.reasons.spam));
+    await user.click(within(dialog).getByRole("button", { name: STRINGS.send }));
+
+    expect(connection.send).toHaveBeenCalledWith({ type: "report", payload: { targetKind: "room", targetRoomId: "u1", excerpt: "", context: ["bob: pub"], reason: "spam" } });
+  });
+
+  it("closes the tab of a room a moderator removed, with a notice", async () => {
+    await setup();
+    await enterChat();
+    await msg("roomList", { rooms: [{ id: "r1", name: "Paris", kind: "regional", count: 2 }, userRoom] });
+    await msg("roomJoined", { roomId: "u1", members: [bob] });
+
+    await msg("roomClosed", { roomId: "u1" });
+
+    expect(screen.queryByRole("heading", { name: "# Apéro" })).toBeNull();
+    expect(screen.getByRole("heading", { name: /# Paris/ })).toBeTruthy();
+    expect(screen.getByRole("alert").textContent).toContain(STRINGS.notices.roomClosed);
+  });
+
+  it("offers only no action and room removal on a room report, with the alert picked", async () => {
+    const user = await setup();
+    const dialog = await openQueue(user, [queued("a", { targetKind: "room", targetPseudo: undefined, targetRoomId: "u1", hasAccount: false })]);
+
+    expect(within(dialog).queryByRole("button", { name: STRINGS.warn })).toBeNull();
+    expect(within(dialog).queryByRole("button", { name: STRINGS.severe })).toBeNull();
+    await user.selectOptions(within(dialog).getByLabelText(STRINGS.alertSelect), "hateOrViolence");
+    await user.click(within(dialog).getByRole("button", { name: STRINGS.removeRoom }));
+
+    expect(connection.send).toHaveBeenCalledWith({ type: "removeRoom", payload: { reportId: "a", alertAuthorities: "hateOrViolence" } });
+  });
+
+  it("sends a closing action with no alert while the select stays on aucune", async () => {
+    const user = await setup();
+    const dialog = await openQueue(user, [queued("a")]);
+
+    expect(within(dialog).getByLabelText<HTMLSelectElement>(STRINGS.alertSelect).value).toBe("none");
+    await user.click(within(dialog).getByRole("button", { name: STRINGS.noAction }));
+
+    expect(connection.send.mock.calls.at(-1)?.[0]).toEqual({ type: "closeReport", payload: { reportId: "a", outcome: "noAction", alertAuthorities: undefined } });
+  });
+
+  it.each([
+    [true, STRINGS.severeEffects(true)],
+    [false, STRINGS.severeEffects(false)],
+  ])("confirms a severe expel naming its effects (account %s), only once an alert choice is made", async (hasAccount, effects) => {
+    const user = await setup();
+    const dialog = await openQueue(user, [queued("a", { hasAccount })]);
+
+    await user.click(within(dialog).getByRole("button", { name: STRINGS.severe }));
+    expect(within(dialog).getByText(effects)).toBeTruthy();
+    const confirm = within(dialog).getByRole("button", { name: STRINGS.confirmSevere });
+    expect(confirm).toHaveProperty("disabled", true);
+    await user.selectOptions(within(dialog).getByLabelText(STRINGS.alertSelect), "childAbuse");
+    await user.click(confirm);
+
+    expect(connection.send).toHaveBeenCalledWith({ type: "expel", payload: { reportId: "a", duration: "7d", severe: true, alertAuthorities: "childAbuse" } });
+  });
+
+  it("cancels a severe expel back to the actions, and confirms with aucune", async () => {
+    const user = await setup();
+    const dialog = await openQueue(user, [queued("a")]);
+
+    await user.click(within(dialog).getByRole("button", { name: STRINGS.severe }));
+    await user.click(within(dialog).getByRole("button", { name: STRINGS.cancel }));
+    expect(within(dialog).getByRole("button", { name: STRINGS.noAction })).toBeTruthy();
+    await user.click(within(dialog).getByRole("button", { name: STRINGS.severe }));
+    await user.selectOptions(within(dialog).getByLabelText(STRINGS.alertSelect), "none");
+    await user.click(within(dialog).getByRole("button", { name: STRINGS.confirmSevere }));
+
+    expect(connection.send.mock.calls.at(-1)?.[0]).toEqual({ type: "expel", payload: { reportId: "a", duration: "7d", severe: true, alertAuthorities: undefined } });
+  });
+
+  it("sends the alert with a confirmed suspension", async () => {
+    const user = await setup();
+    await openQueue(user, [queued("a")]);
+    await msg("suspensionProposed", { accountId: "acc", reportId: "a", activeStrikes: 3 });
+
+    const proposal = screen.getByText(STRINGS.proposal(3)).parentElement as HTMLElement;
+    await user.selectOptions(within(proposal).getByLabelText(STRINGS.alertSelect), "harassment");
+    await user.click(within(proposal).getByRole("button", { name: STRINGS.suspend }));
+
+    expect(connection.send).toHaveBeenCalledWith({ type: "confirmSuspension", payload: { accountId: "acc", reportId: "a", alertAuthorities: "harassment" } });
+  });
+
+  it("shows the alert status of an open row, pending or filed", async () => {
+    const user = await setup();
+    const dialog = await openQueue(user, [
+      queued("a", { alert }),
+      queued("b", { alert: { ...alert, status: "filed", channel: "PHAROS", reference: "PV-1", filedAt: "2026-11-13T12:00:00.000Z" } }),
+    ]);
+
+    expect(within(dialog).getByText(STRINGS.alertStatus(STRINGS.alertPending))).toBeTruthy();
+    expect(within(dialog).getByText(STRINGS.alertStatus(STRINGS.alertFiled("PHAROS", "PV-1")))).toBeTruthy();
+  });
+
+  it("lists the alerted reports in the alertes tab, as text, and goes back to the open ones", async () => {
+    const user = await setup();
+    const dialog = await openQueue(user, [queued("a")]);
+
+    await user.click(within(dialog).getByRole("button", { name: STRINGS.tabAlerts }));
+    expect(connection.send).toHaveBeenCalledWith({ type: "listAlertedReports", payload: {} });
+    expect(within(dialog).getByText(STRINGS.queueLoading)).toBeTruthy();
+    const row = { ...queued("z", { excerpt: "<b>menace</b>" }), closedAt: "2026-11-13T11:00:00.000Z" };
+    await msg("alertedReports", { reports: [{ ...row, alert: { ...alert, status: "filed", channel: "police17", reference: "PV-9", filedAt: "2026-11-13T12:00:00.000Z" } }] });
+
+    expect(within(dialog).getByText("<b>menace</b>")).toBeTruthy();
+    expect(dialog.querySelector("blockquote b")).toBeNull();
+    expect(within(dialog).getByText(STRINGS.alertFiled("17", "PV-9"), { exact: false })).toBeTruthy();
+    expect(within(dialog).queryByRole("button", { name: STRINGS.noAction })).toBeNull();
+    await user.click(within(dialog).getByRole("button", { name: STRINGS.tabOpen }));
+    expect(within(dialog).getByRole("button", { name: STRINGS.noAction })).toBeTruthy();
+  });
+
+  it("says when there is no alert", async () => {
+    const user = await setup();
+    const dialog = await openQueue(user, []);
+
+    await user.click(within(dialog).getByRole("button", { name: STRINGS.tabAlerts }));
+    await msg("alertedReports", { reports: [] });
+
+    expect(within(dialog).getByText(STRINGS.alertsEmpty)).toBeTruthy();
+  });
+});

@@ -110,3 +110,33 @@ describe("scrub", () => {
     expect(scrub("x".repeat(300))).toHaveLength(200);
   });
 });
+
+describe("moderation mails of brick 8c-2 (BR-104, BR-107)", () => {
+  it("sends the authority alert to the contact address with the report id and category only", async () => {
+    const { mailer, fetchStub } = setup({ contactEmail: "owner@asvchat.fr" });
+
+    expect(await mailer.sendAuthorityAlert("r1", "childAbuse")).toBe(true);
+
+    const body = JSON.parse(String(fetchStub.mock.calls[0]?.[1]?.body)) as { to: { email: string }[]; textContent: string };
+    expect(body.to).toEqual([{ email: "owner@asvchat.fr" }]);
+    expect(body.textContent).toContain("r1");
+    expect(body.textContent).toContain("childAbuse");
+  });
+
+  it("never accepts an alert without a contact address, and logs why", async () => {
+    const { mailer, fetchStub, log } = setup();
+
+    expect(await mailer.sendAuthorityAlert("r1", "terrorism")).toBe(false);
+    expect(fetchStub).not.toHaveBeenCalled();
+    expect(log).toHaveBeenCalledWith("error", expect.objectContaining({ providerCode: "missing_contact_email" }));
+  });
+
+  it("reports whether Brevo accepted a decision e-mail, escaped in HTML", async () => {
+    const { mailer, fetchStub } = setup();
+
+    expect(await mailer.sendReportDecision("lola@example.org", "Mesure <prise>\nmerci")).toBe(true);
+    expect(String(fetchStub.mock.calls[0]?.[1]?.body)).toContain("Mesure &lt;prise&gt;<br>merci");
+    fetchStub.mockResolvedValueOnce(new Response("", { status: 500 }));
+    expect(await mailer.sendReportDecision("lola@example.org", "x")).toBe(false);
+  });
+});

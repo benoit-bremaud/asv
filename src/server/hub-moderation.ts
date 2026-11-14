@@ -11,6 +11,10 @@ import {
   canSuspend,
   closeAccount,
   decideExpel,
+  decideSevere,
+  removeRoom,
+  severeBlockUntil,
+  sortAlerted,
   fileReport,
   isModerator,
   liveTarget,
@@ -20,9 +24,12 @@ import {
   suspensionUntil,
   takeTriageSlot,
   type HubState,
+  type AuthorityAlert,
   type Mailer,
+  type OffenceCategory,
   type Random,
   type Report,
+  type ReportOutcome,
   type ReportTriage,
   type TriageQuota,
 } from "../domain";
@@ -30,6 +37,7 @@ import { CAPS, type ClientMessage } from "../shared/protocol";
 import type { AccountIo } from "./account-io";
 import type { LoadedReport, ModerationIo } from "./moderation-io";
 import type { Outgoing, OutgoingModule, Payload } from "./outgoing";
+import { createModerationMail, severeStatement, suspensionStatement } from "./moderation-mail";
 import { noAiTriage } from "./triage/no-ai";
 
 type Command<T extends ClientMessage["type"]> = Extract<ClientMessage, { type: T }>;
@@ -58,6 +66,7 @@ export interface ModerationContext {
   readonly out: OutgoingModule;
   state(): HubState;
   setState(next: HubState): void;
+  /** BR-106: maps the `roomDeleted` effect, so every room list is refreshed. */
   /** Sends `expelled(until)` to the session's socket, closes it, and removes the session (UC11). */
   evict(sessionId: string, until: Date, now: Date): Promise<Outgoing[]>;
 }
@@ -67,31 +76,12 @@ type ModerationHandler<T extends ClientMessage["type"]> = (caller: ModerationCal
 /** BR-055: the name recorded on an action, from the passkey grant of the session (BR-095). */
 const moderatorOf = (state: HubState, sessionId: string): string => state.sessions.get(sessionId)?.moderatorName ?? "unknown";
 
-/** DSA art. 17 statement of reasons, in the chat's language (BR-076). */
-export const suspensionStatement = (until: Date): string =>
-  [
-    "Bonjour,",
-    "",
-    "Ton compte asv a été supprimé et ton adresse e-mail est bloquée jusqu'au " + until.toISOString().slice(0, 10) + ".",
-    "Motif : trois avertissements actifs d'un modérateur pour non-respect des règles du chat.",
-    "La décision a été prise par un humain ; aucun outil automatique n'a été utilisé.",
-    "Pour la contester, réponds simplement à ce message.",
-  ].join("\n");
-
-/** Time between two retry rounds of refused statements (BR-076). */
-export const STATEMENT_RETRY_MS = 10 * 60_000;
-
-/** A statement not yet accepted by the provider, retried until `giveUpAt` (BR-076). */
-interface PendingStatement {
-  readonly email: string;
-  readonly statement: string;
-  readonly giveUpAt: Date;
-}
+export { STATEMENT_RETRY_MS, suspensionStatement } from "./moderation-mail";
 
 /** One handler per brick 8a command, plus `retryStatements` for the hub tick. */
 export const createModerationHandlers = (ctx: ModerationContext) => {
   const { deps, out } = ctx;
-  let pending: PendingStatement[] = [];
+  const mail = createModerationMail(deps);
   let quota: TriageQuota = emptyTriageQuota;
   const triage = deps.triage ?? noAiTriage;
 
@@ -140,7 +130,17 @@ export const createModerationHandlers = (ctx: ModerationContext) => {
     return found ? activeStrikes(found.account.strikes, now).length : 0;
   };
 
-  const toPayload = async (report: LoadedReport, now: Date): Promise<Payload<"openReports">["reports"][number]> => ({
+  const alertPayload = (alert: AuthorityAlert): Payload<"alertedReports">["reports"][number]["alert"] => ({
+    offenceCategory: alert.offenceCategory,
+    raisedBy: alert.raisedBy,
+    raisedAt: alert.raisedAt.toISOString(),
+    status: alert.status,
+    ...(alert.channel === undefined ? {} : { channel: alert.channel }),
+    ...(alert.reference === undefined ? {} : { reference: alert.reference }),
+    ...(alert.filedAt === undefined ? {} : { filedAt: alert.filedAt.toISOString() }),
+  });
+
+  const viewOf = (report: LoadedReport) => ({
     id: report.id,
     reason: report.reason,
     targetKind: report.targetKind,
@@ -150,11 +150,16 @@ export const createModerationHandlers = (ctx: ModerationContext) => {
     context: [...report.context],
     authorPseudo: report.authorPseudo,
     createdAt: report.createdAt.toISOString(),
+  });
+
+  const toPayload = async (report: LoadedReport, now: Date): Promise<Payload<"openReports">["reports"][number]> => ({
+    ...viewOf(report),
     hasAccount: report.targetAccountId !== undefined,
     connected: liveTarget(ctx.state(), report)?.status === "connected",
     activeStrikes: await strikesOf(report, now),
     struck: report.struckAt !== undefined,
     ...(report.triage ? { triage: { ...report.triage, labels: [...report.triage.labels] } } : {}),
+    ...(report.alert ? { alert: alertPayload(report.alert) } : {}),
   });
 
   /** UC12 step 2: the first `CAPS.queuePage` (`platform/04-class-protocol`, `web-ui/08`) in BR-102 order, and the open count. */
@@ -165,6 +170,19 @@ export const createModerationHandlers = (ctx: ModerationContext) => {
     return [out.send([caller.key], "openReports", { reports, total: open.length })];
   };
 
+  /** BR-104 (UC20 step 1): closed reports with an alert, pending first, at most `CAPS.alertPage`. */
+  const onListAlerted: ModerationHandler<"listAlertedReports"> = async (caller, command) => {
+    if (!isModerator(ctx.state(), caller.sessionId)) return forbidden(caller, command.seq);
+    const alerted = (await deps.moderation.alertedReports()).flatMap((report) =>
+      report.alert && report.closed ? [{ ...report, alert: report.alert, closed: report.closed }] : []);
+    const reports = sortAlerted(alerted).slice(0, CAPS.alertPage).map((report) => ({
+      ...viewOf(report),
+      closedAt: report.closed.at.toISOString(),
+      alert: alertPayload(report.alert),
+    }));
+    return [out.send([caller.key], "alertedReports", { reports })];
+  };
+
   /** The open report a moderator acts on, or the answer to send instead. */
   const openReport = async (caller: ModerationCaller, reportId: string, seq: number): Promise<LoadedReport | Outgoing[]> => {
     if (!isModerator(ctx.state(), caller.sessionId)) return forbidden(caller, seq);
@@ -172,29 +190,104 @@ export const createModerationHandlers = (ctx: ModerationContext) => {
     return report && !report.closed ? report : [out.warning(caller.key, "reportGone", seq)];
   };
 
-  const close = async (caller: ModerationCaller, report: Report, outcome: "noAction" | "warned" | "expelled" | "suspended", now: Date) => {
+  /**
+   * BR-104 (`moderation/02h`): one alert per report. Returns what tells the owner, called once the command's
+   * last report write is done, so `notifiedAt` is never overwritten by the close.
+   */
+  const raiseAlert = async (caller: ModerationCaller, report: Report, category: OffenceCategory | undefined, now: Date): Promise<() => void> => {
+    if (category === undefined) return () => undefined;
+    const saved = await deps.moderation.saveAuthorityAlert(report.id, category, moderatorOf(ctx.state(), caller.sessionId), now);
+    // Not awaited: the hub queue must not wait for the provider.
+    return saved ? () => void mail.alert(report.id, category, now) : () => undefined;
+  };
+
+  /** BR-057 close, then the decision e-mail to a member reporter (BR-107). */
+  const close = async (caller: ModerationCaller, report: LoadedReport, outcome: ReportOutcome, now: Date) => {
     await deps.moderation.closeReport(report, outcome, moderatorOf(ctx.state(), caller.sessionId), now);
+    await mail.notifyReporter(report, outcome, now);
     return out.send([caller.key], "reportClosed", { reportId: report.id });
+  };
+
+  /** One evict after the other: each one changes the hub state the next one reads. */
+  const evictAll = (sessionIds: readonly string[], until: Date, now: Date): Promise<Outgoing[]> =>
+    sessionIds.reduce<Promise<Outgoing[]>>(
+      async (previous, id) => [...(await previous), ...(await ctx.evict(id, until, now))],
+      Promise.resolve([]),
+    );
+
+  /** After an account deletion no retry comes back: only the report close may fail, and the moderator closes it again. */
+  const closeAfterDeletion = async (caller: ModerationCaller, report: LoadedReport, outcome: ReportOutcome, category: OffenceCategory | undefined, now: Date, seq: number, evicted: Outgoing[]) => {
+    try {
+      const tell = await raiseAlert(caller, report, category, now);
+      const closed = await close(caller, report, outcome, now);
+      tell();
+      return [...evicted, closed];
+    } catch (cause) {
+      deps.onStoreError(cause);
+      return [...evicted, out.warning(caller.key, "unavailable", seq)];
+    }
+  };
+
+  /** BR-103 (`moderation/02h`): severe expel, the account deleted at once and a 7-day ban. */
+  const severe = async (caller: ModerationCaller, report: LoadedReport, category: OffenceCategory | undefined, now: Date, seq: number) => {
+    const decision = decideSevere(ctx.state(), report, moderatorOf(ctx.state(), caller.sessionId), now);
+    const found = report.targetAccountId === undefined ? undefined : await deps.accounts.accountById(report.targetAccountId);
+    // Ban, block and delete first: a failure there leaves the report open to retry on.
+    await deps.moderation.saveBan(decision.ban, report.id, deps.random.id(), now);
+    if (found) {
+      const blockUntil = severeBlockUntil(now);
+      const closure = closeAccount(found.account, now);
+      await deps.accounts.blockEmail(found.emailKeyedHash, blockUntil);
+      await deps.accounts.close(closure.vault, found.emailKeyedHash, closure.carryOver);
+      void mail.statement(found.account.email, severeStatement(blockUntil, report.triage !== undefined), now);
+    }
+    const evicted = await evictAll(decision.sessions.map((session) => session.id), decision.ban.until, now);
+    return closeAfterDeletion(caller, report, "severeDeleted", category, now, seq, evicted);
   };
 
   /** UC11 (`moderation/02a`): the ban is written before the target is closed. */
   const onExpel: ModerationHandler<"expel"> = async (caller, command, now) => {
-    if (!isModerator(ctx.state(), caller.sessionId)) return forbidden(caller, command.seq);
-    if (command.payload.severe) return notAvailable(caller, command.seq);
     const report = await openReport(caller, command.payload.reportId, command.seq);
     if (Array.isArray(report)) return report;
     if (report.targetKind === "room") return [out.warning(caller.key, "reportInvalid", command.seq)];
+    if (command.payload.severe) return severe(caller, report, command.payload.alertAuthorities, now, command.seq);
     const decision = decideExpel(ctx.state(), report, command.payload.duration, moderatorOf(ctx.state(), caller.sessionId), now);
     await deps.moderation.saveBan(decision.ban, report.id, deps.random.id(), now);
+    const tell = await raiseAlert(caller, report, command.payload.alertAuthorities, now);
     // Every store write first: a failure then leaves no evicted session behind (`guarded`).
     const closed = await close(caller, report, "expelled", now);
+    tell();
     const evicted = decision.session ? await ctx.evict(decision.session.id, decision.ban.until, now) : [];
     return [...evicted, closed];
   };
 
+  /** BR-106 (`moderation/02i`): an official room or a room already gone answers `reportInvalid`. */
+  const onRemoveRoom: ModerationHandler<"removeRoom"> = async (caller, command, now) => {
+    const report = await openReport(caller, command.payload.reportId, command.seq);
+    if (Array.isArray(report)) return report;
+    const removal = report.targetKind === "room" && report.targetRoomId !== undefined ? removeRoom(ctx.state(), report.targetRoomId) : undefined;
+    if (removal?.kind !== "removed" || report.targetRoomId === undefined) return [out.warning(caller.key, "reportInvalid", command.seq)];
+    const tell = await raiseAlert(caller, report, command.payload.alertAuthorities, now);
+    const closed = await close(caller, report, "roomRemoved", now);
+    tell();
+    ctx.setState(removal.state);
+    return [
+      out.send(out.keysOf(removal.members), "roomClosed", { roomId: report.targetRoomId }),
+      ...out.roomOutgoing(removal.effects),
+      closed,
+    ];
+  };
+
   /** UC12 step 3 for `warned` (`moderation/02d`): a strike when the target has an account (BR-074). */
-  const warn = async (caller: ModerationCaller, report: LoadedReport, now: Date, seq: number): Promise<Outgoing[]> => {
+  const warn = async (caller: ModerationCaller, report: LoadedReport, category: OffenceCategory | undefined, now: Date, seq: number): Promise<Outgoing[]> => {
     if (report.targetKind === "room") return [out.warning(caller.key, "reportInvalid", seq)];
+    const tell = await raiseAlert(caller, report, category, now);
+    const answer = await warnTarget(caller, report, now);
+    tell();
+    return answer;
+  };
+
+  const warnTarget = async (caller: ModerationCaller, report: LoadedReport, now: Date): Promise<Outgoing[]> => {
     const target = liveTarget(ctx.state(), report);
     const found = report.targetAccountId === undefined ? undefined : await deps.accounts.accountById(report.targetAccountId);
     // BR-074: one strike per report; a repeated `warned` only asks the suspension question again (`02d`).
@@ -220,29 +313,19 @@ export const createModerationHandlers = (ctx: ModerationContext) => {
     return [warned, await close(caller, report, "warned", now)];
   };
 
+  /** `expelled`, `suspended`, `severeDeleted` and `roomRemoved` are set by their own commands only. */
   const onCloseReport: ModerationHandler<"closeReport"> = async (caller, command, now) => {
     if (!isModerator(ctx.state(), caller.sessionId)) return forbidden(caller, command.seq);
-    const { outcome } = command.payload;
-    if (outcome !== "noAction" && outcome !== "warned" && outcome !== "expelled") return notAvailable(caller, command.seq);
+    const { outcome, alertAuthorities } = command.payload;
+    if (outcome !== "noAction" && outcome !== "warned") return notAvailable(caller, command.seq);
     const report = await openReport(caller, command.payload.reportId, command.seq);
     if (Array.isArray(report)) return report;
-    if (outcome === "warned") return warn(caller, report, now, command.seq);
-    if (outcome === "expelled") return notAvailable(caller, command.seq);
-    return [await close(caller, report, outcome, now)];
+    if (outcome === "warned") return warn(caller, report, alertAuthorities, now, command.seq);
+    const tell = await raiseAlert(caller, report, alertAuthorities, now);
+    const closed = await close(caller, report, outcome, now);
+    tell();
+    return [closed];
   };
-
-  /** Tries one statement; a refused or failed one is kept for a retry until `giveUpAt` (BR-076). */
-  const trySend = async (entry: PendingStatement): Promise<void> => {
-    let sent = false;
-    try {
-      sent = await deps.mailer.sendStatementOfReasons(entry.email, entry.statement);
-    } catch (cause) {
-      deps.onStoreError(cause);
-    }
-    if (!sent) pending.push(entry);
-  };
-  let lastRetry = 0;
-  let retrying = false;
 
   /** BR-075 to BR-077, BR-081 (`moderation/02d`). */
   const onConfirm: ModerationHandler<"confirmSuspension"> = async (caller, command, now) => {
@@ -257,21 +340,10 @@ export const createModerationHandlers = (ctx: ModerationContext) => {
     await deps.moderation.saveBan({ ...decision.ban, until }, report.id, deps.random.id(), now);
     await deps.accounts.blockEmail(found.emailKeyedHash, until);
     await deps.accounts.close(closure.vault, found.emailKeyedHash, closure.carryOver);
-    // The account is gone, so no retry comes back here: mail and evict before closing the report.
     // Not awaited: the hub queue must not wait for the provider (ADR-0013 amendment).
-    void trySend({ email: found.account.email, statement: suspensionStatement(until), giveUpAt: suspensionUntil(now) });
-    // One evict after the other: each one changes the hub state the next one reads.
-    const evicted = await sessionsOfAccount(ctx.state(), found.account.id).reduce<Promise<Outgoing[]>>(
-      async (previous, session) => [...(await previous), ...(await ctx.evict(session.id, until, now))],
-      Promise.resolve([]),
-    );
-    try {
-      return [...evicted, await close(caller, report, "suspended", now)];
-    } catch (cause) {
-      // The sanction is applied; only the report stays open, for the moderator to close.
-      deps.onStoreError(cause);
-      return [...evicted, out.warning(caller.key, "unavailable", command.seq)];
-    }
+    void mail.statement(found.account.email, suspensionStatement(until), now);
+    const evicted = await evictAll(sessionsOfAccount(ctx.state(), found.account.id).map((session) => session.id), until, now);
+    return closeAfterDeletion(caller, report, "suspended", command.payload.alertAuthorities, now, command.seq, evicted);
   };
 
   /** Declines only a proposed suspension: the report gave its strike and the account still has three (BR-075). */
@@ -299,25 +371,16 @@ export const createModerationHandlers = (ctx: ModerationContext) => {
   return {
     report: guarded(onReport),
     listOpenReports: guarded(onList),
+    listAlertedReports: guarded(onListAlerted),
     expel: guarded(onExpel),
     closeReport: guarded(onCloseReport),
     confirmSuspension: guarded(onConfirm),
     declineSuspension: guarded(onDecline),
-    /** `warn` and `removeRoom` wait for brick 8c-2. */
+    removeRoom: guarded(onRemoveRoom),
+    /** `warn` without a report stays out of brick 8c (`moderation/01`). */
     later: (caller: ModerationCaller, command: ClientMessage): Promise<Outgoing[]> =>
       Promise.resolve(isModerator(ctx.state(), caller.sessionId) ? notAvailable(caller, command.seq) : forbidden(caller, command.seq)),
-    /** Called from the hub tick, never awaited there; one retry round every `STATEMENT_RETRY_MS` (BR-076). */
-    async retryStatements(now: Date): Promise<void> {
-      if (retrying || now.getTime() - lastRetry < STATEMENT_RETRY_MS) return;
-      retrying = true;
-      lastRetry = now.getTime();
-      const due = pending.filter((entry) => entry.giveUpAt.getTime() > now.getTime());
-      pending = [];
-      try {
-        await Promise.all(due.map(trySend));
-      } finally {
-        retrying = false;
-      }
-    },
+    /** Called from the hub tick, never awaited there (BR-076, BR-104, BR-107). */
+    retryMails: (now: Date): Promise<void> => mail.retry(now),
   };
 };

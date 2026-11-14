@@ -65,8 +65,11 @@ export interface AccountView {
 
 /** What a report dialog sends besides the reason (UC9, BR-051). */
 export interface ReportDraft {
-  readonly targetKind: "chatter" | "message";
+  readonly targetKind: "chatter" | "message" | "room";
+  /** The name the dialog shows: the pseudo, or the room name for a room report. */
   readonly targetPseudo: string;
+  /** Brick 8c: the reported user room (`web-ui/08`); then `targetPseudo` is not sent. */
+  readonly targetRoomId?: string;
   readonly excerpt: string;
   readonly context: readonly string[];
 }
@@ -74,9 +77,16 @@ export interface ReportDraft {
 /** One row of the moderator queue (`web-ui/08`). */
 export type QueuedReport = Extract<ServerMessage, { type: "openReports" }>["payload"]["reports"][number];
 
+/** One row of the "alertes" tab (`web-ui/08`, BR-104). */
+export type AlertedReport = Extract<ServerMessage, { type: "alertedReports" }>["payload"]["reports"][number];
+
 /** The moderator queue dialog; `proposal` names the report waiting for a suspension decision (BR-075). */
 export interface QueueView {
   readonly loading: boolean;
+  /** Brick 8c: the "ouverts" or "alertes" tab. */
+  readonly tab?: "open" | "alerts";
+  /** The alerted reports, once `alertedReports` came (BR-104). */
+  readonly alerted?: readonly AlertedReport[];
   readonly reports: readonly QueuedReport[];
   /** Open reports on the server; `reports` holds the first 50 (BR-102). */
   readonly total: number;
@@ -163,6 +173,7 @@ export type Action =
   | { readonly type: "openReport"; readonly draft: ReportDraft }
   | { readonly type: "closeReport" }
   | { readonly type: "openQueue" }
+  | { readonly type: "showQueueTab"; readonly tab: "open" | "alerts" }
   | { readonly type: "closeQueue" };
 
 /** BR-051: the last 20 lines the reporter saw, up to the reported one, each within the transport cap. */
@@ -242,7 +253,7 @@ const releaseNotice = (state: ChatState, by: "focus" | "pointer", copy: string):
 
 /** Server messages and local actions that raise a notice (#68). */
 const raisesNotice = (action: Action): boolean =>
-  action.type === "notice" || (action.type === "server" && ["warning", "error", "codeSent", "accountUnlinked", "reportSent", "warned"].includes(action.message.type));
+  action.type === "notice" || (action.type === "server" && ["warning", "error", "codeSent", "accountUnlinked", "reportSent", "warned", "roomClosed"].includes(action.message.type));
 
 const signedOut = (account: AccountView): AccountView => ({ ...account, step: "signedOut", accountId: undefined, triesLeft: undefined, pendingRequest: false });
 /** BR-087: a resume keeps a code step in memory, since the server keeps the code under the session id. */
@@ -380,7 +391,7 @@ const togglePrivate = (state: ChatState, conversationId: string): ChatState => {
   return { ...state, windows: { ...state.windows, [conversationId]: { ...window, minimised, unread: minimised ? window.unread : 0, focusRequest: minimised ? window.focusRequest : window.focusRequest + 1 } } };
 };
 
-type ModerationMessage = Extract<ServerMessage, { type: "reportSent" | "warned" | "openReports" | "reportClosed" | "suspensionProposed" }>;
+type ModerationMessage = Extract<ServerMessage, { type: "reportSent" | "warned" | "openReports" | "alertedReports" | "reportClosed" | "suspensionProposed" }>;
 
 /** Brick 8a messages (web-ui/08): report notices and the moderator queue. */
 const onModeration = (state: ChatState, message: ModerationMessage): ChatState => {
@@ -389,6 +400,7 @@ const onModeration = (state: ChatState, message: ModerationMessage): ChatState =
   const { queue } = state;
   if (!queue) return state;
   if (message.type === "openReports") return { ...state, queue: { ...queue, loading: false, reports: message.payload.reports, total: message.payload.total } };
+  if (message.type === "alertedReports") return { ...state, queue: { ...queue, alerted: message.payload.reports } };
   if (message.type === "suspensionProposed") return { ...state, queue: { ...queue, proposal: message.payload } };
   const { reportId } = message.payload;
   const proposal = queue.proposal?.reportId === reportId ? undefined : queue.proposal;
@@ -422,9 +434,16 @@ const onServer = (state: ChatState, message: ServerMessage): ChatState => {
     case "reportSent":
     case "warned":
     case "openReports":
+    case "alertedReports":
     case "reportClosed":
     case "suspensionProposed":
       return onModeration(state, message);
+    case "roomClosed": {
+      // BR-106: a moderator removed the room; its tab closes as on `leaveRoom`.
+      const open = Object.fromEntries(Object.entries(state.open).filter(([roomId]) => roomId !== message.payload.roomId));
+      const closed = { ...state, notice: "roomClosed" };
+      return state.active === message.payload.roomId ? afterClose(closed, open) : { ...closed, open };
+    }
     case "resumed":
       return onResumed(state, message.payload);
     case "resumeRefused":
@@ -571,6 +590,8 @@ const reduce = (state: ChatState, action: Action): ChatState => {
       return { ...state, report: undefined };
     case "openQueue":
       return state.moderator ? { ...state, queue: { loading: true, reports: [], total: 0 } } : state;
+    case "showQueueTab":
+      return state.queue ? { ...state, queue: { ...state.queue, tab: action.tab } } : state;
     case "closeQueue":
       return { ...state, queue: undefined };
   }

@@ -61,7 +61,14 @@ const unusedStore: AccountStore = {
 const quietModeration: ModerationStore = {
   saveReport: unused,
   findReport: unused,
-  openReports: unused,
+  openReports: () => Promise.resolve([]),
+  alertedReports: () => Promise.resolve([]),
+  saveAuthorityAlert: unused,
+  markAlertNotified: unused,
+  recordFiling: unused,
+  savePendingDecisionMail: unused,
+  pendingDecisionMails: () => Promise.resolve([]),
+  deletePendingDecisionMail: unused,
   saveTriage: unused,
   saveBan: unused,
   activeBan: () => Promise.resolve(undefined),
@@ -93,7 +100,7 @@ const setup = (hashToken = (value: string) => `h:${value}`, store: Partial<Accou
     onLogError,
     closeSocket,
     accounts: createAccountIo({ store: { ...unusedStore, ...store }, vault: { record: unused, purgeExpired: () => Promise.resolve() }, crypto }),
-    mailer: { sendCode: unused, sendStatementOfReasons: unused },
+    mailer: { sendCode: unused, sendStatementOfReasons: unused, sendAuthorityAlert: unused, sendReportDecision: unused },
     onStoreError: vi.fn(),
     moderation: createModerationIo({ store: quietModeration, crypto }),
   });
@@ -218,12 +225,13 @@ describe("hub validation (issue #13)", () => {
   ];
   const MODERATOR_ONLY: readonly (readonly [string, object])[] = [
     ["listOpenReports", {}],
+    ["listAlertedReports", {}],
     ["warn", { targetSessionId: "s", text: "stop" }],
     ["expel", { reportId: "r", duration: "1h" }],
     ["closeReport", { reportId: "r", outcome: "noAction" }],
     ["confirmSuspension", { accountId: "a", reportId: "r" }],
     ["declineSuspension", { accountId: "a", reportId: "r" }],
-    ["removeRoom", { roomId: "lyon" }],
+    ["removeRoom", { reportId: "r1" }],
   ];
 
   it.each(MODERATOR_ONLY)("answers %s from a chatter with forbidden (BR-054)", async (type, payload) => {

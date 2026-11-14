@@ -222,9 +222,11 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
   const mailer = options.mailer ?? createBrevoMailer({
     apiKey: options.brevoApiKey,
     from: options.mailFrom ?? "contact@asvchat.fr",
+    contactEmail: options.legal?.contactEmail,
     production: behindTunnel,
     log: (level, fields) => (level === "error" ? console.error : console.info)("mailer", fields),
   });
+  const moderationIo = createModerationIo({ store: moderation, crypto });
   const hub = createHub({
     officialRooms: OFFICIAL_ROOMS,
     random,
@@ -236,7 +238,7 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
     accounts: createAccountIo({ store: accounts, vault: hubVault, crypto }),
     mailer,
     onStoreError: (error) => console.error("account store failed", error),
-    moderation: createModerationIo({ store: moderation, crypto }),
+    moderation: moderationIo,
     triage: reportTriage(options, behindTunnel),
     grantKey,
     canReport: !behindTunnel,
@@ -259,6 +261,7 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
     allowedOrigins: options.allowedOrigins,
     ownerSecret,
     behindTunnel,
+    recordFiling: (reportId, channel, reference, at) => moderationIo.recordFiling(reportId, channel, reference, at),
     peerAddress: (c) => peerOf(c.env),
     now,
     onError: (error) => console.error("moderator route failed", error),

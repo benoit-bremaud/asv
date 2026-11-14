@@ -8,6 +8,7 @@ import type { Mailer } from "../../domain";
 const BREVO_SEND_URL = "https://api.brevo.com/v3/smtp/email";
 const TIMEOUT_MS = 8000;
 const SENDER_NAME = "asv";
+const ALERT_SUBJECT = "asv : alerte autorités";
 /** Allow-listed event name of every failed send, never with the address. */
 export const MAIL_SEND_FAILED = "mailer.send_failed";
 
@@ -19,6 +20,8 @@ export interface BrevoOptions {
   /** Unset in development and tests: messages are logged instead of sent. */
   readonly apiKey?: string;
   readonly from: string;
+  /** `ASV_CONTACT_EMAIL`: where authority alerts go (BR-104); unset, an alert is never accepted. */
+  readonly contactEmail?: string;
   readonly production: boolean;
   readonly log: MailLog;
   /** Injected in tests; the global `fetch` otherwise. */
@@ -124,6 +127,24 @@ export const createBrevoMailer = (options: BrevoOptions): Mailer => {
         subject: "Décision de modération sur ton compte asv",
         text: statement,
         html: `<p>${escapeHtml(statement).replaceAll("\n", "<br>")}</p>`,
+      }),
+
+    // BR-104: the report id and the category only, never content or pseudos.
+    async sendAuthorityAlert(reportId, category) {
+      if (!options.contactEmail) {
+        options.log("error", { event: MAIL_SEND_FAILED, provider: "brevo", subject: ALERT_SUBJECT, providerCode: "missing_contact_email" });
+        return false;
+      }
+      const text = `Alerte autorités à déposer.\n\nSignalement : ${reportId}\nCatégorie : ${category}\n\nOuvre l'onglet "alertes" de la file, dépose, puis lance pnpm mod:filed.`;
+      return send({ to: options.contactEmail, subject: ALERT_SUBJECT, text, html: `<p>${escapeHtml(text).replaceAll("\n", "<br>")}</p>` });
+    },
+
+    sendReportDecision: (email, text) =>
+      send({
+        to: email,
+        subject: "Suite donnée à ton signalement asv",
+        text,
+        html: `<p>${escapeHtml(text).replaceAll("\n", "<br>")}</p>`,
       }),
   };
 };

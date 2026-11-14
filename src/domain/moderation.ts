@@ -17,6 +17,10 @@ export const MODERATION_LIMITS = {
   strikesForSuspension: 3,
   suspensionMs: 7 * 24 * 60 * 60_000,
   closedReportMs: 183 * 24 * 60 * 60_000,
+  /** BR-105: a report with an authority alert is kept 1 year after it closes. */
+  alertedReportMs: 365 * 24 * 60 * 60_000,
+  /** BR-078: the e-mail of a severe case stays blocked 6 months. */
+  severeBlockMs: 183 * 24 * 60 * 60_000,
   expiredBanMs: 30 * 24 * 60 * 60_000,
 } as const;
 
@@ -31,8 +35,8 @@ export type ExpelDuration = keyof typeof EXPEL_DURATIONS_MS;
 /** BR-050. */
 export type ReportReason = "harassment" | "seemsMinor" | "spam" | "illegalContent" | "other";
 export type ReportTargetKind = "chatter" | "message" | "room";
-/** The outcomes offered until brick 8c-2 (BR-057). */
-export type ReportOutcome = "noAction" | "warned" | "expelled" | "suspended";
+/** BR-057; `severeDeleted` and `roomRemoved` since brick 8c-2. */
+export type ReportOutcome = "noAction" | "warned" | "expelled" | "suspended" | "severeDeleted" | "roomRemoved";
 
 /** A report as the domain sees it, values in clear (`moderation/04`). */
 export interface Report {
@@ -49,6 +53,8 @@ export interface Report {
   readonly excerpt: string;
   readonly context: readonly string[];
   readonly authorPseudo: string;
+  /** The reporter's account, never the e-mail, for the decision e-mail (BR-107). */
+  readonly reporterAccountId?: string;
   readonly createdAt: Date;
 }
 
@@ -109,6 +115,7 @@ export const fileReport = (state: HubState, command: ReportCommand, now: Date, r
     excerpt: [...command.excerpt].slice(0, MODERATION_LIMITS.maxExcerptLength).join(""),
     context: command.context.slice(-MODERATION_LIMITS.maxContextLines),
     authorPseudo: author.pseudo,
+    ...(author.accountId === undefined ? {} : { reporterAccountId: author.accountId }),
     createdAt: now,
   };
   return { kind: "filed", state: counted, report };
@@ -179,3 +186,23 @@ export const suspensionUntil = (now: Date): Date => new Date(now.getTime() + MOD
 /** Sessions of an account, connected or away, that a suspension closes (BR-077). */
 export const sessionsOfAccount = (state: HubState, accountId: string): Session[] =>
   [...state.sessions.values()].filter((session) => session.accountId === accountId);
+
+/** BR-078: the e-mail hash of a severe case is blocked until then. */
+export const severeBlockUntil = (now: Date): Date => new Date(now.getTime() + MODERATION_LIMITS.severeBlockMs);
+
+/**
+ * BR-103 (`moderation/02h`): a 7-day ban on the captured IP and pseudo, and every session of the account or
+ * of the pseudo to close. The account itself is deleted by the hub when it still exists.
+ */
+export const decideSevere = (
+  state: HubState,
+  report: Report,
+  moderator: string,
+  now: Date,
+): { ban: BanDecision; sessions: Session[] } => {
+  const { ban, session } = decideExpel(state, report, "7d", moderator, now);
+  const byPseudo = report.targetPseudo === undefined ? undefined : sessionByPseudo(state, report.targetPseudo);
+  const byAccount = report.targetAccountId === undefined ? [] : sessionsOfAccount(state, report.targetAccountId);
+  const all = [...byAccount, ...(session ? [session] : []), ...(byPseudo ? [byPseudo] : [])];
+  return { ban, sessions: [...new Map(all.map((one) => [one.id, one])).values()] };
+};
