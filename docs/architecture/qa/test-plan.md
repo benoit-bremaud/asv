@@ -6,7 +6,7 @@ coverage matrix that records the last QA evidence of every case, so each QA pass
 > Written with skill `test-plan`. Families, tools and owners refer to the owner's
 > `~/.claude/skills/testing-strategy/taxonomy.md` (not linked). Levels and checklist IDs (FON, DAT, UI,
 > A11Y, PERF, SEC, ROB, MOB, USA, PRI) refer to skill `qa-browser-check` and its `checklist.md`.
-> Last reviewed: 2026-11-14 · #211 8c-2 JRN-40 to JRN-42 implemented, not covered · #211 JRN-39 to JRN-42 added · #210 JRN-37, JRN-38 added · JRN-32 evidence written by the check of #185 on 54dfe01 (NO); SEC-01 re-checked for #69 on bb56afb (PP); JRN-31 evidence written by the check of #199 on 10c5679 and cfa85aa (SN); JRN-30 evidence written by the check of #60, #68, #148 and #110 on a148de0 (FN); JRN-29 evidence written by the check of #67 and #106 on 7828fe5 (FS); JRN-28 evidence written by the check of #171 on 5e2e923 (MF); JRN-27 evidence written by the check of #136 on 540a623 (AD); JRN-26 evidence written by the check of #104 on 2ce2a4e (DL); JRN-25 evidence written by the check of #111 on 6844535 (SD); JRN-20 evidence extended by the check of #176 on e09aaa2 (BB); JRN-24 evidence extended by the check of #170 on 3edb917 (BT); JRN-20 evidence extended by the check of #168 on f0d79ab and 6881bc2 (PM); JRN-24 evidence written by the check of #143 on 32cd1bc (HW); JRN-20 evidence extended by the check of #142 on 4f3144d (TT); JRN-23 evidence written by the pass of #59 on 7edf57d and a772665 (LM); JRN-22 evidence written by the pass of #151 on 5987750 (DR); JRN-18 evidence extended by the pass of #154 on 15c303a and 560cd56 (PI); JRN-02, 04, 05, 06 evidence added by campaign #147 on ba2c98e (CQ); JRN-21 evidence written by the pass of #131 on 0d4f213 and d783b18 (PF); JRN-20 evidence written by the pass of #105 on 3c3fdec (SZ); JRN-19 evidence written by the pass of #126 on 31c19ff (LS); JRN-18 evidence written by the pass of #121 on 79bbd89 (AR); JRN-17 evidence written by the pass of #63 on e4b4223 (AM); JRN-16 evidence written by the pass of #64 on 0d48cd1 (OH); JRN-15 evidence written by the pass of #91 on fea172c (BI); JRN-14 evidence written by the full pass of #23 on 77d7c17 (SC)
+> Last reviewed: 2026-11-14 · #233 JRN-43 to JRN-45 added · #211 8c-2 JRN-40 to JRN-42 implemented, not covered · #211 JRN-39 to JRN-42 added · #210 JRN-37, JRN-38 added · JRN-32 evidence written by the check of #185 on 54dfe01 (NO); SEC-01 re-checked for #69 on bb56afb (PP); JRN-31 evidence written by the check of #199 on 10c5679 and cfa85aa (SN); JRN-30 evidence written by the check of #60, #68, #148 and #110 on a148de0 (FN); JRN-29 evidence written by the check of #67 and #106 on 7828fe5 (FS); JRN-28 evidence written by the check of #171 on 5e2e923 (MF); JRN-27 evidence written by the check of #136 on 540a623 (AD); JRN-26 evidence written by the check of #104 on 2ce2a4e (DL); JRN-25 evidence written by the check of #111 on 6844535 (SD); JRN-20 evidence extended by the check of #176 on e09aaa2 (BB); JRN-24 evidence extended by the check of #170 on 3edb917 (BT); JRN-20 evidence extended by the check of #168 on f0d79ab and 6881bc2 (PM); JRN-24 evidence written by the check of #143 on 32cd1bc (HW); JRN-20 evidence extended by the check of #142 on 4f3144d (TT); JRN-23 evidence written by the pass of #59 on 7edf57d and a772665 (LM); JRN-22 evidence written by the pass of #151 on 5987750 (DR); JRN-18 evidence extended by the pass of #154 on 15c303a and 560cd56 (PI); JRN-02, 04, 05, 06 evidence added by campaign #147 on ba2c98e (CQ); JRN-21 evidence written by the pass of #131 on 0d4f213 and d783b18 (PF); JRN-20 evidence written by the pass of #105 on 3c3fdec (SZ); JRN-19 evidence written by the pass of #126 on 31c19ff (LS); JRN-18 evidence written by the pass of #121 on 79bbd89 (AR); JRN-17 evidence written by the pass of #63 on e4b4223 (AM); JRN-16 evidence written by the pass of #64 on 0d48cd1 (OH); JRN-15 evidence written by the pass of #91 on fea172c (BI); JRN-14 evidence written by the full pass of #23 on 77d7c17 (SC)
 
 ## Rule: the plan follows the product
 
@@ -27,7 +27,7 @@ coverage matrix that records the last QA evidence of every case, so each QA pass
 | Product type | Web (Vite React client) + Node WebSocket server (Hono, `ws`) |
 | Criticality | Accounts and personal data (e-mail, device hashes, legal logs); exposed to real testers |
 | Stack and runners | TypeScript, Vitest (unit, integration, contract, component), ESLint dependency rule |
-| Environments | `local` (dev server or own production build, dev mailer); tester exposure on asvchat.fr through a Cloudflare tunnel (ADR-0018), never a QA target |
+| Environments | `local` (dev server or own production build, dev mailer); `staging` (staging.asvchat.fr on Cloudflare behind Access, owner only, ADR-0020; the QA target of JRN-43 to JRN-45); tester exposure on asvchat.fr through a Cloudflare tunnel (ADR-0018), never a QA target |
 | CI today | Local: `pnpm verify`, gitleaks, `pnpm audit`, `pnpm sonar` (local SonarQube gate); GitHub CodeQL |
 
 ## Risk register
@@ -45,8 +45,9 @@ coverage matrix that records the last QA evidence of every case, so each QA pass
 | RSK-09 | Web attack: XSS, CSWSH, headers, input limits | 3 | 5 | 15 high | public chat input; SEC-01 closed by #69 |
 | RSK-10 | Tunnel mode misconfigured: HSTS, `Secure` cookie, client IP (BR-084…086) | 2 | 5 | 10 medium | production config, never run by QA |
 | RSK-11 | Legal pages missing or wrong (ADR-0018) | 2 | 4 | 8 medium | legal duty before testers |
-| RSK-13 | Moderation: chatter gains moderator rights, wrong target sanctioned, strike count wrong, report lost (UC9, UC11, UC12, UC14…UC16, UC20), wrong AI ranking, data sent to the AI provider | 2 | 5 | 10 medium | new in brick 8a (#209), passkeys in 8b (#210), AI triage and authority alert in 8c (#211); BR-054, BR-074…077, BR-093…099, BR-100…108 |
 | RSK-12 | Accessibility barriers (WCAG 2.2 AA) | 3 | 3 | 9 medium | F1–F3 of the full pass (#63, #64; #65 fixed on ce90fc5; #84 overlays verified on 5669e7d) |
+| RSK-13 | Moderation: chatter gains moderator rights, wrong target sanctioned, strike count wrong, report lost (UC9, UC11, UC12, UC14…UC16, UC20), wrong AI ranking, data sent to the AI provider | 2 | 5 | 10 medium | new in brick 8a (#209), passkeys in 8b (#210), AI triage and authority alert in 8c (#211); BR-054, BR-074…077, BR-093…099, BR-100…108 |
+| RSK-14 | Cloudflare production misconfigured: secret missing, Access open, client IP or caps wrong, data lost by a deploy (BR-109…113) | 2 | 5 | 10 medium | new in brick 9 (#233); staging check before every production deploy |
 
 ## Family matrix
 
@@ -59,10 +60,10 @@ coverage matrix that records the last QA evidence of every case, so each QA pass
 | 4 | Security | yes | CodeQL, gitleaks, `pnpm audit`; SEC-01…10 probes in the QA pass | static, e2e | per commit; pre-merge | `review-local`; `qa-tester` | RSK-06, RSK-09, RSK-10 |
 | 5 | Data | yes | Vitest (crypto, vault, logs); PRI checks in the QA pass | unit, e2e | per commit; pre-merge | project; `qa-tester` | RSK-07, RSK-08 |
 | 6 | Compatibility and localisation | yes | QA pass: Chromium; Firefox and WebKit at level full | e2e | release | `qa-tester` | RSK-12 |
-| 7 | Infrastructure and deployment | later — brick 9 deploy | Wrangler integration suite (NF-009) | integration | release | project | — |
+| 7 | Infrastructure and deployment | yes — brick 9 (ADR-0020) | Wrangler integration suite (NF-009); QA pass on staging (JRN-43 to JRN-45) | integration, e2e | release | project; `qa-tester` | RSK-14 |
 | 8 | Reliability | yes | QA pass: server down / restart, socket drop | e2e | pre-merge | `qa-tester` | RSK-02 |
 | 9 | Content and SEO | no — chat behind an entry screen, not indexed | — | — | — | — | — |
-| 10 | Modern architectures | no — no AI adapter or queue yet (brick 8 adds AI triage) | — | — | — | — | — |
+| 10 | Modern architectures | yes — Mistral triage adapter (ADR-0019), no-AI adapter in every automated test; no queue | contract test of the real adapter run manually with a fixed sample | integration | release | project | RSK-13 |
 | 11 | Compliance and monitoring | yes | legal pages and log rules checked in the QA pass | e2e | release | `qa-tester` | RSK-08, RSK-11 |
 | 12 | Static | yes | TypeScript strict, ESLint dependency rule, SonarQube | static | per commit | `pnpm verify`, `pnpm sonar` | all |
 
@@ -112,6 +113,9 @@ coverage matrix that records the last QA evidence of every case, so each QA pass
 | JRN-40 | A moderator confirms "expulsion grave" on a member: the account is deleted, its e-mail blocked, the target sees the 7-day end time; the alert select starts empty and "confirmer" stays disabled until a category or "aucune" is picked; the contact address gets an alert with the report id and category only; the "alertes" tab lists the closed report with "en attente", and `pnpm mod:filed` turns it into "déposée" (a second filing answers 409) | UC11, UC20 (#211) | BR-103 to BR-105 | RSK-13 | unit and integration tests; QA pass at 1440 light and 844 × 390 dark, two browsers | local |
 | JRN-41 | A chatter reports a user room with "signaler le salon"; the moderator picks "fermer le salon": its members see it closed and its name is free again; an official room shows no report entry and a removed room answers "signalement invalide" | UC9, UC11 (#211) | BR-106 | RSK-13 | unit and integration tests; QA pass at 390 × 844 dark, two browsers | local |
 | JRN-42 | A member who reported gets one decision e-mail when the report closes, in general terms, naming automated means when the report was triaged; a guest reporter gets none; the target is never named | UC12 (#211) | BR-107 | RSK-13 | unit and integration tests with a stub mailer; QA check of the received mail through Brevo | local |
+| JRN-43 | On staging.asvchat.fr behind Access (owner only allow-list): a chatter enters, joins a room, posts; a second browser sees it; a member signs in with an e-mail code and a reload keeps the device; a report reaches the moderator queue (moderation is on in staging only, BR-108); responses, static assets included, carry BR-086 headers and HSTS | UC1, UC3, UC4, UC9, UC17 (#233) | BR-086, BR-108, BR-109, BR-111 | RSK-14 | integration tests of the Worker and the Hub object; QA pass on staging | staging |
+| JRN-44 | After a deploy to staging with the immediate update strategy every open tab returns to the entry screen and a member's device cookie signs it back in; 21 sockets from 21 distinct addresses of one IPv6 /64 get 429 on the 21st | UC1, UC13 (#233) | BR-089, BR-109, BR-112 | RSK-14 | unit tests of the /64 key; Worker integration test of the orphan-line close (BR-109); QA pass on staging | staging |
+| JRN-45 | `/owner/invitations` without the Access service token is refused by Access; with it but a wrong owner secret answers 401; with both it returns a link, and so do `/owner/moderators/:name` and `/owner/authority-filings`; a visitor outside the allow-list never reaches the site, nor does a request to the `workers.dev` address (disabled); an expired Access session makes the open tab reconnect through Access, then sign in again | UC16 (#233) | BR-093, BR-108, BR-113 | RSK-14 | QA pass on staging | staging |
 
 
 ## Coverage matrix
@@ -183,6 +187,9 @@ Level is the lowest QA level that must run the row: smoke ⊂ pass ⊂ full.
 | JRN-40 severe expel, authority alert and filing | pass | — | not covered (brick 8c, #211) |
 | JRN-41 room report and removal | pass | — | not covered (brick 8c, #211) |
 | JRN-42 reporter decision e-mail | pass | — | not covered (brick 8c, #211) |
+| JRN-43 Cloudflare transport end to end on staging | pass | — | not covered (brick 9, #233) |
+| JRN-44 deploy reset and IPv6 /64 caps | pass | — | not covered (brick 9, #233) |
+| JRN-45 Access and owner routes | pass | — | not covered (brick 9, #233) |
 
 ### qa-browser-check domains
 
@@ -239,6 +246,7 @@ dev server and own production build. Not re-run on ce90fc5 or 5669e7d (CSS and c
 
 ## Changelog
 
+- 2026-11-14 — #233: JRN-43 to JRN-45 added (Cloudflare transport, deploy reset, Access), not covered; QA batched later. Staging environment, family 7 and family 10 updated, RSK-12 reordered.
 - 2026-11-14 — #211 (8c-2): JRN-40 to JRN-42 implemented (severe expel, "alertes" tab, `pnpm mod:filed`, room report and removal, decision e-mail); still not covered, QA batched later.
 - 2026-11-13 — #211: JRN-39 to JRN-42 added (AI triage, severe expel and authority alert, room removal, decision e-mail), not covered yet; RSK-13 widened to UC20 and the AI provider.
 - 2026-11-13 — #210: JRN-37 and JRN-38 added (moderator invitation, enrolment, passkey sign-in), not covered yet; JRN-34 retired; RSK-13 widened to UC14…UC16.

@@ -278,5 +278,5 @@ The contract stays `platform/04-class-protocol`. Brick 8a uses it as follows:
   `warning(reportInvalid)`; `openReports` items gain `triage` (with the label legend) and `alert`;
   `listAlertedReports` answers `alertedReports`. Outcomes `severeDeleted` and `roomRemoved` become
   available.
-- Owner route `POST /mod/authority-filings` (BR-093 guard, BR-097) and script `pnpm mod:filed`.
+- Owner route `POST /owner/authority-filings` (BR-093 guard, BR-097) and script `pnpm mod:filed`.
 - `AlertChannel` values `police17` and `emergency112` are typed `17` and `112` on the `mod:filed` command line and in the queue.

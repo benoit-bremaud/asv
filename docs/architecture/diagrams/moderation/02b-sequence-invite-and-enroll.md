@@ -22,7 +22,7 @@ sequenceDiagram
   actor I as Invited person
   participant B as Browser and device
   OW->>CLI: invite "Marc" with owner secret
-  CLI->>WK: POST /mod/invitations
+  CLI->>WK: POST /owner/invitations
   WK->>WK: Check owner secret
   WK->>H: rpc createInvitation(name, now)
   H->>MS: save hashed invitation, expires in 24 h

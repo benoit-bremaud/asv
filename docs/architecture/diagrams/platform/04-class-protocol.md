@@ -8,7 +8,7 @@
 
 JSON messages exchanged over the single WebSocket, as a discriminated union on `type`. This is the
 contract shared by client and server. Does not cover passkey ceremonies, which use HTTPS, or the
-heartbeat, which is the raw text `ping` auto-answered `pong` (ADR-0011).
+heartbeat, which is the raw text `ping` answered `pong` by the transport (BR-088; ADR-0011 amended by ADR-0020).
 
 ## Diagram
 
