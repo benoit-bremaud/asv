@@ -39,7 +39,7 @@ parity with the Node transport and testability 15.
 
 Sensitivity: with resilience 35 and simplicity 20, A gets 410 and B 335. C writes gender, age and city to disk
 unless filtered, against the personal data invariant. Owner choice B on 2026-11-14 after a deeper analysis;
-A stays the target once traffic or deploy frequency makes the reset costly (follow-up issue).
+A stays the target once traffic or deploy frequency makes the reset costly (follow-up #235).
 
 ### D2 — Owner routes in production (invite, revoke, filed; BR-093)
 
@@ -97,7 +97,7 @@ Criteria: GDPR 50, latency 20, simplicity 15, reversibility 15.
 
 | Option | GDPR | Latency | Simplicity | Reversibility | Total /500 |
 |---|---|---|---|---|---|
-| **A. `env.HUB.jurisdiction("eu")` before `idFromName("hub")`** | 5 | 5 | 4 | 5 | **485** |
+| **A. `env.HUB.jurisdiction("eu")` before `idFromName("hub")`** | 5 | 5 | 4 | 2 | **440** |
 | B. No jurisdiction | 3 | 5 | 5 | 2 | 355 |
 
 Sensitivity: simplicity 40, GDPR 30, latency 15, reversibility 15 give A 460, B 395. A holds. The jurisdiction of an
@@ -136,7 +136,7 @@ security near 0). Owner choice B on 2026-11-14.
 
 1. **Worker**: serves the built web client as static assets with `assets.run_worker_first: true`, so every
    response, assets included, gets the BR-086 headers and the BR-111 checks. It checks the Origin,
-   `CF-Connecting-IP` and the `Cf-Access-Jwt-Assertion` (audience of the environment's Access app, defence in
+   `CF-Connecting-IP` and the `Cf-Access-Jwt-Assertion` (the site application's audience, and the `/owner` application's audience on `/owner/*`, defence in
    depth), then forwards every non-asset request, WebSocket upgrades included, to the single Hub Durable Object
    (`idFromName("hub")`). The Hono app (`createApp`, `addModeratorRoutes`) runs inside the Hub object, so the
    grant key and used nonces (BR-095), the challenge windows (BR-096) and the stats live next to the hub. Only
@@ -160,7 +160,7 @@ security near 0). Owner choice B on 2026-11-14.
    Node stores (ADR-0017, BR-083), plus an encrypted `pending_statements` table so a deploy never drops a
    pending statement of reasons. Away records stay in memory (lost with the hub). The tunnel exceptions of BR-084
    end: the connection log and the vault are encrypted in SQLite. On Node, pending statements of reasons are
-   still in memory only: a known gap, follow-up issue.
+   still in memory only: a known gap, follow-up #234.
 5. **Client IP and flags (#38)**: on Cloudflare the client IP is always `CF-Connecting-IP`; production runs with
    `secureCookie`; the Worker refuses requests (503) when a required secret is missing, a key fails to parse or
    the owner secret is shorter than 32 characters (BR-111). Moderation follows D5 (BR-108). Per-IP quotas and
@@ -190,8 +190,10 @@ security near 0). Owner choice B on 2026-11-14.
     only when no schema change landed since the target version (migrations are additive only). Every real
     deploy, DNS change, Access policy and secret creation needs the owner's explicit yes.
 12. **Repository visibility**: once production runs, the repository switches to private under ADR-0005 of the
-    owner's global rules (repository visibility), category "personal data": a production service holding
-    accounts, moderation records, the legal vault and impact assessment material. Consequence: on a private
+    owner's global rules (repository visibility), category "a history that cannot be published": the
+    code of a live moderated service (moderation, abuse limits, authority channel) and its impact assessment
+    material; the owner decided on 2026-10-16 that asv goes private at its first production deploy. The
+    repository itself holds no personal data (legal identity fields are secrets). Consequence: on a private
     Free repository the GitHub ruleset (25651804, `sonarqube` required) no longer applies and the gate becomes
     agent-side only. The derogation is recorded in `PROJECT_LOG.md`.
 

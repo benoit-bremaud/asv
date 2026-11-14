@@ -85,4 +85,4 @@ changes in substance: with `server.accept()` the auto-response API (`setWebSocke
 so the transport answers `ping` itself as on Node (BR-088) and the sweep uses its own last-frame time per socket;
 the 25-second ping, the 10-second client timeout and the 60-second silence limit hold. Points 5 (Worker ↔ hub) and
 7 (flood counters in memory) hold, point 5 extended: the Hono app runs inside the hub object (ADR-0020 §1). Point
-4 becomes timers plus one alarm (BR-110). Moving to this ADR's design is a follow-up.
+4 becomes timers plus one alarm (BR-110). Moving to this ADR's design is a follow-up (#235).

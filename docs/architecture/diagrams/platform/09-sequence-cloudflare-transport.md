@@ -79,4 +79,4 @@ sequenceDiagram
   reasons), `bans`, `moderators`, `invitations`. One schema migration runs in the constructor inside
   `blockConcurrencyWhile`; migrations are additive only (`platform/10`).
 - Away records, room state, the grant key, pending challenges, triage counters and flood counters are in memory
-  and lost on a deploy (BR-109). On Node, pending statements of reasons are in memory only: a known gap, follow-up.
+  and lost on a deploy (BR-109). On Node, pending statements of reasons are in memory only: a known gap, follow-up #234.

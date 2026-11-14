@@ -99,8 +99,8 @@ sequenceDiagram
   `closeSocket(key, "invalidFrames")`, sent as close 1008 on the next turn, after that answer. Once a socket is closing, for either reason or
   a resume takeover, the transport ignores its frames and stops refreshing its last seen, so a peer that
   never answers the close is terminated by the silence sweep. A clock stepping back never drains the
-  bucket. Both pieces are transport-neutral; the Cloudflare transport (brick 9) must take a token before
-  its `ping` auto-response too, or record why it cannot.
+  bucket. Both pieces are transport-neutral; the Cloudflare transport (brick 9) takes a token before
+  answering `ping` itself too (ADR-0020).
 - **Upgrade limits** (BR-089, issue #23): `UpgradeLimiter` in `src/server/upgrade-limit.ts` is pure and
   transport-neutral (clock passed in). `admit(ip, nowMs)` returns `ok`, `perIp`, `total` or `rate`; it
   takes an upgrade token from the IP's bucket first, so a client hammering a full cap still drains its
@@ -110,12 +110,12 @@ sequenceDiagram
   same as BR-088's (`src/server/token-bucket.ts`). The refusal is written on the raw socket
   (`HTTP/1.1 429` or `503`, `Retry-After: 10`, `Connection: close`) before `handleUpgrade`, so the hub and
   the connection log never see it. The socket is then destroyed once flushed (the 403 too): after `upgrade` Node keeps no timeout on it and allows half-open sockets. The Hub Durable Object (brick 9) runs the same `admit` before
-  `acceptWebSocket` and the same `release` in `webSocketClose`.
+  `server.accept()` and the same `release` on the socket's `close` event (ADR-0020).
 - **Unbound sockets** (BR-089): the hub alone knows whether a socket holds a session, so `tick` closes
   the sockets unbound for 10 minutes through `closeSocket(key, "unbound")` (`platform/04c`); the transport
   sends it as close 1008 like BR-088. The web client then reconnects with its usual backoff.
-- **Heartbeat** (ADR-0011): the transport answers the raw text `ping` with `pong` without calling the hub,
-  like the Durable Object auto-response. The sweep every 15 s (a quarter of the silence limit) terminates sockets whose
+- **Heartbeat** (ADR-0011): the transport answers the raw text `ping` with `pong` without calling the hub;
+  the Cloudflare transport does the same (ADR-0020). The sweep every 15 s (a quarter of the silence limit) terminates sockets whose
   last frame is older than 60 s, so a dead socket goes within 75 s; termination then follows the "socket closed" path, so the session goes away (BR-011).
 - **Tick**: once a second the transport calls `hub.tick(now)`, which runs `expireAway`, `pruneFlood` and
   `pruneEntryAttempts`. On Cloudflare the single alarm calls the same `tick` (`platform/05`).

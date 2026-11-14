@@ -30,7 +30,7 @@ flowchart TD
   Check -->|pass| FirstProd{First production deploy?}
   FirstProd -->|no| DPIA
   FirstProd -->|yes| Tunnel["Stop the tester tunnel; keep the local log file for its legal year (ADR-0018)"]
-  Tunnel --> Derog["Record the visibility derogation in PROJECT_LOG.md (ADR-0005, personal data)"]
+  Tunnel --> Derog["Record the visibility derogation in PROJECT_LOG.md (ADR-0005, history that cannot be published)"]
   Derog --> Private["gh repo edit --visibility private, owner yes; the GitHub ruleset no longer applies, the gate is agent-side only"]
   Private --> DPIA{"Owner recorded the signed impact assessment?"}
   DPIA -->|no| Done([Log the deploy in PROJECT_LOG.md; moderation stays off in production])
@@ -44,7 +44,9 @@ flowchart TD
   the owner and the testers (BR-113).
 - Production runs from the signed release tag, never from a branch. A rollback is allowed only when no schema
   change landed since the target version; migrations are additive only.
-- The derogation reason: ADR-0005 of the owner's global rules (repository visibility), category "personal
-  data": production holds accounts, moderation records, the legal vault and impact assessment material.
+- The derogation reason: ADR-0005 of the owner's global rules (repository visibility), category "a history
+  that cannot be published": the code of a live moderated service and its impact assessment material; the
+  repository holds no personal data.
 - One-time setup sets `workers_dev: false` and `preview_urls: false` per environment, and the Access
-  application audience used by the Worker to verify `Cf-Access-Jwt-Assertion` (BR-113).
+  two Access applications per environment (site, `/owner`) whose AUD tags the Worker checks in
+  `Cf-Access-Jwt-Assertion` (`ASV_ACCESS_AUD_SITE`, `ASV_ACCESS_AUD_OWNER`; BR-113).

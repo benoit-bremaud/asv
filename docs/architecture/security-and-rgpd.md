@@ -58,7 +58,7 @@ with their sources (ADR-0004, ADR-0005, ADR-0010, ADR-0014).
 | Strike carry-over: keyed e-mail hash, strike expiries | Account store | Prevent escaping strikes by self-deletion | Legitimate interest | Until the last strike expires (BR-080) | Keyed hash |
 | Blocked e-mail, keyed hash | Account store | Prevent re-registration after sanction | Legitimate interest | 7 days or 6 months (BR-077, BR-078) | Keyed hash |
 | E-mail and statement of reasons | Brevo, EU e-mail provider (processor) | Sign-in, DSA art. 17 notices | Contract / legal obligation | Provider contract | Provider (Brevo) |
-| Every stored row above (ciphertext, keyed hashes) | Cloudflare, Durable Object storage in the EU jurisdiction (`env.HUB.jurisdiction("eu")`; processor, DPA checked at setup; ADR-0020 D6) | Host the hub's storage and run the service | Contract / legal obligation | As each row above | Application-level (ADR-0017): Cloudflare holds ciphertext and keyed hashes only |
+| Every stored row above (ciphertext, keyed hashes) | Cloudflare, Durable Object storage in the EU jurisdiction (`env.HUB.jurisdiction("eu")`; processor, DPA checked at setup; ADR-0020 D6) | Host the hub's storage and run the service | Contract / legal obligation | As each row above | Application-level (ADR-0017): stored rows are ciphertext, keyed hashes, random ids and dates; the service and its keys run on Cloudflare, which processes data in clear in memory as processor |
 | Authority disclosure: excerpt, context, pseudos, dates, possibly the IP from the log (BR-082) | PHAROS or law enforcement (recipient) | Report offences (LCEN art. 6 IV-A, DSA art. 18) | Legal obligation (GDPR art. 6(1)(c)) | Recipient's own rules; asv keeps the filing reference 1 year (BR-105) | Sent through the official channel only |
 
 Never persisted: gender, age, city, message content outside report excerpts and away buffers. The vault
@@ -87,9 +87,10 @@ No analytics, no ads, no third-party trackers, no cookies other than strictly ne
 - HTTPS only, HSTS, secure headers (CSP, frame-ancestors none, referrer-policy, permissions-policy): BR-086, from the tester exposure on (ADR-0018).
 - Origin check on WebSocket upgrade.
 - Input validation at the protocol boundary and in the domain.
-- Secrets (HMAC key, data keys, vault public key, Brevo API key, owner invitation secret, Mistral API key) in Wrangler
-  secrets per environment (staging, production), never in the repo; the Worker refuses requests when one is
-  missing (BR-111, ADR-0020). On the Node transport (until brick 9) they are environment variables, the
+- Secrets (HMAC key, data keys, vault public key, Brevo API key, owner invitation secret, Mistral API key, legal
+  identity fields) in Wrangler secrets per environment (staging, production), never in the repo; the Worker
+  refuses requests when a required secret (BR-111) is missing; without the Mistral key the no-AI adapter runs
+  (ADR-0019, ADR-0020). On the Node transport (until brick 9) they are environment variables, the
   owner secret being `ASV_OWNER_SECRET` (BR-093) and the triage key `ASV_MISTRAL_API_KEY` with its model
   `ASV_TRIAGE_MODEL` (ADR-0019, unset in tunnel mode); the grant key is drawn at start and never stored (BR-095). The owner keeps an offline backup of the keys and the vault private key
   for 5 years (ADR-0017).
