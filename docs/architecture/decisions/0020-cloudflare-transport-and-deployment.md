@@ -100,7 +100,7 @@ Criteria: GDPR 50, latency 20, simplicity 15, reversibility 15.
 | **A. `env.HUB.jurisdiction("eu")` before `idFromName("hub")`** | 5 | 5 | 4 | 2 | **440** |
 | B. No jurisdiction | 3 | 5 | 5 | 2 | 355 |
 
-Sensitivity: simplicity 40, GDPR 30, latency 15, reversibility 15 give A 460, B 395. A holds. The jurisdiction of an
+Sensitivity: simplicity 40, GDPR 30, latency 15, reversibility 15 give A 415, B 395. A holds. The jurisdiction of an
 object cannot change after the first deploy without a data migration, so it is set before the first deploy. Owner
 choice A on 2026-11-14.
 
@@ -183,7 +183,7 @@ security near 0). Owner choice B on 2026-11-14.
     `ASV_VAULT_PUBLIC_KEY`, `ASV_OWNER_SECRET`, `BREVO_API_KEY`, `ASV_MISTRAL_API_KEY` and the legal identity
     fields `ASV_OWNER_NAME`, `ASV_OWNER_ADDRESS`, `ASV_OWNER_PHONE`, `ASV_CONTACT_EMAIL`, `ASV_BREVO_LOCATION`.
     Non-secret variables in `wrangler.jsonc`: `ASV_ALLOWED_ORIGINS`, `ASV_PUBLIC_ORIGIN`, `ASV_MAIL_FROM`,
-    `ASV_TRIAGE_MODEL`. Without the Mistral key the no-AI adapter runs (ADR-0019). Each token gets a descriptive
+    `ASV_TRIAGE_MODEL`, `ASV_ACCESS_AUD_SITE`, `ASV_ACCESS_AUD_OWNER`. Without the Mistral key the no-AI adapter runs (ADR-0019). Each token gets a descriptive
     name and an expiry at creation.
 11. **Deploy procedure** (`platform/10`): green gate on `main`, deploy to staging, QA pass on staging (JRN-43 to
     JRN-45), signed release tag `vX.Y.Z`, deploy to production from the tag at a quiet hour; a rollback is allowed

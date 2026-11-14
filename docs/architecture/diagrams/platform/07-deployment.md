@@ -63,5 +63,5 @@ flowchart TB
   so the no-AI adapter runs there.
 - Secret values live in Wrangler secrets, never in the repo (BR-111); the legal identity fields (`ASV_OWNER_NAME`,
   `ASV_OWNER_ADDRESS`, `ASV_OWNER_PHONE`, `ASV_CONTACT_EMAIL`, `ASV_BREVO_LOCATION`) are secrets too. Non-secret
-  variables in `wrangler.jsonc`: `ASV_ALLOWED_ORIGINS`, `ASV_PUBLIC_ORIGIN`, `ASV_MAIL_FROM`, `ASV_TRIAGE_MODEL`.
+  variables in `wrangler.jsonc`: `ASV_ALLOWED_ORIGINS`, `ASV_PUBLIC_ORIGIN`, `ASV_MAIL_FROM`, `ASV_TRIAGE_MODEL`, `ASV_ACCESS_AUD_SITE`, `ASV_ACCESS_AUD_OWNER`.
   Each environment sets `workers_dev: false` and `preview_urls: false`.

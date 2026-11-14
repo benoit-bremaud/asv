@@ -47,6 +47,6 @@ flowchart TD
 - The derogation reason: ADR-0005 of the owner's global rules (repository visibility), category "a history
   that cannot be published": the code of a live moderated service and its impact assessment material; the
   repository holds no personal data.
-- One-time setup sets `workers_dev: false` and `preview_urls: false` per environment, and the Access
+- One-time setup sets `workers_dev: false` and `preview_urls: false` per environment, and creates
   two Access applications per environment (site, `/owner`) whose AUD tags the Worker checks in
   `Cf-Access-Jwt-Assertion` (`ASV_ACCESS_AUD_SITE`, `ASV_ACCESS_AUD_OWNER`; BR-113).

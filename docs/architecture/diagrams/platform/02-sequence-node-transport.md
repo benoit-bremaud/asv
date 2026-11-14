@@ -118,7 +118,7 @@ sequenceDiagram
   the Cloudflare transport does the same (ADR-0020). The sweep every 15 s (a quarter of the silence limit) terminates sockets whose
   last frame is older than 60 s, so a dead socket goes within 75 s; termination then follows the "socket closed" path, so the session goes away (BR-011).
 - **Tick**: once a second the transport calls `hub.tick(now)`, which runs `expireAway`, `pruneFlood` and
-  `pruneEntryAttempts`. On Cloudflare the single alarm calls the same `tick` (`platform/05`).
+  `pruneEntryAttempts`. On Cloudflare a timer calls the same `tick` while the Hub object is in memory; the alarm runs the purge and the due retries (BR-110, `platform/05`).
 - The IP and source port come from `req.socket.remoteAddress` and `remotePort` (`entry/02a`), or from
   `CF-Connecting-IP` only when the transport runs behind the tunnel (BR-085, ADR-0018). They reach
   only the hub, which passes the IP to the domain and both to the connection line (BR-060).
