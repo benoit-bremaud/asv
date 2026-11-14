@@ -839,3 +839,22 @@ Chronological operational logbook. Complements `git log`: decisions, context, wh
   98.6 % statements), gitleaks, audit and SonarQube green on 1120591. QA JRN-37/38 with a virtual
   authenticator still to run. Follow-ups #220 (rate text), #221 (body limit), #222 (challenge cap).
   Next: brick 8c (#211).
+
+## 2026-11-14 — #211 brick 8c: AI triage, severe expel, authority alerts, room removal
+
+- Study first (PR #225, owner choices: Mistral EU behind `ReportTriage` (ADR-0019), split in two PRs,
+  decision e-mail to members only, authority alert to the owner): DPIA, BR-100 to BR-108, UC20,
+  sequences `02g`, `02h`, `02i`.
+- 8c-1 (PR #228, squash 56df4fa): pseudonymised triage prompt (BR-100), closed answer schema, 10 s
+  timeout and daily caps (BR-101), queue order and urgency floor, first 50 reports plus total (BR-102).
+  SonarQube first FAILED on 2 backtracking regexes and a raw bidi character (fixed); flaky grant timer
+  test stabilised. Follow-up #229 (excerpt author and name detection).
+- 8c-2 (PR #230, squash ce79874): severe expel (BR-103), authority alert on every closing action with
+  `pnpm mod:filed` and the "alertes" tab (BR-104, UC20), 1-year retention (BR-105), room removal (BR-106),
+  decision e-mail with replyTo (BR-107); testers stay closed (BR-108). Owner precisions 2026-11-14 on six
+  gaps recorded in BR-104, BR-106, BR-107 and the diagrams.
+- Adversarial review: 8c-1 2 rounds; 8c-2 3 rounds (lost alert category in the suspension proposal,
+  study drift, offence category and room name now encrypted, `patchReport` against lost writes).
+- Merged 2026-11-14 on green verify (1242 tests, 98.7 % statements), audit, gitleaks and SonarQube; no
+  Codex threads. QA JRN-39 to JRN-42 still to run. Out of scope noted: 8c-1 triage category stored in
+  clear, room report accepted on any room id. Next: brick 9.
