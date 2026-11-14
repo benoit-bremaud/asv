@@ -19,7 +19,7 @@ const hextets = (address: string): string[] | undefined => {
   const expand = (half: string, last: boolean): string[] | undefined => {
     if (half === "") return [];
     const parts = half.split(":");
-    const tail = parts[parts.length - 1] ?? "";
+    const tail = parts.at(-1) ?? "";
     if (tail.includes(".")) {
       if (!last || !isIpv4(tail)) return undefined;
       const [a = 0, b = 0, c = 0, d = 0] = tail.split(".").map(Number);
@@ -32,12 +32,14 @@ const hextets = (address: string): string[] | undefined => {
   if (head === undefined || tail === undefined) return undefined;
   if (halves.length === 1) return head.length === 8 ? head : undefined;
   const missing = 8 - head.length - tail.length;
-  return missing < 1 ? undefined : [...head, ...Array<string>(missing).fill("0"), ...tail];
+  return missing < 1 ? undefined : [...head, ...new Array<string>(missing).fill("0"), ...tail];
 };
 
 /** The quota and ban key of `ip`; anything that is not an IP address is returned unchanged. */
 export const quotaKey = (ip: string): string => {
-  const address = ip.trim().toLowerCase().replace(/%.*$/, "");
+  const lower = ip.trim().toLowerCase();
+  const zone = lower.indexOf("%");
+  const address = zone === -1 ? lower : lower.slice(0, zone);
   if (isIpv4(address)) return address;
   if (!address.includes(":")) return ip;
   const groups = hextets(address);

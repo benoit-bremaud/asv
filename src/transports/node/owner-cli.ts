@@ -32,7 +32,9 @@ const ownerBase = (env: NodeJS.ProcessEnv): string => {
   if (url.protocol !== "https:" && !(url.protocol === "http:" && LOCAL_HOSTS.has(url.hostname))) {
     throw new Error("ASV_OWNER_URL must be https, or http on 127.0.0.1, ::1 or localhost");
   }
-  return raw.replace(/\/+$/, "");
+  let end = raw.length;
+  while (end > 0 && raw[end - 1] === "/") end -= 1;
+  return raw.slice(0, end);
 };
 
 /** Redirects are never followed: they would carry the secret elsewhere. */
