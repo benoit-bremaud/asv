@@ -57,11 +57,11 @@ Sensitivity (privacy 15, reliability 50, simplicity 20, load 15): A 405, B 395.
 6. **On wake-up**, the hub closes every open connection line whose id is in no socket attachment, at the last known
    time (the socket died while the hub was evicted).
 7. Flood counters and entry attempts stay in memory. Losing them on hibernation is accepted.
-7. On Node, the in-memory hub implements the same behaviour without hibernation.
+8. On Node, the in-memory hub implements the same behaviour without hibernation.
 
 ## Consequences
 
-- Buffered private messages are written to disk for at most 5 minutes. Documented in the privacy notice.
+- Buffered private messages are written to disk for at most 5 minutes. Documented in the privacy notice. (Suspended in brick 9: buffered private messages stay in memory, ADR-0020, BR-109.)
 - The heartbeat sweep wakes the hub once a minute while chatters are connected. Negligible cost.
 - The hub state model is in `diagrams/platform/04b-class-hub-state.md`.
 
@@ -78,7 +78,11 @@ issue #72. A resume without a reload keeps the panel as it is (owner choice 2026
 
 The owner chose to run the Hub Durable Object without hibernation (ADR-0020 D1, 380/500 against this ADR as
 written, 365/500). Points 1, 2 and 6 (rebuild from attachments, stored away records, closing orphan connection
-lines on wake-up) are suspended: the hub stays in memory, away records too, and a deploy or restart sends every
-chatter back to the entry screen (BR-109). Points 3 (heartbeat), 5 (Worker ↔ hub) and 7 (flood counters in
-memory) hold; point 4 becomes timers plus one daily alarm (BR-110). Moving to this ADR's design is a follow-up.
-
+lines on wake-up) are suspended: the hub stays in memory, away records and buffered private messages too, and a
+deploy or restart sends every chatter back to the entry screen (BR-109). Orphan connection lines are instead
+closed by the Hub constructor at its start time, before any socket (BR-109, as BR-084 on Node). Point 3 (heartbeat)
+changes in substance: with `server.accept()` the auto-response API (`setWebSocketAutoResponse`) is not available,
+so the transport answers `ping` itself as on Node (BR-088) and the sweep uses its own last-frame time per socket;
+the 25-second ping, the 10-second client timeout and the 60-second silence limit hold. Points 5 (Worker ↔ hub) and
+7 (flood counters in memory) hold, point 5 extended: the Hono app runs inside the hub object (ADR-0020 §1). Point
+4 becomes timers plus one alarm (BR-110). Moving to this ADR's design is a follow-up.

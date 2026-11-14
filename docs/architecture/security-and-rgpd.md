@@ -39,7 +39,7 @@ with their sources (ADR-0004, ADR-0005, ADR-0010, ADR-0014).
 |---|---|---|---|---|---|
 | Pseudo, gender, age, city | Hub memory, socket attachment, client sessionStorage | Run the chat | Contract / legitimate interest | Session end | No (memory only) |
 | Messages | Hub memory | Run the chat | Contract | Room or window end | No (memory only) |
-| Away record: pseudo, rooms, windows, buffered private messages | Hub storage | Resume after a disconnect | Contract | 5 minutes max (ADR-0011) | Yes (brick 9) |
+| Away record: pseudo, rooms, windows, buffered private messages | Hub memory on Cloudflare (ADR-0020, not stored); hub storage on the hibernation design (ADR-0011) | Resume after a disconnect | Contract | 5 minutes max (ADR-0011) | No (memory only on Cloudflare) |
 | Connection line, one per socket connection: connection id, IP and source port, protocols, pseudo, account id, start and end | Connection log | Identify content contributors (LCEN art. 6 V-A, decree 2021-1362 arts. 5 2° and 7) | Legal obligation | 1 year (BR-060) | Yes (brick 9). During the tester exposure, a local JSONL file on the owner machine, not encrypted (BR-084, ADR-0018) |
 | Contribution line, one per message: connection id, protocols; under injunction also content id, operation, date and time (never the content) | Connection log | Identify content contributors (decree arts. 5 2° and 7, art. 6 2° under injunction) | Legal obligation | 1 year (BR-060) | Yes (brick 9). During the tester exposure, the same local JSONL file, not encrypted (BR-084, ADR-0018) |
 | Report: reason, excerpt, context lines, pseudos, AI triage | Moderation store | Moderation, DSA | Legal obligation / legitimate interest | 6 months after closing, 1 year with an alert (BR-061, BR-105) | Yes (brick 8) |
@@ -58,6 +58,7 @@ with their sources (ADR-0004, ADR-0005, ADR-0010, ADR-0014).
 | Strike carry-over: keyed e-mail hash, strike expiries | Account store | Prevent escaping strikes by self-deletion | Legitimate interest | Until the last strike expires (BR-080) | Keyed hash |
 | Blocked e-mail, keyed hash | Account store | Prevent re-registration after sanction | Legitimate interest | 7 days or 6 months (BR-077, BR-078) | Keyed hash |
 | E-mail and statement of reasons | Brevo, EU e-mail provider (processor) | Sign-in, DSA art. 17 notices | Contract / legal obligation | Provider contract | Provider (Brevo) |
+| Every stored row above (ciphertext, keyed hashes) | Cloudflare, Durable Object storage in the EU jurisdiction (`env.HUB.jurisdiction("eu")`; processor, DPA checked at setup; ADR-0020 D6) | Host the hub's storage and run the service | Contract / legal obligation | As each row above | Application-level (ADR-0017): Cloudflare holds ciphertext and keyed hashes only |
 | Authority disclosure: excerpt, context, pseudos, dates, possibly the IP from the log (BR-082) | PHAROS or law enforcement (recipient) | Report offences (LCEN art. 6 IV-A, DSA art. 18) | Legal obligation (GDPR art. 6(1)(c)) | Recipient's own rules; asv keeps the filing reference 1 year (BR-105) | Sent through the official channel only |
 
 Never persisted: gender, age, city, message content outside report excerpts and away buffers. The vault

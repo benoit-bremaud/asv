@@ -7,7 +7,7 @@
 ## Context
 
 The single aggregate the domain functions take and return as `state`. Shows what lives in memory and
-how it is rebuilt after hibernation. Does not cover persisted records (see `moderation/04`, `entry/04`).
+how it was to be rebuilt after hibernation (suspended by ADR-0020). Does not cover persisted records (see `moderation/04`, `entry/04`).
 
 ## Diagram
 
@@ -40,7 +40,11 @@ classDiagram
   HubState *-- EntryAttempts
 ```
 
-## Rebuild after hibernation (Cloudflare)
+## Rebuild after hibernation (Cloudflare) — suspended by ADR-0020
+
+Brick 9 runs the Hub Durable Object without hibernation (ADR-0020, BR-109): the hub state lives in memory, away
+records included, and a deploy or restart empties it. The table below stays the target of ADR-0011, to be
+restored by the follow-up that moves to hibernation.
 
 | Part | Source on wake-up |
 |---|---|

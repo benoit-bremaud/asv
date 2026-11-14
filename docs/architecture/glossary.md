@@ -7,7 +7,7 @@
 | AI triage | Automatic categorisation and urgency ranking of reported content. Never sanctions (ADR-0010). |
 | ASV | "Âge, sexe, ville": the ritual opener of Caramail private chats, and the product name. |
 | Away | Session state after a disconnection, up to 5 minutes, before closing (ADR-0009). |
-| Away record | Minimal stored copy of an away session, without gender, age or city (ADR-0011). |
+| Away record | Minimal copy of an away session, without gender, age or city (ADR-0011); stored on the hibernation design, kept in memory only on Cloudflare in brick 9 (ADR-0020). |
 | Ban | Timed refusal of entry for a keyed IP hash and a pseudo. |
 | Chatter | A visitor who entered with a pseudo and has a session. |
 | Connection log | Legal record with one line per socket connection: connection id, IP and source port, protocols, pseudo, account id, start and end. A resume opens a new line. A contribution line (connection id, protocols) is added for every message; under a Prime Minister's injunction it also carries the content id, the operation, date and time. Each line kept 1 year (BR-060). |

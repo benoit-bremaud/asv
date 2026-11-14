@@ -41,7 +41,7 @@ flowchart LR
 - Pure TypeScript domain, two transports (ADR-0002), flat package (ADR-0003).
 - One hub holds all live state (ADR-0007). One WebSocket per chatter.
 - Session-first identity (ADR-0005), 5-minute away grace (ADR-0009), passkeys for moderators (ADR-0008).
-- Hub state rebuilt from socket attachments and minimal away records after hibernation (ADR-0011).
+- Hub state in memory in the single Hub Durable Object; the hibernation rebuild of ADR-0011 is suspended in brick 9, a deploy sends everyone back to the entry screen (ADR-0020, BR-109).
 - AI triages reported content only, humans decide (ADR-0010).
 - Rooms need no account. Private messages need a verified e-mail account, signed in by an e-mail code with the
   device remembered 30 days. Three strikes lead to a proposed 7-day suspension (ADR-0012, ADR-0013).

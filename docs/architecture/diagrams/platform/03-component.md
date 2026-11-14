@@ -32,7 +32,7 @@ flowchart LR
     NodeStore["In-memory stores"]
   end
   subgraph CfT ["src/transports/cloudflare — production"]
-    WorkerEntry["Worker entry: builds Hono app"]
+    WorkerEntry["Worker entry: assets, Origin, CF-Connecting-IP and Access JWT checks, forwards to the Hub"]
     HubDO["Hub Durable Object"]
     Sqlite["Durable Object SQLite stores"]
   end
@@ -47,9 +47,9 @@ flowchart LR
   Web -->|"hasForbiddenChar only (BR-090), pure"| Core
   Routes --> Shared
   NodeMain -->|"builds and wires"| Routes
-  WorkerEntry -->|"builds and wires"| Routes
+  HubDO -->|"builds and wires (inside the Hub object)"| Routes
   NodeMain -->|"sockets, clock, random"| Hub
-  WorkerEntry -->|"forwards WebSocket, RPC"| HubDO
+  WorkerEntry -->|"forwards every non-asset request"| HubDO
   HubDO -->|"wraps"| Hub
   NodeStore -.->|"implements"| Ports
   Sqlite -.->|"implements"| Ports

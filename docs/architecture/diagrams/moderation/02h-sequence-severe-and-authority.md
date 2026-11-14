@@ -22,7 +22,7 @@ sequenceDiagram
   participant ST as Moderation store
   participant ML as Mailer
   participant T as Target sessions
-  participant OR as Owner route /mod/authority-filings
+  participant OR as Owner route /owner/authority-filings
   actor A as Authorities
   M->>H: expel(reportId, duration, severe, alertAuthorities: OffenceCategory)
   H->>ST: load report
@@ -76,7 +76,7 @@ sequenceDiagram
   alert is retried like the statement of reasons (every 10 minutes, 7 days max) until `notifiedAt` is set.
 - `mod:filed` takes channel in PHAROS, 17, 112, PointDeContact, and a reference of 1 to 100 characters
   following BR-090; anything else answers 400.
-- `/mod/authority-filings` answers 404 behind the tunnel (BR-097) like every `/mod` route.
+- `/owner/authority-filings` is an owner route (BR-093, renamed from `/mod/authority-filings` by ADR-0020 D8): loopback peer plus owner secret on Node, Access `/owner/*` policy plus owner secret on Cloudflare (BR-113); like every owner and `/mod` route it answers 404 behind the tunnel (BR-097).
 - Without `ASV_CONTACT_EMAIL` the Brevo adapter refuses the alert mail and logs `missing_contact_email`;
   the alert stays `pending` without `notifiedAt` and the retry round tries again for 7 days (BR-104). The
   Node server logs one loud line at start when the owner secret is set outside the tunnel and the contact

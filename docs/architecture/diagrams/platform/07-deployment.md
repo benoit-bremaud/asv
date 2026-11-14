@@ -31,14 +31,14 @@ flowchart TB
   Cloudflared -->|"http://127.0.0.1"| NodeProc
   subgraph Prod ["production and staging — Cloudflare (ADR-0020), one of each"]
     DNS["asvchat.fr and staging.asvchat.fr DNS on Cloudflare"]
-    Access["Cloudflare Access: site allow-list, /owner owner only (BR-113)"]
-    Worker["Worker: Hono app + static assets"]
-    HubDO["Hub Durable Object in memory, no hibernation (BR-109) + SQLite stores"]
-    Secrets["Wrangler secrets per env: ASV_DATA_KEYS, ASV_HMAC_KEY, ASV_VAULT_PUBLIC_KEY, ASV_OWNER_SECRET, BREVO_API_KEY, ASV_MISTRAL_API_KEY"]
+    Access["Cloudflare Access: staging owner only, production owner and testers, /owner with Service Auth (BR-113)"]
+    Worker["Worker: static assets (run_worker_first), Origin, CF-Connecting-IP and Access JWT checks"]
+    HubDO["Hub Durable Object (EU jurisdiction): Hono app + hub in memory, no hibernation (BR-109) + SQLite stores"]
+    Secrets["Wrangler secrets per env: ASV_DATA_KEYS, ASV_HMAC_KEY, ASV_VAULT_PUBLIC_KEY, ASV_OWNER_SECRET, BREVO_API_KEY, ASV_MISTRAL_API_KEY, legal identity fields"]
     DNS --> Access
     Access --> Worker
     Worker --> HubDO
-    Secrets -.-> Worker
+    Secrets -.-> HubDO
   end
   AI["Mistral API, EU (ADR-0019)"]
   Registrar["Registrar: Namecheap, OVH or Gandi"]
@@ -61,4 +61,7 @@ flowchart TB
 - Exit door: the Node process can be containerised and run elsewhere (ADR-0002).
 - The triage key `ASV_MISTRAL_API_KEY` and model `ASV_TRIAGE_MODEL` (ADR-0019) are unset in tunnel mode,
   so the no-AI adapter runs there.
-- Secret values live in Wrangler secrets, never in the repo (BR-111).
+- Secret values live in Wrangler secrets, never in the repo (BR-111); the legal identity fields (`ASV_OWNER_NAME`,
+  `ASV_OWNER_ADDRESS`, `ASV_OWNER_PHONE`, `ASV_CONTACT_EMAIL`, `ASV_BREVO_LOCATION`) are secrets too. Non-secret
+  variables in `wrangler.jsonc`: `ASV_ALLOWED_ORIGINS`, `ASV_PUBLIC_ORIGIN`, `ASV_MAIL_FROM`, `ASV_TRIAGE_MODEL`.
+  Each environment sets `workers_dev: false` and `preview_urls: false`.

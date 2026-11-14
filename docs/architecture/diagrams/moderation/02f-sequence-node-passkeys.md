@@ -28,8 +28,8 @@ sequenceDiagram
   actor M as Moderator
   participant B as Browser and device
   OW->>CLI: invite "Marc"
-  CLI->>R: POST /mod/invitations {name}, Bearer owner secret
-  R->>R: Loopback peer, no tunnel, constant-time secret (BR-093)
+  CLI->>R: POST /owner/invitations {name}, Bearer owner secret (ASV_OWNER_URL; Access service token headers on Cloudflare)
+  R->>R: Loopback peer on Node, constant-time secret (BR-093)
   R->>O: createInvitation(name, token, now)
   O->>MS: save SHA-256 of token, expires in 24 h (BR-056)
   R-->>CLI: link ASV_PUBLIC_ORIGIN + fragment mod/enroll/token (BR-098)
@@ -76,10 +76,12 @@ sequenceDiagram
 ## Notes
 
 - Every `/mod/*` route answers 404 when the transport runs with `ASV_TUNNEL=1`, so testers never reach
-  them until the owner opens moderation once the impact assessment is signed (BR-108).
+  them until the owner opens moderation once the impact assessment is signed (BR-108). The owner routes live under
+  `/owner/*` since brick 9 (ADR-0020 D8) and keep that 404 behind the tunnel; otherwise they need the loopback
+  peer on Node, or the Access `/owner/*` policy on Cloudflare (BR-113), plus the owner secret.
 - The enrolment link carries the token in the fragment, so it never reaches a server log nor a
   `Referer`; the page posts it in the body.
-- The revocation script `pnpm mod:revoke <name>` calls `DELETE /mod/moderators/<name>` with the same
+- The revocation script `pnpm mod:revoke <name>` calls `DELETE /owner/moderators/<name>` with the same
   guard and deletes the credential and the pending invitations of that name (BR-094). A session already signed in keeps its rights until it closes (ADR-0008).
 - A wrong grant, an expired grant or a replayed nonce answers `entryRefused(notModerator)` with no
   session, like 02e; the rate rule of BR-091 moves to BR-096.

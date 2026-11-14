@@ -23,8 +23,10 @@ framework are checked against the providers' DPAs before exposure.
 > Éditeur et hébergeur pendant la phase de test : {owner name}, particulier, non professionnel,
 > {owner postal address}, {owner phone}. Le site est hébergé sur sa machine personnelle, en France.
 > Directeur de la publication : {owner name}.
-> Acheminement HTTPS (ce n'est pas l'hébergement) : Cloudflare, Inc., 101 Townsend St, San Francisco,
-> CA 94107, États-Unis.
+> Acheminement HTTPS pendant la phase de test (ce n'est pas l'hébergement) : Cloudflare, Inc., 101 Townsend St,
+> San Francisco, CA 94107, États-Unis. En production (ADR-0020), le site tourne sur Cloudflare Workers et ses
+> données sont stockées dans Cloudflare Durable Objects, juridiction UE : Cloudflare devient l'hébergeur, à
+> déclarer ici au lancement.
 > Contact, y compris pour les autorités et le droit de réponse : {contact e-mail}.
 
 ## Confidentialité
@@ -40,7 +42,9 @@ framework are checked against the providers' DPAs before exposure.
 >
 > Ce que nous ne gardons jamais : ton sexe, ton âge, ta ville, le contenu des messages.
 > Destinataires : Brevo (envoi du code par e-mail, sous-traitant, {Brevo processing location}),
-> Cloudflare (acheminement ; données traitées aussi aux États-Unis, cadre EU-US Data Privacy Framework).
+> Cloudflare (acheminement pendant le test ; en production, exécution du service et stockage des données dans
+> la juridiction UE, sous-traitant avec accord de traitement ; données d'acheminement traitées aussi aux
+> États-Unis, cadre EU-US Data Privacy Framework).
 > Les autorités habilitées par la loi peuvent obtenir le journal légal sur réquisition.
 > Aucune publicité, aucune mesure d'audience, aucun traceur tiers.
 > Tes droits : accès, rectification, effacement, opposition, limitation, portabilité, en écrivant au

@@ -103,7 +103,7 @@ classDiagram
 - **Official rooms** (D5, 450/500, BR-033): the list is passed to `emptyHubState(officialRooms)` by the
   hub; it lives in `src/server/official-rooms.ts` with stable slug ids (`lyon`, `poesie`). Official rooms
   have no owner and are never deleted.
-- **Rebuild after hibernation** (D2, 465/500): each member's socket attachment and away record carry
+- **Rebuild after hibernation** (D2, 465/500; suspended in brick 9 by ADR-0020, BR-109): each member's socket attachment and away record carry
   `{ id, name, ownerId? }` for the user rooms it is in. The hub passes the sessions and these rooms to
   `restoreHubState`, which rebuilds the pseudo index and checks the rules again, since refs come from many
   sockets: the first ref per id and per name key wins (BR-030), one owned room per session (BR-031), an

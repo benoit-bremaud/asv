@@ -121,7 +121,7 @@ classDiagram
   and emits `closed` for each (the hub calls it from the alarm).
 - **Session variants**: a `connected` session holds the profile, `ip` and `openedAt`; an `away` session holds
   only the ADR-0011 away record (id, pseudo, account id, token hash, `awayUntil`, buffer), so the hub can
-  rebuild it from storage after hibernation. `socketLost` drops the profile and IP; `resume` takes the new
+  rebuild it from storage after hibernation (a rebuild suspended in brick 9: ADR-0020, BR-109). `socketLost` drops the profile and IP; `resume` takes the new
   socket's IP and opens at `now`.
 - **BR-012**: an away session keeps its pseudo in `pseudoIndex` and its data, rooms included (`rooms/07`);
   windows are added by brick 6. `leave` and `expireAway` are wrapped by `hub.ts` to leave rooms.
@@ -132,7 +132,7 @@ classDiagram
   returned in `resumed` and emptied, the status becomes `connected`. If `accountStillExists` is false, the
   account link is removed and `resumed.accountUnlinked` is true.
 - **UC10**: `leave` removes the session (connected or away), frees the pseudo and emits `closed`.
-- After hibernation the hub puts away records back into the state as away sessions (`platform/04b`), so
+- After hibernation (suspended by ADR-0020: away records stay in memory and a deploy loses them, BR-109) the hub puts away records back into the state as away sessions (`platform/04b`), so
   `resume` reads the state rather than a separate record parameter (`entry/02b` shows the record loaded
   by the hub first).
 - `connectionId` is drawn by the hub and kept in the socket attachment (`entry/04`); the domain does not

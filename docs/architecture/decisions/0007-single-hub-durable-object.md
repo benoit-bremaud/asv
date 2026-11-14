@@ -31,13 +31,13 @@ Sensitivity (simplicity 5, ownership 25, consistency 20, headroom 40, cost 10): 
 
 ## Decision
 
-- Production uses **one Hub Durable Object** with WebSocket hibernation.
+- Production uses **one Hub Durable Object** with WebSocket hibernation. *Amended 2026-11-14: brick 9 runs it without hibernation, see ADR-0020 and BR-109.*
 - Each chatter has **one WebSocket** to the hub. Rooms and private conversations are domain state
   inside the hub.
 - The hub's SQLite storage holds the persisted data: connection and contribution logs, reports, bans, and from brick 5 the legal vault
   table (ADR-0014).
 - Both transports expose the same storage ports (`ModerationStore`, `ConnectionLogStore`,
-  `AwayStore`, `ModeratorStore` from ADR-0008, and `LegalVaultStore` from ADR-0014, brick 5), defined next to the domain and implemented in
+  `AwayStore` (not used on Cloudflare in brick 9: away records stay in memory, ADR-0020, BR-109), `ModeratorStore` from ADR-0008, and `LegalVaultStore` from ADR-0014, brick 5), defined next to the domain and implemented in
   memory (Node) and in SQLite (Cloudflare). Details in ADR-0011 and `diagrams/platform/03-component.md`.
 
 ## Consequences
