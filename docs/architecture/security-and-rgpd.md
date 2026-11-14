@@ -87,7 +87,8 @@ No analytics, no ads, no third-party trackers, no cookies other than strictly ne
 - Origin check on WebSocket upgrade.
 - Input validation at the protocol boundary and in the domain.
 - Secrets (HMAC key, data keys, vault public key, Brevo API key, owner invitation secret, Mistral API key) in Wrangler
-  secrets, never in the repo. On the Node transport (until brick 9) they are environment variables, the
+  secrets per environment (staging, production), never in the repo; the Worker refuses requests when one is
+  missing (BR-111, ADR-0020). On the Node transport (until brick 9) they are environment variables, the
   owner secret being `ASV_OWNER_SECRET` (BR-093) and the triage key `ASV_MISTRAL_API_KEY` with its model
   `ASV_TRIAGE_MODEL` (ADR-0019, unset in tunnel mode); the grant key is drawn at start and never stored (BR-095). The owner keeps an offline backup of the keys and the vault private key
   for 5 years (ADR-0017).

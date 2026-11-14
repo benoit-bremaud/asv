@@ -73,3 +73,12 @@ the deadline of the pending sign-in code, a number only (BR-087). No e-mail and 
 pending code itself stays on the server under the session id, which a resume keeps. Owner choice
 2026-11-02, 440/500, against keeping the step in memory only (430/500, lost on a reload); matrix in
 issue #72. A resume without a reload keeps the panel as it is (owner choice 2026-11-02, 470/500).
+
+## Amendment 2026-11-14 — no hibernation in brick 9 (ADR-0020)
+
+The owner chose to run the Hub Durable Object without hibernation (ADR-0020 D1, 380/500 against this ADR as
+written, 365/500). Points 1, 2 and 6 (rebuild from attachments, stored away records, closing orphan connection
+lines on wake-up) are suspended: the hub stays in memory, away records too, and a deploy or restart sends every
+chatter back to the entry screen (BR-109). Points 3 (heartbeat), 5 (Worker ↔ hub) and 7 (flood counters in
+memory) hold; point 4 becomes timers plus one daily alarm (BR-110). Moving to this ADR's design is a follow-up.
+

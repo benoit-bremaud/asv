@@ -110,6 +110,7 @@ Coverage: [traceability matrix](traceability-matrix.md).
 | [0017](decisions/0017-encryption-at-rest.md) | Application-level encryption at rest, vault sealed to an owner key |
 | [0018](decisions/0018-real-tester-exposure-tunnel.md) | Real-tester exposure through a Cloudflare Tunnel to the Node transport |
 | [0019](decisions/0019-ai-triage-provider-mistral.md) | Mistral, EU-hosted, is the AI triage provider |
+| [0020](decisions/0020-cloudflare-transport-and-deployment.md) | Cloudflare transport without hibernation, staging and production behind Cloudflare Access |
 
 ## 9. Risks and technical debt
 

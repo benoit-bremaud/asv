@@ -41,6 +41,8 @@ Links requirements to use cases and every use case to its realisations. All path
 | platform/05-state-hub | Hibernation, alarm, eviction, link to UC13 |
 | platform/07-deployment | Environments, secrets, tester tunnel and log file (NF-003, ADR-0018, BR-084, BR-085) |
 | platform/08-ci-pipeline | Checks before merge, local SonarQube gate (NF-009, NF-010) |
+| platform/09-sequence-cloudflare-transport | Worker, Hub Durable Object without hibernation, SQLite stores, owner routes behind Access (ADR-0020, BR-109 to BR-113) |
+| platform/10-activity-deploy | Staging then production deploy, rollback, private switch (ADR-0020) |
 | web-ui/03-component | Front-end modules (NF-004 to NF-006, NF-011, NF-012) |
 | web-ui/04-class-client-state | Client reducer, connection manager, renderer, entry and rooms screens (BR-022, NF-004, NF-011, brick 7a) |
 | web-ui/05-state-navigation | Legal pages (ADR-0018); screens for UC1, UC2, UC3, UC6, UC7, UC10, UC12, UC13, UC16 |
@@ -59,6 +61,11 @@ Links requirements to use cases and every use case to its realisations. All path
 | BR-087 code step kept across a resume | web-ui/06, ADR-0011 amendment | #72 |
 | BR-088 frame budget and invalid-frame close per socket | platform/02, platform/04c | #89 |
 | BR-089 upgrade limits per IP and in total, unbound socket close | platform/02, platform/04c | #23 |
+| BR-109 hub in memory, deploy resets | platform/09, platform/10 | #233 |
+| BR-110 timers and daily alarm | platform/09 | #233 |
+| BR-111 client IP and required secrets on Cloudflare | platform/07, platform/09 | #38, #233 |
+| BR-112 IPv6 /64 quota key | platform/09 | #38 |
+| BR-113 Access on staging, production and /owner | platform/07, platform/09, platform/10 | #233 |
 | Legal pages | web-ui/05, `docs/product/legal-pages-draft.md` | #54 |
 
 ## Coverage check

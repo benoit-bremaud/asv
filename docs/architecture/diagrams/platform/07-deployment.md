@@ -2,8 +2,8 @@
 
 > **Feature**: platform
 > **Requirements**: ASV-NF-003
-> **Business rules**: BR-084, BR-085, BR-086
-> **Related ADRs**: ADR-0001, ADR-0002, ADR-0007, ADR-0008, ADR-0010, ADR-0018
+> **Business rules**: BR-084, BR-085, BR-086, BR-109 to BR-113
+> **Related ADRs**: ADR-0001, ADR-0002, ADR-0007, ADR-0008, ADR-0010, ADR-0018, ADR-0020
 
 ## Context
 
@@ -29,15 +29,16 @@ flowchart TB
     Edge --> Cloudflared
   end
   Cloudflared -->|"http://127.0.0.1"| NodeProc
-  subgraph Prod ["production — Cloudflare"]
-    DNS["asvchat.fr DNS on Cloudflare"]
+  subgraph Prod ["production and staging — Cloudflare (ADR-0020), one of each"]
+    DNS["asvchat.fr and staging.asvchat.fr DNS on Cloudflare"]
+    Access["Cloudflare Access: site allow-list, /owner owner only (BR-113)"]
     Worker["Worker: Hono app + static assets"]
-    HubDO["Hub Durable Object + SQLite"]
-    Secrets["Secrets: BAN_HMAC_KEY, EMAIL_HMAC_KEY, GRANT_KEY, OWNER_SECRET, AI_API_KEY, MAIL_API_KEY"]
-    DNS --> Worker
+    HubDO["Hub Durable Object in memory, no hibernation (BR-109) + SQLite stores"]
+    Secrets["Wrangler secrets per env: ASV_DATA_KEYS, ASV_HMAC_KEY, ASV_VAULT_PUBLIC_KEY, ASV_OWNER_SECRET, BREVO_API_KEY, ASV_MISTRAL_API_KEY"]
+    DNS --> Access
+    Access --> Worker
     Worker --> HubDO
     Secrets -.-> Worker
-    Secrets -.-> HubDO
   end
   AI["Mistral API, EU (ADR-0019)"]
   Registrar["Registrar: Namecheap, OVH or Gandi"]
@@ -50,8 +51,9 @@ flowchart TB
 
 ## Notes
 
-- A staging environment (separate Worker and Durable Object namespace) is added before public launch,
-  following the owner's environments convention.
+- Staging (staging.asvchat.fr) and production (asvchat.fr) are Wrangler environments, each with its own
+  Worker, Durable Object namespace and secrets, both behind Access until brick 10 (ADR-0020). Deploy procedure:
+  `platform/10`. The grant key is drawn at start, never a secret (BR-095).
 - Tester exposure (ADR-0018): the tunnel runs only during test sessions. The Node process serves the built
   bundle on loopback with the tunnel flag, so it trusts `CF-Connecting-IP` (BR-085), and with
   `secureCookie` on, so it sets the `Secure` cookie and HSTS (BR-073, BR-086).
@@ -59,4 +61,4 @@ flowchart TB
 - Exit door: the Node process can be containerised and run elsewhere (ADR-0002).
 - The triage key `ASV_MISTRAL_API_KEY` and model `ASV_TRIAGE_MODEL` (ADR-0019) are unset in tunnel mode,
   so the no-AI adapter runs there.
-- Secret names are proposals for brick 9. Values live in Wrangler secrets, never in the repo.
+- Secret values live in Wrangler secrets, never in the repo (BR-111).

@@ -22,8 +22,8 @@ of the same priority.
 | 6 | Private conversations and ignore, directory search, with their UI overlays | `private-conversations`, `directory`, `web-ui` | P1 | done (PR #51) |
 | 8a | Moderation without AI: reports, human queue, expel, warn, strikes, suspension, interim owner token (BR-091); not exposed to testers until the owner opens it once the impact assessment is signed (BR-108) (#209) | `moderation`, `web-ui` | P1 | done (PR #214) |
 | 8b | Moderator accounts: invitation, passkeys, moderator panel on the Node transport, interim token removed (#210) | `moderation`, `web-ui` | P1 | done (PR #219) |
-| 8c | AI triage, data protection impact assessment, severe variant and authority channel, room removal, reporter decision e-mail (#211); one study, code in 8c-1 (triage, impact assessment) and 8c-2 (severe, authority alert, room removal, e-mail) | `moderation`, `web-ui`, `security-and-rgpd.md` | P1 | next |
-| 9 | Cloudflare transport (Hub Durable Object), deploy to asvchat.fr, switch the repository to private | `platform` | P1 | planned |
+| 8c | AI triage, data protection impact assessment, severe variant and authority channel, room removal, reporter decision e-mail (#211); one study, code in 8c-1 (triage, impact assessment) and 8c-2 (severe, authority alert, room removal, e-mail) | `moderation`, `web-ui`, `security-and-rgpd.md` | P1 | done (PRs #228, #230) |
+| 9 | Cloudflare transport (Hub Durable Object), deploy to asvchat.fr, switch the repository to private (#233, ADR-0020) | `platform` | P1 | next |
 | 10 | Legal pack: final terms, privacy notice, legal notice, professional review, public launch | `security-and-rgpd.md` | P2 | planned |
 
 Brick 7a follow-ups: #23 socket caps (Node transport done; the Durable Object applies the same rule in brick 9), #24 connect timeout and reconnect edge cases, #25 hub refactor, #26 web lint boundary and test cleanups, #27 pixel smileys, #28 trust credit and earned privileges (sign-in stays on the ADR-0013 e-mail code, Brevo, 415/500), #29 restore input refused by the server, #30 resume token lost in flight (BR-014).
