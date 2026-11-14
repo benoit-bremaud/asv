@@ -5,6 +5,7 @@
 import {
   ACCOUNT_LIMITS,
   type Account,
+  type AccountClosing,
   type AccountStore,
   type CodeRequestFacts,
   type LegalVaultStore,
@@ -21,7 +22,23 @@ export interface AccountIoDeps {
   readonly store: AccountStore;
   readonly vault: LegalVaultStore;
   readonly crypto: Crypto;
+  /** UC19, BR-081: an atomic closing when the stores share a transaction (Cloudflare); else `sequentialClosing`. */
+  readonly closing?: AccountClosing;
 }
+
+/**
+ * The Node closing: the in-memory account store and the file vault share no transaction, so the writes run
+ * in order, vault first. A failure after the vault record leaves the account in place and the vault row
+ * behind; a retried closing then adds a second vault row (BR-081 is atomic on Cloudflare only).
+ */
+export const sequentialClosing = (store: AccountStore, vault: LegalVaultStore): AccountClosing => ({
+  async closeAccount(entry, emailKeyedHash, carryOver) {
+    await vault.record(entry);
+    await store.deleteAccount(entry.accountId);
+    await store.deleteAllDevices(entry.accountId);
+    if (carryOver) await store.saveCarryOver(emailKeyedHash, carryOver);
+  },
+});
 
 /** A pending code with its e-mail decrypted. */
 export interface PendingCode {
@@ -52,7 +69,7 @@ const sameHash = (a: string, b: string): boolean => {
  * Builds the crypto boundary of `platform/04d`. Every method lets store and crypto errors propagate; the hub
  * answers `warning unavailable` and reports them.
  */
-export const createAccountIo = ({ store, vault, crypto }: AccountIoDeps) => {
+export const createAccountIo = ({ store, vault, crypto, closing = sequentialClosing(store, vault) }: AccountIoDeps) => {
   const toAccount = async (stored: StoredAccount): Promise<Account> => ({
     id: stored.id,
     email: await crypto.decrypt(stored.email, emailContext(stored.id)),
@@ -158,19 +175,17 @@ export const createAccountIo = ({ store, vault, crypto }: AccountIoDeps) => {
     blockEmail: (emailKeyedHash: string, until: Date) => store.blockEmail(emailKeyedHash, until),
 
     /**
-     * UC19, BR-081: the vault record is written first; if it fails nothing is deleted. Brick 9 runs both in
-     * one storage transaction.
+     * UC19, BR-081: the e-mail is sealed first, then one closing operation writes the vault record, deletes
+     * the account and its devices and saves the carry-over: one transaction on Cloudflare, in order on Node.
      */
     async close(record: VaultRecord, emailKeyedHash: string, carryOver: StrikeCarryOver | undefined): Promise<void> {
-      await vault.record({
+      const entry = {
         accountId: record.accountId,
         sealedEmail: await crypto.seal(record.email),
         createdAt: record.createdAt,
         closedAt: record.closedAt,
-      });
-      await store.deleteAccount(record.accountId);
-      await store.deleteAllDevices(record.accountId);
-      if (carryOver) await store.saveCarryOver(emailKeyedHash, carryOver.strikeExpiries);
+      };
+      await closing.closeAccount(entry, emailKeyedHash, carryOver?.strikeExpiries);
     },
 
     async purgeExpired(now: Date): Promise<void> {

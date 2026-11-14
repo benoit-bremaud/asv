@@ -9,6 +9,7 @@ import {
   ACCOUNT_LIMITS,
   AUTHORITY_LIMITS,
   MODERATION_LIMITS,
+  type AccountClosing,
   type AccountStore,
   type ConnectionLogStore,
   type LegalVaultStore,
@@ -23,6 +24,7 @@ import {
   type StoredInvitation,
   type StoredModerator,
   type StoredReport,
+  type VaultEntry,
 } from "../../domain";
 import type { Crypto } from "../../server/crypto/cipher";
 import { MAIL_GIVE_UP_MS } from "../../server/moderation-mail";
@@ -260,6 +262,24 @@ const rejecting = <T extends object>(store: T): T =>
     ]),
   ) as T;
 
+const saveCarryOverRow = (storage: SqlStorage, hash: string, expiries: readonly Date[]): void =>
+  run(
+    storage,
+    "INSERT OR REPLACE INTO carry_overs (email_keyed_hash, expiries) VALUES (?, ?)",
+    hash,
+    JSON.stringify(expiries.map((at) => at.getTime())),
+  );
+
+const insertVaultRow = (storage: SqlStorage, entry: VaultEntry): void =>
+  run(
+    storage,
+    "INSERT INTO vault (account_id, sealed_email, created_at, closed_at) VALUES (?, ?, ?, ?)",
+    entry.accountId,
+    entry.sealedEmail,
+    entry.createdAt.getTime(),
+    entry.closedAt.getTime(),
+  );
+
 /** Account records (`accounts/04`), the SQLite twin of `createMemoryAccountStore`. */
 export const createSqlAccountStore = (storage: SqlStorage): AccountStore => {
   const exec = (query: string, ...bindings: (string | number | null)[]) => {
@@ -399,12 +419,10 @@ export const createSqlAccountStore = (storage: SqlStorage): AccountStore => {
           ),
       );
     },
-    saveCarryOver: (hash, expiries) =>
-      exec(
-        "INSERT OR REPLACE INTO carry_overs (email_keyed_hash, expiries) VALUES (?, ?)",
-        hash,
-        JSON.stringify(expiries.map((at) => at.getTime())),
-      ),
+    saveCarryOver: (hash, expiries) => {
+      saveCarryOverRow(storage, hash, expiries);
+      return done();
+    },
     deleteCarryOver: (hash) =>
       exec("DELETE FROM carry_overs WHERE email_keyed_hash = ?", hash),
     purgeExpired(now) {
@@ -444,17 +462,10 @@ export const createSqlAccountStore = (storage: SqlStorage): AccountStore => {
 /** Legal vault (BR-081, ADR-0014): write-only for the application; the account id goes after 1 year, the row after 5. */
 export const createSqlVault = (storage: SqlStorage): LegalVaultStore =>
   rejecting({
-    record: (entry) =>
-      Promise.resolve(
-        run(
-          storage,
-          "INSERT INTO vault (account_id, sealed_email, created_at, closed_at) VALUES (?, ?, ?, ?)",
-          entry.accountId,
-          entry.sealedEmail,
-          entry.createdAt.getTime(),
-          entry.closedAt.getTime(),
-        ),
-      ),
+    record: (entry) => {
+      insertVaultRow(storage, entry);
+      return done();
+    },
     purgeExpired(now) {
       const time = now.getTime();
       storage.transactionSync(() => {
@@ -470,6 +481,23 @@ export const createSqlVault = (storage: SqlStorage): LegalVaultStore =>
           ACCOUNT_LIMITS.vaultIdentityMs,
           time,
         );
+      });
+      return done();
+    },
+  });
+
+/**
+ * UC19, BR-081: the vault record, the account and device deletes and the carry-over in one transaction, so a
+ * failure leaves the account as it was and no vault row behind.
+ */
+export const createSqlAccountClosing = (storage: SqlStorage): AccountClosing =>
+  rejecting({
+    closeAccount(entry, emailKeyedHash, carryOver) {
+      storage.transactionSync(() => {
+        insertVaultRow(storage, entry);
+        run(storage, "DELETE FROM accounts WHERE id = ?", entry.accountId);
+        run(storage, "DELETE FROM devices WHERE account_id = ?", entry.accountId);
+        if (carryOver) saveCarryOverRow(storage, emailKeyedHash, carryOver);
       });
       return done();
     },

@@ -31,6 +31,7 @@ import { createCloudflareRandom } from "./random";
 import { type SqlStorage } from "./sql";
 import {
   closeOpenLines,
+  createSqlAccountClosing,
   createSqlAccountStore,
   createSqlLog,
   createSqlModerationStore,
@@ -176,7 +177,12 @@ export class HubObject {
       protocols: "HTTP/1.1 WebSocket",
       onLogError: (error) => console.error("connection log write failed", error),
       closeSocket: (key, reason) => this.refuse(key, reason),
-      accounts: createAccountIo({ store: createSqlAccountStore(storage), vault: createSqlVault(storage), crypto }),
+      accounts: createAccountIo({
+        store: createSqlAccountStore(storage),
+        vault: createSqlVault(storage),
+        closing: createSqlAccountClosing(storage),
+        crypto,
+      }),
       mailer,
       onStoreError: (error) => console.error("store failed", error),
       moderation: moderationIo,

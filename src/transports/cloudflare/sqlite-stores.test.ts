@@ -7,6 +7,7 @@ import { createModerationIo } from "../../server/moderation-io";
 import { rows } from "./sql";
 import {
   closeOpenLines,
+  createSqlAccountClosing,
   createSqlAccountStore,
   createSqlLog,
   createSqlModerationStore,
@@ -248,6 +249,45 @@ describe("legal vault (BR-081)", () => {
 
     await vault.purgeExpired(at(ACCOUNT_LIMITS.vaultRetentionMs));
     expect(rows(store, "SELECT account_id, sealed_email FROM vault")).toEqual([{ account_id: "acc-2", sealed_email: "e1.other" }]);
+  });
+});
+
+describe("account closing (UC19, BR-081)", () => {
+  const entry = { accountId: "acc-1", sealedEmail: "e1.sealed", createdAt: T0, closedAt: at(1) };
+  const seeded = async () => {
+    const store = storage();
+    const accounts = createSqlAccountStore(store);
+    await accounts.saveAccount({ id: "acc-1", email: "v1.e", emailKeyedHash: "eh", verifiedAt: T0, lastSeenAt: T0, strikes: [] });
+    await accounts.saveDevice({ tokenHash: "tok", accountId: "acc-1", expiresAt: at(DAY) });
+    return { store, accounts };
+  };
+
+  it("records the vault row, deletes the account and its devices and saves the carry-over together", async () => {
+    const { store, accounts } = await seeded();
+
+    await createSqlAccountClosing(store).closeAccount(entry, "eh", [at(DAY)]);
+
+    expect(rows(store, "SELECT account_id FROM vault")).toEqual([{ account_id: "acc-1" }]);
+    expect(await accounts.findAccountById("acc-1")).toBeUndefined();
+    expect(rows(store, "SELECT * FROM devices")).toEqual([]);
+    expect(await accounts.loadCarryOver("eh")).toEqual([at(DAY)]);
+  });
+
+  it("rolls everything back when a write after the vault insert fails", async () => {
+    const { store, accounts } = await seeded();
+    const exec = store.sql.exec;
+    store.sql.exec = (query, ...bindings) => {
+      if (query.startsWith("DELETE FROM devices")) throw new Error("disk");
+      return exec.call(store.sql, query, ...bindings);
+    };
+
+    await expect(createSqlAccountClosing(store).closeAccount(entry, "eh", [at(DAY)])).rejects.toThrow("disk");
+    store.sql.exec = exec;
+
+    expect(rows(store, "SELECT * FROM vault")).toEqual([]);
+    expect(await accounts.findAccountById("acc-1")).toBeDefined();
+    expect(rows(store, "SELECT token_hash FROM devices")).toEqual([{ token_hash: "tok" }]);
+    expect(await accounts.loadCarryOver("eh")).toBeUndefined();
   });
 });
 

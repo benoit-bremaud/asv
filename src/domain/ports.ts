@@ -286,6 +286,15 @@ export interface LegalVaultStore {
   purgeExpired(now: Date): Promise<void>;
 }
 
+/**
+ * UC19, BR-081: closing an account as one store operation: the vault record, the account and device deletes
+ * and the strike carry-over. Atomic on Cloudflare (one SQLite transaction); the Node adapter runs the same
+ * writes in order, vault first, over stores that are not transactional (`accounts/04`).
+ */
+export interface AccountClosing {
+  closeAccount(entry: VaultEntry, emailKeyedHash: string, carryOver: readonly Date[] | undefined): Promise<void>;
+}
+
 /** Transactional mail (ADR-0013 amendment): the brasse-bouillon `MailerService` port. */
 export interface Mailer {
   /** Never rejects: a failure is logged by the adapter. */
