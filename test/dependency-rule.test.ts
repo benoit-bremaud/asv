@@ -43,6 +43,11 @@ describe("dependency rule (platform/03-component)", () => {
     ]);
   });
 
+  it("refuses cloudflare:* in src/server and src/domain (ADR-0020)", async () => {
+    expect(await restrictions("test/fixtures/lint/server/cloudflare.ts")).toEqual([expect.stringContaining("no cloudflare:* import")]);
+    expect(await restrictions("test/fixtures/lint/domain/cloudflare.ts")).toEqual([expect.stringContaining("no package or Node import")]);
+  });
+
   it("refuses anything but zod/mini and siblings in src/shared/protocol (ADR-0015)", async () => {
     expect(await restrictions("test/fixtures/lint/protocol/forbidden.ts")).toEqual([
       expect.stringContaining("imports only zod/mini"),
