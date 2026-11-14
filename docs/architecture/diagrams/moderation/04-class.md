@@ -146,17 +146,21 @@ classDiagram
     +saveTriage(reportId, storedTriage)
     +openReports() Report[]
     +alertedReports() Report[]
-    +closeReport(id, outcome, by, at)
-    +markStruck(id, at)
+    +patchReport(id, patch) Boolean
     +saveBan(ban)
     +activeBan(ipKeyedHash, pseudo, now) Ban
     +saveAuthorityAlert(reportId, alert) Boolean
     +markAlertNotified(reportId, at)
+    +pendingAlerts() PendingAlert[]
     +recordFiling(reportId, channel, reference, at) FilingResult
     +savePendingDecisionMail(mail)
     +pendingDecisionMails() PendingDecisionMail[]
     +deletePendingDecisionMail(id)
     +purgeExpired(now)
+  }
+  class ModerationIo {
+    +closeReport(report, outcome, by, at)
+    +markStruck(id, at)
   }
   class ModeratorStore {
     <<interface>>
@@ -190,6 +194,7 @@ classDiagram
   AuthorityAlert --> OffenceCategory
   AuthorityAlert --> AlertChannel
   ModerationStore ..> Report
+  ModerationIo ..> ModerationStore
   ModerationStore ..> Ban
   ModerationStore ..> PendingDecisionMail
   ModeratorStore ..> Moderator
@@ -197,6 +202,10 @@ classDiagram
 ```
 
 ## Notes
+
+- `patchReport` writes only the given fields (`closed`, `struckAt`) in one store operation, so a filing
+  or `notifiedAt` written meanwhile outside the hub queue is never overwritten; `ModerationIo` encrypts
+  around the store and builds `closeReport` and `markStruck` on it.
 
 - Store ports sit next to the domain, implemented in memory (Node) and in Durable Object SQLite (Cloudflare).
 - `ReportTriage` wraps the third-party AI (ADR-0010). A no-AI adapter returns urgency `unknown`.
@@ -265,7 +274,7 @@ The contract stays `platform/04-class-protocol`. Brick 8a uses it as follows:
 - `Mailer` gains `sendAuthorityAlert(reportId, category)` and `sendReportDecision(email, decision)`
   (`accounts/04`), both resolving `true` only when the provider accepted the mail, retried like BR-076.
 - Protocol: `expel` gains `severe` and `alertAuthorities?: OffenceCategory`; `closeReport`, `removeRoom`
-  and `confirmSuspension` gain `alertAuthorities?`; `removeRoom(reportId)` answers `reportClosed` or
+  `confirmSuspension` and `declineSuspension` gain `alertAuthorities?`; `removeRoom(reportId)` answers `reportClosed` or
   `warning(reportInvalid)`; `openReports` items gain `triage` (with the label legend) and `alert`;
   `listAlertedReports` answers `alertedReports`. Outcomes `severeDeleted` and `roomRemoved` become
   available.

@@ -317,7 +317,8 @@ export const serverMessage = z.discriminatedUnion("type", [
   message("warned", z.object({ rule: z.string(), text: z.string(), activeStrikes: z.int() })),
   message("expelled", z.object({ until: isoDate })),
   message("reportClosed", z.object({ reportId: id })),
-  message("suspensionProposed", z.object({ accountId: id, reportId: id, activeStrikes: z.int() })),
+  // BR-104: `alert` is the category already raised on the report; the proposal then shows it read-only.
+  message("suspensionProposed", z.object({ accountId: id, reportId: id, activeStrikes: z.int(), alert: z.optional(offenceCategory) })),
   message("roomClosed", roomTarget),
   message("codeSent", empty),
   message("accountLinked", z.object({ accountId: id, deviceClaim: z.optional(z.string()) })),

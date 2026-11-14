@@ -44,7 +44,7 @@ sequenceDiagram
       H->>ST: close report with outcome suspended
       H-->>M: reportClosed
     else Moderator declines
-      M->>H: declineSuspension(accountId, reportId)
+      M->>H: declineSuspension(accountId, reportId, alertAuthorities?)
       H->>ST: close report with outcome warned
       H-->>M: reportClosed
     end

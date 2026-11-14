@@ -90,7 +90,8 @@ export interface QueueView {
   readonly reports: readonly QueuedReport[];
   /** Open reports on the server; `reports` holds the first 50 (BR-102). */
   readonly total: number;
-  readonly proposal?: { readonly accountId: string; readonly reportId: string; readonly activeStrikes: number };
+  /** `alert`: the category already raised on the report, shown read-only (BR-104). */
+  readonly proposal?: Extract<ServerMessage, { type: "suspensionProposed" }>["payload"];
 }
 
 /** Everything the screens render; `notice` and `entryError` are codes the screens translate. */

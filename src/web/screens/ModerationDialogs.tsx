@@ -194,7 +194,7 @@ const AlertRow = ({ report }: { report: AlertedReport }) => (
  * BR-075: the third active strike asks the moderator. BR-104: an alert already raised on the report is shown
  * read-only; otherwise the category picked here goes with either answer.
  */
-const Proposal = ({ proposal, raised }: { proposal: NonNullable<QueueView["proposal"]>; raised?: Alert }) => {
+const Proposal = ({ proposal, raised }: { proposal: NonNullable<QueueView["proposal"]>; raised?: Offence }) => {
   const { commands } = useChat();
   const [choice, setChoice] = useState<AlertChoice>("none");
   const payload = { accountId: proposal.accountId, reportId: proposal.reportId, alertAuthorities: raised ? undefined : alertOf(choice) };
@@ -202,7 +202,7 @@ const Proposal = ({ proposal, raised }: { proposal: NonNullable<QueueView["propo
     <section role="alert" className="queue-proposal">
       <p>{STRINGS.proposal(proposal.activeStrikes)}</p>
       {raised ? (
-        <p className="small">{STRINGS.alertRaisedAlready(STRINGS.offences[raised.offenceCategory])}</p>
+        <p className="small">{STRINGS.alertRaisedAlready(STRINGS.offences[raised])}</p>
       ) : (
         <AlertSelect id="proposal-alert" value={choice} onChange={setChoice} />
       )}
@@ -239,7 +239,7 @@ export const QueueDialog = () => {
         </>
       ) : (
         <>
-          {queue.proposal && <Proposal proposal={queue.proposal} raised={queue.reports.find((report) => report.id === queue.proposal?.reportId)?.alert} />}
+          {queue.proposal && <Proposal proposal={queue.proposal} raised={queue.proposal.alert ?? queue.reports.find((report) => report.id === queue.proposal?.reportId)?.alert?.offenceCategory} />}
           {queue.loading && <p className="small">{STRINGS.queueLoading}</p>}
           {!queue.loading && queue.reports.length === 0 && <p className="small">{STRINGS.queueEmpty}</p>}
           {queue.total > queue.reports.length && <p className="small">{STRINGS.queueCount(queue.reports.length, queue.total)}</p>}

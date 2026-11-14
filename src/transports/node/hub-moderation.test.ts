@@ -870,6 +870,7 @@ describe("authority alert (moderation/02h, BR-104, BR-105, UC20)", () => {
 
   it("keeps the alert raised on the warning when the suspension is confirmed, one per report", async () => {
     const { ctx, reportId, proposal } = await proposed("harassment");
+    expect(proposal.alert).toBe("harassment");
     // An open row with an alert shows it, and the proposal shows it read-only (`web-ui/08`).
     expect(only(await ctx.send("9", "listOpenReports", {}), "openReports").payload.reports[0]?.alert).toMatchObject({ status: "pending", offenceCategory: "harassment" });
 
@@ -902,6 +903,7 @@ describe("authority alert (moderation/02h, BR-104, BR-105, UC20)", () => {
 
   it("raises no alert when the proposal is declined without one", async () => {
     const { ctx, proposal } = await proposed();
+    expect(proposal).not.toHaveProperty("alert");
 
     only(await ctx.send("9", "declineSuspension", proposal), "reportClosed");
     await settle();

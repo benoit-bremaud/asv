@@ -516,6 +516,19 @@ describe("brick 8c-2 in the web client (web-ui/08, BR-103 to BR-106)", () => {
     expect(connection.send.mock.calls.at(-1)?.[0]).toEqual({ type: "expel", payload: { reportId: "a", duration: "7d", severe: true, alertAuthorities: undefined } });
   });
 
+  it("shows the alert just raised with the warning read-only, the queue not yet refreshed", async () => {
+    const user = await setup();
+    const dialog = await openQueue(user, [queued("a", { struck: true, activeStrikes: 3 })]);
+    await user.selectOptions(within(dialog).getByLabelText(STRINGS.alertSelect), "harassment");
+    await user.click(within(dialog).getByRole("button", { name: STRINGS.askSuspension }));
+
+    await msg("suspensionProposed", { accountId: "acc", reportId: "a", activeStrikes: 3, alert: "harassment" });
+
+    const proposal = screen.getByText(STRINGS.proposal(3)).parentElement as HTMLElement;
+    expect(within(proposal).queryByLabelText(STRINGS.alertSelect)).toBeNull();
+    expect(within(proposal).getByText(STRINGS.alertRaisedAlready(STRINGS.offences.harassment))).toBeTruthy();
+  });
+
   it("sends the alert picked in the proposal with a declined suspension too", async () => {
     const user = await setup();
     await openQueue(user, [queued("a")]);

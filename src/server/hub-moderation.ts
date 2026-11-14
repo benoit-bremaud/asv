@@ -282,19 +282,22 @@ export const createModerationHandlers = (ctx: ModerationContext) => {
   const warn = async (caller: ModerationCaller, report: LoadedReport, category: OffenceCategory | undefined, now: Date, seq: number): Promise<Outgoing[]> => {
     if (report.targetKind === "room") return [out.warning(caller.key, "reportInvalid", seq)];
     const tell = await raiseAlert(caller, report, category, now);
-    const answer = await warnTarget(caller, report, now);
+    // BR-104: the proposal shows the alert of the report, the one already there or the one just raised.
+    const raised = report.alert?.offenceCategory ?? category;
+    const answer = await warnTarget(caller, report, raised, now);
     tell();
     return answer;
   };
 
-  const warnTarget = async (caller: ModerationCaller, report: LoadedReport, now: Date): Promise<Outgoing[]> => {
+  const warnTarget = async (caller: ModerationCaller, report: LoadedReport, raised: OffenceCategory | undefined, now: Date): Promise<Outgoing[]> => {
+    const alert = raised === undefined ? {} : { alert: raised };
     const target = liveTarget(ctx.state(), report);
     const found = report.targetAccountId === undefined ? undefined : await deps.accounts.accountById(report.targetAccountId);
     // BR-074: one strike per report; a repeated `warned` only asks the suspension question again (`02d`).
     if (found && report.struckAt !== undefined) {
       const active = activeStrikes(found.account.strikes, now).length;
       if (canSuspend(found.account.strikes, now)) {
-        return [out.send([caller.key], "suspensionProposed", { accountId: found.account.id, reportId: report.id, activeStrikes: active })];
+        return [out.send([caller.key], "suspensionProposed", { accountId: found.account.id, reportId: report.id, activeStrikes: active, ...alert })];
       }
       return [await close(caller, report, "warned", now)];
     }
@@ -308,7 +311,7 @@ export const createModerationHandlers = (ctx: ModerationContext) => {
     const to = found ? sessionsOfAccount(ctx.state(), found.account.id).map((session) => session.id) : guestTarget;
     const warned = out.send(out.keysOf(to), "warned", { rule: report.reason, text: "", activeStrikes: strike?.active ?? 0 });
     if (strike?.proposeSuspension && found) {
-      return [warned, out.send([caller.key], "suspensionProposed", { accountId: found.account.id, reportId: report.id, activeStrikes: strike.active })];
+      return [warned, out.send([caller.key], "suspensionProposed", { accountId: found.account.id, reportId: report.id, activeStrikes: strike.active, ...alert })];
     }
     return [warned, await close(caller, report, "warned", now)];
   };

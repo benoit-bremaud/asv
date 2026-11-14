@@ -59,8 +59,8 @@ sequenceDiagram
 ## Notes
 
 - `alertAuthorities` carries an `OffenceCategory` picked by the moderator, never copied from the AI
-  triage category (ADR-0010). It is also accepted on `closeReport`, `removeRoom` and
-  `confirmSuspension` (BR-104), for example a threat by a chatter already gone.
+  triage category (ADR-0010). It is also accepted on `closeReport`, `removeRoom`,
+  `confirmSuspension` and `declineSuspension` (BR-104), for example a threat by a chatter already gone.
 - On a severe expel the alert select starts with no value and "confirmer" stays disabled until the
   moderator picks a category or "aucune"; the server accepts `alertAuthorities` absent.
 - When life is at stake the moderator who raises the alert may call 17 or 112 directly: that moderator is

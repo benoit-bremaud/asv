@@ -134,7 +134,7 @@ Server to client:
 | warned | rule, text, activeStrikes |
 | expelled | until |
 | reportClosed | reportId |
-| suspensionProposed | accountId, reportId, activeStrikes |
+| suspensionProposed | accountId, reportId, activeStrikes, alert? (category already raised, BR-104) |
 | roomClosed | roomId |
 | codeSent | — |
 | accountLinked | accountId, deviceClaim? |
