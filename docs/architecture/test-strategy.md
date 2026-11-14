@@ -50,7 +50,7 @@ TDD is not imposed on this project.
   strike carry-over restored, device claim single use and 60 seconds, cookie attributes, Origin check on
   the account routes, sign-out of this device and everywhere, account deletion writes the vault record.
 - Legal vault planned cases (ADR-0014, BR-081, BR-082), brick 5:
-  - deleting an account writes the vault record in the same transaction (a failed write rolls back the deletion);
+  - deleting an account writes the vault record (BR-081): a failed vault write deletes nothing; on Cloudflare any failed write rolls everything back;
   - `purgeExpired` drops the account id after 1 year and the whole record after 5 years, purges access entries older than 5 years, and the daily alarm calls it;
   - no domain use case, moderation tool or AI path can read the vault (the port has no read operation);
   - an owner read through the dedicated call appends an access entry (date, request reference, legal basis, ids returned), same for the connection log;

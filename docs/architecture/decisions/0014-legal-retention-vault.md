@@ -58,7 +58,7 @@ field and loses nothing.
 ## Decision
 
 - When an account is deleted, for any reason, a **legal retention record** is written to the vault
-  **in the same transaction** as the deletion: account id, e-mail, creation date (equal to the e-mail
+  with the deletion (BR-081: one transaction on Cloudflare, vault first on Node): account id, e-mail, creation date (equal to the e-mail
   verification date) and closing date. Nothing else: no pseudonym, deletion reason, strike or report.
 - The account id is purged **1 year** after closing (art. 3), the rest **5 years** after closing
   (art. 2). The daily alarm purges expired data (BR-081). Pseudonyms stay only in the connection log

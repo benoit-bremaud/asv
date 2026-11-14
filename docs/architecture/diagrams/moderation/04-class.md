@@ -281,8 +281,8 @@ The contract stays `platform/04-class-protocol`. Brick 8a uses it as follows:
   lists open reports only.
 - `saveAuthorityAlert` is idempotent: one alert per report, a second call returns `false` and changes
   nothing. `markAlertNotified` sets `notifiedAt` once the owner alert is accepted; until then the hub
-  tick retries it (BR-104). `recordFiling` returns `filed`, `alreadyFiled` (409) or `noAlert` (404).
-- `PendingDecisionMail` mirrors `PendingStatement` (`accounts/04`): kept until the mailer accepts the
+  tick retries it on Node, the alarm on Cloudflare (BR-104, BR-110). `recordFiling` returns `filed`, `alreadyFiled` (409) or `noAlert` (404).
+- `PendingDecisionMail` mirrors `PendingStatement` (above): kept until the mailer accepts the
   decision e-mail, 7 days max (BR-107).
 - `OffenceCategory` matches the rows of `security-and-rgpd.md` §6 and is always the moderator's choice,
   never copied from `TriageCategory` (ADR-0010).

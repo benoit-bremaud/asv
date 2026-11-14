@@ -38,7 +38,7 @@ sequenceDiagram
       H->>D: suspend(state, account, moderator, now)
       D-->>H: Statement + block until now + 7 days + all sessions and away records + IP and pseudo ban
       H->>ST: save ban (keyed IP and pseudo hashes)
-      H->>AS: blockEmail, deleteAccount + vault record, same transaction (BR-081)
+      H->>AS: blockEmail, deleteAccount + vault record (BR-081: one transaction on Cloudflare, vault first on Node)
       H-)ML: send statement of reasons, not awaited (refused: retried every 10 min, BR-076)
       H-->>T: expelled(until) then close every socket of the account
       H->>ST: close report with outcome suspended

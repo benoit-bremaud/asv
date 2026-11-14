@@ -72,7 +72,7 @@ flowchart LR
 - Main scenario: 1. Account holder picks "delete my account" and confirms; the screen reminds that a legal
   retention record is kept (GDPR art. 13, erasure refused for it under art. 17(3)(b)). 2. System writes the
   legal retention record to the vault (account id, e-mail, creation and closing dates) and deletes the
-  account and device records, in the same transaction (BR-081). 3. Private windows close, the session
+  account and device records (BR-081: one transaction on Cloudflare, vault first on Node). 3. Private windows close, the session
   continues in rooms.
 - Extension: 2a. Active strikes remain → a keyed e-mail hash and the strike expiry dates are kept until
   the last one expires (BR-080).
