@@ -203,6 +203,14 @@ describe("BR-007 entry rate", () => {
     );
   });
 
+  it("counts the attempts of one IPv6 /64 together (BR-112)", () => {
+    let state = emptyEntryState();
+    for (let i = 0; i < 5; i += 1) state = enter(state, form({ pseudo: "ab", ip: `2001:db8:0:1::${i + 1}` }), at(i * 1000), fakeRandom()).state;
+
+    expect(enter(state, form({ ip: "2001:db8:0:1:ffff::9" }), at(10_000), fakeRandom()).effects).toEqual([{ type: "entryRefused", reason: "rate" }]);
+    expect(enter(state, form({ ip: "2001:db8:0:2::1" }), at(10_000), fakeRandom()).effects[0]?.type).toBe("entered");
+  });
+
   it("accepts a fifth attempt and counts accepted entries", () => {
     const afterFour = attempts(4);
     const fifth = enter(afterFour, form(), at(5_000), fakeRandom());

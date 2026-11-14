@@ -13,6 +13,16 @@ describe("upgrade limiter (BR-089)", () => {
     expect(limiter.admit("b", 60_000)).toBe("ok");
   });
 
+  it("shares the sockets and the budget of one IPv6 /64 (BR-112)", () => {
+    const limiter = createUpgradeLimiter();
+    admitMany(() => limiter.admit("2001:db8:0:1::1", 0), UPGRADE_LIMITS.perIp);
+
+    expect(limiter.admit("2001:db8:0:1:ffff::2", 60_000)).toBe("perIp");
+    expect(limiter.admit("2001:db8:0:2::1", 60_000)).toBe("ok");
+    limiter.release("2001:db8:0:1:aaaa::3");
+    expect(limiter.admit("2001:db8:0:1::4", 60_000)).toBe("ok");
+  });
+
   it("refuses with rate once the burst is spent, and refills perSecond tokens a second", () => {
     const limiter = createUpgradeLimiter();
     admitMany(() => limiter.admit("a", 0), UPGRADE_LIMITS.burst);

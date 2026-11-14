@@ -69,7 +69,7 @@ const setup = async (options: Options = {}) => {
 type Context = Awaited<ReturnType<typeof setup>>;
 
 const invite = async (context: Context, name = "Marc") => {
-  const response = await context.owner("/mod/invitations", { method: "POST", body: { name } });
+  const response = await context.owner("/owner/invitations", { method: "POST", body: { name } });
   const { link } = (await response.json()) as { link: string };
   return link.split("/").pop() ?? "";
 };
@@ -108,11 +108,26 @@ describe("GET /mod/status", () => {
   });
 });
 
+describe("the former owner paths (ADR-0020 D8)", () => {
+  it.each([
+    ["POST", "/mod/invitations"],
+    ["DELETE", "/mod/moderators/Marc"],
+    ["POST", "/mod/authority-filings"],
+  ])("answers 404 to %s %s even with the right secret", async (method, path) => {
+    const { app } = await setup();
+
+    const response = await app.request(path, { method, body: "{}", headers: { authorization: `Bearer ${SECRET}`, "content-type": "application/json" } });
+
+    expect(response.status).toBe(404);
+  });
+});
+
 describe("behind the tester tunnel (BR-097)", () => {
   it.each([
     ["GET", "/mod/status"],
-    ["POST", "/mod/invitations"],
-    ["DELETE", "/mod/moderators/Marc"],
+    ["POST", "/owner/invitations"],
+    ["DELETE", "/owner/moderators/Marc"],
+    ["POST", "/owner/authority-filings"],
     ["POST", "/mod/enroll"],
     ["POST", "/mod/sign-in/options"],
   ])("answers 404 to %s %s", async (method, path) => {
@@ -128,7 +143,7 @@ describe("owner routes (BR-093, BR-096)", () => {
   it("creates an invitation and returns a link with a 256-bit token", async () => {
     const context = await setup();
 
-    const response = await context.owner("/mod/invitations", { method: "POST", body: { name: "Marc" } });
+    const response = await context.owner("/owner/invitations", { method: "POST", body: { name: "Marc" } });
 
     expect(response.status).toBe(201);
     const { link } = (await response.json()) as { link: string };
@@ -145,7 +160,7 @@ describe("owner routes (BR-093, BR-096)", () => {
     const { app } = await setup();
     const headers: Record<string, string> = secret === undefined ? {} : { authorization: `Bearer ${secret}` };
 
-    const response = await app.request("/mod/invitations", { method: "POST", body: JSON.stringify({ name: "Marc" }), headers });
+    const response = await app.request("/owner/invitations", { method: "POST", body: JSON.stringify({ name: "Marc" }), headers });
 
     expect(response.status).toBe(401);
   });
@@ -153,7 +168,7 @@ describe("owner routes (BR-093, BR-096)", () => {
   it("refuses a non-Bearer authorization scheme", async () => {
     const { app } = await setup();
 
-    const response = await app.request("/mod/invitations", { method: "POST", body: "{}", headers: { authorization: `Basic ${SECRET}` } });
+    const response = await app.request("/owner/invitations", { method: "POST", body: "{}", headers: { authorization: `Basic ${SECRET}` } });
 
     expect(response.status).toBe(401);
   });
@@ -165,50 +180,50 @@ describe("owner routes (BR-093, BR-096)", () => {
     const context = await setup();
     context.peer.address = address;
 
-    expect((await context.owner("/mod/invitations", { method: "POST", body: { name: "Marc" } })).status).toBe(404);
-    expect((await context.owner("/mod/moderators/Marc", { method: "DELETE" })).status).toBe(404);
+    expect((await context.owner("/owner/invitations", { method: "POST", body: { name: "Marc" } })).status).toBe(404);
+    expect((await context.owner("/owner/moderators/Marc", { method: "DELETE" })).status).toBe(404);
   });
 
   it.each(["::1", "::ffff:127.0.0.1"])("accepts the loopback peer %s", async (address) => {
     const context = await setup();
     context.peer.address = address;
 
-    expect((await context.owner("/mod/invitations", { method: "POST", body: { name: "Marc" } })).status).toBe(201);
+    expect((await context.owner("/owner/invitations", { method: "POST", body: { name: "Marc" } })).status).toBe(201);
   });
 
   it("answers 404 when no owner secret is set", async () => {
     const context = await setup({ ownerSecret: null });
 
-    expect((await context.owner("/mod/invitations", { method: "POST", body: { name: "Marc" } })).status).toBe(404);
+    expect((await context.owner("/owner/invitations", { method: "POST", body: { name: "Marc" } })).status).toBe(404);
   });
 
   it("refuses the sixth failure within 10 minutes with 429, even the right secret, then lets it through", async () => {
     const context = await setup();
     for (let index = 0; index < OWNER_FAILURES_MAX; index += 1) {
-      expect((await context.owner("/mod/invitations", { method: "POST", body: {}, secret: "wrong" })).status).toBe(401);
+      expect((await context.owner("/owner/invitations", { method: "POST", body: {}, secret: "wrong" })).status).toBe(401);
     }
 
-    const blocked = await context.owner("/mod/invitations", { method: "POST", body: { name: "Marc" } });
+    const blocked = await context.owner("/owner/invitations", { method: "POST", body: { name: "Marc" } });
     expect(blocked.status).toBe(429);
     expect(blocked.headers.get("retry-after")).toBe("600");
 
     context.clock.now = new Date(T0.getTime() + OWNER_WINDOW_MS);
-    expect((await context.owner("/mod/invitations", { method: "POST", body: { name: "Marc" } })).status).toBe(201);
+    expect((await context.owner("/owner/invitations", { method: "POST", body: { name: "Marc" } })).status).toBe(201);
   });
 
   it("counts an IPv4-mapped loopback peer in the same window as 127.0.0.1", async () => {
     const context = await setup();
     context.peer.address = "::ffff:127.0.0.1";
-    for (let index = 0; index < OWNER_FAILURES_MAX; index += 1) await context.owner("/mod/invitations", { method: "POST", body: {}, secret: "wrong" });
+    for (let index = 0; index < OWNER_FAILURES_MAX; index += 1) await context.owner("/owner/invitations", { method: "POST", body: {}, secret: "wrong" });
     context.peer.address = "127.0.0.1";
 
-    expect((await context.owner("/mod/invitations", { method: "POST", body: { name: "Marc" } })).status).toBe(429);
+    expect((await context.owner("/owner/invitations", { method: "POST", body: { name: "Marc" } })).status).toBe(429);
   });
 
   it("does not count successes toward the rate limit", async () => {
     const context = await setup();
     for (let index = 0; index < OWNER_FAILURES_MAX + 2; index += 1) {
-      expect((await context.owner("/mod/invitations", { method: "POST", body: { name: "Marc" } })).status).toBe(201);
+      expect((await context.owner("/owner/invitations", { method: "POST", body: { name: "Marc" } })).status).toBe(201);
     }
   });
 
@@ -221,13 +236,13 @@ describe("owner routes (BR-093, BR-096)", () => {
   ])("answers 400 to an invitation with %s", async (_label, body) => {
     const context = await setup();
 
-    expect((await context.owner("/mod/invitations", { method: "POST", body })).status).toBe(400);
+    expect((await context.owner("/owner/invitations", { method: "POST", body })).status).toBe(400);
   });
 
   it("answers 400 to an invitation whose body is not JSON", async () => {
     const { app } = await setup();
 
-    const response = await app.request("/mod/invitations", { method: "POST", body: "nope", headers: { authorization: `Bearer ${SECRET}` } });
+    const response = await app.request("/owner/invitations", { method: "POST", body: "nope", headers: { authorization: `Bearer ${SECRET}` } });
 
     expect(response.status).toBe(400);
   });
@@ -237,16 +252,16 @@ describe("owner routes (BR-093, BR-096)", () => {
     await context.io.saveInvitation("tok", "Marc", new Date(T0.getTime() + 1000));
     await context.io.enroll("tok", "cred", "pk", 0, T0);
 
-    expect((await context.owner("/mod/moderators/Marc", { method: "DELETE" })).status).toBe(204);
-    expect((await context.owner("/mod/moderators/Marc", { method: "DELETE" })).status).toBe(404);
-    expect((await context.owner("/mod/moderators/a", { method: "DELETE" })).status).toBe(400);
+    expect((await context.owner("/owner/moderators/Marc", { method: "DELETE" })).status).toBe(204);
+    expect((await context.owner("/owner/moderators/Marc", { method: "DELETE" })).status).toBe(404);
+    expect((await context.owner("/owner/moderators/a", { method: "DELETE" })).status).toBe(400);
   });
 
   it("answers 503 and reports the error when the store fails", async () => {
     const context = await setup();
     context.store.saveInvitation = () => Promise.reject(new Error("disk"));
 
-    const response = await context.owner("/mod/invitations", { method: "POST", body: { name: "Marc" } });
+    const response = await context.owner("/owner/invitations", { method: "POST", body: { name: "Marc" } });
 
     expect(response.status).toBe(503);
     expect(context.onError).toHaveBeenCalledWith(expect.any(Error));
@@ -277,6 +292,17 @@ describe("browser routes guard (BR-096, BR-098)", () => {
     expect((await context.browser("/mod/sign-in/options", {})).status).toBe(200);
     context.clock.now = new Date(T0.getTime() + 6000);
     context.peer.address = "127.0.0.1";
+    expect((await context.browser("/mod/sign-in/options", {})).status).toBe(200);
+  });
+
+  it("shares the ceremony bucket across one IPv6 /64 (BR-112)", async () => {
+    const context = await setup();
+    context.peer.address = "2001:db8:0:1::1";
+    for (let index = 0; index < 10; index += 1) expect((await context.browser("/mod/sign-in/options", {})).status).toBe(200);
+
+    context.peer.address = "2001:db8:0:1:ffff::2";
+    expect((await context.browser("/mod/sign-in/options", {})).status).toBe(429);
+    context.peer.address = "2001:db8:0:2::1";
     expect((await context.browser("/mod/sign-in/options", {})).status).toBe(200);
   });
 
@@ -549,7 +575,7 @@ describe("sign-in (BR-095)", () => {
   });
 });
 
-describe("POST /mod/authority-filings (UC20, BR-093, BR-104)", () => {
+describe("POST /owner/authority-filings (UC20, BR-093, BR-104)", () => {
   const filing = { reportId: "r1", channel: "PHAROS", reference: "PHA-2026-0001" };
 
   it.each([
@@ -560,7 +586,7 @@ describe("POST /mod/authority-filings (UC20, BR-093, BR-104)", () => {
   ])("records channel %s as %s and answers 204", async (typed, channel) => {
     const context = await setup();
 
-    const response = await context.owner("/mod/authority-filings", { method: "POST", body: { ...filing, channel: typed } });
+    const response = await context.owner("/owner/authority-filings", { method: "POST", body: { ...filing, channel: typed } });
 
     expect(response.status).toBe(204);
     expect(context.recordFiling).toHaveBeenCalledWith("r1", channel, "PHA-2026-0001", T0);
@@ -573,7 +599,7 @@ describe("POST /mod/authority-filings (UC20, BR-093, BR-104)", () => {
     const context = await setup();
     context.recordFiling.mockResolvedValueOnce(result);
 
-    expect((await context.owner("/mod/authority-filings", { method: "POST", body: filing })).status).toBe(status);
+    expect((await context.owner("/owner/authority-filings", { method: "POST", body: filing })).status).toBe(status);
   });
 
   it.each([
@@ -587,14 +613,14 @@ describe("POST /mod/authority-filings (UC20, BR-093, BR-104)", () => {
   ])("answers 400 on %s", async (_label, body) => {
     const context = await setup();
 
-    expect((await context.owner("/mod/authority-filings", { method: "POST", body })).status).toBe(400);
+    expect((await context.owner("/owner/authority-filings", { method: "POST", body })).status).toBe(400);
     expect(context.recordFiling).not.toHaveBeenCalled();
   });
 
   it("stores the reference trimmed", async () => {
     const context = await setup();
 
-    await context.owner("/mod/authority-filings", { method: "POST", body: { ...filing, reference: "  PV 12  " } });
+    await context.owner("/owner/authority-filings", { method: "POST", body: { ...filing, reference: "  PV 12  " } });
 
     expect(context.recordFiling).toHaveBeenCalledWith("r1", "PHAROS", "PV 12", T0);
   });
@@ -602,29 +628,29 @@ describe("POST /mod/authority-filings (UC20, BR-093, BR-104)", () => {
   it("accepts a reference of exactly 100 characters", async () => {
     const context = await setup();
 
-    expect((await context.owner("/mod/authority-filings", { method: "POST", body: { ...filing, reference: "a".repeat(100) } })).status).toBe(204);
+    expect((await context.owner("/owner/authority-filings", { method: "POST", body: { ...filing, reference: "a".repeat(100) } })).status).toBe(204);
   });
 
   it("refuses a wrong secret with 401 and a remote peer with 404", async () => {
     const context = await setup();
 
-    expect((await context.owner("/mod/authority-filings", { method: "POST", body: filing, secret: "x".repeat(32) })).status).toBe(401);
+    expect((await context.owner("/owner/authority-filings", { method: "POST", body: filing, secret: "x".repeat(32) })).status).toBe(401);
     context.peer.address = "203.0.113.5";
-    expect((await context.owner("/mod/authority-filings", { method: "POST", body: filing })).status).toBe(404);
+    expect((await context.owner("/owner/authority-filings", { method: "POST", body: filing })).status).toBe(404);
     expect(context.recordFiling).not.toHaveBeenCalled();
   });
 
   it("answers 404 behind the tunnel (BR-097)", async () => {
     const context = await setup({ behindTunnel: true });
 
-    expect((await context.owner("/mod/authority-filings", { method: "POST", body: filing })).status).toBe(404);
+    expect((await context.owner("/owner/authority-filings", { method: "POST", body: filing })).status).toBe(404);
   });
 
   it("answers 503 when the store fails", async () => {
     const context = await setup();
     context.recordFiling.mockRejectedValueOnce(new Error("down"));
 
-    expect((await context.owner("/mod/authority-filings", { method: "POST", body: filing })).status).toBe(503);
+    expect((await context.owner("/owner/authority-filings", { method: "POST", body: filing })).status).toBe(503);
     expect(context.onError).toHaveBeenCalled();
   });
 });

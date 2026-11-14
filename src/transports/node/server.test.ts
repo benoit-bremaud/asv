@@ -378,7 +378,7 @@ describe("tester exposure (ADR-0018)", () => {
 describe("moderator wiring (moderation/02f)", () => {
   const SECRET = "o".repeat(32);
   const invite = (port: number, secret = SECRET) =>
-    fetch(`http://127.0.0.1:${port}/mod/invitations`, { method: "POST", headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/json" }, body: JSON.stringify({ name: "Marc" }) });
+    fetch(`http://127.0.0.1:${port}/owner/invitations`, { method: "POST", headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/json" }, body: JSON.stringify({ name: "Marc" }) });
 
   it("invites from loopback with the owner secret, on the default public origin", async () => {
     const { port } = await start({ ownerSecret: SECRET });

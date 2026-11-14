@@ -2,6 +2,7 @@
  * Entry, away, resume and leave (UC1, UC10, UC13), study `entry/07-class-domain-api`.
  * Every function is pure: `(state, command, now, random) → { state, effects }`.
  */
+import { quotaKey } from "./ip-key";
 import { canonicalPseudo, containsReservedWord, foldPseudo, hasValidPseudoFormat } from "./pseudo";
 import { hasForbiddenChar } from "./text";
 
@@ -172,7 +173,8 @@ const withoutSession = <S extends EntryState>(state: S, session: Session): S => 
 };
 
 /** BR-007: keeps the last minute of attempts from `ip`, this one included. */
-const recordAttempt = <S extends EntryState>(state: S, ip: string, now: Date): { state: S; earlier: number } => {
+const recordAttempt = <S extends EntryState>(state: S, address: string, now: Date): { state: S; earlier: number } => {
+  const ip = quotaKey(address);
   const since = now.getTime() - ENTRY_LIMITS.attemptWindowMs;
   const recent = (state.entryAttempts.get(ip) ?? []).filter((at) => at.getTime() > since);
   return {

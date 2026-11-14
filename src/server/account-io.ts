@@ -14,6 +14,7 @@ import {
   type VaultRecord,
 } from "../domain";
 import type { Crypto } from "./crypto/cipher";
+import { quotaKey } from "../domain/ip-key";
 
 /** The ports `AccountIo` wraps: the store and the vault never see a clear e-mail or code. */
 export interface AccountIoDeps {
@@ -65,7 +66,7 @@ export const createAccountIo = ({ store, vault, crypto }: AccountIoDeps) => {
   return {
     /** Keyed hashes and quota counts for `decideCodeRequest`. */
     async codeFacts(email: string, ip: string, now: Date) {
-      const ipKeyedHash = await crypto.keyedHash(`ip:${ip}`);
+      const ipKeyedHash = await crypto.keyedHash(`ip:${quotaKey(ip)}`);
       const emailKeyedHash = await crypto.keyedHash(email);
       const counts = await store.codeCounts(emailKeyedHash, ipKeyedHash, now);
       const facts: CodeRequestFacts = {

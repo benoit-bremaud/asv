@@ -13,15 +13,34 @@ describe("runOwnerCommand (moderation/02f)", () => {
 
     expect(line).toContain("http://localhost:5173/#mod/enroll/tok");
     const [url, init] = fetchFn.mock.calls[0] ?? [];
-    expect(url).toBe("http://127.0.0.1:9000/mod/invitations");
+    expect(url).toBe("http://127.0.0.1:9000/owner/invitations");
     expect(init).toMatchObject({ method: "POST", body: JSON.stringify({ name: "Marc" }), headers: { Authorization: `Bearer ${SECRET}` } });
+  });
+
+  it("targets ASV_OWNER_URL, without a trailing slash, and sends no Access header unless both halves are set", async () => {
+    const fetchFn = answer(204);
+    const env = { ASV_OWNER_SECRET: SECRET, ASV_OWNER_URL: "https://staging.asvchat.fr/", ASV_ACCESS_CLIENT_ID: "id" };
+
+    await runOwnerCommand(["revoke", "Marc"], env, fetchFn);
+
+    expect(fetchFn.mock.calls[0]?.[0]).toBe("https://staging.asvchat.fr/owner/moderators/Marc");
+    expect(Object.keys(fetchFn.mock.calls[0]?.[1].headers ?? {})).not.toContain("CF-Access-Client-Id");
+  });
+
+  it("sends the Access service token headers when both ASV_ACCESS_CLIENT_ID and ASV_ACCESS_CLIENT_SECRET are set", async () => {
+    const fetchFn = answer(204);
+    const env = { ASV_OWNER_SECRET: SECRET, ASV_ACCESS_CLIENT_ID: "id.access", ASV_ACCESS_CLIENT_SECRET: "shh" };
+
+    await runOwnerCommand(["revoke", "Marc"], env, fetchFn);
+
+    expect(fetchFn.mock.calls[0]?.[1].headers).toMatchObject({ Authorization: `Bearer ${SECRET}`, "CF-Access-Client-Id": "id.access", "CF-Access-Client-Secret": "shh" });
   });
 
   it("deletes the moderator on the default port", async () => {
     const fetchFn = answer(204);
 
     expect(await runOwnerCommand(["revoke", "Marc"], { ASV_OWNER_SECRET: SECRET }, fetchFn)).toBe("Moderator Marc revoked");
-    expect(fetchFn.mock.calls[0]?.[0]).toBe("http://127.0.0.1:8787/mod/moderators/Marc");
+    expect(fetchFn.mock.calls[0]?.[0]).toBe("http://127.0.0.1:8787/owner/moderators/Marc");
   });
 
   it.each([
@@ -39,7 +58,7 @@ describe("runOwnerCommand (moderation/02f)", () => {
 
     expect(line).toBe("Alert of report r1 recorded as filed (17)");
     const [url, init] = fetchFn.mock.calls[0] ?? [];
-    expect(url).toBe("http://127.0.0.1:8787/mod/authority-filings");
+    expect(url).toBe("http://127.0.0.1:8787/owner/authority-filings");
     expect(init).toMatchObject({ method: "POST", body: JSON.stringify({ reportId: "r1", channel: "17", reference: "appel 2026-11-13T22:10" }) });
   });
 

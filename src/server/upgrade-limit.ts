@@ -1,5 +1,6 @@
 /** WebSocket upgrade limits per IP and in total (BR-089, `platform/02`), checked before any socket exists. */
 
+import { quotaKey } from "../domain/ip-key";
 import { createTokenBucket, type TokenBucket } from "./token-bucket";
 
 /** BR-089 limits; shared by every transport. */
@@ -39,7 +40,8 @@ export const createUpgradeLimiter = (): UpgradeLimiter => {
   const ips = new Map<string, IpEntry>();
   let total = 0;
   return {
-    admit(ip, nowMs) {
+    admit(address, nowMs) {
+      const ip = quotaKey(address);
       let entry = ips.get(ip);
       if (!entry) {
         entry = { bucket: createTokenBucket(UPGRADE_LIMITS.burst, UPGRADE_LIMITS.perSecond, nowMs), open: 0 };
@@ -52,8 +54,8 @@ export const createUpgradeLimiter = (): UpgradeLimiter => {
       total += 1;
       return "ok";
     },
-    release(ip) {
-      const entry = ips.get(ip);
+    release(address) {
+      const entry = ips.get(quotaKey(address));
       if (!entry || entry.open === 0) return;
       entry.open -= 1;
       total -= 1;

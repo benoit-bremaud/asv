@@ -1,5 +1,5 @@
 /**
- * The `/mod/*` routes of brick 8b (`moderation/02f`): owner invitation and revocation (BR-093), passkey
+ * The `/mod/*` and `/owner/*` routes of brick 8b (`moderation/02f`): owner invitation and revocation (BR-093, under `/owner` since brick 9), passkey
  * enrolment and sign-in with SimpleWebAuthn (BR-094 to BR-098), all 404 behind the tester tunnel (BR-097).
  */
 import {
@@ -15,6 +15,7 @@ import { isFilingReference, isModeratorName, parseFilingChannel, type AlertChann
 import { fromBase64, toBase64Url } from "./crypto/keys";
 import type { ModeratorOps } from "./hub-moderators";
 import { signGrant } from "./moderator-grant";
+import { quotaKey } from "../domain/ip-key";
 import { createTokenBucket, type TokenBucket } from "./token-bucket";
 
 /** BR-093: shorter owner secrets stop the server at start. */
@@ -102,6 +103,7 @@ const signedChallenge = (response: RegistrationResponseJSON | AuthenticationResp
 export const addModeratorRoutes = (app: Hono, deps: ModeratorRouteDeps): void => {
   if (deps.behindTunnel) {
     app.all("/mod/*", (c) => c.body(null, 404, NO_STORE));
+    app.all("/owner/*", (c) => c.body(null, 404, NO_STORE));
     return;
   }
   const { ops, now } = deps;
@@ -110,7 +112,7 @@ export const addModeratorRoutes = (app: Hono, deps: ModeratorRouteDeps): void =>
   const buckets = new Map<string, TokenBucket>();
 
   const ceremonyAllowed = (c: Context): boolean => {
-    const ip = deps.peerAddress(c) ?? "unknown";
+    const ip = quotaKey(deps.peerAddress(c) ?? "unknown");
     const nowMs = now().getTime();
     for (const [key, bucket] of buckets) if (bucket.isFull(nowMs)) buckets.delete(key);
     const bucket = buckets.get(ip) ?? createTokenBucket(CEREMONY_BUCKET.capacity, CEREMONY_BUCKET.perSecond, nowMs);
@@ -154,7 +156,7 @@ export const addModeratorRoutes = (app: Hono, deps: ModeratorRouteDeps): void =>
 
   app.get("/mod/status", (c) => c.json({ enabled: true }, 200, NO_STORE));
 
-  app.post("/mod/invitations", guarded(async (c) => {
+  app.post("/owner/invitations", guarded(async (c) => {
     const refused = await ownerRefusal(c);
     if (refused) return refused;
     const name = (await readBody(c))?.name;
@@ -164,7 +166,7 @@ export const addModeratorRoutes = (app: Hono, deps: ModeratorRouteDeps): void =>
     return c.json({ link: `${deps.publicOrigin}/#mod/enroll/${token}` }, 201, NO_STORE);
   }));
 
-  app.delete("/mod/moderators/:name", guarded(async (c) => {
+  app.delete("/owner/moderators/:name", guarded(async (c) => {
     const refused = await ownerRefusal(c);
     if (refused) return refused;
     const name = c.req.param("name") ?? "";
@@ -173,7 +175,7 @@ export const addModeratorRoutes = (app: Hono, deps: ModeratorRouteDeps): void =>
   }));
 
   /** UC20 (`moderation/02h`): 204 filed, 409 already filed, 404 unknown report or no alert, 400 bad input. */
-  app.post("/mod/authority-filings", guarded(async (c) => {
+  app.post("/owner/authority-filings", guarded(async (c) => {
     const refused = await ownerRefusal(c);
     if (refused) return refused;
     const body = await readBody(c);

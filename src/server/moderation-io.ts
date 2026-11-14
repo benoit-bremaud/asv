@@ -21,6 +21,7 @@ import {
   type TriageLabel,
 } from "../domain";
 import type { Crypto } from "./crypto/cipher";
+import { quotaKey } from "../domain/ip-key";
 
 export interface ModerationIoDeps {
   readonly store: ModerationStore;
@@ -52,7 +53,8 @@ const field = (id: string, name: string) => `report:${id}:${name}`;
 
 /** Builds the boundary; store and crypto errors propagate, the hub answers `warning unavailable`. */
 export const createModerationIo = ({ store, crypto }: ModerationIoDeps) => {
-  const ipHash = (ip: string) => crypto.keyedHash(`ip:${ip}`);
+  /** BR-112: every IP-keyed ban, report and triage hash uses the quota key (/64 for IPv6). */
+  const ipHash = (ip: string) => crypto.keyedHash(`ip:${quotaKey(ip)}`);
   const pseudoHash = (pseudo: string) => crypto.keyedHash(`pseudo:${foldPseudo(pseudo)}`);
   const optional = async (value: string | undefined, id: string, name: string) =>
     value === undefined ? undefined : crypto.encrypt(value, field(id, name));
