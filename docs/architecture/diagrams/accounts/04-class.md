@@ -57,12 +57,6 @@ classDiagram
     +String emailKeyedHash
     +Date[] strikeExpiries
   }
-  class PendingStatement {
-    +String id
-    +String email «encrypted»
-    +String statement «encrypted»
-    +Date createdAt
-  }
   class AccountStore {
     <<interface>>
     +saveCode(code)
@@ -84,9 +78,6 @@ classDiagram
     +saveCarryOver(record)
     +loadCarryOver(emailKeyedHash) StrikeCarryOver
     +deleteCarryOver(emailKeyedHash)
-    +savePendingStatement(statement)
-    +pendingStatements() PendingStatement[]
-    +deletePendingStatement(id)
     +purgeExpired(now)
   }
   class VaultRecord {
@@ -106,6 +97,10 @@ classDiagram
     +record(entry)
     +opened(entry) optional
     +purgeExpired(now)
+  }
+  class AccountClosing {
+    <<interface>>
+    +closeAccount(entry, emailKeyedHash, carryOver)
   }
   class Mailer {
     <<interface>>
@@ -128,7 +123,7 @@ classDiagram
   AccountStore ..> PendingCode
   AccountStore ..> EmailBlock
   AccountStore ..> StrikeCarryOver
-  AccountStore ..> PendingStatement
+  AccountClosing ..> VaultRecord
   LegalVaultStore ..> VaultRecord
   LegalVaultStore ..> AccessEntry
 ```
@@ -145,12 +140,17 @@ classDiagram
   ciphertext or keys. It is drawn here because the stores receive its output.
 
 - `EmailBlock` and `StrikeCarryOver` keep only an HMAC of the e-mail, never the address (BR-077, BR-080).
-- A `PendingStatement` keeps the address only until the mailer accepts the statement of reasons, then
-  is deleted, so the art. 17 notice is not lost if sending fails (retries for at most 7 days).
+- The pending statement of reasons (BR-076) lives on `ModerationStore` (`moderation/04`), not here.
 - `Session` gains optional `accountId` and `deviceTokenHash` (see `entry/04`).
 - One port for all account records is enough: there is one SQLite store and one in-memory twin.
 - `LegalVaultStore` is a separate write-only port (ADR-0014, brick 5): `record` and `purgeExpired`, no read
-  operation. `record` runs first and `deleteAccount` only after it succeeds; brick 9 wraps both in one storage transaction (BR-081). `createdAt` is `verifiedAt`.
+  operation. `createdAt` is `verifiedAt`.
+- `AccountClosing.closeAccount` (UC19, BR-081) writes the vault record, deletes the account and its devices
+  and saves the carry-over as one store operation, after `AccountIo` has sealed the e-mail. On Cloudflare it
+  runs in one SQLite transaction (`storage.transactionSync`), so any failure leaves nothing written. On Node
+  the in-memory account store and the file vault share no transaction: the adapter runs the writes in order,
+  vault first, so a failed vault write deletes nothing, but a failure after it leaves the vault row and the
+  account (a retry then adds a second vault row).
   Optional `opened(entry)`, implemented only by a vault that outlives the account store (file vault of ADR-0018,
   BR-084): `AccountIo.saveAccount` calls it for a created account with the sealed e-mail and `verifiedAt`.
   `purgeExpired` drops `accountId` 1 year and the whole record 5 years after `closedAt`, and also purges access

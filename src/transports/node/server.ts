@@ -10,7 +10,7 @@ import type { Duplex } from "node:stream";
 import { WebSocketServer, type RawData, type WebSocket } from "ws";
 import { createAccountIo } from "../../server/account-io";
 import { serveStatic } from "@hono/node-server/serve-static";
-import { createApp, DEVICE_COOKIE, type LegalIdentity } from "../../server/app";
+import { createApp, deviceCookieOf, type LegalIdentity } from "../../server/app";
 import { createCrypto, type Crypto as Cipher } from "../../server/crypto/cipher";
 import { cryptoKeysFromEnv, type CryptoEnv } from "../../server/crypto/keys";
 import { createHub, type Outgoing } from "../../server/hub";
@@ -124,15 +124,6 @@ export interface NodeServer {
   readonly moderation: ReturnType<typeof createMemoryModerationStore>;
   stop(): Promise<void>;
 }
-
-/** The raw device cookie of an upgrade request; the hub only ever gets its hash (`platform/04d`). */
-const deviceCookie = (header: string | undefined): string | undefined => {
-  for (const part of (header ?? "").split(";")) {
-    const [name, ...value] = part.trim().split("=");
-    if (name === DEVICE_COOKIE && value.length > 0) return value.join("=");
-  }
-  return undefined;
-};
 
 // The default `binaryType` ("nodebuffer") delivers one Buffer; the other shapes are typed, never sent.
 const toText = (data: RawData): string => (Array.isArray(data) ? Buffer.concat(data) : Buffer.from(data as ArrayBuffer)).toString();
@@ -303,7 +294,7 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
     const budget = createFrameBudget(entry.lastSeen);
     sockets.set(key, entry);
     // Set on an open socket; empty only if it died before this line.
-    const device = deviceCookie(request.headers.cookie);
+    const device = deviceCookieOf(request.headers.cookie);
     const { ip, port } = clientAddress(request, behindTunnel);
     hub.open(key, ip, port, device && random.hashToken(device));
     ws.on("message", (data, isBinary) => {

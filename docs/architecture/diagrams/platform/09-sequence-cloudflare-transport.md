@@ -51,7 +51,7 @@ sequenceDiagram
     H->>S: store writes through the ports (ciphertext, ADR-0017)
     H-->>B: outgoing messages
   end
-  par timers while in memory (BR-110)
+  par timers while a socket is open (BR-110)
     H->>H: hub.tick every second, heartbeat sweep (own last-frame time, 60 s limit)
   and alarm, earliest of next due retry and next daily purge
     H->>S: purge expired rows, retry alerts, decision e-mails and pending statements
@@ -72,7 +72,7 @@ sequenceDiagram
   `assets.run_worker_first: true`, checks the Origin, `CF-Connecting-IP` and the Access JWT, and forwards every
   non-asset request to the Hub, which holds the grant key and used nonces (BR-095), the challenge windows
   (BR-096) and the stats. It passes nothing secret in the forwarded request.
-- `socketKey` is a random id held in a `Map` of the object, the same role as on Node.
+- `socketKey` is a counter (`String(nextKey++)`) held in a `Map` of the object, as on Node.
 - The Durable Object's tables mirror the Node stores one to one: `connection_lines`, `contribution_lines`,
   `accounts`, `codes`, `code_events`, `devices`, `email_blocks`, `carry_overs`, `vault`, `reports`,
   `alerts`, `pending_mails`, `pending_statements` (encrypted, so a deploy does not drop a pending statement of
@@ -80,3 +80,19 @@ sequenceDiagram
   `blockConcurrencyWhile`; migrations are additive only (`platform/10`).
 - Away records, room state, the grant key, pending challenges, triage counters and flood counters are in memory
   and lost on a deploy (BR-109). On Node, pending statements of reasons are in memory only: a known gap, follow-up #234.
+- Implementation precisions (brick 9b): the stores are written against a minimal `SqlStorage` interface
+  (`sql.exec`, `transactionSync`), so they are tested on `node:sqlite`; every multi-row write runs in one
+  `transactionSync`, and a storage error reaches the caller as a rejected promise. The connection line keeps
+  IP, port, pseudo and account id in one ciphertext bound to the connection id; dates and protocols stay clear.
+  The daily purge time is kept in a `meta` row (`lastPurgeAt`) with the schema version. The hub gains
+  `maintain(now, purge)` and `maintenanceInTick: false`, so purges and retry rounds run from the alarm only.
+  The `/owner/*` loopback check is off on Cloudflare (`ownerLoopbackOnly: false`, BR-093), and the peer
+  address there is `CF-Connecting-IP`. A refused or silent socket is closed with no code or 1008, then the
+  hub's close runs at once, as on Node, even when the runtime throws on `close()`. The tick and the sweep start
+  with the first accepted socket, which also runs one tick at once (away sessions expired meanwhile), and stop
+  with the last close; an alarm wake starts neither. An oversize frame
+  goes to `hub.receive`, which counts it as invalid (`frameTooLarge`), so the fifth in a row closes the socket
+  (BR-088). After a failed daily purge (log, moderator, account, vault or moderation store) `lastPurgeAt` is left unchanged and the alarm is re-armed no sooner than 10 minutes. The daily moderation
+  purge also drops `pending_statements` past `give_up_at` and `pending_mails` past the 7-day give-up window.
+  Closing an account (UC19, BR-081) writes the vault row, the account and device deletes and the carry-over in
+  one `transactionSync`.

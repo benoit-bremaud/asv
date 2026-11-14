@@ -1,4 +1,4 @@
-import { Hono, type Context } from "hono";
+import { Hono, type Context, type MiddlewareHandler } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { secureHeaders } from "hono/secure-headers";
 import { ACCOUNT_LIMITS } from "../domain";
@@ -9,6 +9,15 @@ import type { DeviceToken, Stats } from "./hub";
  * from cross-site posts; keep both when editing the routes.
  */
 export const DEVICE_COOKIE = "asv_device";
+
+/** The raw device cookie of an upgrade request; the hub only ever gets its hash (`platform/04d`). */
+export const deviceCookieOf = (header: string | null | undefined): string | undefined => {
+  for (const part of (header ?? "").split(";")) {
+    const [name, ...value] = part.trim().split("=");
+    if (name === DEVICE_COOKIE && value.length > 0) return value.join("=");
+  }
+  return undefined;
+};
 
 /** The account routes of `platform/04d`; the transport binds them to its hub. */
 export interface AccountRouteDeps {
@@ -56,6 +65,29 @@ const readClaim = async (c: Context): Promise<string | undefined> => {
 };
 
 /**
+ * BR-086 headers as a Hono middleware; the Cloudflare Worker applies the same one to static assets.
+ * `secureCookie` also turns HSTS on.
+ */
+export const securityHeaders = (secureCookie: boolean): MiddlewareHandler =>
+  secureHeaders({
+    contentSecurityPolicy: {
+      defaultSrc: ["'self'"],
+      connectSrc: ["'self'"],
+      imgSrc: ["'self'", "data:"],
+      styleSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      frameAncestors: ["'none'"],
+      baseUri: ["'none'"],
+      formAction: ["'self'"],
+      objectSrc: ["'none'"],
+    },
+    referrerPolicy: "no-referrer",
+    // #69: deny the powerful features the chat never uses (a literal, so the compiler checks every name).
+    permissionsPolicy: { camera: false, microphone: false, geolocation: false, payment: false, usb: false, serial: false, hid: false, displayCapture: false, browsingTopics: false },
+    strictTransportSecurity: secureCookie ? "max-age=15552000" : false,
+  });
+
+/**
  * Builds the Hono app. Each transport calls it and plugs in its hub; the server never
  * imports a transport (ADR-0002). The WebSocket upgrade belongs to the transport (`platform/02`).
  */
@@ -63,26 +95,8 @@ export const createApp = (deps: AppDeps): Hono => {
   const app = new Hono();
   const { accounts } = deps;
   // BR-086: on every response, routes added later by the transport included.
-  app.use(
-    "*",
-    secureHeaders({
-      contentSecurityPolicy: {
-        defaultSrc: ["'self'"],
-        connectSrc: ["'self'"],
-        imgSrc: ["'self'", "data:"],
-        styleSrc: ["'self'"],
-        scriptSrc: ["'self'"],
-        frameAncestors: ["'none'"],
-        baseUri: ["'none'"],
-        formAction: ["'self'"],
-        objectSrc: ["'none'"],
-      },
-      referrerPolicy: "no-referrer",
-      // #69: deny the powerful features the chat never uses (a literal, so the compiler checks every name).
-      permissionsPolicy: { camera: false, microphone: false, geolocation: false, payment: false, usb: false, serial: false, hid: false, displayCapture: false, browsingTopics: false },
-      strictTransportSecurity: accounts.secureCookie ? "max-age=15552000" : false,
-    }),
-  );
+  app.use("*", securityHeaders(accounts.secureCookie));
+
   // Aggregate only, no pseudo (`platform/04`, D8).
   app.get("/api/stats", (c) => c.json(deps.stats(), 200, NO_STORE));
   app.get("/api/legal", (c) => c.json(deps.legal ?? {}, 200, NO_STORE));

@@ -24,6 +24,9 @@ export interface ContributionLine {
   readonly at: Date;
 }
 
+/** Connection and contribution lines are kept 1 year (BR-060), on every transport. */
+export const LOG_RETENTION_MS = 365 * 24 * 60 * 60_000;
+
 /** Legal connection and contribution log (BR-060, ADR-0014); every write may fail. */
 export interface ConnectionLogStore {
   open(line: ConnectionLine): Promise<void>;
@@ -72,6 +75,7 @@ export interface StoredReport {
   readonly triage?: StoredTriage;
   readonly closed?: {
     readonly outcome: ReportOutcome;
+    /** Ciphertext of the moderator's name (ADR-0017). */
     readonly by: string;
     readonly at: Date;
   };
@@ -102,6 +106,17 @@ export interface PendingDecisionMail {
   readonly createdAt: Date;
 }
 
+/**
+ * A statement of reasons not yet accepted by the provider (BR-076, BR-109): address and text ciphertext,
+ * given up at `giveUpAt`. Stored on Cloudflare so a deploy never drops it; in memory on Node (#234).
+ */
+export interface PendingStatement {
+  readonly id: string;
+  readonly email: string;
+  readonly text: string;
+  readonly giveUpAt: Date;
+}
+
 /** A triage as stored with its report (`moderation/04`, ADR-0017). */
 export interface StoredTriage {
   readonly category: Triage["category"];
@@ -118,6 +133,7 @@ export interface StoredBan {
   /** Keyed hash of the folded pseudo, to match at entry. */
   readonly pseudoKeyedHash?: string;
   readonly until: Date;
+  /** Ciphertext of the moderator's name (ADR-0017). */
   readonly decidedBy: string;
   readonly decidedAt: Date;
 }
@@ -146,6 +162,9 @@ export interface ModerationStore {
   savePendingDecisionMail(mail: PendingDecisionMail): Promise<void>;
   pendingDecisionMails(): Promise<readonly PendingDecisionMail[]>;
   deletePendingDecisionMail(id: string): Promise<void>;
+  savePendingStatement(statement: PendingStatement): Promise<void>;
+  pendingStatements(): Promise<readonly PendingStatement[]>;
+  deletePendingStatement(id: string): Promise<void>;
   saveBan(ban: StoredBan): Promise<void>;
   /** The latest-ending ban matching either key and still running at `now`. */
   activeBan(ipKeyedHash: string, pseudoKeyedHash: string, now: Date): Promise<StoredBan | undefined>;
@@ -268,6 +287,15 @@ export interface LegalVaultStore {
   /** Only stores that outlive the account store implement it (file vault of ADR-0018). */
   opened?(entry: VaultOpening): Promise<void>;
   purgeExpired(now: Date): Promise<void>;
+}
+
+/**
+ * UC19, BR-081: closing an account as one store operation: the vault record, the account and device deletes
+ * and the strike carry-over. Atomic on Cloudflare (one SQLite transaction); the Node adapter runs the same
+ * writes in order, vault first, over stores that are not transactional (`accounts/04`).
+ */
+export interface AccountClosing {
+  closeAccount(entry: VaultEntry, emailKeyedHash: string, carryOver: readonly Date[] | undefined): Promise<void>;
 }
 
 /** Transactional mail (ADR-0013 amendment): the brasse-bouillon `MailerService` port. */

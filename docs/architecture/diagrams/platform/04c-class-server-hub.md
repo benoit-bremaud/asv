@@ -23,6 +23,7 @@ classDiagram
     +receive(socketKey, raw, now) Promise~Outgoing[]~
     +close(socketKey, now) Promise~Outgoing[]~
     +tick(now) Promise~Outgoing[]~
+    +maintain(now, purge) Promise~boolean~
     +stats() Stats
   }
   class HubDeps {
@@ -39,6 +40,11 @@ classDiagram
     +ModerationIo moderation
     +Bytes grantKey
     +Boolean canReport
+    +Boolean maintenanceInTick
+  }
+  class ModeratorRouteDeps {
+    <<src/server/moderator-routes.ts>>
+    +Boolean ownerLoopbackOnly
   }
   class ConnectionLogStore {
     <<interface, src/domain/ports.ts>>
@@ -136,6 +142,13 @@ classDiagram
 
 ## Notes
 
+- `maintain(now, purge)` (BR-110): the store purges when `purge` is true, then one mail retry round;
+  it resolves `false` when a requested purge failed, so the alarm leaves `lastPurgeAt` unchanged and retries.
+  `HubDeps.maintenanceInTick` defaults to `true`: the Node transport keeps both in `tick`. The Hub Durable
+  Object sets it to `false` and calls `maintain` from its alarm instead (`platform/09`).
+- `ModeratorRouteDeps.ownerLoopbackOnly` defaults to `true` (Node: `/owner/*` from loopback only); the
+  Cloudflare transport sets it to `false`, the owner secret and Access guarding the routes (BR-093, BR-113).
+
 - `Socket.unboundSince` (BR-089): epoch milliseconds of the first `tick` that saw the socket without a
   session; a bound socket clears it, and `leave` clears it too (a session may enter and leave between two ticks), so the count restarts. When it is 10 minutes old, `tick` calls
   `closeSocket(key, "unbound")` once; `unboundClosed` records that request so later ticks do not repeat it. Setting it from `tick` keeps `open` unchanged and works the same on
@@ -151,7 +164,7 @@ The hub is split by command group, all behind the same `createHub(HubDeps)`:
 |---|---|
 | `src/server/hub.ts` | live state, sockets, serial queue, `receive`/`close`/`tick`, entry commands (`enter`, `resume`, `leave`), rooms commands, and the **handler map** |
 | `src/server/outgoing.ts` | effect mapping: `sessionOf`, `toMember`, `send`, `error`, `warning`, `keysOf`, `roomJoined`, `roomOutgoing` (with the `roomList` broadcast), `memberAwayInRooms`, `memberBackInRooms` |
-| `src/server/hub-moderation.ts` | brick 8a commands (`report`, `listOpenReports`, `expel`, `closeReport`, `confirmSuspension`, `declineSuspension`) and the statement retry of the tick; brick 8c adds the triage call through the `ReportTriage` dependency with the daily cap (200) and the per-reporter quota (20), `listAlertedReports`, `removeRoom`, `expel.severe`, `alertAuthorities`, and the tick retries of the authority alert and decision e-mails. `warn` answers `notAvailable` |
+| `src/server/hub-moderation.ts` | brick 8a commands (`report`, `listOpenReports`, `expel`, `closeReport`, `confirmSuspension`, `declineSuspension`) and the statement retry of the tick; brick 8c adds the triage call through the `ReportTriage` dependency with the daily cap (200) and the per-reporter quota (20), `listAlertedReports`, `removeRoom`, `expel.severe`, `alertAuthorities`, and the tick retries of the authority alert and decision e-mails (the alarm on Cloudflare, see `maintenanceInTick`). `warn` answers `notAvailable` |
 | `src/server/moderation-mail.ts` | brick 8c-2: texts of the statements and decision e-mail, sending without waiting and the 10-minute retry round, 7 days at most (BR-076, BR-104, BR-107) |
 | `src/server/moderation-io.ts` | encryption at rest of reports and keyed hashes of bans around the `ModerationStore` port (ADR-0017) |
 | `src/server/moderator-grant.ts` | build and check of the passkey grant (BR-095); replaces the 8a `moderator-token.ts` (BR-091); the used-nonce set lives in `hub.ts`, which runs entries one at a time |
@@ -307,5 +320,5 @@ classDiagram
   of `ASV_MODERATOR_TOKEN` (absent: no grant), `canReport` false behind the tester tunnel. Moderation
   commands live in `hub-moderation.ts`: `error(forbidden)` for a non-moderator comes before any other
   check, `error(invalid, notAvailable)` for `warn`. The entry checks `activeBan` before the
-  domain; a store failure answers `warning(unavailable)`. The tick retries refused statements of reasons every
+  domain; a store failure answers `warning(unavailable)`. The tick (the alarm on Cloudflare, see `maintenanceInTick`) retries refused statements of reasons every
   10 minutes, never awaited.

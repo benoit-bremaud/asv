@@ -28,7 +28,7 @@ export const config = defineConfig({
     coverage: {
       provider: "v8",
       include: ["src/**/*.{ts,tsx}"],
-      exclude: ["src/**/*.test.{ts,tsx}", "src/web/main.tsx", "src/transports/node/main.ts", "src/transports/node/owner-cli-main.ts"],
+      exclude: ["src/**/*.test.{ts,tsx}", "src/web/main.tsx", "src/transports/node/main.ts", "src/transports/node/owner-cli-main.ts", "src/transports/cloudflare/test-*.ts"],
       reporter: ["text", "lcov"],
       thresholds: { lines: 80, functions: 80, branches: 80, statements: 80 },
     },

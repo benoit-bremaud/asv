@@ -150,11 +150,11 @@ security near 0). Owner choice B on 2026-11-14.
    answers `ping` itself, as on Node (BR-088), and the heartbeat sweep (every 15 seconds as on Node, silence limit
    60 seconds from ADR-0011 point 3) uses the object's own last-frame time per socket. The Durable Object code update strategy is `immediate`, set in
    `wrangler.jsonc`.
-3. **Timers and one alarm**: while the object is in memory, the same timers as the Node transport run the hub
-   `tick` and the heartbeat sweep; store purges leave the one-second tick and run in the alarm. One alarm, re-armed
+3. **Timers and one alarm**: while at least one socket is open (from the first accepted socket to the last
+   close), the same timers as the Node transport run the hub `tick` and the heartbeat sweep; store purges leave the one-second tick and run in the alarm. One alarm, re-armed
    each time at the earliest of the next due retry (every 10 minutes while an authority alert, a decision e-mail
    or a statement of reasons is pending: BR-076, BR-104, BR-107) and the next daily purge, runs even when no
-   socket is open (BR-110).
+   socket is open; a failed daily purge is retried at the next alarm, at least 10 minutes later (BR-110).
 4. **Stores in the Durable Object's SQLite**: one table set per port (`ConnectionLogStore`, `AccountStore`,
    `LegalVaultStore`, `ModerationStore`, `ModeratorStore`), with the same ciphertext and keyed hashes as the
    Node stores (ADR-0017, BR-083), plus an encrypted `pending_statements` table so a deploy never drops a
@@ -183,8 +183,13 @@ security near 0). Owner choice B on 2026-11-14.
     `ASV_VAULT_PUBLIC_KEY`, `ASV_OWNER_SECRET`, `BREVO_API_KEY`, `ASV_MISTRAL_API_KEY` and the legal identity
     fields `ASV_OWNER_NAME`, `ASV_OWNER_ADDRESS`, `ASV_OWNER_PHONE`, `ASV_CONTACT_EMAIL`, `ASV_BREVO_LOCATION`.
     Non-secret variables in `wrangler.jsonc`: `ASV_ALLOWED_ORIGINS`, `ASV_PUBLIC_ORIGIN`, `ASV_MAIL_FROM`,
-    `ASV_TRIAGE_MODEL`, `ASV_ACCESS_AUD_SITE`, `ASV_ACCESS_AUD_OWNER`. Without the Mistral key the no-AI adapter runs (ADR-0019). Each token gets a descriptive
-    name and an expiry at creation.
+    `ASV_TRIAGE_MODEL`, `ASV_ACCESS_AUD_SITE`, `ASV_ACCESS_AUD_OWNER`, `ASV_ACCESS_TEAM_DOMAIN`
+    (`<team>.cloudflareaccess.com`: issuer and JWKS host of the Access tokens, BR-113) and `ASV_MODERATION`
+    (`on` in staging, `off` in production until the impact assessment is signed: D5, BR-108; any other value
+    is refused with 503, BR-111). Without the Mistral key the no-AI adapter runs (ADR-0019). Each token gets a descriptive
+    name and an expiry at creation. On Cloudflare the device-token hash key is derived from `ASV_HMAC_KEY`
+    (HMAC with the label `asv-device-token-v1` preceded by a NUL byte, which no keyed hash input can equal), so a device cookie still signs its member back in after a
+    deploy (BR-109); the Worker uses the `nodejs_compat` flag for it.
 11. **Deploy procedure** (`platform/10`): green gate on `main`, deploy to staging, QA pass on staging (JRN-43 to
     JRN-45), signed release tag `vX.Y.Z`, deploy to production from the tag at a quiet hour; a rollback is allowed
     only when no schema change landed since the target version (migrations are additive only). Every real

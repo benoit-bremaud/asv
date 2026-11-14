@@ -63,5 +63,9 @@ flowchart TB
   so the no-AI adapter runs there.
 - Secret values live in Wrangler secrets, never in the repo (BR-111); the legal identity fields (`ASV_OWNER_NAME`,
   `ASV_OWNER_ADDRESS`, `ASV_OWNER_PHONE`, `ASV_CONTACT_EMAIL`, `ASV_BREVO_LOCATION`) are secrets too. Non-secret
-  variables in `wrangler.jsonc`: `ASV_ALLOWED_ORIGINS`, `ASV_PUBLIC_ORIGIN`, `ASV_MAIL_FROM`, `ASV_TRIAGE_MODEL`, `ASV_ACCESS_AUD_SITE`, `ASV_ACCESS_AUD_OWNER`.
+  variables in `wrangler.jsonc`: `ASV_ALLOWED_ORIGINS`, `ASV_PUBLIC_ORIGIN`, `ASV_MAIL_FROM`, `ASV_TRIAGE_MODEL`, `ASV_ACCESS_AUD_SITE`, `ASV_ACCESS_AUD_OWNER`,
+  `ASV_ACCESS_TEAM_DOMAIN` (issuer and JWKS host of the Access tokens, BR-113) and `ASV_MODERATION` (`on` in
+  staging, `off` in production until the impact assessment is signed, BR-108; any other value is refused with
+  503, BR-111); the file ships `TBD-by-owner`
+  placeholders the Worker refuses with 503 (BR-111).
   Each environment sets `workers_dev: false` and `preview_urls: false`.

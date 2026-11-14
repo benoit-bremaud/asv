@@ -111,6 +111,12 @@ classDiagram
     +String text «encrypted»
     +Date createdAt
   }
+  class PendingStatement {
+    +String id
+    +String email «encrypted»
+    +String text «encrypted»
+    +Date giveUpAt
+  }
   class AlertStatus {
     <<enumeration>>
     pending
@@ -156,6 +162,9 @@ classDiagram
     +savePendingDecisionMail(mail)
     +pendingDecisionMails() PendingDecisionMail[]
     +deletePendingDecisionMail(id)
+    +savePendingStatement(statement)
+    +pendingStatements() PendingStatement[]
+    +deletePendingStatement(id)
     +purgeExpired(now)
   }
   class ModerationIo {
@@ -197,6 +206,7 @@ classDiagram
   ModerationIo ..> ModerationStore
   ModerationStore ..> Ban
   ModerationStore ..> PendingDecisionMail
+  ModerationStore ..> PendingStatement
   ModeratorStore ..> Moderator
   ModeratorStore ..> Invitation
 ```
@@ -209,7 +219,12 @@ classDiagram
 
 - Store ports sit next to the domain, implemented in memory (Node) and in Durable Object SQLite (Cloudflare).
 - `ReportTriage` wraps the third-party AI (ADR-0010). A no-AI adapter returns urgency `unknown`.
-- `purgeExpired` applies BR-061 and BR-062 and is called by the hub's daily alarm (ADR-0011).
+- `purgeExpired` applies BR-061 and BR-062 and is called by the hub's daily alarm (ADR-0011). The SQLite
+  store also drops a `PendingStatement` past `giveUpAt` and a `PendingDecisionMail` older than the 7-day
+  give-up window, even when a retry round cannot read it (BR-076, BR-107).
+- A `PendingStatement` keeps the address and the text, encrypted, only until the mailer accepts the
+  statement of reasons (BR-076, BR-109), then is deleted; it is given up at `giveUpAt` (7 days).
+- `Report.closed.by` and `Ban.decidedBy` hold the moderator's name, encrypted at rest (ADR-0017).
 - `signCount` helps detect cloned authenticators.
 - Strikes and e-mail blocks live with accounts (see `accounts/04-class`). `targetAccountId` and
   `targetIpKeyedHash` are captured when the report is filed, so a strike or a suspension ban can be
@@ -266,8 +281,8 @@ The contract stays `platform/04-class-protocol`. Brick 8a uses it as follows:
   lists open reports only.
 - `saveAuthorityAlert` is idempotent: one alert per report, a second call returns `false` and changes
   nothing. `markAlertNotified` sets `notifiedAt` once the owner alert is accepted; until then the hub
-  tick retries it (BR-104). `recordFiling` returns `filed`, `alreadyFiled` (409) or `noAlert` (404).
-- `PendingDecisionMail` mirrors `PendingStatement` (`accounts/04`): kept until the mailer accepts the
+  tick retries it on Node, the alarm on Cloudflare (BR-104, BR-110). `recordFiling` returns `filed`, `alreadyFiled` (409) or `noAlert` (404).
+- `PendingDecisionMail` mirrors `PendingStatement` (above): kept until the mailer accepts the
   decision e-mail, 7 days max (BR-107).
 - `OffenceCategory` matches the rows of `security-and-rgpd.md` §6 and is always the moderator's choice,
   never copied from `TriageCategory` (ADR-0010).

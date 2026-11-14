@@ -7,7 +7,8 @@ import { ACCOUNT_LIMITS } from "../../domain";
 import { createAccountIo } from "../../server/account-io";
 import { createCrypto } from "../../server/crypto/cipher";
 import { cryptoKeysFromEnv } from "../../server/crypto/keys";
-import { createFileLog, createFileVault, LOG_RETENTION_MS } from "./file-stores";
+import { LOG_RETENTION_MS } from "../../domain";
+import { createFileLog, createFileVault } from "./file-stores";
 import { createMemoryAccountStore } from "./memory-accounts";
 
 const T0 = new Date("2026-10-24T10:00:00Z");

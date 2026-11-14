@@ -38,7 +38,7 @@ sequenceDiagram
       H->>D: suspend(state, account, moderator, now)
       D-->>H: Statement + block until now + 7 days + all sessions and away records + IP and pseudo ban
       H->>ST: save ban (keyed IP and pseudo hashes)
-      H->>AS: blockEmail, deleteAccount + vault record, same transaction (BR-081)
+      H->>AS: blockEmail, deleteAccount + vault record (BR-081: one transaction on Cloudflare, vault first on Node)
       H-)ML: send statement of reasons, not awaited (refused: retried every 10 min, BR-076)
       H-->>T: expelled(until) then close every socket of the account
       H->>ST: close report with outcome suspended
@@ -63,6 +63,6 @@ sequenceDiagram
   the active strikes, not stored (BR-075).
 - The statement of reasons lists the facts, the terms clause, whether AI triage was used, and how to
   contest by replying to the contact address (DSA art. 17). It is retried until sent, for at most 7 days.
-- Every account deletion, including this one, writes the legal retention record to the vault in the same
-  transaction (ADR-0014). The vault holds no reason, strike or report.
+- Every account deletion, including this one, writes the legal retention record to the vault (BR-081: one
+  transaction on Cloudflare, vault first on Node; ADR-0014). The vault holds no reason, strike or report.
 - A warning itself restricts nothing, so it is notified in the chat only.

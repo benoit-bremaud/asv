@@ -4,7 +4,7 @@ import { createAccountIo } from "./account-io";
 import { createCrypto } from "./crypto/cipher";
 import { cryptoKeysFromEnv } from "./crypto/keys";
 import { CAPS, type ServerMessage } from "../shared/protocol";
-import { createHub, type Outgoing } from "./hub";
+import { createHub, type HubDeps, type Outgoing } from "./hub";
 import { createModerationIo } from "./moderation-io";
 
 const T0 = new Date("2026-10-23T10:00:00Z");
@@ -71,6 +71,9 @@ const quietModeration: ModerationStore = {
   savePendingDecisionMail: unused,
   pendingDecisionMails: () => Promise.resolve([]),
   deletePendingDecisionMail: unused,
+  savePendingStatement: unused,
+  pendingStatements: () => Promise.resolve([]),
+  deletePendingStatement: unused,
   saveTriage: unused,
   saveBan: unused,
   activeBan: () => Promise.resolve(undefined),
@@ -78,7 +81,7 @@ const quietModeration: ModerationStore = {
 };
 const crypto = createCrypto(await cryptoKeysFromEnv({}, false, () => undefined));
 
-const setup = (hashToken = (value: string) => `h:${value}`, store: Partial<AccountStore> = {}) => {
+const setup = (hashToken = (value: string) => `h:${value}`, store: Partial<AccountStore> = {}, extra: Partial<HubDeps> = {}) => {
   let n = 0;
   const log = fakeLog();
   const onLogError = vi.fn();
@@ -105,6 +108,7 @@ const setup = (hashToken = (value: string) => `h:${value}`, store: Partial<Accou
     mailer: { sendCode: unused, sendStatementOfReasons: unused, sendAuthorityAlert: unused, sendReportDecision: unused },
     onStoreError: vi.fn(),
     moderation: createModerationIo({ store: quietModeration, crypto }),
+    ...extra,
   });
   const send = (key: string, type: string, payload: object, seq = 1, now = T0) =>
     hub.receive(key, JSON.stringify({ type, seq, payload }), now);
@@ -729,5 +733,49 @@ describe("hub unbound sockets (BR-089)", () => {
 
     await hub.tick(later(21 * 60_000));
     expect(closeSocket).toHaveBeenCalledExactlyOnceWith("1", "unbound");
+  });
+});
+
+describe("hub maintenance (BR-110)", () => {
+  const spied = (purgeFails = false) => {
+    const purgeExpired = vi.fn(() => (purgeFails ? Promise.reject(new Error("disk")) : Promise.resolve()));
+    const pendingStatements = vi.fn(() => Promise.resolve([]));
+    const onStoreError = vi.fn();
+    const moderation = createModerationIo({ store: { ...quietModeration, purgeExpired, pendingStatements }, crypto });
+    return { purgeExpired, pendingStatements, onStoreError, moderation };
+  };
+
+  it("purges and retries in the tick by default (Node)", async () => {
+    const { purgeExpired, pendingStatements, moderation, onStoreError } = spied();
+    const { hub } = setup(undefined, {}, { moderation, onStoreError });
+    await hub.tick(T0);
+    await vi.waitFor(() => expect(pendingStatements).toHaveBeenCalled());
+    expect(purgeExpired).toHaveBeenCalled();
+  });
+
+  it("leaves purge and retries to maintain when the transport has an alarm (Cloudflare)", async () => {
+    const { purgeExpired, pendingStatements, moderation, onStoreError } = spied();
+    const { hub } = setup(undefined, {}, { moderation, onStoreError, maintenanceInTick: false });
+
+    await hub.tick(T0);
+    expect(purgeExpired).not.toHaveBeenCalled();
+    expect(pendingStatements).not.toHaveBeenCalled();
+
+    await hub.maintain(T0, false);
+    expect(purgeExpired).not.toHaveBeenCalled();
+    expect(pendingStatements).toHaveBeenCalledTimes(1);
+
+    // One retry round every 10 minutes at most (BR-110).
+    expect(await hub.maintain(later(10 * 60_000), true)).toBe(true);
+    expect(purgeExpired).toHaveBeenCalledTimes(1);
+    expect(pendingStatements).toHaveBeenCalledTimes(2);
+  });
+
+  it("reports a failed purge and still retries", async () => {
+    const { pendingStatements, moderation, onStoreError } = spied(true);
+    const { hub } = setup(undefined, {}, { moderation, onStoreError, maintenanceInTick: false });
+    expect(await hub.maintain(T0, true)).toBe(false);
+    expect(onStoreError).toHaveBeenCalledWith(expect.any(Error));
+    expect(pendingStatements).toHaveBeenCalled();
   });
 });

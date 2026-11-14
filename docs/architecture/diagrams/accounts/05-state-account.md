@@ -25,7 +25,7 @@ stateDiagram-v2
   Active --> Deleted: severe case, e-mail blocked longer
   Active --> Deleted: account holder deletes the account
   Active --> Deleted: inactive 2 years, after e-mail notice
-  Deleted --> [*]: legal retention record written to the vault, same transaction (BR-081)
+  Deleted --> [*]: legal retention record written to the vault (BR-081: one transaction on Cloudflare, vault first on Node)
 ```
 
 ## Notes

@@ -45,6 +45,14 @@ export interface LoadedDecisionMail {
   readonly createdAt: Date;
 }
 
+/** A statement of reasons decrypted for sending (BR-076). */
+export interface LoadedStatement {
+  readonly id: string;
+  readonly email: string;
+  readonly text: string;
+  readonly giveUpAt: Date;
+}
+
 const isLabel = (value: unknown): value is TriageLabel =>
   typeof value === "object" && value !== null && typeof (value as Record<string, unknown>).label === "string" &&
   typeof (value as Record<string, unknown>).pseudo === "string";
@@ -126,7 +134,9 @@ export const createModerationIo = ({ store, crypto }: ModerationIoDeps) => {
       createdAt: stored.createdAt,
       ...(stored.alert ? { alert: await toAlert(stored.id, stored.alert) } : {}),
       ...(stored.struckAt ? { struckAt: stored.struckAt } : {}),
-      ...(stored.closed ? { closed: stored.closed } : {}),
+      ...(stored.closed
+        ? { closed: { ...stored.closed, by: await crypto.decrypt(stored.closed.by, field(stored.id, "closedBy")) } }
+        : {}),
       ...(triage ? { triage } : {}),
     };
   };
@@ -200,6 +210,24 @@ export const createModerationIo = ({ store, crypto }: ModerationIoDeps) => {
       })));
     },
     deletePendingDecisionMail: (id: string) => store.deletePendingDecisionMail(id),
+    /** BR-076, BR-109: a statement of reasons kept encrypted until the provider accepts it. */
+    async savePendingStatement(statement: LoadedStatement): Promise<void> {
+      await store.savePendingStatement({
+        id: statement.id,
+        email: await crypto.encrypt(statement.email, `statement:${statement.id}:email`),
+        text: await crypto.encrypt(statement.text, `statement:${statement.id}:text`),
+        giveUpAt: statement.giveUpAt,
+      });
+    },
+    async pendingStatements(): Promise<LoadedStatement[]> {
+      return Promise.all((await store.pendingStatements()).map(async (statement) => ({
+        id: statement.id,
+        email: await crypto.decrypt(statement.email, `statement:${statement.id}:email`),
+        text: await crypto.decrypt(statement.text, `statement:${statement.id}:text`),
+        giveUpAt: statement.giveUpAt,
+      })));
+    },
+    deletePendingStatement: (id: string) => store.deletePendingStatement(id),
     /** BR-100, BR-101: summary and label map encrypted; the store ignores a closed report. */
     async saveTriage(id: string, triage: Triage, labels: readonly TriageLabel[]): Promise<void> {
       await store.saveTriage(id, {
@@ -211,9 +239,9 @@ export const createModerationIo = ({ store, crypto }: ModerationIoDeps) => {
     },
     /** BR-101: the reporter's IP is counted by its keyed hash only. */
     ipKeyedHash: (ip: string) => ipHash(ip),
-    /** BR-055, BR-057: one outcome, the moderator and the time. */
+    /** BR-055, BR-057: one outcome, the moderator (encrypted, ADR-0017) and the time. */
     async closeReport(report: Report, outcome: ReportOutcome, by: string, at: Date): Promise<void> {
-      await update(report.id, { closed: { outcome, by, at } });
+      await update(report.id, { closed: { outcome, by: await crypto.encrypt(by, field(report.id, "closedBy")), at } });
     },
     /** BR-074: the strike of this report is given, once. */
     async markStruck(id: string, at: Date): Promise<void> {
@@ -226,7 +254,8 @@ export const createModerationIo = ({ store, crypto }: ModerationIoDeps) => {
         ipKeyedHash: ban.ip === undefined ? await ipHashOf(reportId) : await ipHash(ban.ip),
         pseudoKeyedHash: ban.pseudo === undefined ? undefined : await pseudoHash(ban.pseudo),
         until: ban.until,
-        decidedBy: ban.decidedBy,
+        // ADR-0017: moderator data is encrypted; never read back by the hub.
+        decidedBy: await crypto.encrypt(ban.decidedBy, `ban:${id}:decidedBy`),
         decidedAt: now,
       });
     },

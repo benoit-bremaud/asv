@@ -5,10 +5,7 @@
  */
 import { appendFileSync, chmodSync, closeSync, existsSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, writeSync } from "node:fs";
 import { dirname } from "node:path";
-import { ACCOUNT_LIMITS, type ConnectionLogStore, type LegalVaultStore, type VaultEntry, type VaultOpening } from "../../domain";
-
-/** Connection and contribution lines are kept 1 year (BR-060). */
-export const LOG_RETENTION_MS = 365 * 24 * 60 * 60_000;
+import { ACCOUNT_LIMITS, LOG_RETENTION_MS, type ConnectionLogStore, type LegalVaultStore, type VaultEntry, type VaultOpening } from "../../domain";
 
 /** A parsed line, or the raw text of a line that does not parse (a write cut by a crash): kept as is. */
 type Line = { readonly parsed: Record<string, unknown>; readonly raw?: undefined } | { readonly parsed?: undefined; readonly raw: string };

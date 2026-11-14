@@ -29,8 +29,9 @@ One alarm is always set to the earliest of:
 2. the next daily run: retention purge (BR-060 to BR-062, legal vault BR-081, access entries BR-082, expiries of
    BR-070 to BR-080, BR-105).
 
-Away deadlines are not alarms: while the object is in memory the hub `tick` expires away sessions (ADR-0009), and
-the alarm may run with no socket open.
+Away deadlines are not alarms: while a socket is open the hub `tick` expires away sessions (ADR-0009); the tick
+stops with the last socket and resumes with the next one, which expires any overdue away session. The alarm may
+run with no socket open and starts no timer.
 
 ## Notes
 

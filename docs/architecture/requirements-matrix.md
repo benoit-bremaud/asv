@@ -31,7 +31,7 @@ non-functional requirements (NF) to quality goals. Business rules referenced as 
 | ASV-F-021 | Sign in without a password | Six-digit e-mail code, device remembered 30 days (ADR-0013) | UC17 | A member signs in by typing one code and is recognised on that device for 30 days. | V1 |
 | ASV-F-022 | Stop repeat offenders | Three strikes, then 7-day suspension with e-mail block (ADR-0012) | UC12, UC11 | At the third active strike the moderator confirms; the same e-mail cannot create an account for 7 days. | V1 |
 | ASV-F-023 | Know why I was sanctioned | Statement of reasons by e-mail (DSA art. 17) | UC11, UC12 | Every suspension or deletion by a moderator e-mails the facts, the rule, AI use and redress. | V1 |
-| ASV-F-024 | Control my account | Sign out of a device or everywhere, delete the account | UC18, UC19 | Each action takes effect immediately and closes private windows. Deletion writes the legal retention record to the vault in the same transaction (BR-081). | V1 |
+| ASV-F-024 | Control my account | Sign out of a device or everywhere, delete the account | UC18, UC19 | Each action takes effect immediately and closes private windows. Deletion writes the legal retention record to the vault (BR-081: one transaction on Cloudflare, vault first on Node). | V1 |
 
 ## Non-functional
 

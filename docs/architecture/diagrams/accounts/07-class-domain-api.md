@@ -130,8 +130,9 @@ classDiagram
   (UC18, UC19).
 - `closeAccount`: returns the vault record (account id, e-mail, `createdAt = verifiedAt`,
   `closedAt = now`, BR-081) and, when strikes are active, the carry-over with their expiry dates (BR-080).
-  The hub writes the vault record before deleting the account; if the vault write fails, the account is
-  not deleted and the member gets an error (same transaction in brick 9).
+  The hub hands both to `AccountIo.close`, which seals the e-mail and calls `AccountClosing.closeAccount`
+  (`accounts/04`): one transaction on Cloudflare; on Node the vault record is written first and a failed
+  vault write deletes nothing. On failure the member gets an error.
 - Wrong-try cap (BR-072): the hub records each wrong code against the e-mail keyed hash; the count over
   24 hours feeds `wrongTriesLastDay`. A code already issued keeps its own 5 tries, so at most 24 wrong
   tries a day reach one e-mail.
