@@ -150,11 +150,11 @@ security near 0). Owner choice B on 2026-11-14.
    answers `ping` itself, as on Node (BR-088), and the heartbeat sweep (every 15 seconds as on Node, silence limit
    60 seconds from ADR-0011 point 3) uses the object's own last-frame time per socket. The Durable Object code update strategy is `immediate`, set in
    `wrangler.jsonc`.
-3. **Timers and one alarm**: while the object is in memory, the same timers as the Node transport run the hub
-   `tick` and the heartbeat sweep; store purges leave the one-second tick and run in the alarm. One alarm, re-armed
+3. **Timers and one alarm**: while at least one socket is open (from the first accepted socket to the last
+   close), the same timers as the Node transport run the hub `tick` and the heartbeat sweep; store purges leave the one-second tick and run in the alarm. One alarm, re-armed
    each time at the earliest of the next due retry (every 10 minutes while an authority alert, a decision e-mail
    or a statement of reasons is pending: BR-076, BR-104, BR-107) and the next daily purge, runs even when no
-   socket is open (BR-110).
+   socket is open; a failed daily purge is retried at the next alarm, at least 10 minutes later (BR-110).
 4. **Stores in the Durable Object's SQLite**: one table set per port (`ConnectionLogStore`, `AccountStore`,
    `LegalVaultStore`, `ModerationStore`, `ModeratorStore`), with the same ciphertext and keyed hashes as the
    Node stores (ADR-0017, BR-083), plus an encrypted `pending_statements` table so a deploy never drops a

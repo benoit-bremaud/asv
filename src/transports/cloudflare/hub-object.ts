@@ -2,7 +2,7 @@
  * The Hub Durable Object (ADR-0020 §2 to §4, `platform/09`): one object in the EU jurisdiction, without
  * hibernation. Its constructor, inside `blockConcurrencyWhile`, migrates the schema, closes the connection
  * lines a previous run left open (BR-109) and builds the transport-neutral hub and the Hono app; then it
- * accepts sockets with `server.accept()`, runs the tick and heartbeat timers while in memory and one alarm
+ * accepts sockets with `server.accept()`, runs the tick and heartbeat timers while a socket is open and one alarm
  * for purges and mail retries (BR-110). It mirrors the Node transport (`platform/02`).
  */
 import type { Hono } from "hono";
@@ -24,7 +24,6 @@ import { OFFICIAL_ROOMS } from "../../server/official-rooms";
 import { createMistralTriage } from "../../server/triage/mistral";
 import { noAiTriage } from "../../server/triage/no-ai";
 import { createUpgradeLimiter, UPGRADE_LIMITS, type UpgradeLimiter, type UpgradeVerdict } from "../../server/upgrade-limit";
-import { CAPS } from "../../shared/protocol";
 import { nextAlarmAt, PURGE_EVERY_MS, purgeDue } from "./alarm";
 import { checkConfig, type Config, type Env } from "./env";
 import { createCloudflareRandom } from "./random";
@@ -72,6 +71,7 @@ export interface HubObjectOptions {
   readonly mailer?: Mailer;
   readonly triageFetch?: typeof fetch;
   readonly setInterval?: (callback: () => void, ms: number) => unknown;
+  readonly clearInterval?: (handle: unknown) => void;
 }
 
 /** BR-110: sweep every 15 seconds, silence limit 60 seconds (ADR-0011 point 3). */
@@ -88,6 +88,16 @@ interface SocketEntry {
   /** Runs the hub's close once, whether the runtime reports the close or the transport ends the socket. */
   readonly closed: () => void;
 }
+
+/** Closes a socket the peer may have closed already; the hub's close must run whatever happens. */
+const closeQuietly = (socket: ServerSocket, reason?: PolicyReason): void => {
+  try {
+    if (reason) socket.close(POLICY_CLOSE, reason);
+    else socket.close();
+  } catch {
+    // Already closed.
+  }
+};
 
 /** The runtime's `WebSocketPair`, absent from the DOM types. */
 declare const WebSocketPair: new () => Record<0 | 1, unknown>;
@@ -123,6 +133,8 @@ export class HubObject {
   private readonly limiter: UpgradeLimiter = createUpgradeLimiter();
   private running: Running | undefined;
   private scheduledAlarm: number | undefined;
+  /** The tick and sweep timers, set only while a socket is open (`platform/05`). */
+  private timers: unknown[] = [];
   private nextKey = 0;
 
   constructor(
@@ -134,7 +146,7 @@ export class HubObject {
     void ctx.blockConcurrencyWhile(() => this.start());
   }
 
-  /** Migrates, closes orphan lines, builds the hub, starts the timers and arms the alarm (BR-109, BR-110). */
+  /** Migrates, closes orphan lines, builds the hub and arms the alarm (BR-109, BR-110). */
   private async start(): Promise<void> {
     const config = await checkConfig(this.env);
     if ("problem" in config) {
@@ -146,10 +158,23 @@ export class HubObject {
     migrate(storage);
     closeOpenLines(storage, this.now());
     this.running = await this.build(config);
-    const every = this.options.setInterval ?? ((callback: () => void, ms: number) => setInterval(callback, ms));
-    every(() => this.tick(), this.options.tickMs ?? 1000);
-    every(() => this.sweep(), this.options.sweepMs ?? SWEEP_MS);
     await this.armAlarm(this.nextAlarm());
+  }
+
+  /** The 1-second tick and the 15-second sweep run while sockets exist, so an idle object can be evicted. */
+  private startTimers(): void {
+    if (this.timers.length > 0) return;
+    const every = this.options.setInterval ?? ((callback: () => void, ms: number) => setInterval(callback, ms));
+    this.timers = [
+      every(() => void this.tick(), this.options.tickMs ?? 1000),
+      every(() => this.sweep(), this.options.sweepMs ?? SWEEP_MS),
+    ];
+  }
+
+  private stopTimers(): void {
+    const clear = this.options.clearInterval ?? ((handle: unknown) => clearInterval(handle as ReturnType<typeof setInterval>));
+    for (const handle of this.timers) clear(handle);
+    this.timers = [];
   }
 
   private async build(config: Config): Promise<Running> {
@@ -157,7 +182,9 @@ export class HubObject {
     const crypto = createCrypto(config.keys);
     const random = createCloudflareRandom(fromBase64(this.env.ASV_HMAC_KEY ?? ""));
     const log = createSqlLog(storage, crypto);
-    const moderationStore = createSqlModerationStore(storage, () => void this.armAlarm(this.now().getTime() + STATEMENT_RETRY_MS));
+    const moderationStore = createSqlModerationStore(storage, () => {
+      this.armAlarm(this.now().getTime() + STATEMENT_RETRY_MS).catch((error: unknown) => console.error("alarm not armed", error));
+    });
     const moderationIo = createModerationIo({ store: moderationStore, crypto });
     const moderators = createModeratorOps(createModeratorIo({ store: createSqlModeratorStore(storage), crypto }));
     const grantKey = await createGrantKey();
@@ -250,12 +277,14 @@ export class HubObject {
       if (closed) return;
       closed = true;
       this.sockets.delete(key);
+      if (this.sockets.size === 0) this.stopTimers();
       this.limiter.release(ip);
       void this.run(hub.close(key, this.now()));
     };
     const entry: SocketEntry = { socket: server, lastSeen: this.now().getTime(), refused: false, closed: onClose };
     const budget = createFrameBudget(entry.lastSeen);
     this.sockets.set(key, entry);
+    this.startTimers();
     const device = deviceCookieOf(request.headers.get("cookie"));
     hub.open(key, ip, undefined, device && hashToken(device));
     server.addEventListener("message", (event) => {
@@ -268,7 +297,7 @@ export class HubObject {
       const text = typeof event.data === "string" ? event.data : "";
       // Heartbeat answered by the transport: no auto-response with `server.accept()` (BR-088, BR-110).
       if (text === "ping") return server.send("pong");
-      if (text.length > CAPS.frame) return this.refuse(key, "invalidFrames");
+      // An oversize frame counts as invalid in the hub, closed at the fifth in a row (BR-088).
       void this.run(hub.receive(key, text, this.now()));
     });
     server.addEventListener("close", onClose);
@@ -284,8 +313,7 @@ export class HubObject {
     // Next turn: the hub asks from inside a task whose answer is sent first. A dead peer never answers the
     // close, so the hub's close runs at once.
     setTimeout(() => {
-      if (reason) entry.socket.close(POLICY_CLOSE, reason);
-      else entry.socket.close();
+      closeQuietly(entry.socket, reason);
       entry.closed();
     }, 0);
   }
@@ -313,7 +341,7 @@ export class HubObject {
     for (const entry of this.sockets.values()) {
       if (entry.lastSeen >= limit) continue;
       // Node terminates the socket; here a close with no code, then the hub's close at once.
-      entry.socket.close();
+      closeQuietly(entry.socket);
       entry.closed();
     }
   }
@@ -326,18 +354,22 @@ export class HubObject {
     const now = this.now();
     const storage = this.ctx.storage;
     const purge = purgeDue(now.getTime(), this.lastPurge());
+    let failed = false;
     if (purge) {
       try {
         await running.log.purge(now);
         await running.moderators.purge(now);
         writeMeta(storage, LAST_PURGE, String(now.getTime()));
       } catch (error) {
+        failed = true;
         console.error("daily purge failed", error);
       }
     }
     // Accounts, vault and moderation purges on the daily run only, then one retry round.
     await running.hub.maintain(now, purge);
-    await this.armAlarm(this.nextAlarm());
+    // A failed purge is retried with the mail round, not every second.
+    const next = this.nextAlarm();
+    await this.armAlarm(failed ? Math.max(next, now.getTime() + STATEMENT_RETRY_MS) : next);
   }
 
   private lastPurge(): number | undefined {
