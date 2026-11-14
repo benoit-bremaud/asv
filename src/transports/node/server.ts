@@ -204,6 +204,10 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
   const vault = createMemoryVault();
   const moderation = createMemoryModerationStore();
   const { ownerSecret, publicOrigin, moderators } = moderatorSetup(options, crypto, behindTunnel);
+  if (ownerSecret !== undefined && !behindTunnel && !options.legal?.contactEmail) {
+    // BR-104 (`moderation/02h`): said once here; each retry round then only logs a short line.
+    console.error("ASV_CONTACT_EMAIL is not set: authority alerts (BR-104) stay pending and are never e-mailed to the owner");
+  }
   const grantKey = await createGrantKey();
   const fileLog = options.logFile === undefined ? undefined : createFileLog(options.logFile, now());
   const fileVault = options.vaultFile === undefined ? undefined : createFileVault(options.vaultFile, now());

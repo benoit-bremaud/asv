@@ -129,6 +129,7 @@ export const STRINGS = {
   alertPending: "en attente",
   alertFiled: (channel: string, reference: string) => `déposée (${channel}, ${reference})`,
   alertStatus: (status: string) => `alerte : ${status}`,
+  alertRaisedAlready: (category: string) => `à signaler aux autorités : ${category} (déjà levée)`,
   alertRaised: (category: string, by: string, date: string) => `${category}, levée par ${by} le ${date}`,
   closedOn: (date: string) => `clos le ${date}`,
   askSuspension: "décider la suspension",

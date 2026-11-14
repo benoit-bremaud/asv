@@ -77,3 +77,7 @@ sequenceDiagram
 - `mod:filed` takes channel in PHAROS, 17, 112, PointDeContact, and a reference of 1 to 100 characters
   following BR-090; anything else answers 400.
 - `/mod/authority-filings` answers 404 behind the tunnel (BR-097) like every `/mod` route.
+- Without `ASV_CONTACT_EMAIL` the Brevo adapter refuses the alert mail and logs `missing_contact_email`;
+  the alert stays `pending` without `notifiedAt` and the retry round tries again for 7 days (BR-104). The
+  Node server logs one loud line at start when the owner secret is set outside the tunnel and the contact
+  address is missing.

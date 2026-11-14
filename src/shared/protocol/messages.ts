@@ -144,7 +144,7 @@ export const clientMessage = z.discriminatedUnion("type", [
   ),
   message("closeReport", z.object({ reportId: id, outcome: reportOutcome, alertAuthorities })),
   message("confirmSuspension", z.extend(suspensionTarget, { alertAuthorities })),
-  message("declineSuspension", suspensionTarget),
+  message("declineSuspension", z.extend(suspensionTarget, { alertAuthorities })),
   // BR-106: acts on the report's room.
   message("removeRoom", z.object({ reportId: id, alertAuthorities })),
   message("requestCode", z.object({ email: capped(CAPS.email), remember: z.boolean() })),
@@ -209,6 +209,7 @@ const reportView = {
   targetKind: reportTarget,
   targetPseudo: z.optional(z.string()),
   targetRoomId: z.optional(id),
+  targetRoomName: z.optional(z.string()),
   excerpt: z.string(),
   context: z.array(z.string()),
   authorPseudo: z.string(),

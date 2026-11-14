@@ -26,6 +26,11 @@ export const createMemoryModerationStore = (): ModerationStore & {
       reports.set(report.id, report);
       return done();
     },
+    patchReport: (id, patch) => {
+      const report = reports.get(id);
+      if (report) reports.set(id, { ...report, ...patch });
+      return Promise.resolve(report !== undefined);
+    },
     findReport: (id) => Promise.resolve(reports.get(id)),
     openReports: () => Promise.resolve([...reports.values()].filter((report) => !report.closed)),
     alertedReports: () => Promise.resolve([...reports.values()].filter((report) => report.closed && report.alert)),
@@ -45,6 +50,13 @@ export const createMemoryModerationStore = (): ModerationStore & {
       if (report?.alert) reports.set(reportId, { ...report, alert: { ...report.alert, notifiedAt: at } });
       return done();
     },
+    pendingAlerts: () =>
+      Promise.resolve(
+        [...reports.values()].flatMap((report) =>
+          report.alert && report.alert.notifiedAt === undefined
+            ? [{ reportId: report.id, offenceCategory: report.alert.offenceCategory, raisedAt: report.alert.raisedAt }]
+            : []),
+      ),
     recordFiling: (reportId, channel, reference, at) => {
       const report = reports.get(reportId);
       if (!report?.alert) return Promise.resolve("noAlert");

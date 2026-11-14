@@ -591,6 +591,14 @@ describe("POST /mod/authority-filings (UC20, BR-093, BR-104)", () => {
     expect(context.recordFiling).not.toHaveBeenCalled();
   });
 
+  it("stores the reference trimmed", async () => {
+    const context = await setup();
+
+    await context.owner("/mod/authority-filings", { method: "POST", body: { ...filing, reference: "  PV 12  " } });
+
+    expect(context.recordFiling).toHaveBeenCalledWith("r1", "PHAROS", "PV 12", T0);
+  });
+
   it("accepts a reference of exactly 100 characters", async () => {
     const context = await setup();
 

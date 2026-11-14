@@ -66,7 +66,6 @@ export interface ModerationContext {
   readonly out: OutgoingModule;
   state(): HubState;
   setState(next: HubState): void;
-  /** BR-106: maps the `roomDeleted` effect, so every room list is refreshed. */
   /** Sends `expelled(until)` to the session's socket, closes it, and removes the session (UC11). */
   evict(sessionId: string, until: Date, now: Date): Promise<Outgoing[]>;
 }
@@ -78,7 +77,7 @@ const moderatorOf = (state: HubState, sessionId: string): string => state.sessio
 
 export { STATEMENT_RETRY_MS, suspensionStatement } from "./moderation-mail";
 
-/** One handler per brick 8a command, plus `retryStatements` for the hub tick. */
+/** One handler per moderation command, plus `retryMails` for the hub tick. */
 export const createModerationHandlers = (ctx: ModerationContext) => {
   const { deps, out } = ctx;
   const mail = createModerationMail(deps);
@@ -146,6 +145,7 @@ export const createModerationHandlers = (ctx: ModerationContext) => {
     targetKind: report.targetKind,
     ...(report.targetPseudo === undefined ? {} : { targetPseudo: report.targetPseudo }),
     ...(report.targetRoomId === undefined ? {} : { targetRoomId: report.targetRoomId }),
+    ...(report.targetRoomName === undefined ? {} : { targetRoomName: report.targetRoomName }),
     excerpt: report.excerpt,
     context: [...report.context],
     authorPseudo: report.authorPseudo,
@@ -354,7 +354,11 @@ export const createModerationHandlers = (ctx: ModerationContext) => {
       ? await deps.accounts.accountById(command.payload.accountId)
       : undefined;
     if (!found) return [out.warning(caller.key, "suspensionRefused", command.seq)];
-    return [await close(caller, report, "warned", now)];
+    // BR-104: the proposal's alert is kept whichever way the moderator decides.
+    const tell = await raiseAlert(caller, report, command.payload.alertAuthorities, now);
+    const closed = await close(caller, report, "warned", now);
+    tell();
+    return [closed];
   };
 
   /** Keeps a failed store call from leaving a command half applied in memory. */

@@ -45,6 +45,8 @@ export interface Report {
   readonly targetKind: ReportTargetKind;
   readonly targetPseudo?: string;
   readonly targetRoomId?: string;
+  /** The room's name when filed, so a moderator still reads it once the room is gone (`web-ui/08`). */
+  readonly targetRoomName?: string;
   /** Snapshot of the target's live session when filed; a hint only, the session may be gone. */
   readonly targetSessionId?: string;
   readonly targetAccountId?: string;
@@ -92,6 +94,11 @@ const countReport = (state: HubState, sessionId: string, now: Date): HubState | 
   return { ...state, reportAttempts: new Map(state.reportAttempts).set(sessionId, [...recent, now]) };
 };
 
+const roomName = (state: HubState, roomId: string): { targetRoomName?: string } => {
+  const name = state.rooms.get(roomId)?.name;
+  return name === undefined ? {} : { targetRoomName: name };
+};
+
 const hasTarget = (command: ReportCommand): boolean =>
   command.targetKind === "room" ? command.targetRoomId !== undefined : command.targetPseudo !== undefined;
 
@@ -109,6 +116,7 @@ export const fileReport = (state: HubState, command: ReportCommand, now: Date, r
     targetKind: command.targetKind,
     targetPseudo: target?.pseudo ?? command.targetPseudo,
     targetRoomId: command.targetRoomId,
+    ...(command.targetKind === "room" && command.targetRoomId !== undefined ? roomName(state, command.targetRoomId) : {}),
     targetSessionId: target?.id,
     targetAccountId: target?.accountId,
     targetIp: target?.status === "connected" ? target.ip : undefined,

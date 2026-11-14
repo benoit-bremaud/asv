@@ -54,6 +54,8 @@ export interface StoredReport {
   readonly targetKind: "chatter" | "message" | "room";
   readonly targetPseudo?: string;
   readonly targetRoomId?: string;
+  /** Ciphertext: a chatter chose it (ADR-0017). */
+  readonly targetRoomName?: string;
   readonly targetSessionId?: string;
   readonly targetAccountId?: string;
   readonly targetIpKeyedHash?: string;
@@ -77,10 +79,18 @@ export interface StoredReport {
   readonly alert?: StoredAlert;
 }
 
-/** An authority alert as stored: `raisedBy` and `reference` ciphertext (BR-105, ADR-0017). */
-export interface StoredAlert extends Omit<AuthorityAlert, "raisedBy" | "reference"> {
+/** An authority alert as stored: category, `raisedBy` and `reference` ciphertext (BR-105, ADR-0017). */
+export interface StoredAlert extends Omit<AuthorityAlert, "offenceCategory" | "raisedBy" | "reference"> {
+  readonly offenceCategory: string;
   readonly raisedBy: string;
   readonly reference?: string;
+}
+
+/** What the retry round reads of an alert not yet e-mailed (BR-104), without the report. */
+export interface PendingAlert {
+  readonly reportId: string;
+  readonly offenceCategory: string;
+  readonly raisedAt: Date;
 }
 
 /** A decision e-mail not yet accepted by the provider (BR-107): address and text ciphertext. */
@@ -112,9 +122,14 @@ export interface StoredBan {
   readonly decidedAt: Date;
 }
 
+/** The report fields the hub changes after filing, each written alone (`moderation/04`). */
+export type ReportPatch = Partial<Pick<StoredReport, "closed" | "struckAt">>;
+
 /** Reports and bans (`moderation/04`); every call may fail. */
 export interface ModerationStore {
   saveReport(report: StoredReport): Promise<void>;
+  /** Sets only these fields, in one store operation; `false` when the report is gone. */
+  patchReport(id: string, patch: ReportPatch): Promise<boolean>;
   findReport(id: string): Promise<StoredReport | undefined>;
   openReports(): Promise<readonly StoredReport[]>;
   /** Sets the triage of an open report; a closed or missing report is left as it is (`moderation/05`). */
@@ -124,6 +139,8 @@ export interface ModerationStore {
   /** BR-104: one alert per report; `false` and no change when the report has one or is missing. */
   saveAuthorityAlert(reportId: string, alert: StoredAlert): Promise<boolean>;
   markAlertNotified(reportId: string, at: Date): Promise<void>;
+  /** BR-104: the alerts the owner was not told of yet, open or closed report, category ciphertext. */
+  pendingAlerts(): Promise<readonly PendingAlert[]>;
   /** UC20: sets the alert `filed`; `reference` is ciphertext. */
   recordFiling(reportId: string, channel: AlertChannel, reference: string, at: Date): Promise<FilingResult>;
   savePendingDecisionMail(mail: PendingDecisionMail): Promise<void>;

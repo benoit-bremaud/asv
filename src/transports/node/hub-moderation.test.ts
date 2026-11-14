@@ -229,7 +229,7 @@ describe("report (UC9)", () => {
 
 describe("queue (UC12, BR-054, BR-102)", () => {
   it("lists open reports of equal urgency oldest first with the target's state, to a moderator only", async () => {
-    const { enterAs, send, owner, reportMax, signIn } = await setup();
+    const { enterAs, send, owner, reportMax, signIn, moderationStore } = await setup();
     await enterAs("1", "Lola");
     await enterAs("2", "Max");
     await signIn("2", "max@example.org");
@@ -250,7 +250,9 @@ describe("queue (UC12, BR-054, BR-102)", () => {
       connected: true,
       activeStrikes: 0,
     });
-    expect(reports[1]).toMatchObject({ targetKind: "room", targetRoomId: "lyon", hasAccount: false, connected: false });
+    expect(reports[1]).toMatchObject({ targetKind: "room", targetRoomId: "lyon", targetRoomName: "Lyon", hasAccount: false, connected: false });
+    // The room name is encrypted at rest like the pseudos (ADR-0017).
+    expect(JSON.stringify(moderationStore.dump().reports)).not.toContain("Lyon");
     expect(only(await send("1", "listOpenReports", {}), "error").payload).toMatchObject({ code: "forbidden" });
   });
 
@@ -308,11 +310,11 @@ describe("expel (UC11, BR-008, BR-053, BR-055)", () => {
     await owner();
 
     // The socket closes only once the whole command answered, so `expelled` reaches it first (QA 2026-11-13).
-    const saveReport = moderationStore.saveReport;
+    const patchReport = moderationStore.patchReport;
     let closedBeforeAnswer = false;
-    moderationStore.saveReport = async (report) => {
+    moderationStore.patchReport = async (id, patch) => {
       closedBeforeAnswer = closeSocket.mock.calls.length > 0;
-      return saveReport(report);
+      return patchReport(id, patch);
     };
     const out = await send("9", "expel", { reportId, duration: "1h" });
 
@@ -461,7 +463,7 @@ describe("warn, strikes and suspension (`moderation/02d`, BR-074 to BR-077)", ()
   it("still evicts the suspended member when closing the report fails after the account is gone (Codex P1)", async () => {
     const ctx = await setup();
     const { accountId, reportId } = await threeStrikes(ctx);
-    ctx.moderationStore.saveReport = async () => {
+    ctx.moderationStore.patchReport = async () => {
       throw new Error("disk");
     };
 
@@ -773,7 +775,7 @@ describe("severe expel (moderation/02h, BR-103)", () => {
   it("still evicts and answers unavailable when only the close fails after the deletion", async () => {
     const ctx = await setup();
     const { reportId } = await reported(ctx, { maxEmail: "max@example.org" });
-    ctx.moderationStore.saveReport = async () => {
+    ctx.moderationStore.patchReport = async () => {
       throw new Error("disk");
     };
 
@@ -804,7 +806,9 @@ describe("authority alert (moderation/02h, BR-104, BR-105, UC20)", () => {
 
     expect(ctx.alerts).toEqual([{ reportId, category: "threatToLife" }]);
     const stored = ctx.moderationStore.dump().reports[0]?.alert;
-    expect(stored).toMatchObject({ offenceCategory: "threatToLife", status: "pending", notifiedAt: T0 });
+    expect(stored).toMatchObject({ status: "pending", notifiedAt: T0 });
+    // The category is encrypted at rest too (ADR-0017).
+    expect(stored?.offenceCategory).not.toContain("threatToLife");
     expect(stored?.raisedBy).not.toContain("Marc");
     const [row] = only(await ctx.send("9", "listAlertedReports", {}), "alertedReports").payload.reports;
     expect(row).toMatchObject({
@@ -830,6 +834,18 @@ describe("authority alert (moderation/02h, BR-104, BR-105, UC20)", () => {
     expect(row?.alert).toMatchObject({ status: "filed", channel: "police17", reference: "appel 2026-11-13T22:10", filedAt: later(HOUR).toISOString() });
   });
 
+  it("keeps a filing recorded while the report closes (owner route outside the hub queue)", async () => {
+    const ctx = await setup();
+    const { reportId } = await reported(ctx);
+    const proposal = await ctx.moderationIo.saveAuthorityAlert(reportId, "harassment", "Marc", T0);
+    const report = await ctx.moderationIo.findReport(reportId);
+    if (!proposal || !report) throw new Error("expected an open report with an alert");
+
+    await Promise.all([ctx.moderationIo.closeReport(report, "noAction", "Marc", T0), ctx.moderationIo.recordFiling(reportId, "PHAROS", "PV-1", T0)]);
+
+    expect(ctx.moderationStore.dump().reports[0]).toMatchObject({ closed: { outcome: "noAction" }, alert: { status: "filed", channel: "PHAROS" } });
+  });
+
   it("answers noAlert for a report without alert", async () => {
     const ctx = await setup();
     const { reportId } = await reported(ctx);
@@ -837,7 +853,8 @@ describe("authority alert (moderation/02h, BR-104, BR-105, UC20)", () => {
     expect(await ctx.moderationIo.recordFiling(reportId, "PHAROS", "x", T0)).toBe("noAlert");
   });
 
-  it("keeps the first alert when a later command raises another one (one per report)", async () => {
+  /** Max has two strikes; a third `warned` on a new report proposes the suspension (BR-075). */
+  const proposed = async (alertAuthorities?: "harassment") => {
     const ctx = await setup();
     await ctx.enterAs("1", "Lola");
     await ctx.enterAs("2", "Max");
@@ -847,14 +864,49 @@ describe("authority alert (moderation/02h, BR-104, BR-105, UC20)", () => {
       await ctx.send("9", "closeReport", { reportId: await ctx.reportMax(), outcome: "warned" });
     }
     const reportId = await ctx.reportMax();
-    const proposal = only(await ctx.send("9", "closeReport", { reportId, outcome: "warned", alertAuthorities: "harassment" }), "suspensionProposed").payload;
-    // An open row with an alert shows it (`web-ui/08`).
+    const proposal = only(await ctx.send("9", "closeReport", { reportId, outcome: "warned", alertAuthorities }), "suspensionProposed").payload;
+    return { ctx, reportId, proposal };
+  };
+
+  it("keeps the alert raised on the warning when the suspension is confirmed, one per report", async () => {
+    const { ctx, reportId, proposal } = await proposed("harassment");
+    // An open row with an alert shows it, and the proposal shows it read-only (`web-ui/08`).
     expect(only(await ctx.send("9", "listOpenReports", {}), "openReports").payload.reports[0]?.alert).toMatchObject({ status: "pending", offenceCategory: "harassment" });
 
+    // A forged second category is ignored: one alert per report (BR-104).
     only(await ctx.send("9", "confirmSuspension", { ...proposal, alertAuthorities: "terrorism" }), "reportClosed");
     await settle();
 
     expect(ctx.alerts).toEqual([{ reportId, category: "harassment" }]);
+  });
+
+  it("keeps the alert raised on the warning when the suspension is declined", async () => {
+    const { ctx, reportId, proposal } = await proposed("harassment");
+
+    only(await ctx.send("9", "declineSuspension", proposal), "reportClosed");
+    await settle();
+
+    expect(ctx.alerts).toEqual([{ reportId, category: "harassment" }]);
+  });
+
+  it("raises the alert picked in the proposal on both answers (BR-104)", async () => {
+    const declined = await proposed();
+    only(await declined.ctx.send("9", "declineSuspension", { ...declined.proposal, alertAuthorities: "terrorism" }), "reportClosed");
+    const confirmed = await proposed();
+    only(await confirmed.ctx.send("9", "confirmSuspension", { ...confirmed.proposal, alertAuthorities: "childAbuse" }), "reportClosed");
+    await settle();
+
+    expect(declined.ctx.alerts).toEqual([{ reportId: declined.reportId, category: "terrorism" }]);
+    expect(confirmed.ctx.alerts).toEqual([{ reportId: confirmed.reportId, category: "childAbuse" }]);
+  });
+
+  it("raises no alert when the proposal is declined without one", async () => {
+    const { ctx, proposal } = await proposed();
+
+    only(await ctx.send("9", "declineSuspension", proposal), "reportClosed");
+    await settle();
+
+    expect(ctx.alerts).toEqual([]);
   });
 
   it("raises an alert on an ordinary expel and on room removal", async () => {
@@ -888,6 +940,27 @@ describe("authority alert (moderation/02h, BR-104, BR-105, UC20)", () => {
     await ctx.hub.tick(later(1000 + 2 * STATEMENT_RETRY_MS));
     await settle();
     expect(ctx.alerts).toHaveLength(3);
+  });
+
+  it("retries the other alerts when one stored category cannot be read, and the decision mails too", async () => {
+    const ctx = await setup({ mailAccepted: false });
+    const first = await reported(ctx);
+    await ctx.send("9", "closeReport", { reportId: first.reportId, outcome: "noAction", alertAuthorities: "childAbuse" });
+    const second = await ctx.reportMax();
+    await ctx.send("9", "closeReport", { reportId: second, outcome: "noAction", alertAuthorities: "terrorism" });
+    await settle();
+    const store = ctx.moderationStore;
+    const real = await store.pendingAlerts();
+    vi.spyOn(store, "pendingAlerts").mockResolvedValueOnce(real.map((alert) => (alert.reportId === first.reportId ? { ...alert, offenceCategory: "garbage" } : alert)));
+    const decisions = vi.spyOn(store, "pendingDecisionMails");
+    ctx.alerts.length = 0;
+
+    await ctx.hub.tick(later(1000));
+    await settle();
+
+    expect(ctx.alerts).toEqual([{ reportId: second, category: "terrorism" }]);
+    expect(ctx.onStoreError).toHaveBeenCalled();
+    expect(decisions).toHaveBeenCalled();
   });
 
   it("gives up the owner alert after 7 days", async () => {

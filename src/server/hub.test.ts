@@ -60,11 +60,13 @@ const unusedStore: AccountStore = {
 /** Moderation is exercised in `transports/node/hub-moderation.test.ts`; here no ban ever matches. */
 const quietModeration: ModerationStore = {
   saveReport: unused,
+  patchReport: unused,
   findReport: unused,
   openReports: () => Promise.resolve([]),
   alertedReports: () => Promise.resolve([]),
   saveAuthorityAlert: unused,
   markAlertNotified: unused,
+  pendingAlerts: () => Promise.resolve([]),
   recordFiling: unused,
   savePendingDecisionMail: unused,
   pendingDecisionMails: () => Promise.resolve([]),

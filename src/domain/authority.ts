@@ -6,6 +6,11 @@ import { hasForbiddenChar } from "./text";
 
 /** `security-and-rgpd.md` §6; always the moderator's choice, never the AI category (ADR-0010). */
 export type OffenceCategory = "childAbuse" | "threatToLife" | "terrorism" | "hateOrViolence" | "harassment" | "otherListed";
+const OFFENCE_CATEGORIES: readonly string[] = ["childAbuse", "threatToLife", "terrorism", "hateOrViolence", "harassment", "otherListed"] satisfies readonly OffenceCategory[];
+
+/** True for a category of `security-and-rgpd.md` §6, e.g. one read back from the store. */
+export const isOffenceCategory = (value: string): value is OffenceCategory => OFFENCE_CATEGORIES.includes(value);
+
 /** Where the owner filed; typed `17` and `112` on the command line (`moderation/04`). */
 export type AlertChannel = "PHAROS" | "police17" | "emergency112" | "PointDeContact";
 export type AlertStatus = "pending" | "filed";
@@ -44,13 +49,13 @@ const CHANNELS: Readonly<Record<string, AlertChannel>> = {
 export const parseFilingChannel = (typed: string): AlertChannel | undefined =>
   Object.hasOwn(CHANNELS, typed) ? CHANNELS[typed] : undefined;
 
-/** BR-104: 1 to 100 characters following BR-090, checked after trimming. */
+/** BR-104: 1 to 100 characters once trimmed, as stored; BR-090 is checked on the text as typed. */
 export const isFilingReference = (reference: string): boolean => {
   const trimmed = reference.trim();
-  return trimmed.length > 0 && [...reference].length <= AUTHORITY_LIMITS.maxReferenceLength && !hasForbiddenChar(trimmed);
+  return trimmed.length > 0 && [...trimmed].length <= AUTHORITY_LIMITS.maxReferenceLength && !hasForbiddenChar(reference);
 };
 
-/** `web-ui/08`: pending alerts first, oldest raised first, then the most recently filed. */
+/** BR-104, `web-ui/08`: pending alerts first, oldest raised first, then the most recently filed. */
 export const sortAlerted = <R extends { readonly alert: Pick<AuthorityAlert, "status" | "raisedAt" | "filedAt"> }>(reports: readonly R[]): R[] => {
   const pending = reports.filter((report) => report.alert.status === "pending");
   const filed = reports.filter((report) => report.alert.status === "filed");

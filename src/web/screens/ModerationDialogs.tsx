@@ -102,7 +102,7 @@ const alertStatus = (alert: Alert) => {
 const ReportBody = ({ report }: { report: QueuedReport | AlertedReport }) => (
   <>
     <p>
-      <strong>{report.targetPseudo ?? report.targetRoomId}</strong> — {STRINGS.reasons[report.reason]}{" "}
+      <strong>{report.targetPseudo ?? `# ${report.targetRoomName ?? report.targetRoomId ?? ""}`}</strong> — {STRINGS.reasons[report.reason]}{" "}
       <span className="small">{STRINGS.queueBy(report.authorPseudo, shortDate(report.createdAt))}</span>
     </p>
     {report.excerpt && <blockquote className="small">{report.excerpt}</blockquote>}
@@ -190,17 +190,24 @@ const AlertRow = ({ report }: { report: AlertedReport }) => (
   </li>
 );
 
-/** BR-075: the third active strike asks the moderator; the suspension closes the report. */
-const Proposal = ({ proposal }: { proposal: NonNullable<QueueView["proposal"]> }) => {
+/**
+ * BR-075: the third active strike asks the moderator. BR-104: an alert already raised on the report is shown
+ * read-only; otherwise the category picked here goes with either answer.
+ */
+const Proposal = ({ proposal, raised }: { proposal: NonNullable<QueueView["proposal"]>; raised?: Alert }) => {
   const { commands } = useChat();
   const [choice, setChoice] = useState<AlertChoice>("none");
-  const target = { accountId: proposal.accountId, reportId: proposal.reportId };
+  const payload = { accountId: proposal.accountId, reportId: proposal.reportId, alertAuthorities: raised ? undefined : alertOf(choice) };
   return (
     <section role="alert" className="queue-proposal">
       <p>{STRINGS.proposal(proposal.activeStrikes)}</p>
-      <AlertSelect id="proposal-alert" value={choice} onChange={setChoice} />
-      <button type="button" className="bevel primary" onClick={() => commands.moderate({ type: "confirmSuspension", payload: { ...target, alertAuthorities: alertOf(choice) } })}>{STRINGS.suspend}</button>
-      <button type="button" className="bevel" onClick={() => commands.moderate({ type: "declineSuspension", payload: target })}>{STRINGS.noSuspend}</button>
+      {raised ? (
+        <p className="small">{STRINGS.alertRaisedAlready(STRINGS.offences[raised.offenceCategory])}</p>
+      ) : (
+        <AlertSelect id="proposal-alert" value={choice} onChange={setChoice} />
+      )}
+      <button type="button" className="bevel primary" onClick={() => commands.moderate({ type: "confirmSuspension", payload })}>{STRINGS.suspend}</button>
+      <button type="button" className="bevel" onClick={() => commands.moderate({ type: "declineSuspension", payload })}>{STRINGS.noSuspend}</button>
     </section>
   );
 };
@@ -232,7 +239,7 @@ export const QueueDialog = () => {
         </>
       ) : (
         <>
-          {queue.proposal && <Proposal proposal={queue.proposal} />}
+          {queue.proposal && <Proposal proposal={queue.proposal} raised={queue.reports.find((report) => report.id === queue.proposal?.reportId)?.alert} />}
           {queue.loading && <p className="small">{STRINGS.queueLoading}</p>}
           {!queue.loading && queue.reports.length === 0 && <p className="small">{STRINGS.queueEmpty}</p>}
           {queue.total > queue.reports.length && <p className="small">{STRINGS.queueCount(queue.reports.length, queue.total)}</p>}

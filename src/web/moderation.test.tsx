@@ -456,13 +456,16 @@ describe("brick 8c-2 in the web client (web-ui/08, BR-103 to BR-106)", () => {
     await msg("roomClosed", { roomId: "u1" });
 
     expect(screen.queryByRole("heading", { name: "# Apéro" })).toBeNull();
+    expect(screen.queryByRole("button", { name: STRINGS.reportRoom })).toBeNull();
     expect(screen.getByRole("heading", { name: /# Paris/ })).toBeTruthy();
     expect(screen.getByRole("alert").textContent).toContain(STRINGS.notices.roomClosed);
   });
 
   it("offers only no action and room removal on a room report, with the alert picked", async () => {
     const user = await setup();
-    const dialog = await openQueue(user, [queued("a", { targetKind: "room", targetPseudo: undefined, targetRoomId: "u1", hasAccount: false })]);
+    const dialog = await openQueue(user, [queued("a", { targetKind: "room", targetPseudo: undefined, targetRoomId: "u1", targetRoomName: "Apéro", hasAccount: false })]);
+
+    expect(within(dialog).getByText("# Apéro")).toBeTruthy();
 
     expect(within(dialog).queryByRole("button", { name: STRINGS.warn })).toBeNull();
     expect(within(dialog).queryByRole("button", { name: STRINGS.severe })).toBeNull();
@@ -511,6 +514,35 @@ describe("brick 8c-2 in the web client (web-ui/08, BR-103 to BR-106)", () => {
     await user.click(within(dialog).getByRole("button", { name: STRINGS.confirmSevere }));
 
     expect(connection.send.mock.calls.at(-1)?.[0]).toEqual({ type: "expel", payload: { reportId: "a", duration: "7d", severe: true, alertAuthorities: undefined } });
+  });
+
+  it("sends the alert picked in the proposal with a declined suspension too", async () => {
+    const user = await setup();
+    await openQueue(user, [queued("a")]);
+    await msg("suspensionProposed", { accountId: "acc", reportId: "a", activeStrikes: 3 });
+
+    const proposal = screen.getByText(STRINGS.proposal(3)).parentElement as HTMLElement;
+    await user.selectOptions(within(proposal).getByLabelText(STRINGS.alertSelect), "terrorism");
+    await user.click(within(proposal).getByRole("button", { name: STRINGS.noSuspend }));
+
+    expect(connection.send).toHaveBeenCalledWith({ type: "declineSuspension", payload: { accountId: "acc", reportId: "a", alertAuthorities: "terrorism" } });
+  });
+
+  it("shows an alert already raised on the report read-only in the proposal, and sends none", async () => {
+    const user = await setup();
+    await openQueue(user, [queued("a", { alert: { ...alert, offenceCategory: "harassment" } })]);
+    await msg("suspensionProposed", { accountId: "acc", reportId: "a", activeStrikes: 3 });
+
+    const proposal = screen.getByText(STRINGS.proposal(3)).parentElement as HTMLElement;
+    expect(within(proposal).queryByLabelText(STRINGS.alertSelect)).toBeNull();
+    expect(within(proposal).getByText(STRINGS.alertRaisedAlready(STRINGS.offences.harassment))).toBeTruthy();
+    await user.click(within(proposal).getByRole("button", { name: STRINGS.suspend }));
+    await user.click(within(proposal).getByRole("button", { name: STRINGS.noSuspend }));
+
+    expect(connection.send.mock.calls.slice(-2).map(([command]) => command)).toEqual([
+      { type: "confirmSuspension", payload: { accountId: "acc", reportId: "a", alertAuthorities: undefined } },
+      { type: "declineSuspension", payload: { accountId: "acc", reportId: "a", alertAuthorities: undefined } },
+    ]);
   });
 
   it("sends the alert with a confirmed suspension", async () => {

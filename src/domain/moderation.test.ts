@@ -106,7 +106,7 @@ describe("fileReport (UC9, BR-050 to BR-052)", () => {
 
     const result = fileReport(state, report(lola, { targetKind: "room", targetPseudo: undefined, targetRoomId: "lyon" }), T0, random);
 
-    expect(result).toMatchObject({ kind: "filed", report: { targetRoomId: "lyon" } });
+    expect(result).toMatchObject({ kind: "filed", report: { targetRoomId: "lyon", targetRoomName: "Lyon" } });
   });
 
   it.each([

@@ -20,6 +20,10 @@ describe("parseFilingChannel (BR-104)", () => {
 });
 
 describe("isFilingReference (BR-104, BR-090)", () => {
+  it("counts the length once trimmed", () => {
+    expect(isFilingReference(` ${"x".repeat(AUTHORITY_LIMITS.maxReferenceLength)} `)).toBe(true);
+  });
+
   it("accepts 1 to 100 characters, counted in code points", () => {
     expect(isFilingReference("A")).toBe(true);
     expect(isFilingReference("x".repeat(AUTHORITY_LIMITS.maxReferenceLength))).toBe(true);
@@ -31,6 +35,7 @@ describe("isFilingReference (BR-104, BR-090)", () => {
     ["blank", "   "],
     ["101 characters", "x".repeat(AUTHORITY_LIMITS.maxReferenceLength + 1)],
     ["a control character", "PV\u0007123"],
+    ["a forbidden character at an edge", "PV-1\u200B"],
   ])("refuses %s", (_label, reference) => {
     expect(isFilingReference(reference)).toBe(false);
   });

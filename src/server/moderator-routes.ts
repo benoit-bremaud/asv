@@ -181,7 +181,7 @@ export const addModeratorRoutes = (app: Hono, deps: ModeratorRouteDeps): void =>
     const parsed = typeof channel === "string" ? parseFilingChannel(channel) : undefined;
     if (typeof reportId !== "string" || reportId.length === 0 || reportId.length > MAX_TOKEN) return c.body(null, 400, NO_STORE);
     if (parsed === undefined || typeof reference !== "string" || !isFilingReference(reference)) return c.body(null, 400, NO_STORE);
-    const result = await deps.recordFiling(reportId, parsed, reference, now());
+    const result = await deps.recordFiling(reportId, parsed, reference.trim(), now());
     return c.body(null, FILING_STATUS[result], NO_STORE);
   }));
 

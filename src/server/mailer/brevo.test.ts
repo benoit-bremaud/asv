@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createBrevoMailer, MAIL_SEND_FAILED, parseBrevoFailure, scrub, type BrevoOptions } from "./brevo";
+import { createBrevoMailer, ALERT_HELD, MAIL_SEND_FAILED, parseBrevoFailure, scrub, type BrevoOptions } from "./brevo";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -128,7 +128,19 @@ describe("moderation mails of brick 8c-2 (BR-104, BR-107)", () => {
 
     expect(await mailer.sendAuthorityAlert("r1", "terrorism")).toBe(false);
     expect(fetchStub).not.toHaveBeenCalled();
-    expect(log).toHaveBeenCalledWith("error", expect.objectContaining({ providerCode: "missing_contact_email" }));
+    expect(log).toHaveBeenCalledWith("info", { event: ALERT_HELD, reason: "missing_contact_email" });
+  });
+
+  it("sends the decision and the statement with replies to the contact address, none when unset", async () => {
+    const { mailer, fetchStub } = setup({ contactEmail: "owner@asvchat.fr" });
+    await mailer.sendReportDecision("lola@example.org", "x");
+    await mailer.sendStatementOfReasons("max@example.org", "y");
+    const bare = setup();
+    await bare.mailer.sendReportDecision("lola@example.org", "x");
+
+    const bodies = fetchStub.mock.calls.map((call) => JSON.parse(String(call[1]?.body)) as { replyTo?: unknown });
+    expect(bodies.map((body) => body.replyTo)).toEqual([{ email: "owner@asvchat.fr" }, { email: "owner@asvchat.fr" }]);
+    expect(JSON.parse(String(bare.fetchStub.mock.calls[0]?.[1]?.body))).not.toHaveProperty("replyTo");
   });
 
   it("reports whether Brevo accepted a decision e-mail, escaped in HTML", async () => {

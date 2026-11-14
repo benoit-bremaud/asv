@@ -3,13 +3,16 @@
  * reports to the domain; only ciphertext and keyed hashes reach the store.
  */
 import {
+  alertDue,
   foldPseudo,
+  isOffenceCategory,
   type AlertChannel,
   type AuthorityAlert,
   type BanDecision,
   type FilingResult,
   type OffenceCategory,
   type ModerationStore,
+  type ReportPatch,
   type Report,
   type ReportOutcome,
   type StoredAlert,
@@ -62,6 +65,7 @@ export const createModerationIo = ({ store, crypto }: ModerationIoDeps) => {
     targetKind: report.targetKind,
     targetPseudo: await optional(report.targetPseudo, report.id, "targetPseudo"),
     targetRoomId: report.targetRoomId,
+    targetRoomName: await optional(report.targetRoomName, report.id, "targetRoomName"),
     targetSessionId: report.targetSessionId,
     targetAccountId: report.targetAccountId,
     targetIpKeyedHash: report.targetIp === undefined ? undefined : await ipHash(report.targetIp),
@@ -72,10 +76,18 @@ export const createModerationIo = ({ store, crypto }: ModerationIoDeps) => {
     createdAt: report.createdAt,
   });
 
+  /** @throws when the stored category is not one of §6: the ciphertext was not ours. */
+  const toCategory = async (id: string, stored: string): Promise<OffenceCategory> => {
+    const category = await crypto.decrypt(stored, field(id, "alertCategory"));
+    if (!isOffenceCategory(category)) throw new Error("stored alert category is unknown");
+    return category;
+  };
+
   const toAlert = async (id: string, stored: StoredAlert): Promise<AuthorityAlert> => {
-    const { raisedBy, reference, ...clearFields } = stored;
+    const { offenceCategory, raisedBy, reference, ...clearFields } = stored;
     return {
       ...clearFields,
+      offenceCategory: await toCategory(id, offenceCategory),
       raisedBy: await crypto.decrypt(raisedBy, field(id, "alertRaisedBy")),
       ...(reference === undefined ? {} : { reference: await crypto.decrypt(reference, field(id, "alertReference")) }),
     };
@@ -102,6 +114,7 @@ export const createModerationIo = ({ store, crypto }: ModerationIoDeps) => {
       targetKind: stored.targetKind,
       targetPseudo: await clear(stored.targetPseudo, stored.id, "targetPseudo"),
       targetRoomId: stored.targetRoomId,
+      ...(stored.targetRoomName === undefined ? {} : { targetRoomName: await crypto.decrypt(stored.targetRoomName, field(stored.id, "targetRoomName")) }),
       targetSessionId: stored.targetSessionId,
       targetAccountId: stored.targetAccountId,
       excerpt: await crypto.decrypt(stored.excerpt, field(stored.id, "excerpt")),
@@ -116,11 +129,12 @@ export const createModerationIo = ({ store, crypto }: ModerationIoDeps) => {
     };
   };
 
-  /** Rewrites the stored report as it is, so the keyed IP hash and the ciphertexts are kept. */
-  const update = async (id: string, change: Partial<StoredReport>): Promise<void> => {
-    const stored = await store.findReport(id);
-    if (!stored) throw new Error(`report ${id} not found`);
-    await store.saveReport({ ...stored, ...change });
+  /**
+   * Sets only the given fields in the store, so a write made meanwhile outside the hub queue (the owner's
+   * filing, `notifiedAt`) is never overwritten.
+   */
+  const update = async (id: string, change: ReportPatch): Promise<void> => {
+    if (!(await store.patchReport(id, change))) throw new Error(`report ${id} not found`);
   };
 
   /** The stored IP hash survives the decryption, so a ban can use it once the target left. */
@@ -142,13 +156,25 @@ export const createModerationIo = ({ store, crypto }: ModerationIoDeps) => {
     /** BR-104: one alert per report, `pending`; `false` when the report already has one. */
     async saveAuthorityAlert(reportId: string, category: OffenceCategory, by: string, at: Date): Promise<boolean> {
       return store.saveAuthorityAlert(reportId, {
-        offenceCategory: category,
+        offenceCategory: await crypto.encrypt(category, field(reportId, "alertCategory")),
         raisedBy: await crypto.encrypt(by, field(reportId, "alertRaisedBy")),
         raisedAt: at,
         status: "pending",
       });
     },
     markAlertNotified: (reportId: string, at: Date) => store.markAlertNotified(reportId, at),
+    /**
+     * BR-104: the alerts due at `now`, only their category decrypted. One that cannot be read is in
+     * `failures`, so it never stops the others.
+     */
+    async pendingAlerts(now: Date): Promise<{ alerts: { reportId: string; category: OffenceCategory }[]; failures: unknown[] }> {
+      const due = (await store.pendingAlerts()).filter((alert) => alertDue(alert, now));
+      const read = await Promise.allSettled(due.map(async (alert) => ({ reportId: alert.reportId, category: await toCategory(alert.reportId, alert.offenceCategory) })));
+      return {
+        alerts: read.flatMap((one) => (one.status === "fulfilled" ? [one.value] : [])),
+        failures: read.flatMap((one) => (one.status === "rejected" ? [one.reason as unknown] : [])),
+      };
+    },
     /** UC20: the reference is encrypted like the report (BR-105). */
     async recordFiling(reportId: string, channel: AlertChannel, reference: string, at: Date): Promise<FilingResult> {
       return store.recordFiling(reportId, channel, await crypto.encrypt(reference, field(reportId, "alertReference")), at);

@@ -21,6 +21,7 @@ classDiagram
     +AccountId targetAccountId
     +String targetIpKeyedHash
     +RoomId targetRoomId
+    +String targetRoomName
     +String excerpt
     +String[] context
     +String authorPseudo

@@ -72,9 +72,14 @@ stateDiagram-v2
   on "expulsion grave", where it starts with no value and "confirmer" stays disabled until the moderator
   picks a category or "aucune". The AI category never fills it (ADR-0010).
 - The queue shows the first 50 open reports in BR-102 order and the total count, so closing one brings
-  the next; the "alertes" tab shows up to 50 alerted reports, pending first, then the most recent filed ones. Nothing is dropped from the store.
+  the next; the "alertes" tab shows up to 50 alerted reports, pending first, oldest raised first, then the most recently filed ones (BR-104). Nothing is dropped from the store.
 - A tab "alertes" lists the closed reports with an alert (`listAlertedReports`, moderator only, BR-054):
   excerpt, context, pseudos, dates, category, status "en attente" or "déposée", channel and reference,
   all as text; an open row with an alert shows "alerte : en attente" or "alerte : déposée (canal,
   référence)".
+- The suspension proposal shows the report's alert read-only when one was already raised; otherwise it
+  carries the "à signaler aux autorités" select, and both "suspendre 7 jours" and "ne pas suspendre" send
+  its value as `alertAuthorities` (BR-104).
+- When a moderator closes a room (`roomClosed`), the room tab closes as on "×" and the notice reads
+  « Un modérateur a fermé ce salon. » (BR-106).
 - No reporter-facing screen: the decision reaches a member reporter by e-mail only (BR-107).
