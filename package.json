@@ -15,6 +15,9 @@
     "mod:invite": "tsx src/transports/node/owner-cli-main.ts invite",
     "mod:revoke": "tsx src/transports/node/owner-cli-main.ts revoke",
     "mod:filed": "tsx src/transports/node/owner-cli-main.ts filed",
+    "cf:dev": "pnpm build && wrangler dev",
+    "cf:deploy:staging": "pnpm build && wrangler deploy --env staging",
+    "cf:deploy:production": "pnpm build && wrangler deploy --env production",
     "build": "tsc && vite build",
     "lint": "eslint .",
     "typecheck": "tsc",
@@ -35,6 +38,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261112.1",
     "@eslint/js": "^10.0.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.8",
@@ -53,6 +57,7 @@
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.72.0",
     "vite": "^8.3.4",
-    "vitest": "^5.0.5"
+    "vitest": "^5.0.5",
+    "wrangler": "^4.160.1"
   }
 }

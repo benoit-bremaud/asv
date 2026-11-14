@@ -25,6 +25,11 @@ const config = tseslint.config(
     rules: { "no-restricted-exports": "off" },
   },
   {
+    // The Workers runtime loads the module's default export; the platform imposes it.
+    files: ["src/transports/cloudflare/worker.ts"],
+    rules: { "no-restricted-exports": "off" },
+  },
+  {
     files: ["src/web/**/*.tsx"],
     plugins: { "react-hooks": reactHooks },
     rules: reactHooks.configs.recommended.rules,
@@ -46,7 +51,15 @@ const config = tseslint.config(
   {
     files: ["src/server/**/*.ts", "test/fixtures/lint/server/**/*.ts"],
     rules: {
-      "no-restricted-imports": ["error", { patterns: [{ group: ["**/transports", "**/transports/**"], message: "src/server never imports a transport." }] }],
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            { group: ["**/transports", "**/transports/**"], message: "src/server never imports a transport." },
+            { regex: "^cloudflare:", message: "src/server is transport-neutral: no cloudflare:* import (ADR-0020)." },
+          ],
+        },
+      ],
     },
   },
   {

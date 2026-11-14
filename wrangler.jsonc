@@ -1,0 +1,80 @@
+// Cloudflare transport of asv (ADR-0020, `platform/07`, `platform/10`). Non-secret settings only: secrets are
+// Wrangler secrets per environment (BR-111), set by the owner, never in this file. Every real deploy, DNS change,
+// Access policy and secret needs the owner's explicit yes (ADR-0020 §11).
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "asv",
+  "main": "src/transports/cloudflare/worker.ts",
+  "compatibility_date": "2026-11-01",
+  // `node:crypto` for the synchronous token hash of the hub (`random.ts`).
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    // BR-086 and BR-111 on every response, assets included.
+    "run_worker_first": true
+  },
+  "workers_dev": false,
+  "preview_urls": false,
+  // One SQLite-backed class; migrations are additive only (`platform/10`).
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["HubObject"] }],
+  // Local `wrangler dev` only: moderation on, placeholders the Worker refuses with 503 until set in `.dev.vars`.
+  "durable_objects": {
+    "bindings": [{ "name": "HUB", "class_name": "HubObject" }],
+    "code_update_strategy": { "mode": "immediate" }
+  },
+  "vars": {
+    "ASV_ALLOWED_ORIGINS": "http://localhost:8787",
+    "ASV_PUBLIC_ORIGIN": "http://localhost:8787",
+    "ASV_MAIL_FROM": "contact@asvchat.fr",
+    "ASV_TRIAGE_MODEL": "mistral-small-latest",
+    "ASV_ACCESS_AUD_SITE": "TBD-by-owner",
+    "ASV_ACCESS_AUD_OWNER": "TBD-by-owner",
+    "ASV_ACCESS_TEAM_DOMAIN": "TBD-by-owner",
+    "ASV_MODERATION": "on"
+  },
+  "env": {
+    "staging": {
+      "name": "asv-staging",
+      "routes": [{ "pattern": "staging.asvchat.fr", "custom_domain": true }],
+      "workers_dev": false,
+      "preview_urls": false,
+      "durable_objects": {
+        "bindings": [{ "name": "HUB", "class_name": "HubObject" }],
+        "code_update_strategy": { "mode": "immediate" }
+      },
+      "vars": {
+        "ASV_ALLOWED_ORIGINS": "https://staging.asvchat.fr",
+        "ASV_PUBLIC_ORIGIN": "https://staging.asvchat.fr",
+        "ASV_MAIL_FROM": "contact@asvchat.fr",
+        "ASV_TRIAGE_MODEL": "mistral-small-latest",
+        "ASV_ACCESS_AUD_SITE": "TBD-by-owner",
+        "ASV_ACCESS_AUD_OWNER": "TBD-by-owner",
+        "ASV_ACCESS_TEAM_DOMAIN": "TBD-by-owner",
+        // BR-108, ADR-0020 D5: staging, owner only, tests moderation on the real platform.
+        "ASV_MODERATION": "on"
+      }
+    },
+    "production": {
+      "name": "asv-production",
+      "routes": [{ "pattern": "asvchat.fr", "custom_domain": true }],
+      "workers_dev": false,
+      "preview_urls": false,
+      "durable_objects": {
+        "bindings": [{ "name": "HUB", "class_name": "HubObject" }],
+        "code_update_strategy": { "mode": "immediate" }
+      },
+      "vars": {
+        "ASV_ALLOWED_ORIGINS": "https://asvchat.fr",
+        "ASV_PUBLIC_ORIGIN": "https://asvchat.fr",
+        "ASV_MAIL_FROM": "contact@asvchat.fr",
+        "ASV_TRIAGE_MODEL": "mistral-small-latest",
+        "ASV_ACCESS_AUD_SITE": "TBD-by-owner",
+        "ASV_ACCESS_AUD_OWNER": "TBD-by-owner",
+        "ASV_ACCESS_TEAM_DOMAIN": "TBD-by-owner",
+        // BR-108: off until the owner records the signed impact assessment (`platform/10`).
+        "ASV_MODERATION": "off"
+      }
+    }
+  }
+}
