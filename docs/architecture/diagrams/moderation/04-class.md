@@ -111,6 +111,12 @@ classDiagram
     +String text «encrypted»
     +Date createdAt
   }
+  class PendingStatement {
+    +String id
+    +String email «encrypted»
+    +String text «encrypted»
+    +Date giveUpAt
+  }
   class AlertStatus {
     <<enumeration>>
     pending
@@ -156,6 +162,9 @@ classDiagram
     +savePendingDecisionMail(mail)
     +pendingDecisionMails() PendingDecisionMail[]
     +deletePendingDecisionMail(id)
+    +savePendingStatement(statement)
+    +pendingStatements() PendingStatement[]
+    +deletePendingStatement(id)
     +purgeExpired(now)
   }
   class ModerationIo {
@@ -197,6 +206,7 @@ classDiagram
   ModerationIo ..> ModerationStore
   ModerationStore ..> Ban
   ModerationStore ..> PendingDecisionMail
+  ModerationStore ..> PendingStatement
   ModeratorStore ..> Moderator
   ModeratorStore ..> Invitation
 ```
@@ -209,7 +219,12 @@ classDiagram
 
 - Store ports sit next to the domain, implemented in memory (Node) and in Durable Object SQLite (Cloudflare).
 - `ReportTriage` wraps the third-party AI (ADR-0010). A no-AI adapter returns urgency `unknown`.
-- `purgeExpired` applies BR-061 and BR-062 and is called by the hub's daily alarm (ADR-0011).
+- `purgeExpired` applies BR-061 and BR-062 and is called by the hub's daily alarm (ADR-0011). The SQLite
+  store also drops a `PendingStatement` past `giveUpAt` and a `PendingDecisionMail` older than the 7-day
+  give-up window, even when a retry round cannot read it (BR-076, BR-107).
+- A `PendingStatement` keeps the address and the text, encrypted, only until the mailer accepts the
+  statement of reasons (BR-076, BR-109), then is deleted; it is given up at `giveUpAt` (7 days).
+- `Report.closed.by` and `Ban.decidedBy` hold the moderator's name, encrypted at rest (ADR-0017).
 - `signCount` helps detect cloned authenticators.
 - Strikes and e-mail blocks live with accounts (see `accounts/04-class`). `targetAccountId` and
   `targetIpKeyedHash` are captured when the report is filed, so a strike or a suspension ban can be

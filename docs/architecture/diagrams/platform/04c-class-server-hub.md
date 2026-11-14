@@ -23,6 +23,7 @@ classDiagram
     +receive(socketKey, raw, now) Promise~Outgoing[]~
     +close(socketKey, now) Promise~Outgoing[]~
     +tick(now) Promise~Outgoing[]~
+    +maintain(now, purge) Promise~void~
     +stats() Stats
   }
   class HubDeps {
@@ -39,6 +40,11 @@ classDiagram
     +ModerationIo moderation
     +Bytes grantKey
     +Boolean canReport
+    +Boolean maintenanceInTick
+  }
+  class ModeratorRouteDeps {
+    <<src/server/moderator-routes.ts>>
+    +Boolean ownerLoopbackOnly
   }
   class ConnectionLogStore {
     <<interface, src/domain/ports.ts>>
@@ -135,6 +141,12 @@ classDiagram
 ```
 
 ## Notes
+
+- `maintain(now, purge)` (BR-110): the store purges when `purge` is true, then one mail retry round.
+  `HubDeps.maintenanceInTick` defaults to `true`: the Node transport keeps both in `tick`. The Hub Durable
+  Object sets it to `false` and calls `maintain` from its alarm instead (`platform/09`).
+- `ModeratorRouteDeps.ownerLoopbackOnly` defaults to `true` (Node: `/owner/*` from loopback only); the
+  Cloudflare transport sets it to `false`, the owner secret and Access guarding the routes (BR-093, BR-113).
 
 - `Socket.unboundSince` (BR-089): epoch milliseconds of the first `tick` that saw the socket without a
   session; a bound socket clears it, and `leave` clears it too (a session may enter and leave between two ticks), so the count restarts. When it is 10 minutes old, `tick` calls
