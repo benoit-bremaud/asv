@@ -285,6 +285,12 @@ const replaceMember = (members: readonly Member[], member: Member): Member[] => 
   return [...others, member];
 };
 
+/** A room tab closes: the next open room, else the list, when it was the active one. */
+const withoutRoom = (state: ChatState, roomId: string): ChatState => {
+  const open = Object.fromEntries(Object.entries(state.open).filter(([id]) => id !== roomId));
+  return state.active === roomId ? afterClose(state, open) : { ...state, open };
+};
+
 /** After a room closes: next open room, else the list. */
 const afterClose = (state: ChatState, open: ChatState["open"]): ChatState => {
   const [next] = Object.keys(open);
@@ -438,12 +444,9 @@ const onServer = (state: ChatState, message: ServerMessage): ChatState => {
     case "reportClosed":
     case "suspensionProposed":
       return onModeration(state, message);
-    case "roomClosed": {
+    case "roomClosed":
       // BR-106: a moderator removed the room; its tab closes as on `leaveRoom`.
-      const open = Object.fromEntries(Object.entries(state.open).filter(([roomId]) => roomId !== message.payload.roomId));
-      const closed = { ...state, notice: "roomClosed" };
-      return state.active === message.payload.roomId ? afterClose(closed, open) : { ...closed, open };
-    }
+      return withoutRoom({ ...state, notice: "roomClosed" }, message.payload.roomId);
     case "resumed":
       return onResumed(state, message.payload);
     case "resumeRefused":
@@ -541,10 +544,8 @@ const reduce = (state: ChatState, action: Action): ChatState => {
       return { ...state, screen: "rooms" };
     case "showRoom":
       return state.open[action.roomId] ? { ...state, screen: "room", active: action.roomId } : state;
-    case "closeRoom": {
-      const open = Object.fromEntries(Object.entries(state.open).filter(([roomId]) => roomId !== action.roomId));
-      return state.active === action.roomId ? afterClose(state, open) : { ...state, open };
-    }
+    case "closeRoom":
+      return withoutRoom(state, action.roomId);
     case "notice":
       return { ...state, notice: action.code };
     case "dismissNotice":

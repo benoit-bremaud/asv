@@ -136,7 +136,7 @@ export const createModerationMail = (deps: ModerationMailDeps) => {
       const alerts = await dueAlerts(now);
       const mails = await deps.moderation.pendingDecisionMails();
       const expired = mails.filter((mail) => now.getTime() - mail.createdAt.getTime() >= MAIL_GIVE_UP_MS);
-      for (const mail of expired) await deps.moderation.deletePendingDecisionMail(mail.id);
+      await Promise.all(expired.map((mail) => deps.moderation.deletePendingDecisionMail(mail.id)));
       await Promise.all([
         ...alerts.map((alert) => sendAlert(alert.id, alert.category, now)),
         ...mails.filter((mail) => !expired.includes(mail)).map(sendDecision),

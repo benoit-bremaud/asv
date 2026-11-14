@@ -92,8 +92,11 @@ const AlertSelect = ({ id, value, onChange, required = false }: { id: string; va
   </label>
 );
 
-const alertStatus = (alert: Alert) =>
-  alert.status === "filed" ? STRINGS.alertFiled(alert.channel ? STRINGS.channels[alert.channel] : "", alert.reference ?? "") : STRINGS.alertPending;
+const alertStatus = (alert: Alert) => {
+  if (alert.status === "pending") return STRINGS.alertPending;
+  const channel = alert.channel ? STRINGS.channels[alert.channel] : "";
+  return STRINGS.alertFiled(channel, alert.reference ?? "");
+};
 
 /** The reported content, as text only, in both tabs. */
 const ReportBody = ({ report }: { report: QueuedReport | AlertedReport }) => (
