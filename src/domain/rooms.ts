@@ -273,6 +273,27 @@ export const leaveRoom = (state: HubState, sessionId: string, roomId: string): R
   };
 };
 
+/** BR-106: a removed user room, its members to tell with `roomClosed`; refused for an official or gone room. */
+export type RoomRemoval =
+  | { readonly kind: "removed"; readonly state: HubState; readonly members: readonly string[]; readonly effects: readonly RoomEffect[] }
+  | { readonly kind: "refused" };
+
+/** BR-106 (`moderation/02i`): the room closes, every member leaves it and its name is freed. */
+export const removeRoom = (state: HubState, roomId: string): RoomRemoval => {
+  if (state.rooms.get(roomId)?.kind !== "user") return { kind: "refused" };
+  const members = roomMembers(state, roomId);
+  const sessions = new Map(state.sessions);
+  for (const member of members) sessions.set(member.id, { ...member, rooms: member.rooms.filter((id) => id !== roomId) });
+  const rooms = new Map(state.rooms);
+  rooms.delete(roomId);
+  return {
+    kind: "removed",
+    state: { ...state, sessions, rooms },
+    members: members.map((member) => member.id),
+    effects: [{ type: "roomDeleted", roomId }],
+  };
+};
+
 /** BR-030 on the canonical, trimmed name; at least one letter or digit. */
 const isValidRoomName = (name: string): boolean =>
   ROOM_NAME_PATTERN.test(name) && roomNameKey(name).length > 0 && !containsReservedWord(name);

@@ -2,6 +2,8 @@
  * Ports the hub calls; transports implement them (`platform/03`, `platform/04c`).
  * Types only, so the domain stays pure.
  */
+import type { AlertChannel, AuthorityAlert, FilingResult, OffenceCategory } from "./authority";
+import type { ReportOutcome } from "./moderation";
 import type { Triage, TriageInput } from "./triage";
 
 /** One line per socket connection, opened on entry or resume (BR-060). */
@@ -52,6 +54,8 @@ export interface StoredReport {
   readonly targetKind: "chatter" | "message" | "room";
   readonly targetPseudo?: string;
   readonly targetRoomId?: string;
+  /** Ciphertext: a chatter chose it (ADR-0017). */
+  readonly targetRoomName?: string;
   readonly targetSessionId?: string;
   readonly targetAccountId?: string;
   readonly targetIpKeyedHash?: string;
@@ -59,16 +63,43 @@ export interface StoredReport {
   /** Ciphertext of the JSON array of context lines. */
   readonly context: string;
   readonly authorPseudo: string;
+  /** The reporter's account id, clear like every id (BR-107). */
+  readonly reporterAccountId?: string;
   readonly createdAt: Date;
   /** Set once a warning on this report gave its strike, so a repeated `warned` adds none (BR-074). */
   readonly struckAt?: Date;
   /** The AI triage (BR-100, BR-101): category and urgency clear, summary and label map ciphertext. */
   readonly triage?: StoredTriage;
   readonly closed?: {
-    readonly outcome: "noAction" | "warned" | "expelled" | "suspended";
+    readonly outcome: ReportOutcome;
     readonly by: string;
     readonly at: Date;
   };
+  /** BR-104: at most one alert per report. */
+  readonly alert?: StoredAlert;
+}
+
+/** An authority alert as stored: category, `raisedBy` and `reference` ciphertext (BR-105, ADR-0017). */
+export interface StoredAlert extends Omit<AuthorityAlert, "offenceCategory" | "raisedBy" | "reference"> {
+  readonly offenceCategory: string;
+  readonly raisedBy: string;
+  readonly reference?: string;
+}
+
+/** What the retry round reads of an alert not yet e-mailed (BR-104), without the report. */
+export interface PendingAlert {
+  readonly reportId: string;
+  readonly offenceCategory: string;
+  readonly raisedAt: Date;
+}
+
+/** A decision e-mail not yet accepted by the provider (BR-107): address and text ciphertext. */
+export interface PendingDecisionMail {
+  readonly id: string;
+  readonly reportId: string;
+  readonly email: string;
+  readonly text: string;
+  readonly createdAt: Date;
 }
 
 /** A triage as stored with its report (`moderation/04`, ADR-0017). */
@@ -91,17 +122,34 @@ export interface StoredBan {
   readonly decidedAt: Date;
 }
 
+/** The report fields the hub changes after filing, each written alone (`moderation/04`). */
+export type ReportPatch = Partial<Pick<StoredReport, "closed" | "struckAt">>;
+
 /** Reports and bans (`moderation/04`); every call may fail. */
 export interface ModerationStore {
   saveReport(report: StoredReport): Promise<void>;
+  /** Sets only these fields, in one store operation; `false` when the report is gone. */
+  patchReport(id: string, patch: ReportPatch): Promise<boolean>;
   findReport(id: string): Promise<StoredReport | undefined>;
   openReports(): Promise<readonly StoredReport[]>;
   /** Sets the triage of an open report; a closed or missing report is left as it is (`moderation/05`). */
   saveTriage(id: string, triage: StoredTriage): Promise<void>;
+  /** BR-104: closed reports with an alert, pending or filed, until purge. */
+  alertedReports(): Promise<readonly StoredReport[]>;
+  /** BR-104: one alert per report; `false` and no change when the report has one or is missing. */
+  saveAuthorityAlert(reportId: string, alert: StoredAlert): Promise<boolean>;
+  markAlertNotified(reportId: string, at: Date): Promise<void>;
+  /** BR-104: the alerts the owner was not told of yet, open or closed report, category ciphertext. */
+  pendingAlerts(): Promise<readonly PendingAlert[]>;
+  /** UC20: sets the alert `filed`; `reference` is ciphertext. */
+  recordFiling(reportId: string, channel: AlertChannel, reference: string, at: Date): Promise<FilingResult>;
+  savePendingDecisionMail(mail: PendingDecisionMail): Promise<void>;
+  pendingDecisionMails(): Promise<readonly PendingDecisionMail[]>;
+  deletePendingDecisionMail(id: string): Promise<void>;
   saveBan(ban: StoredBan): Promise<void>;
   /** The latest-ending ban matching either key and still running at `now`. */
   activeBan(ipKeyedHash: string, pseudoKeyedHash: string, now: Date): Promise<StoredBan | undefined>;
-  /** BR-061: closed reports after 6 months; BR-062: bans 30 days after their end. */
+  /** BR-061: closed reports after 6 months, 1 year with an alert (BR-105); BR-062: bans 30 days after their end. */
   purgeExpired(now: Date): Promise<void>;
 }
 
@@ -228,4 +276,8 @@ export interface Mailer {
   sendCode(email: string, code: string): Promise<void>;
   /** Resolves `true` only when the provider accepted the mail (BR-076). */
   sendStatementOfReasons(email: string, statement: string): Promise<boolean>;
+  /** BR-104: the report id and category only, to the contact address; `true` once accepted. */
+  sendAuthorityAlert(reportId: string, category: OffenceCategory): Promise<boolean>;
+  /** BR-107: the decision in general terms to a member reporter; `true` once accepted. */
+  sendReportDecision(email: string, text: string): Promise<boolean>;
 }

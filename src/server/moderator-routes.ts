@@ -11,7 +11,7 @@ import {
   type RegistrationResponseJSON,
 } from "@simplewebauthn/server";
 import type { Context, Hono } from "hono";
-import { isModeratorName } from "../domain";
+import { isFilingReference, isModeratorName, parseFilingChannel, type AlertChannel, type FilingResult } from "../domain";
 import { fromBase64, toBase64Url } from "./crypto/keys";
 import type { ModeratorOps } from "./hub-moderators";
 import { signGrant } from "./moderator-grant";
@@ -29,6 +29,7 @@ const unmapped = (peer: string) => peer.replace(/^::ffff:/, "");
 const isLoopback = (peer: string) => LOOPBACK.has(unmapped(peer));
 const NO_STORE = { "Cache-Control": "no-store" };
 const MAX_TOKEN = 64;
+const FILING_STATUS = { filed: 204, alreadyFiled: 409, noAlert: 404 } as const;
 
 export interface ModeratorRouteDeps {
   readonly ops: ModeratorOps;
@@ -40,6 +41,8 @@ export interface ModeratorRouteDeps {
   /** Unset: invitation and revocation answer 404 (BR-093). */
   readonly ownerSecret?: string;
   readonly behindTunnel: boolean;
+  /** UC20: records the owner's filing of an authority alert (BR-104). */
+  readonly recordFiling: (reportId: string, channel: AlertChannel, reference: string, at: Date) => Promise<FilingResult>;
   /** Socket address of the HTTP peer, for the loopback check and the rate limits. */
   readonly peerAddress: (c: Context) => string | undefined;
   readonly now: () => Date;
@@ -167,6 +170,19 @@ export const addModeratorRoutes = (app: Hono, deps: ModeratorRouteDeps): void =>
     const name = c.req.param("name") ?? "";
     if (!isModeratorName(name)) return c.body(null, 400, NO_STORE);
     return c.body(null, (await ops.io.revoke(name)) ? 204 : 404, NO_STORE);
+  }));
+
+  /** UC20 (`moderation/02h`): 204 filed, 409 already filed, 404 unknown report or no alert, 400 bad input. */
+  app.post("/mod/authority-filings", guarded(async (c) => {
+    const refused = await ownerRefusal(c);
+    if (refused) return refused;
+    const body = await readBody(c);
+    const { reportId, channel, reference } = body ?? {};
+    const parsed = typeof channel === "string" ? parseFilingChannel(channel) : undefined;
+    if (typeof reportId !== "string" || reportId.length === 0 || reportId.length > MAX_TOKEN) return c.body(null, 400, NO_STORE);
+    if (parsed === undefined || typeof reference !== "string" || !isFilingReference(reference)) return c.body(null, 400, NO_STORE);
+    const result = await deps.recordFiling(reportId, parsed, reference.trim(), now());
+    return c.body(null, FILING_STATUS[result], NO_STORE);
   }));
 
   app.post("/mod/enroll/options", guarded(async (c) => {

@@ -390,6 +390,15 @@ describe("moderator wiring (moderation/02f)", () => {
     expect((await invite(port, "x".repeat(32))).status).toBe(401);
   });
 
+  it("says once at start that authority alerts stay pending without a contact address (BR-104)", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    await start({ ownerSecret: SECRET });
+    await server?.stop();
+    await start({ ownerSecret: SECRET, legal: { contactEmail: "owner@asvchat.fr" } });
+
+    expect(error.mock.calls.filter(([text]) => String(text).includes("ASV_CONTACT_EMAIL"))).toHaveLength(1);
+  });
+
   it("answers 404 on owner routes without a secret, while the status stays on", async () => {
     const { port } = await start();
     expect((await invite(port)).status).toBe(404);

@@ -28,6 +28,12 @@ export const CAPS = {
   triageLabel: 64,
   /** Open reports per `openReports` (`platform/04-class-protocol`, `web-ui/08`). */
   queuePage: 50,
+  /** Alerted reports per `alertedReports` (`platform/04-class-protocol`, `web-ui/08`). */
+  alertPage: 50,
+  /** Filing reference (BR-104). */
+  filingReference: 100,
+  /** Moderator name (BR-094). */
+  moderatorName: 20,
 } as const;
 
 const capped = (max: number) => z.string().check(z.maxLength(max));
@@ -63,6 +69,10 @@ export const reportOutcome = z.enum([
 export const urgency = z.enum(["unknown", "low", "medium", "high"]);
 /** BR-101: the AI category, shown as "tri automatique, à vérifier" only. */
 export const triageCategory = z.enum(["harassment", "sexualMinor", "threat", "hate", "spam", "illegalOther", "none"]);
+/** BR-104, `security-and-rgpd.md` §6: picked by the moderator, never copied from the AI category. */
+export const offenceCategory = z.enum(["childAbuse", "threatToLife", "terrorism", "hateOrViolence", "harassment", "otherListed"]);
+/** Where the owner filed (UC20). */
+export const alertChannel = z.enum(["PHAROS", "police17", "emergency112", "PointDeContact"]);
 /** Expulsion lengths a moderator may pick. */
 export const expelDuration = z.enum(["1h", "24h", "7d"]);
 /** Why an entry was refused; `banned` comes with `bannedUntil`. */
@@ -84,6 +94,8 @@ const profile = z.object({
 const roomTarget = z.object({ roomId: id });
 const sessionTarget = z.object({ targetSessionId: id });
 const suspensionTarget = z.object({ accountId: id, reportId: id });
+/** BR-104: absent means no alert. */
+const alertAuthorities = z.optional(offenceCategory);
 
 /** Every message a client may send, discriminated on `type`. */
 /** What `resume` carries; the client also checks its saved session against it (ADR-0011). */
@@ -123,16 +135,18 @@ export const clientMessage = z.discriminatedUnion("type", [
     }),
   ),
   message("listOpenReports", empty),
+  message("listAlertedReports", empty),
   message("warn", z.object({ targetSessionId: id, text })),
   message(
     "expel",
-    // Acts on the report's captured target (`moderation/04`); `severe` waits for brick 8c.
-    z.object({ reportId: id, duration: expelDuration, severe: z.optional(z.boolean()) }),
+    // Acts on the report's captured target (`moderation/04`); `severe` deletes and bans 7 days (BR-103).
+    z.object({ reportId: id, duration: expelDuration, severe: z.optional(z.boolean()), alertAuthorities }),
   ),
-  message("closeReport", z.object({ reportId: id, outcome: reportOutcome })),
-  message("confirmSuspension", suspensionTarget),
-  message("declineSuspension", suspensionTarget),
-  message("removeRoom", roomTarget),
+  message("closeReport", z.object({ reportId: id, outcome: reportOutcome, alertAuthorities })),
+  message("confirmSuspension", z.extend(suspensionTarget, { alertAuthorities })),
+  message("declineSuspension", z.extend(suspensionTarget, { alertAuthorities })),
+  // BR-106: acts on the report's room.
+  message("removeRoom", z.object({ reportId: id, alertAuthorities })),
   message("requestCode", z.object({ email: capped(CAPS.email), remember: z.boolean() })),
   message("verifyCode", z.object({ code: capped(CAPS.code) })),
   message("signOutEverywhere", empty),
@@ -178,6 +192,29 @@ const privateMessage = z.object({
   text: z.string(),
   sentAt: isoDate,
 });
+/** BR-104: the alert of a report, as moderators see it. */
+const authorityAlert = z.object({
+  offenceCategory,
+  raisedBy: capped(CAPS.moderatorName),
+  raisedAt: isoDate,
+  status: z.enum(["pending", "filed"]),
+  channel: z.optional(alertChannel),
+  reference: z.optional(capped(CAPS.filingReference)),
+  filedAt: z.optional(isoDate),
+});
+/** What a moderator reads of a report in both tabs (`web-ui/08`). */
+const reportView = {
+  id,
+  reason: reportReason,
+  targetKind: reportTarget,
+  targetPseudo: z.optional(z.string()),
+  targetRoomId: z.optional(id),
+  targetRoomName: z.optional(z.string()),
+  excerpt: z.string(),
+  context: z.array(z.string()),
+  authorPseudo: z.string(),
+  createdAt: isoDate,
+};
 /** `replyTo` is the `seq` of the client message that caused the notice. */
 const replyTo = z.optional(z.int().check(z.nonnegative()));
 
@@ -191,7 +228,7 @@ export const serverMessage = z.discriminatedUnion("type", [
       roomList: z.array(roomSummary),
       isModerator: z.boolean(),
       // BR-095: the enrolled name, shown in the queue title.
-      moderatorName: z.optional(capped(20)),
+      moderatorName: z.optional(capped(CAPS.moderatorName)),
       // Brick 8a stays off for testers until the impact assessment of 8c (`moderation/01`).
       canReport: z.boolean(),
       accountId: z.optional(id),
@@ -213,7 +250,7 @@ export const serverMessage = z.discriminatedUnion("type", [
       accountId: z.optional(id),
       // BR-095: a moderator session keeps its rights and name across a resume.
       isModerator: z.optional(z.boolean()),
-      moderatorName: z.optional(capped(20)),
+      moderatorName: z.optional(capped(CAPS.moderatorName)),
       canReport: z.boolean(),
     }),
   ),
@@ -246,15 +283,7 @@ export const serverMessage = z.discriminatedUnion("type", [
     z.object({
       reports: z.array(
         z.object({
-          id,
-          reason: reportReason,
-          targetKind: reportTarget,
-          targetPseudo: z.optional(z.string()),
-          targetRoomId: z.optional(id),
-          excerpt: z.string(),
-          context: z.array(z.string()),
-          authorPseudo: z.string(),
-          createdAt: isoDate,
+          ...reportView,
           // The captured target as it is now (brick 8a, `moderation/04`).
           hasAccount: z.boolean(),
           connected: z.boolean(),
@@ -270,16 +299,26 @@ export const serverMessage = z.discriminatedUnion("type", [
               labels: z.array(z.object({ label: capped(CAPS.triageLabel), pseudo })),
             }),
           ),
+          // BR-104: an open row with an alert shows its status.
+          alert: z.optional(authorityAlert),
         }),
       ).check(z.maxLength(CAPS.queuePage)),
       // The open count; `reports` holds the first 50 in BR-102 order.
       total: z.int().check(z.nonnegative()),
     }),
   ),
+  message(
+    "alertedReports",
+    z.object({
+      // Closed reports with an alert: pending first, then the most recently filed (`web-ui/08`).
+      reports: z.array(z.object({ ...reportView, closedAt: isoDate, alert: authorityAlert })).check(z.maxLength(CAPS.alertPage)),
+    }),
+  ),
   message("warned", z.object({ rule: z.string(), text: z.string(), activeStrikes: z.int() })),
   message("expelled", z.object({ until: isoDate })),
   message("reportClosed", z.object({ reportId: id })),
-  message("suspensionProposed", z.object({ accountId: id, reportId: id, activeStrikes: z.int() })),
+  // BR-104: `alert` is the category already raised on the report; the proposal then shows it read-only.
+  message("suspensionProposed", z.object({ accountId: id, reportId: id, activeStrikes: z.int(), alert: z.optional(offenceCategory) })),
   message("roomClosed", roomTarget),
   message("codeSent", empty),
   message("accountLinked", z.object({ accountId: id, deviceClaim: z.optional(z.string()) })),

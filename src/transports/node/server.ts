@@ -204,6 +204,10 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
   const vault = createMemoryVault();
   const moderation = createMemoryModerationStore();
   const { ownerSecret, publicOrigin, moderators } = moderatorSetup(options, crypto, behindTunnel);
+  if (ownerSecret !== undefined && !behindTunnel && !options.legal?.contactEmail) {
+    // BR-104 (`moderation/02h`): said once here; each retry round then only logs a short line.
+    console.error("ASV_CONTACT_EMAIL is not set: authority alerts (BR-104) stay pending and are never e-mailed to the owner");
+  }
   const grantKey = await createGrantKey();
   const fileLog = options.logFile === undefined ? undefined : createFileLog(options.logFile, now());
   const fileVault = options.vaultFile === undefined ? undefined : createFileVault(options.vaultFile, now());
@@ -222,9 +226,11 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
   const mailer = options.mailer ?? createBrevoMailer({
     apiKey: options.brevoApiKey,
     from: options.mailFrom ?? "contact@asvchat.fr",
+    contactEmail: options.legal?.contactEmail,
     production: behindTunnel,
     log: (level, fields) => (level === "error" ? console.error : console.info)("mailer", fields),
   });
+  const moderationIo = createModerationIo({ store: moderation, crypto });
   const hub = createHub({
     officialRooms: OFFICIAL_ROOMS,
     random,
@@ -236,7 +242,7 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
     accounts: createAccountIo({ store: accounts, vault: hubVault, crypto }),
     mailer,
     onStoreError: (error) => console.error("account store failed", error),
-    moderation: createModerationIo({ store: moderation, crypto }),
+    moderation: moderationIo,
     triage: reportTriage(options, behindTunnel),
     grantKey,
     canReport: !behindTunnel,
@@ -259,6 +265,7 @@ export const startNodeServer = async (options: NodeServerOptions): Promise<NodeS
     allowedOrigins: options.allowedOrigins,
     ownerSecret,
     behindTunnel,
+    recordFiling: (reportId, channel, reference, at) => moderationIo.recordFiling(reportId, channel, reference, at),
     peerAddress: (c) => peerOf(c.env),
     now,
     onError: (error) => console.error("moderator route failed", error),

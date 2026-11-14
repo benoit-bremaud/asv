@@ -103,6 +103,13 @@ export const RoomScreen = () => {
       <main className="room">
         <section ref={lines} className="lines panel" onScroll={followBottom}>
           <h2># {nameOf(roomId)}</h2>
+          {/* Brick 8c (`web-ui/08`): only a user room is reported from its header. */}
+          {state.canReport && state.roomList.find((summary) => summary.id === roomId)?.kind === "user" && (
+            <button type="button" className="link small report-room" onClick={() => commands.local({
+              type: "openReport",
+              draft: { targetKind: "room", targetPseudo: nameOf(roomId), targetRoomId: roomId, excerpt: "", context: reportContext(room.lines) },
+            })}>{STRINGS.reportRoom}</button>
+          )}
           <ol role="log" aria-live="polite">
             {/* BR-042: a line still held from an ignored chatter is hidden. */}
             {room.lines.filter((line) => !state.ignored.includes(line.authorSessionId)).map((line) => (

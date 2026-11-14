@@ -104,7 +104,7 @@ Client to server:
 | expel | reportId, duration (1h, 24h, 7d), severe?, alertAuthorities? (OffenceCategory, BR-104; acts on the report's captured target, `moderation/04`) |
 | closeReport | reportId, outcome, alertAuthorities? |
 | confirmSuspension | accountId, reportId, alertAuthorities? |
-| declineSuspension | accountId, reportId |
+| declineSuspension | accountId, reportId, alertAuthorities? |
 | removeRoom | reportId, alertAuthorities? (BR-106) |
 | requestCode | email, remember |
 | verifyCode | code |
@@ -134,7 +134,7 @@ Server to client:
 | warned | rule, text, activeStrikes |
 | expelled | until |
 | reportClosed | reportId |
-| suspensionProposed | accountId, reportId, activeStrikes |
+| suspensionProposed | accountId, reportId, activeStrikes, alert? (category already raised, BR-104) |
 | roomClosed | roomId |
 | codeSent | — |
 | accountLinked | accountId, deviceClaim? |

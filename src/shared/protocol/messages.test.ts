@@ -245,3 +245,51 @@ describe("away member shape (issue #21)", () => {
     expect(serverMessage.safeParse(error).success).toBe(true);
   });
 });
+
+describe("alertedReports and alertAuthorities (BR-104, `web-ui/08`)", () => {
+  const alert = { offenceCategory: "threatToLife", raisedBy: "Marc", raisedAt: "2026-11-13T10:00:00.000Z", status: "pending" };
+  const row = {
+    id: "r", reason: "harassment", targetKind: "message", targetPseudo: "Max", excerpt: "x", context: ["x"], authorPseudo: "Lola",
+    createdAt: "2026-11-13T10:00:00.000Z", closedAt: "2026-11-13T11:00:00.000Z", alert,
+  };
+  const page = (n: number, extra: object = {}) => ({
+    type: "alertedReports",
+    seq: 1,
+    payload: { reports: Array.from({ length: n }, () => ({ ...row, ...extra })) },
+  });
+
+  it("caps the alertes tab at 50 reports and refuses 51", () => {
+    expect(serverMessage.safeParse(page(CAPS.alertPage)).success).toBe(true);
+    expect(serverMessage.safeParse(page(CAPS.alertPage + 1)).success).toBe(false);
+  });
+
+  it("carries a filed alert with channel and reference, capped at 100 characters", () => {
+    const filed = (reference: string) => page(1, { alert: { ...alert, status: "filed", channel: "police17", reference, filedAt: alert.raisedAt } });
+    expect(serverMessage.safeParse(filed("x".repeat(CAPS.filingReference))).success).toBe(true);
+    expect(serverMessage.safeParse(filed("x".repeat(CAPS.filingReference + 1))).success).toBe(false);
+  });
+
+  it.each([
+    ["an unknown channel", { alert: { ...alert, channel: "17" } }],
+    ["an unknown status", { alert: { ...alert, status: "sent" } }],
+    ["a row without its closing date", { closedAt: undefined }],
+  ])("refuses %s", (_label, extra) => {
+    expect(serverMessage.safeParse(page(1, extra)).success).toBe(false);
+  });
+
+  it.each([
+    ["expel", { reportId: "r", duration: "7d", severe: true, alertAuthorities: "childAbuse" }],
+    ["closeReport", { reportId: "r", outcome: "noAction", alertAuthorities: "harassment" }],
+    ["confirmSuspension", { accountId: "a", reportId: "r", alertAuthorities: "terrorism" }],
+    ["removeRoom", { reportId: "r", alertAuthorities: "hateOrViolence" }],
+    ["removeRoom", { reportId: "r" }],
+    ["listAlertedReports", {}],
+  ])("accepts %s %j", (type, payload) => {
+    expect(clientMessage.safeParse({ type, seq: 1, payload }).success).toBe(true);
+  });
+
+  it("refuses an offence category outside §6, and removeRoom by room id", () => {
+    expect(clientMessage.safeParse({ type: "closeReport", seq: 1, payload: { reportId: "r", outcome: "noAction", alertAuthorities: "sexualMinor" } }).success).toBe(false);
+    expect(clientMessage.safeParse({ type: "removeRoom", seq: 1, payload: { roomId: "lyon" } }).success).toBe(false);
+  });
+});

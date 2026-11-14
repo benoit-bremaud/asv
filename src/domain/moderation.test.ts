@@ -5,12 +5,14 @@ import {
   addStrike,
   canSuspend,
   decideExpel,
+  decideSevere,
   fileReport,
   isModerator,
   liveTarget,
   MODERATION_LIMITS,
   pruneReportAttempts,
   sessionsOfAccount,
+  severeBlockUntil,
   suspensionUntil,
   type ReportCommand,
 } from "./moderation";
@@ -104,7 +106,7 @@ describe("fileReport (UC9, BR-050 to BR-052)", () => {
 
     const result = fileReport(state, report(lola, { targetKind: "room", targetPseudo: undefined, targetRoomId: "lyon" }), T0, random);
 
-    expect(result).toMatchObject({ kind: "filed", report: { targetRoomId: "lyon" } });
+    expect(result).toMatchObject({ kind: "filed", report: { targetRoomId: "lyon", targetRoomName: "Lyon" } });
   });
 
   it.each([
@@ -242,3 +244,36 @@ describe("strikes and suspension (BR-074, BR-075, BR-077)", () => {
   });
 });
 
+
+describe("decideSevere (BR-103)", () => {
+  it("bans for 7 days and evicts every session of the account once, with a 6-month block date", () => {
+    const h = hub(true);
+    const filed = fileReport(h.state, report(h.lola), T0, h.random);
+    if (filed.kind !== "filed") throw new Error("expected filed");
+
+    const decision = decideSevere(h.state, filed.report, "owner", T0);
+
+    expect(decision.ban).toEqual({ ip: "10.0.0.2", pseudo: "Max", until: at(7 * DAY), decidedBy: "owner" });
+    expect(decision.sessions.map((one) => one.id)).toEqual([h.max]);
+    expect(severeBlockUntil(T0)).toEqual(at(MODERATION_LIMITS.severeBlockMs));
+  });
+
+  it("evicts nobody when the target left", () => {
+    const h = hub(true);
+    const filed = fileReport(h.state, report(h.lola, { targetPseudo: "Gone" }), T0, h.random);
+    if (filed.kind !== "filed") throw new Error("expected filed");
+
+    expect(decideSevere(h.state, filed.report, "owner", T0).sessions).toEqual([]);
+  });
+});
+
+describe("fileReport reporter account (BR-107)", () => {
+  it("keeps the member author's account for the decision e-mail, none for a guest", () => {
+    const h = hub();
+    const byGuest = fileReport(h.state, report(h.lola), T0, h.random);
+    const byMember = fileReport(h.state, report(h.max, { targetPseudo: "lola" }), T0, h.random);
+
+    expect(byGuest.kind === "filed" && byGuest.report.reporterAccountId).toBeUndefined();
+    expect(byMember).toMatchObject({ kind: "filed", report: { reporterAccountId: "a1" } });
+  });
+});

@@ -14,6 +14,7 @@
     "tester": "pnpm build && ASV_TUNNEL=1 ASV_STATIC_ROOT=dist tsx src/transports/node/main.ts",
     "mod:invite": "tsx src/transports/node/owner-cli-main.ts invite",
     "mod:revoke": "tsx src/transports/node/owner-cli-main.ts revoke",
+    "mod:filed": "tsx src/transports/node/owner-cli-main.ts filed",
     "build": "tsc && vite build",
     "lint": "eslint .",
     "typecheck": "tsc",

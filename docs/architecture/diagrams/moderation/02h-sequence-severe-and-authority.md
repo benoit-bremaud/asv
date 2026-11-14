@@ -59,8 +59,8 @@ sequenceDiagram
 ## Notes
 
 - `alertAuthorities` carries an `OffenceCategory` picked by the moderator, never copied from the AI
-  triage category (ADR-0010). It is also accepted on `closeReport`, `removeRoom` and
-  `confirmSuspension` (BR-104), for example a threat by a chatter already gone.
+  triage category (ADR-0010). It is also accepted on `closeReport`, `removeRoom`,
+  `confirmSuspension` and `declineSuspension` (BR-104), for example a threat by a chatter already gone.
 - On a severe expel the alert select starts with no value and "confirmer" stays disabled until the
   moderator picks a category or "aucune"; the server accepts `alertAuthorities` absent.
 - When life is at stake the moderator who raises the alert may call 17 or 112 directly: that moderator is
@@ -77,3 +77,7 @@ sequenceDiagram
 - `mod:filed` takes channel in PHAROS, 17, 112, PointDeContact, and a reference of 1 to 100 characters
   following BR-090; anything else answers 400.
 - `/mod/authority-filings` answers 404 behind the tunnel (BR-097) like every `/mod` route.
+- Without `ASV_CONTACT_EMAIL` the Brevo adapter refuses the alert mail and logs `missing_contact_email`;
+  the alert stays `pending` without `notifiedAt` and the retry round tries again for 7 days (BR-104). The
+  Node server logs one loud line at start when the owner secret is set outside the tunnel and the contact
+  address is missing.

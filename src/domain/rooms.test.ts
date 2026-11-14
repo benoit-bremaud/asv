@@ -8,6 +8,7 @@ import {
   leaveRoom,
   postRoom,
   pruneFlood,
+  removeRoom,
   restoreHubState,
   ROOM_LIMITS,
   roomList,
@@ -603,5 +604,29 @@ describe("ADR-0011 rebuild after hibernation", () => {
     expect(state.rooms.get("u1")?.ownerId).toBe("s1");
     expect(state.rooms.get("u3")).toEqual({ id: "u3", name: "Brunch", kind: "user" });
     expect(state.rooms.has("u4")).toBe(false);
+  });
+});
+
+describe("removeRoom (BR-106)", () => {
+  it("closes a user room, takes every member out of it and frees its name", () => {
+    const { state, id, random } = hubWith("Lola", "Max", "Zoe");
+    const created = createRoom(state, { sessionId: id(0), name: "Apéro" }, random);
+    const roomId = createdRoomId(created);
+    const withMax = joined(joined(created.state, id(1), roomId), id(1), "lyon");
+
+    const removal = removeRoom(withMax, roomId);
+
+    if (removal.kind !== "removed") throw new Error("expected removed");
+    expect([...removal.members].sort()).toEqual([id(0), id(1)].sort());
+    expect(removal.effects).toEqual([{ type: "roomDeleted", roomId }]);
+    expect(removal.state.rooms.has(roomId)).toBe(false);
+    expect(removal.state.sessions.get(id(1))?.rooms).toEqual(["lyon"]);
+    expect(createdRoomId(createRoom(removal.state, { sessionId: id(2), name: "Apéro" }, random))).toBeTruthy();
+  });
+
+  it.each([["an official room", "lyon"], ["an unknown room", "nowhere"]])("refuses %s", (_label, roomId) => {
+    const { state } = hubWith("Lola");
+
+    expect(removeRoom(state, roomId)).toEqual({ kind: "refused" });
   });
 });

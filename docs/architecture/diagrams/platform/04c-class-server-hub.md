@@ -151,7 +151,8 @@ The hub is split by command group, all behind the same `createHub(HubDeps)`:
 |---|---|
 | `src/server/hub.ts` | live state, sockets, serial queue, `receive`/`close`/`tick`, entry commands (`enter`, `resume`, `leave`), rooms commands, and the **handler map** |
 | `src/server/outgoing.ts` | effect mapping: `sessionOf`, `toMember`, `send`, `error`, `warning`, `keysOf`, `roomJoined`, `roomOutgoing` (with the `roomList` broadcast), `memberAwayInRooms`, `memberBackInRooms` |
-| `src/server/hub-moderation.ts` | brick 8a commands (`report`, `listOpenReports`, `expel`, `closeReport`, `confirmSuspension`, `declineSuspension`) and the statement retry of the tick; brick 8c adds the triage call through the `ReportTriage` dependency with the daily cap (200) and the per-reporter quota (20), `listAlertedReports`, `removeRoom`, `expel.severe`, `alertAuthorities`, and the tick retries of the authority alert and decision e-mails. Until 8c-1 and 8c-2 land, `warn`, `removeRoom` and `expel.severe` answer `notAvailable` |
+| `src/server/hub-moderation.ts` | brick 8a commands (`report`, `listOpenReports`, `expel`, `closeReport`, `confirmSuspension`, `declineSuspension`) and the statement retry of the tick; brick 8c adds the triage call through the `ReportTriage` dependency with the daily cap (200) and the per-reporter quota (20), `listAlertedReports`, `removeRoom`, `expel.severe`, `alertAuthorities`, and the tick retries of the authority alert and decision e-mails. `warn` answers `notAvailable` |
+| `src/server/moderation-mail.ts` | brick 8c-2: texts of the statements and decision e-mail, sending without waiting and the 10-minute retry round, 7 days at most (BR-076, BR-104, BR-107) |
 | `src/server/moderation-io.ts` | encryption at rest of reports and keyed hashes of bans around the `ModerationStore` port (ADR-0017) |
 | `src/server/moderator-grant.ts` | build and check of the passkey grant (BR-095); replaces the 8a `moderator-token.ts` (BR-091); the used-nonce set lives in `hub.ts`, which runs entries one at a time |
 | `src/server/hub-moderators.ts` | brick 8b operations for the `/mod` routes: `createInvitation`, `keepChallenge`, `takeChallenge` (5 min, single use, bound to its purpose and invitation, 200 at most, BR-096), `purge`, and `io` (the `ModeratorIo`) |
@@ -201,7 +202,7 @@ classDiagram
 
 - **Handler map**: every `ClientMessage['type']` except `enter` and `resume` has an entry, so the type
   checker refuses a missing command. `enter` and `resume` are handled before the map because they need a
-  socket without session. The brick 8c commands map to one `notAvailable` handler in `hub-moderation.ts`.
+  socket without session. Since brick 8c-2, only `warn` maps to the `notAvailable` handler in `hub-moderation.ts`.
 - **Error text** defaults to the code (`error(key, "forbidden")` sends `message: "forbidden"`); only
   `frameTooLarge` and `notAvailable` pass a different text.
 - Each account handler is wrapped in the same guard: a store failure answers `warning unavailable` and
@@ -225,7 +226,7 @@ classDiagram
   `leave`; a socket without `bound` has no session.
 - **Socket without session**: only `enter` and `resume` are accepted; anything else → `error forbidden`.
   `enter` or `resume` on a socket that already has a session → `error invalid`.
-- **Moderation commands** (brick 8a): a chatter gets `error forbidden`; `report` answers `error invalid` with message `notAvailable` when `canReport` is false; until the 8c-2 code lands, `removeRoom` and `expel.severe` answer `notAvailable`; from 8c-2 they run as `moderation/02h` and `02i`, and `warn` keeps answering `notAvailable`.
+- **Moderation commands** (brick 8a): a chatter gets `error forbidden`; `report` answers `error invalid` with message `notAvailable` when `canReport` is false; `removeRoom` and `expel.severe` run as `moderation/02h` and `02i` since 8c-2, and `warn` keeps answering `notAvailable`.
 - **enter** (`entry/02a`): `activeBan` comes from `moderation.activeBan` (brick 8a), `accountId` from the device cookie (brick 5). On `entered` the hub
   draws a connection id (`random.id()`), awaits `log.open`, stores session id and connection id on the
   socket, then sends `entered { sessionId, resumeToken, roomList, isModerator, moderatorName?, canReport }`. If `log.open`
@@ -304,6 +305,6 @@ classDiagram
 - Brick 8a (#209): `moderation` is the encrypted moderation store, `moderatorTokenDigest` (removed in 8b) the digest
   of `ASV_MODERATOR_TOKEN` (absent: no grant), `canReport` false behind the tester tunnel. Moderation
   commands live in `hub-moderation.ts`: `error(forbidden)` for a non-moderator comes before any other
-  check, `error(invalid, notAvailable)` for the 8c commands. The entry checks `activeBan` before the
+  check, `error(invalid, notAvailable)` for `warn`. The entry checks `activeBan` before the
   domain; a store failure answers `warning(unavailable)`. The tick retries refused statements of reasons every
   10 minutes, never awaited.

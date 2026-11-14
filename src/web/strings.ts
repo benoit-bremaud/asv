@@ -65,6 +65,9 @@ export const STRINGS = {
   reportReason: "motif",
   reasons: { harassment: "harcèlement", seemsMinor: "semble mineur", spam: "spam", illegalContent: "contenu illégal", other: "autre" },
   reportExcerpt: "message signalé",
+  /** Brick 8c (`web-ui/08`): a user room is reported from its header. */
+  reportRoom: "signaler le salon",
+  reportRoomTitle: (room: string) => `Signaler le salon ${room}`,
   /** UC12 (`web-ui/08`). */
   queue: "signalements",
   queueTitle: "Signalements ouverts",
@@ -100,6 +103,35 @@ export const STRINGS = {
   durations: { "1h": "1 h", "24h": "24 h", "7d": "7 j" },
   proposal: (strikes: number) => `${strikes} avertissements actifs : suspendre le compte 7 jours ?`,
   suspend: "suspendre 7 jours",
+  /** Brick 8c (`web-ui/08`): severe expel, room removal, authority alerts (BR-103 to BR-106). */
+  tabOpen: "ouverts",
+  tabAlerts: "alertes",
+  alertsEmpty: "Aucune alerte.",
+  removeRoom: "fermer le salon",
+  severe: "expulsion grave",
+  severeEffects: (hasAccount: boolean) =>
+    hasAccount
+      ? "Compte supprimé, adresse e-mail bloquée 6 mois et bannissement de 7 jours."
+      : "Bannissement de 7 jours sur l'adresse IP et le pseudo.",
+  confirmSevere: "confirmer",
+  alertSelect: "à signaler aux autorités",
+  alertPick: "choisir…",
+  alertNone: "aucune",
+  offences: {
+    childAbuse: "atteinte aux mineurs",
+    threatToLife: "menace de mort ou contre la sécurité",
+    terrorism: "terrorisme",
+    hateOrViolence: "haine ou violence",
+    harassment: "harcèlement",
+    otherListed: "autre infraction listée",
+  },
+  channels: { PHAROS: "PHAROS", police17: "17", emergency112: "112", PointDeContact: "Point de Contact" },
+  alertPending: "en attente",
+  alertFiled: (channel: string, reference: string) => `déposée (${channel}, ${reference})`,
+  alertStatus: (status: string) => `alerte : ${status}`,
+  alertRaisedAlready: (category: string) => `à signaler aux autorités : ${category} (déjà levée)`,
+  alertRaised: (category: string, by: string, date: string) => `${category}, levée par ${by} le ${date}`,
+  closedOn: (date: string) => `clos le ${date}`,
   askSuspension: "décider la suspension",
   noSuspend: "ne pas suspendre",
   /** BR-008: the end of a ban or an expulsion, in the reader's time zone. */
@@ -196,6 +228,7 @@ export const STRINGS = {
     reportRate: "Trop de signalements, réessaie dans quelques minutes.",
     reportInvalid: "Signalement refusé.",
     reportGone: "Ce signalement est déjà traité.",
+    roomClosed: "Un modérateur a fermé ce salon.",
     suspensionRefused: "Suspension impossible : moins de 3 avertissements actifs.",
     deviceNotSaved: "Appareil non retenu : tu restes membre pour cette visite seulement.",
   } as Record<string, string>,

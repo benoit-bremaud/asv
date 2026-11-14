@@ -8,8 +8,11 @@ import type { Mailer } from "../../domain";
 const BREVO_SEND_URL = "https://api.brevo.com/v3/smtp/email";
 const TIMEOUT_MS = 8000;
 const SENDER_NAME = "asv";
+const ALERT_SUBJECT = "asv : alerte autorités";
 /** Allow-listed event name of every failed send, never with the address. */
 export const MAIL_SEND_FAILED = "mailer.send_failed";
+/** An authority alert kept pending because `ASV_CONTACT_EMAIL` is unset (BR-104). */
+export const ALERT_HELD = "mailer.alert_held";
 
 /** Structured log line; the adapter never puts an address or a raw provider body in it. */
 export type MailLog = (level: "info" | "error", fields: Readonly<Record<string, string | number>>) => void;
@@ -19,6 +22,8 @@ export interface BrevoOptions {
   /** Unset in development and tests: messages are logged instead of sent. */
   readonly apiKey?: string;
   readonly from: string;
+  /** `ASV_CONTACT_EMAIL`: where authority alerts go (BR-104); unset, an alert is never accepted. */
+  readonly contactEmail?: string;
   readonly production: boolean;
   readonly log: MailLog;
   /** Injected in tests; the global `fetch` otherwise. */
@@ -32,6 +37,8 @@ interface MailMessage {
   readonly html: string;
   /** The code, printed only by the development fallback. */
   readonly secret?: string;
+  /** Replies reach the contact address, so a member can contest (BR-076, BR-107). */
+  readonly replyTo?: string;
 }
 
 /** Brevo's error body cut to `{ code, message }`, the message stripped of anything address-like. */
@@ -82,6 +89,7 @@ export const createBrevoMailer = (options: BrevoOptions): Mailer => {
         body: JSON.stringify({
           sender: { name: SENDER_NAME, email: options.from },
           to: [{ email: message.to }],
+          ...(message.replyTo ? { replyTo: { email: message.replyTo } } : {}),
           subject: message.subject,
           textContent: message.text,
           htmlContent: message.html,
@@ -122,8 +130,29 @@ export const createBrevoMailer = (options: BrevoOptions): Mailer => {
       send({
         to: email,
         subject: "Décision de modération sur ton compte asv",
+        replyTo: options.contactEmail,
         text: statement,
         html: `<p>${escapeHtml(statement).replaceAll("\n", "<br>")}</p>`,
+      }),
+
+    // BR-104: the report id and the category only, never content or pseudos.
+    async sendAuthorityAlert(reportId, category) {
+      if (!options.contactEmail) {
+        // One short line per retry round; the server says it loudly once at start (`moderation/02h`).
+        options.log("info", { event: ALERT_HELD, reason: "missing_contact_email" });
+        return false;
+      }
+      const text = `Alerte autorités à déposer.\n\nSignalement : ${reportId}\nCatégorie : ${category}\n\nOuvre l'onglet "alertes" de la file, dépose, puis lance pnpm mod:filed.`;
+      return send({ to: options.contactEmail, subject: ALERT_SUBJECT, text, html: `<p>${escapeHtml(text).replaceAll("\n", "<br>")}</p>` });
+    },
+
+    sendReportDecision: (email, text) =>
+      send({
+        to: email,
+        subject: "Suite donnée à ton signalement asv",
+        replyTo: options.contactEmail,
+        text,
+        html: `<p>${escapeHtml(text).replaceAll("\n", "<br>")}</p>`,
       }),
   };
 };
