@@ -239,7 +239,7 @@ export const QueueDialog = () => {
         </>
       ) : (
         <>
-          {queue.proposal && <Proposal proposal={queue.proposal} raised={queue.proposal.alert ?? queue.reports.find((report) => report.id === queue.proposal?.reportId)?.alert?.offenceCategory} />}
+          {queue.proposal && <Proposal key={queue.proposal.reportId} proposal={queue.proposal} raised={queue.proposal.alert ?? queue.reports.find((report) => report.id === queue.proposal?.reportId)?.alert?.offenceCategory} />}
           {queue.loading && <p className="small">{STRINGS.queueLoading}</p>}
           {!queue.loading && queue.reports.length === 0 && <p className="small">{STRINGS.queueEmpty}</p>}
           {queue.total > queue.reports.length && <p className="small">{STRINGS.queueCount(queue.reports.length, queue.total)}</p>}

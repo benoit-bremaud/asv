@@ -21,7 +21,7 @@ sequenceDiagram
   participant ST as Moderation store
   participant ML as Mailer
   participant T as Target sessions
-  M->>H: closeReport(reportId, warned)
+  M->>H: closeReport(reportId, warned, alertAuthorities?)
   H->>ST: load report with targetAccountId
   H->>AS: load account
   H->>D: warn(state, report, account, moderator, now)
@@ -32,9 +32,9 @@ sequenceDiagram
     H->>ST: close report with outcome warned
     H-->>M: reportClosed
   else Third active strike
-    H-->>M: suspensionProposed(accountId, reportId, activeStrikes)
+    H-->>M: suspensionProposed(accountId, reportId, activeStrikes, alert?)
     alt Moderator confirms
-      M->>H: confirmSuspension(accountId, reportId)
+      M->>H: confirmSuspension(accountId, reportId, alertAuthorities?)
       H->>D: suspend(state, account, moderator, now)
       D-->>H: Statement + block until now + 7 days + all sessions and away records + IP and pseudo ban
       H->>ST: save ban (keyed IP and pseudo hashes)
